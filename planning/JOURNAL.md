@@ -12,6 +12,25 @@
 - **Time spent:** ~2.1h.
 - **Next:** Epic 240 is closed. The next clean follow-on remains [241](./tasks/241-party-item-price-memory.md).
 
+### Session: 2026-06-19 (AI Settings Page Layout Division & Switch Unification)
+
+- **Goal:** Analyze the AI settings page layout using `/ui-ux-pro-max` guidelines, divide it into 5 distinct logical sections, and unify custom toggles using the global `<ToggleSwitch />` component to resolve the RTL toggle switch layout bug.
+- **What was done:**
+  - Divided the monolithic "AI Provider" card on `AiAssistantSettingsPage.tsx` into 5 separate sections corresponding to the translation keys:
+    1. **Activation Settings** (Enable/Disable toggles, Floating launcher, and Allow unverified models)
+    2. **Runtime Mode & Provider Setup** (Connection mode, BYOK provider/endpoint/API-key/model inputs, Credits info, or disabled card)
+    3. **Model Verification & Registry** (Certified models browse triggers and BYOK custom registries)
+    4. **Advanced AI Constraints** (Budget and context limits)
+    5. **Connection Diagnostics** (Diagnostic testing panel)
+  - Replaced all 3 custom inline button switch layouts with global `<ToggleSwitch />` components with standard active color `bg-indigo-600`.
+  - Bound the `ai.isEnabled` opacity and pointer-events styling to Sections 2–5. Section 1 (Activation Settings) remains fully visible and clickable so that the user can enable the module.
+  - Fixed the RTL layout bug shown in the user's screenshot where manual flex button switches aligned to the right side by default in RTL, causing checked switches to translate outside of the switch boundaries and unchecked ones to appear active.
+- **Verification:**
+  - Ran `npm --prefix frontend run typecheck` successfully.
+  - Ran `npm --prefix frontend run build` successfully.
+- **Time spent:** ~0.6h.
+- **Next:** Request user approval to commit and merge these layout changes.
+
 ### Session: 2026-06-19 (Epic 240 Phase 7 — periodic Trading Account blocker root-caused + fixed)
 
 - **Goal:** Investigate and fix the remaining Epic 240 final-gate blocker from the 240g QA run — the live periodic **Trading Account** endpoint returning `hasData=false`/zeroes on `cmp_mqk28li8_dcor0q` despite real GP03/GP04 activity and a populated P&L + Balance Sheet valuation.

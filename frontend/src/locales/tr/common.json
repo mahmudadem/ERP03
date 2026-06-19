@@ -1653,6 +1653,8 @@
     },
     "companyWizard": {
       "basic": {
+        "title": "Şirket Temelleri",
+        "subtitle": "Temel bilgilerle başlayalım.",
         "errors": {
           "invalidImageType": "Sadece PNG, JPG, ICO veya WEBP kabul edilir.",
           "logoSize": "Logo 5MB'dan kucuk olmalidir.",

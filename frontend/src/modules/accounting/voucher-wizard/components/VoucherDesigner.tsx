@@ -21,6 +21,7 @@
 
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
+import { ToggleSwitch } from '../../../../components/ui/ToggleSwitch';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 import { 
   ArrowLeft, ArrowRight, Check, CheckCircle2, 
@@ -1722,15 +1723,15 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                   {action.enabled && (
                     <div className="pt-3 mt-3 border-t border-indigo-100 flex items-center justify-between">
                       <span className="text-xs font-medium text-slate-700">Display as Icon Only (Compact)</span>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setConfig(prev => ({...prev, actions: prev.actions.map(a => a.type === action.type ? { ...a, isCompact: !a.isCompact } : a)}));
+                      <ToggleSwitch
+                        checked={!!action.isCompact}
+                        onChange={(checked) => {
+                          setConfig(prev => ({
+                            ...prev,
+                            actions: prev.actions.map(a => a.type === action.type ? { ...a, isCompact: checked } : a)
+                          }));
                         }}
-                        className={`relative inline-flex h-4 w-8 items-center rounded-full transition-colors ${action.isCompact ? 'bg-indigo-600' : 'bg-gray-300'}`}
-                      >
-                        <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition-transform ${action.isCompact ? 'translate-x-4' : 'translate-x-1'}`} />
-                      </button>
+                      />
                     </div>
                   )}
                </div>

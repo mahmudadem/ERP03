@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ToggleSwitchProps {
@@ -6,12 +5,23 @@ interface ToggleSwitchProps {
   checked: boolean;
   onChange: (checked: boolean) => void;
   disabled?: boolean;
+  activeColor?: string;
+  inactiveColor?: string;
+  className?: string;
 }
 
-export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ label, checked, onChange, disabled }) => {
+export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
+  label,
+  checked,
+  onChange,
+  disabled = false,
+  activeColor = 'bg-indigo-600',
+  inactiveColor = 'bg-gray-200',
+  className = '',
+}) => {
   return (
-    <label className="flex items-center cursor-pointer">
-      <div className="relative">
+    <label className={`flex items-center cursor-pointer select-none gap-3 ${disabled ? 'opacity-50 cursor-not-allowed' : ''} ${className}`}>
+      <div className="relative shrink-0" dir="ltr">
         <input
           type="checkbox"
           className="sr-only"
@@ -19,10 +29,14 @@ export const ToggleSwitch: React.FC<ToggleSwitchProps> = ({ label, checked, onCh
           onChange={(e) => !disabled && onChange(e.target.checked)}
           disabled={disabled}
         />
-        <div className={`block w-10 h-6 rounded-full transition-colors ${checked ? 'bg-blue-600' : 'bg-gray-300'} ${disabled ? 'opacity-50' : ''}`}></div>
-        <div className={`dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform transform ${checked ? 'translate-x-4' : ''}`}></div>
+        <div className={`w-12 h-6 rounded-full transition-colors ${checked ? activeColor : inactiveColor}`}></div>
+        <div className={`absolute top-[2px] left-[2px] bg-white w-5 h-5 rounded-full shadow-md transition-transform ${checked ? 'translate-x-6' : 'translate-x-0'}`}></div>
       </div>
-      {label && <div className="ml-3 text-sm font-medium text-gray-700">{label}</div>}
+      {label && (
+        <span className="text-sm font-medium text-gray-700 dark:text-[var(--color-text-secondary)]">
+          {label}
+        </span>
+      )}
     </label>
   );
 };

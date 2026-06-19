@@ -38,7 +38,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   return (
     <div>
       <label htmlFor={modelFieldId} className="block text-sm font-medium text-gray-700 mb-1">
-        <Sparkles className="w-4 h-4 inline mr-1" />
+        <Sparkles className="w-4 h-4 inline ltr:mr-1 rtl:ml-1" />
         {t('settings.model', 'Model')}
       </label>
       {useDynamicProvider && providerModels.length > 0 ? (

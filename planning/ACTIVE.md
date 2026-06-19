@@ -1,5 +1,16 @@
 # 🎯 Current Focus
 
+## AI Settings Page Division & Switch Unification (2026-06-19)
+
+- ✅ **Refactored AI Settings Page Layout (`AiAssistantSettingsPage.tsx`)**:
+  - Divided the monolithic layout card into 5 separate settings sections (`Activation Settings`, `Runtime & Provider Setup`, `Model Verification & Registry`, `Advanced AI Constraints`, and `Connection Diagnostics`).
+  - Standardized all custom/inline toggle buttons to use the global `<ToggleSwitch />` component with consistent `bg-indigo-600` active colors.
+  - Resolved an RTL flex layout bug where manual buttons started in reversed positions or overflowed boundaries.
+  - Wrapped sections 2–5 under a separate `ai.isEnabled` opacity/pointer-events constraint, leaving Section 1 (Activation Settings) fully clickable when the module is turned off.
+- ✅ **Verification completed**:
+  - `npm --prefix frontend run typecheck` passed cleanly.
+  - `npm --prefix frontend run build` successfully bundled Vite assets.
+
 ## Epic 240 follow-on (owner-authorized 2026-06-18)
 
 - ✅ **Epic 240 final gate is now CLOSED on `codex/240e-report-time-valuation` (`golden-paths-green` = ON).**

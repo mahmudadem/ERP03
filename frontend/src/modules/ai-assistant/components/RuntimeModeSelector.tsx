@@ -28,7 +28,7 @@ export const RuntimeModeSelector: React.FC<RuntimeModeSelectorProps> = ({
   return (
     <div className="mb-6">
       <label className="block text-sm font-medium text-gray-700 mb-3">
-        <Shield className="w-4 h-4 inline mr-1" />
+        <Shield className="w-4 h-4 inline ltr:mr-1 rtl:ml-1" />
         {t('settings.runtimeMode', 'Connection Mode')}
       </label>
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -41,7 +41,7 @@ export const RuntimeModeSelector: React.FC<RuntimeModeSelectorProps> = ({
               type="button"
               onClick={() => canManage && onChange(mode)}
               disabled={!canManage}
-              className={`relative flex flex-col items-start p-4 rounded-lg border-2 text-left transition-all ${
+              className={`relative flex flex-col items-start p-4 rounded-lg border-2 text-start transition-all ${
                 isActive
                   ? 'border-indigo-500 bg-indigo-50'
                   : 'border-gray-200 bg-white hover:border-gray-300'
@@ -57,7 +57,7 @@ export const RuntimeModeSelector: React.FC<RuntimeModeSelectorProps> = ({
                   {t(`settings.runtimeMode${modeKey}`, mode)}
                 </span>
               </div>
-              <p className="text-xs text-gray-500 ml-6">
+              <p className="text-xs text-gray-500 ltr:ml-6 rtl:mr-6">
                 {t(`settings.runtimeMode${modeKey}Desc`, '')}
               </p>
             </button>

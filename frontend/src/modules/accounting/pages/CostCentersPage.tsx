@@ -4,6 +4,7 @@ import { accountingApi, CostCenterDTO } from '../../../api/accountingApi';
 import { useCostCenters } from '../../../context/CostCentersContext';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
+import { ToggleSwitch } from '../../../components/ui/ToggleSwitch';
 
 interface TreeNode extends CostCenterDTO {
   children: TreeNode[];
@@ -402,17 +403,12 @@ export const CostCentersPage: React.FC = () => {
                             {form.status === 'ACTIVE' ? t('costCenters.statusActiveDesc', 'Currently active and available for use.') : t('costCenters.statusInactiveDesc', 'Currently inactive and hidden from new assignments.')}
                           </p>
                         </div>
-                        <label className="relative inline-flex items-center cursor-pointer">
-                          <input
-                            type="checkbox"
-                            className="sr-only peer"
-                            checked={form.status === 'ACTIVE'}
-                            onChange={() => handleToggleActive(editingId, form.name || '', form.status || 'ACTIVE')}
-                          />
-                          <div className={`relative w-12 h-6 rounded-full transition-colors ${form.status === 'ACTIVE' ? 'bg-emerald-500' : 'bg-gray-300'}`}>
-                            <div className={`absolute top-[2px] left-[2px] w-5 h-5 bg-white rounded-full shadow-md transition-transform ${form.status === 'ACTIVE' ? 'translate-x-6' : 'translate-x-0'}`}></div>
-                          </div>
-                        </label>
+                        <ToggleSwitch
+                          checked={form.status === 'ACTIVE'}
+                          onChange={() => handleToggleActive(editingId, form.name || '', form.status || 'ACTIVE')}
+                          activeColor="bg-emerald-500"
+                          inactiveColor="bg-gray-300"
+                        />
                       </div>
                     )}
                     <form id="cost-center-form" onSubmit={handleSave} className="space-y-4">
