@@ -481,3 +481,40 @@ export const validateCreateOpeningStockDocumentInput = (body: any) => {
 export const validateUpdateOpeningStockDocumentInput = (body: any) => {
   validateCreateOpeningStockDocumentInput(body);
 };
+
+const REVALUATION_REASONS = ['COST_CORRECTION', 'BASIS_CHANGE', 'MIGRATION_FIX', 'WRITE_OFF', 'OTHER'];
+
+export const validateCreateInventoryRevaluationInput = (body: any) => {
+  ensureIsoDate(body.date, 'date');
+  ensureRequiredString(body.reason, 'reason');
+  if (!REVALUATION_REASONS.includes(body.reason)) {
+    throw ApiError.badRequest(
+      `reason must be one of ${REVALUATION_REASONS.join(', ')}`
+    );
+  }
+
+  if (!Array.isArray(body.lines) || body.lines.length === 0) {
+    throw ApiError.badRequest('lines must be a non-empty array');
+  }
+
+  body.lines.forEach((line: any, index: number) => {
+    ensureRequiredString(line.itemId, `lines[${index}].itemId`);
+    if (line.warehouseId !== undefined && line.warehouseId !== null && line.warehouseId !== '') {
+      ensureRequiredString(line.warehouseId, `lines[${index}].warehouseId`);
+    }
+    ensureNonNegativeNumber(line.qtyOnHand, `lines[${index}].qtyOnHand`);
+    ensureNonNegativeNumber(line.currentAvgCostBase, `lines[${index}].currentAvgCostBase`);
+    ensureNonNegativeNumber(line.currentAvgCostCCY, `lines[${index}].currentAvgCostCCY`);
+    ensureNonNegativeNumber(line.newAvgCostBase, `lines[${index}].newAvgCostBase`);
+    ensureNonNegativeNumber(line.newAvgCostCCY, `lines[${index}].newAvgCostCCY`);
+    if (typeof line.valueDeltaBase !== 'number' || Number.isNaN(line.valueDeltaBase)) {
+      throw ApiError.badRequest(`lines[${index}].valueDeltaBase must be a number`);
+    }
+    if (typeof line.valueDeltaCCY !== 'number' || Number.isNaN(line.valueDeltaCCY)) {
+      throw ApiError.badRequest(`lines[${index}].valueDeltaCCY must be a number`);
+    }
+    if (line.reason !== undefined && line.reason !== null && typeof line.reason !== 'string') {
+      throw ApiError.badRequest(`lines[${index}].reason must be a string`);
+    }
+  });
+};

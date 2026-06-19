@@ -54,6 +54,7 @@ import { FirestoreUomConversionRepository } from '../firestore/repositories/inve
 import { FirestoreInventorySettingsRepository } from '../firestore/repositories/inventory/FirestoreInventorySettingsRepository';
 import { FirestoreOpeningStockDocumentRepository } from '../firestore/repositories/inventory/FirestoreOpeningStockDocumentRepository';
 import { FirestoreStockAdjustmentRepository } from '../firestore/repositories/inventory/FirestoreStockAdjustmentRepository';
+import { FirestoreInventoryRevaluationRepository } from '../firestore/repositories/inventory/FirestoreInventoryRevaluationRepository';
 import { FirestoreStockTransferRepository } from '../firestore/repositories/inventory/FirestoreStockTransferRepository';
 import { FirestoreInventoryPeriodSnapshotRepository } from '../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository';
 import { FirestorePurchaseSettingsRepository } from '../firestore/repositories/purchases/FirestorePurchaseSettingsRepository';
@@ -288,6 +289,7 @@ import { PrismaItemCategoryRepository } from '../prisma/repositories/inventory/P
 import { PrismaItemRepository } from '../prisma/repositories/inventory/PrismaItemRepository';
 import { PrismaOpeningStockDocumentRepository } from '../prisma/repositories/inventory/PrismaOpeningStockDocumentRepository';
 import { PrismaStockAdjustmentRepository } from '../prisma/repositories/inventory/PrismaStockAdjustmentRepository';
+import { PrismaInventoryRevaluationRepository } from '../prisma/repositories/inventory/PrismaInventoryRevaluationRepository';
 import { PrismaStockLevelRepository } from '../prisma/repositories/inventory/PrismaStockLevelRepository';
 import { PrismaStockMovementRepository } from '../prisma/repositories/inventory/PrismaStockMovementRepository';
 import { PrismaStockTransferRepository } from '../prisma/repositories/inventory/PrismaStockTransferRepository';
@@ -573,6 +575,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaStockAdjustmentRepository(getPrismaClient())
       : new FirestoreStockAdjustmentRepository(getDb());
+  },
+  get inventoryRevaluationRepository(): InvRepo.IInventoryRevaluationRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaInventoryRevaluationRepository(getPrismaClient())
+      : new FirestoreInventoryRevaluationRepository(getDb());
   },
   get stockTransferRepository(): InvRepo.IStockTransferRepository {
     return DB_TYPE === 'SQL'

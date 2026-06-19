@@ -50,6 +50,7 @@ model Company {
   stockMovements  StockMovement[]
   stockAdjustments StockAdjustment[]
   stockTransfers  StockTransfer[]
+  inventoryRevaluations InventoryRevaluation[]
   openingStockDocuments OpeningStockDocument[]
   inventoryPeriodSnapshots InventoryPeriodSnapshot[]
   purchaseOrders  PurchaseOrder[]
@@ -615,6 +616,7 @@ model Item {
   posOrderItems   PosOrderItem[]
   stockAdjustmentLines StockAdjustmentLine[]
   stockTransferLines StockTransferLine[]
+  inventoryRevaluationLines InventoryRevaluationLine[]
   openingStockLines OpeningStockLine[]
   partyItemPrices PartyItemPrice[]
 
@@ -833,6 +835,53 @@ model StockAdjustmentLine {
   @@index([adjustmentId])
   @@index([itemId])
   @@map("stock_adjustment_lines")
+}
+
+model InventoryRevaluation {
+  id                  String   @id @default(uuid())
+  companyId           String
+  documentNo          String
+  date                DateTime
+  reason              String
+  status              String   @default("DRAFT")
+  notes               String?
+  voucherId           String?
+  totalValueDeltaBase Float    @default(0)
+  totalValueDeltaCCY  Float    @default(0)
+  createdBy           String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  postedAt            DateTime?
+
+  company Company                    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines   InventoryRevaluationLine[]
+
+  @@unique([companyId, documentNo])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("inventory_revaluations")
+}
+
+model InventoryRevaluationLine {
+  id                 String  @id @default(uuid())
+  revaluationId      String
+  itemId             String
+  warehouseId        String?
+  qtyOnHand          Float
+  currentAvgCostBase Float
+  currentAvgCostCCY  Float
+  newAvgCostBase     Float
+  newAvgCostCCY      Float
+  valueDeltaBase     Float
+  valueDeltaCCY      Float
+  reason             String?
+
+  revaluation InventoryRevaluation @relation(fields: [revaluationId], references: [id], onDelete: Cascade)
+  item        Item                 @relation(fields: [itemId], references: [id])
+
+  @@index([revaluationId])
+  @@index([itemId])
+  @@map("inventory_revaluation_lines")
 }
 
 model StockTransfer {

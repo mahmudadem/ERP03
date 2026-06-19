@@ -8,6 +8,7 @@ import { InventorySettings } from '../../domain/inventory/entities/InventorySett
 import { OpeningStockDocument } from '../../domain/inventory/entities/OpeningStockDocument';
 import { InventoryPeriodSnapshot } from '../../domain/inventory/entities/InventoryPeriodSnapshot';
 import { StockAdjustment } from '../../domain/inventory/entities/StockAdjustment';
+import { InventoryRevaluation } from '../../domain/inventory/entities/InventoryRevaluation';
 import { StockLevel } from '../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../domain/inventory/entities/StockMovement';
 import { StockTransfer } from '../../domain/inventory/entities/StockTransfer';
@@ -245,6 +246,35 @@ export interface StockMovementDTO {
   costSource: string;
   notes?: string;
   metadata?: Record<string, any>;
+}
+
+export interface InventoryRevaluationLineDTO {
+  itemId: string;
+  warehouseId?: string;
+  qtyOnHand: number;
+  currentAvgCostBase: number;
+  currentAvgCostCCY: number;
+  newAvgCostBase: number;
+  newAvgCostCCY: number;
+  valueDeltaBase: number;
+  valueDeltaCCY: number;
+  reason?: string;
+}
+
+export interface InventoryRevaluationDTO {
+  id: string;
+  companyId: string;
+  date: string;
+  reason: string;
+  notes?: string;
+  status: 'DRAFT' | 'POSTED';
+  voucherId?: string;
+  totalValueDeltaBase: number;
+  totalValueDeltaCCY: number;
+  createdBy: string;
+  createdAt: string;
+  postedAt?: string;
+  lines: InventoryRevaluationLineDTO[];
 }
 
 export interface StockAdjustmentDTO {
@@ -534,6 +564,24 @@ export class InventoryDTOMapper {
       costSource: movement.costSource,
       notes: movement.notes,
       metadata: movement.metadata,
+    };
+  }
+
+  static toInventoryRevaluationDTO(rev: InventoryRevaluation): InventoryRevaluationDTO {
+    return {
+      id: rev.id,
+      companyId: rev.companyId,
+      date: rev.date,
+      reason: rev.reason,
+      notes: rev.notes,
+      status: rev.status,
+      voucherId: rev.voucherId,
+      totalValueDeltaBase: rev.totalValueDeltaBase,
+      totalValueDeltaCCY: rev.totalValueDeltaCCY,
+      createdBy: rev.createdBy,
+      createdAt: rev.createdAt.toISOString(),
+      postedAt: rev.postedAt?.toISOString(),
+      lines: rev.lines.map((line) => ({ ...line })),
     };
   }
 

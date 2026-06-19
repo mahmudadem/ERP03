@@ -9,5 +9,6 @@ export * from './IUomConversionRepository';
 export * from './IInventorySettingsRepository';
 export * from './IOpeningStockDocumentRepository';
 export * from './IStockAdjustmentRepository';
+export * from './IInventoryRevaluationRepository';
 export * from './IStockTransferRepository';
 export * from './IInventoryPeriodSnapshotRepository';

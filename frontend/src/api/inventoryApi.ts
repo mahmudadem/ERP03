@@ -326,6 +326,35 @@ export interface StockMovementDTO {
   costSettled: boolean;
 }
 
+export interface InventoryRevaluationLineDTO {
+  itemId: string;
+  warehouseId?: string;
+  qtyOnHand: number;
+  currentAvgCostBase: number;
+  currentAvgCostCCY: number;
+  newAvgCostBase: number;
+  newAvgCostCCY: number;
+  valueDeltaBase: number;
+  valueDeltaCCY: number;
+  reason?: string;
+}
+
+export interface InventoryRevaluationDTO {
+  id: string;
+  companyId: string;
+  date: string;
+  reason: string;
+  notes?: string;
+  status: 'DRAFT' | 'POSTED';
+  voucherId?: string;
+  totalValueDeltaBase: number;
+  totalValueDeltaCCY: number;
+  createdBy: string;
+  createdAt: string;
+  postedAt?: string;
+  lines: InventoryRevaluationLineDTO[];
+}
+
 export interface StockAdjustmentDTO {
   id: string;
   companyId: string;
@@ -700,6 +729,36 @@ export const inventoryApi = {
 
   postAdjustment: (id: string): Promise<StockAdjustmentDTO> =>
     client.post(`/tenant/inventory/adjustments/${id}/post`, {}),
+
+  createRevaluation: (payload: {
+    date: string;
+    reason: string;
+    notes?: string;
+    lines: Array<{
+      itemId: string;
+      warehouseId?: string;
+      qtyOnHand: number;
+      currentAvgCostBase: number;
+      currentAvgCostCCY: number;
+      newAvgCostBase: number;
+      newAvgCostCCY: number;
+      valueDeltaBase: number;
+      valueDeltaCCY: number;
+      reason?: string;
+    }>;
+  }): Promise<InventoryRevaluationDTO> => client.post('/tenant/inventory/revaluations', payload),
+
+  listRevaluations: (status?: 'DRAFT' | 'POSTED'): Promise<InventoryRevaluationDTO[]> =>
+    client.get('/tenant/inventory/revaluations', { params: { status } }),
+
+  getRevaluation: (id: string): Promise<InventoryRevaluationDTO> =>
+    client.get(`/tenant/inventory/revaluations/${id}`),
+
+  postRevaluation: (id: string): Promise<InventoryRevaluationDTO> =>
+    client.post(`/tenant/inventory/revaluations/${id}/post`, {}),
+
+  deleteRevaluation: (id: string): Promise<void> =>
+    client.delete(`/tenant/inventory/revaluations/${id}`),
 
   createTransfer: (payload: {
     sourceWarehouseId: string;

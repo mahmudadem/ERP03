@@ -12,6 +12,7 @@ import { OpeningStockDocument } from '../../../domain/inventory/entities/Opening
 import { StockAdjustment } from '../../../domain/inventory/entities/StockAdjustment';
 import { InventoryPeriodSnapshot } from '../../../domain/inventory/entities/InventoryPeriodSnapshot';
 import { StockTransfer } from '../../../domain/inventory/entities/StockTransfer';
+import { InventoryRevaluation } from '../../../domain/inventory/entities/InventoryRevaluation';
 
 const toDate = (value: any): Date | undefined => {
   if (!value) return undefined;
@@ -189,6 +190,26 @@ export class UomMapper {
       ...data,
       createdAt: toTimestamp(entity.createdAt),
       updatedAt: toTimestamp(entity.updatedAt),
+    });
+  }
+}
+
+export class InventoryRevaluationMapper {
+  static toDomain(data: any): InventoryRevaluation {
+    return InventoryRevaluation.fromJSON({
+      ...data,
+      createdAt: toDate(data.createdAt),
+      postedAt: toDate(data.postedAt),
+    });
+  }
+
+  static toPersistence(entity: InventoryRevaluation): any {
+    const data = entity.toJSON();
+    return stripUndefinedDeep({
+      ...data,
+      createdAt: toTimestamp(entity.createdAt),
+      updatedAt: toTimestamp(entity.postedAt ?? entity.createdAt),
+      postedAt: toTimestamp(entity.postedAt),
     });
   }
 }

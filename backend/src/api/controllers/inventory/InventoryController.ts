@@ -37,6 +37,12 @@ import {
   CreateStockAdjustmentUseCase,
   PostStockAdjustmentUseCase,
 } from '../../../application/inventory/use-cases/StockAdjustmentUseCases';
+import {
+  CreateInventoryRevaluationUseCase,
+  GetInventoryRevaluationUseCase,
+  ListInventoryRevaluationsUseCase,
+  PostInventoryRevaluationUseCase,
+} from '../../../application/inventory/use-cases/InventoryRevaluationUseCases';
 import { GetInventoryValuationUseCase, GetStockLevelsUseCase } from '../../../application/inventory/use-cases/StockLevelUseCases';
 import { GetMovementHistoryUseCase } from '../../../application/inventory/use-cases/MovementHistoryUseCases';
 import { InitializeInventoryUseCase } from '../../../application/inventory/use-cases/InitializeInventoryUseCase';
@@ -78,6 +84,7 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import {
   validateApplyUomConversionCorrectionInput,
   validateCreateCategoryInput,
+  validateCreateInventoryRevaluationInput,
   validateCreateItemInput,
   validateCreateOpeningStockDocumentInput,
   validateCreateSnapshotInput,
@@ -1445,6 +1452,98 @@ export class InventoryController {
       (res as any).json({
         success: true,
         data: InventoryDTOMapper.toStockAdjustmentDTO(adjustment),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createRevaluation(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateCreateInventoryRevaluationInput((req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
+
+      const useCase = new CreateInventoryRevaluationUseCase(
+        diContainer.inventoryRevaluationRepository,
+        diContainer.itemRepository,
+        diContainer.stockLevelRepository,
+        diContainer.inventorySettingsRepository
+      );
+
+      const revaluation = await useCase.execute({
+        ...((req as any).body || {}),
+        companyId,
+        createdBy: userId,
+      });
+
+      (res as any).status(201).json({
+        success: true,
+        data: InventoryDTOMapper.toInventoryRevaluationDTO(revaluation),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listRevaluations(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const status = (req as any).query.status as 'DRAFT' | 'POSTED' | undefined;
+      const useCase = new ListInventoryRevaluationsUseCase(diContainer.inventoryRevaluationRepository);
+      const revaluations = await useCase.execute(companyId, {
+        status,
+        limit: (req as any).query.limit ? Number((req as any).query.limit) : undefined,
+        offset: (req as any).query.offset ? Number((req as any).query.offset) : undefined,
+      });
+
+      (res as any).json({
+        success: true,
+        data: revaluations.map(InventoryDTOMapper.toInventoryRevaluationDTO),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getRevaluation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const useCase = new GetInventoryRevaluationUseCase(diContainer.inventoryRevaluationRepository);
+      const revaluation = await useCase.execute((req as any).params.id);
+      if (!revaluation || revaluation.companyId !== companyId) {
+        throw ApiError.notFound('Inventory revaluation not found');
+      }
+      (res as any).json({
+        success: true,
+        data: InventoryDTOMapper.toInventoryRevaluationDTO(revaluation),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async postRevaluation(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = InventoryController.getCompanyId(req);
+      const userId = InventoryController.getUserId(req);
+      const accountingPostingService = InventoryController.buildAccountingPostingService();
+
+      const useCase = new PostInventoryRevaluationUseCase(
+        diContainer.inventoryRevaluationRepository,
+        diContainer.itemRepository,
+        diContainer.stockLevelRepository,
+        diContainer.inventorySettingsRepository,
+        diContainer.transactionManager,
+        diContainer.companyModuleRepository,
+        accountingPostingService
+      );
+
+      const revaluation = await useCase.execute(companyId, (req as any).params.id, userId);
+
+      (res as any).json({
+        success: true,
+        data: InventoryDTOMapper.toInventoryRevaluationDTO(revaluation),
       });
     } catch (error) {
       next(error);
