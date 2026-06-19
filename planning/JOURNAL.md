@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 244 NOTE-08 — Item Card Hydration)
+
+- **Goal:** Implement only Task 244 NOTE-08: existing item card opens blank when clicking an existing item.
+- **What was done:** Created branch `codex/244-note08-item-card-hydration` from current `origin/main`. Diagnosed the Windows-mode handoff: `ItemsListPage` opens item windows with `data.id`, while `ItemCardWindow` passed only `data.itemId` to `ItemMasterCard`. Updated the wrapper to pass `win.data?.itemId ?? win.data?.id`, so the shared item card receives the item id and hydrates via the existing `inventoryApi.getItem(id)` path.
+- **Accounting/ERP impact:** UI hydration only. No item repository behavior, tenant scoping, inventory valuation, UOM conversion math, stock movement, GL mapping, posting, reports, or audit behavior changed.
+- **Docs:** Updated `docs/architecture/inventory.md`, added `docs/user-guide/inventory/item-master-card.md`, and added `planning/done/244-note08-item-card-hydration.md`.
+- **Verification:** `npm --prefix frontend run typecheck` and `npm --prefix frontend run build`.
+- **Time spent:** ~0.4h.
+- **Next:** Merge NOTE-08 after review, then handle Task 244 NOTE-14 in a separate slice because document-line alternate UOM selection still blocks 241 cross-UOM QA.
+
 ### Session: 2026-06-19 (Task 242 - Strict Pricing-Policy Resolution)
 
 - **Goal:** Implement owner decision DECISION-A from Task 241 manual QA: line-price resolution must be strict to the configured policy, with default policy `LAST_PARTY_PRICE`.
