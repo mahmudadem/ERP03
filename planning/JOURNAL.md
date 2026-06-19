@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 244 NOTE-11 — UOM Conversion Delete)
+
+- **Goal:** Implement only Task 244 NOTE-11 so unused item UOM conversion rows can be deleted, while used rows are refused with clear feedback.
+- **What was done:** Created branch `codex/244-note11-uom-delete-unused` from `origin/main`. Fixed `ManageUomConversionsUseCase.delete()` to physically delete via `IUomConversionRepository.deleteConversion(id)` instead of setting `active: false`. Updated `ItemMasterCard` to check live conversion impact before delete, show a clear refusal/toast for used conversions, confirm unused deletion through the shared confirm dialog, refresh the conversion table, and toast success/error results.
+- **Accounting/ERP impact:** Master-data cleanup only. No posting, stock movement, valuation, AR/AP, tax, voucher, or ledger behavior changed. The existing backend guard still blocks deletion when posted movements reference the conversion, preserving historical quantity and valuation auditability.
+- **Docs:** Updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, and added `planning/done/244-note11-uom-delete-unused.md`.
+- **Verification:** `npm --prefix backend test -- --runInBand src/tests/application/inventory/UomConversionUseCases.test.ts`; `npm --prefix backend run build`; `npm --prefix frontend run typecheck`.
+- **Time spent:** ~0.9h.
+- **Next:** Manual browser QA on one unused conversion delete and one used conversion refusal, then resume Task 241 cross-UOM QA scenarios 8-10.
+
 ### Session: 2026-06-19 (Task 244 NOTE-14 - Line UOM Picker)
 
 - **Goal:** Implement only Task 244 NOTE-14 so sales/purchase document line UOM pickers show item-defined conversion UOMs, not only the base UOM.

@@ -1,5 +1,16 @@
 # 🎯 Current Focus
 
+## Task 244 NOTE-11 UOM conversion delete fixed -> PR pending (2026-06-19)
+
+- ✅ **Task 244 NOTE-11 only** is implemented on branch `codex/244-note11-uom-delete-unused`.
+- Root cause: the delete route reached `ManageUomConversionsUseCase.delete()`, but that use case only set `active: false`; the item-card list still returned inactive conversions, so the row stayed visible and looked undeletable.
+- Fix: unused conversion delete now performs a real repository delete after the existing backend impact guard confirms no posted movements use it.
+- UX hardening: the item card now checks live impact before delete, refuses used rows with visible feedback, confirms unused deletion, refreshes the conversion table, and shows toast feedback.
+- Docs/report updated: `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, and `planning/done/244-note11-uom-delete-unused.md`.
+- Verification: focused backend regression/build and frontend typecheck passed.
+- Task 244 status: NOTE-08, NOTE-09, NOTE-10, and NOTE-14 are merged; NOTE-11 is this PR.
+- **Next recommendation:** merge this narrow NOTE-11 fix after review, then resume 241 cross-UOM QA scenarios 8-10.
+
 ## Task 244 NOTE-10 complete - UOM duplicate conversion guard PR-ready (2026-06-19)
 
 - ✅ **[244 NOTE-10 — UOM conversions allow duplicate From→To pairs](./tasks/244-item-uom-card-bugfix-cluster.md)** is implemented on branch `codex/244-note10-uom-duplicate-guard`.
