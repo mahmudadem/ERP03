@@ -1,5 +1,14 @@
 # 🎯 Current Focus
 
+## Task 245 UX sweep complete - cherry-picked onto current main, PR-ready (2026-06-19)
+
+- ✅ **Task 245 notes NOTE-01,02,03,04,05,07,12,13** implemented on branch `feat/245-ux-polish-sweep-rebased` (NOTE-06 was already merged separately).
+- **Provenance / audit note:** same as 223 — the original branch `codex/245-ux-polish-sweep-2` was forked from `58d476b3` (243-A) before 243-B/243-C+D merged and never rebased. Feature commit **cherry-picked onto current `main`** (zero conflicts — it does not overlap 243-B/C+D files); 243-B/243-C+D verified present.
+- Note: the 245 done report `planning/done/245-ux-polish-sweep.md` had already (wrongly) ridden onto main inside PR #23; this PR makes that report's claims actually true by landing the code.
+- Spot-checked: NOTE-01 (onboarding COA/costing/warehouse/workflow overrides — backend regression test added), NOTE-12 (Quick Add removed), NOTE-13 (activate/deactivate toggle) all present.
+- Verification: backend `tsc` build ✅; `SimpleTradingCompanyInitializer.test.ts` 4/4 ✅; frontend typecheck ✅; frontend production build ✅.
+- ⚠️ **Not yet owner-tested** — needs a browser pass over Customers list, Items page, UOM page, and the onboarding wizard.
+
 ## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
 
 - ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).
