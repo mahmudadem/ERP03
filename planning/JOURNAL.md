@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 242 - Strict Pricing-Policy Resolution)
+
+- **Goal:** Implement owner decision DECISION-A from Task 241 manual QA: line-price resolution must be strict to the configured policy, with default policy `LAST_PARTY_PRICE`.
+- **What was done:** Changed sales and purchase effective-price resolvers to use one source only; changed inventory defaults, legacy normalization, update fallback, and Simple Trading starter seed to `LAST_PARTY_PRICE`; added compiled-backend emulator smoke `backend/scripts/task242-emulator-smoke.cjs`; updated pricing architecture, sales/purchase user guides, company starter guide, ACTIVE, and completion report.
+- **Accounting/ERP impact:** Pricing default behavior only. No voucher posting, GL, inventory valuation, taxes, AR/AP, approval, or audit trail mutation rules changed. The control improvement is that new parties no longer silently inherit another party's last observed price.
+- **Verification:** Focused backend suites passed (4 suites / 51 tests); `npm --prefix backend run build` passed; compiled-backend Firestore emulator smoke passed with returning parties resolved and new parties blank.
+- **Time spent:** ~1.2h.
+- **Next:** Open PR for `codex/242-strict-pricing-policy-resolution` against `main`; after merge, Task 243 can add policy management UI/override surfaces.
+
 ### Session: 2026-06-19 (Task 241 committed to PR #14, owner manual test, follow-up tasks 242–245)
 
 - **Goal:** Commit the agent-implemented Task 241, run the owner's hands-on test, decide whether it's safe to merge, and turn the owner's findings into actionable plans for other agents.

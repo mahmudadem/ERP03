@@ -141,18 +141,21 @@ Observed price memory is stored natively per `(currency, uomId)`. The map key co
 
 Average cost is intentionally different from price memory. The moving average remains a single base-currency, base-UOM cost point on the item. A document line in another currency or UOM derives cost from that one average using the document exchange rate, the item UOM conversion factor, and `InventorySettings.inventoryFxCostBasis` (`REPLACEMENT` default, `HISTORICAL` optional). There is no average selling price and no per-currency/per-UOM average cost store.
 
-### Resolution chain after Task 241
+### Strict resolution after Task 242
 
 Native sales and purchase line defaults now pass the document currency, exchange rate, and line UOM into the resolver. The chain is:
 
-1. Future contract / negotiated price, when implemented.
-2. Active price list.
-3. Last-for-party observed price for the exact `(currency, uomId)`.
-4. Item-level last-event observed price for the exact `(currency, uomId)`.
-5. Item default `salePrice` / `purchasePrice`.
-6. Manual blank line.
+Task 242 changed line-price resolution from a cascading fallback chain to strict single-source resolution. The company setting `InventorySettings.defaultLinePriceSource` selects exactly one source:
 
-The company setting `InventorySettings.defaultLinePriceSource` selects the preferred starting point while preserving the same fallbacks. The supported values are `PRICE_LIST`, `LAST_PARTY_PRICE`, and `ITEM_DEFAULT`; default is `PRICE_LIST`.
+| Policy | Sales source | Purchase source | Miss behavior |
+|---|---|---|---|
+| `LAST_PARTY_PRICE` | Last price for this customer and item | Last cost for this vendor and item | Blank line |
+| `PRICE_LIST` | Customer/default sales price list | Vendor/default purchase price list | Blank line |
+| `ITEM_DEFAULT` | Item `salePrice` | Item `purchasePrice` | Blank line |
+
+The default is `LAST_PARTY_PRICE`. This means a returning customer/vendor can receive their own last price automatically, while a new customer/vendor with no memory gets a blank line for manual entry. The resolver never borrows another customer/vendor's item-level last event and never cascades from one policy to another.
+
+`LAST_EVENT` remains in the effective-price DTO type because historical Task 241 memory stores item-level last sale/purchase events, but it is no longer part of automatic default line-price resolution.
 
 Missing currency records are never auto-converted for prices. A USD document reads USD memory; an EUR document with no EUR record remains manual until the user types the first EUR price.
 

@@ -95,7 +95,7 @@ export class InitializeInventoryUseCase {
       defaultCostingMethod: 'MOVING_AVG',
       costingBasis: input.costingBasis ?? currentSettings?.costingBasis ?? 'WAREHOUSE',
       inventoryFxCostBasis: input.inventoryFxCostBasis ?? currentSettings?.inventoryFxCostBasis ?? 'REPLACEMENT',
-      defaultLinePriceSource: input.defaultLinePriceSource ?? currentSettings?.defaultLinePriceSource ?? 'PRICE_LIST',
+      defaultLinePriceSource: input.defaultLinePriceSource ?? currentSettings?.defaultLinePriceSource ?? 'LAST_PARTY_PRICE',
       defaultCostCurrency: input.defaultCostCurrency || currentSettings?.defaultCostCurrency || company.baseCurrency,
       defaultInventoryAssetAccountId:
         input.defaultInventoryAssetAccountId

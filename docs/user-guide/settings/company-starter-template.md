@@ -29,6 +29,7 @@ The starter template uses your selected mode to set up:
 - Uses the matching inventory accounting mode.
 - Uses one global moving-average cost per item for **Simple** and **Standard**.
 - Uses warehouse-level moving-average cost for **Advanced**.
+- Defaults line-price autofill to the last price for the same customer/vendor and item. A new customer/vendor with no price memory starts with a blank line.
 - Blocks negative stock by default.
 - Keeps tax ready for setup, but does not apply a hidden legal tax rate.
 

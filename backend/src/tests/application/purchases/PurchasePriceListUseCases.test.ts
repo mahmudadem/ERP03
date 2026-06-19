@@ -69,6 +69,10 @@ const makeTxManager = () => ({
   runTransaction: jest.fn(async (cb: (txn: any) => Promise<any>) => cb('mock-txn')),
 });
 
+const makeInventorySettingsRepo = (defaultLinePriceSource: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'ITEM_DEFAULT' = 'PRICE_LIST') => ({
+  getSettings: jest.fn(async () => ({ defaultLinePriceSource })),
+});
+
 describe('PurchasePriceList Domain Entity', () => {
   describe('getEffectiveLine — tiered pricing resolution', () => {
     const list = makeList();
@@ -254,7 +258,13 @@ describe('PurchasePriceList Use Cases', () => {
         getById: jest.fn(async (_, id) => (id === 'vendor-override' ? partyWithOverride : partyWithoutOverride)) as any,
       });
 
-      const uc = new GetEffectivePurchasePriceUseCase(repo, partyRepo);
+      const uc = new GetEffectivePurchasePriceUseCase(
+        repo,
+        partyRepo,
+        undefined,
+        undefined,
+        makeInventorySettingsRepo('PRICE_LIST') as any
+      );
 
       // Case A: Vendor has override price list assigned
       const priceA = await uc.execute({
@@ -290,7 +300,13 @@ describe('PurchasePriceList Use Cases', () => {
         getById: jest.fn(async () => makeVendor()) as any,
       });
 
-      const uc = new GetEffectivePurchasePriceUseCase(repo, partyRepo);
+      const uc = new GetEffectivePurchasePriceUseCase(
+        repo,
+        partyRepo,
+        undefined,
+        undefined,
+        makeInventorySettingsRepo('PRICE_LIST') as any
+      );
       const price = await uc.execute({
         companyId: COMPANY_ID,
         vendorId: 'vendor-id',
@@ -299,6 +315,143 @@ describe('PurchasePriceList Use Cases', () => {
       });
 
       expect(price).toBeNull();
+    });
+
+    it('defaults to strict LAST_PARTY_PRICE and does not fall back to item last-event or item default', async () => {
+      const partyRepo = makePartyRepo({
+        getById: jest.fn(async () => makeVendor()) as any,
+      });
+      const partyItemPriceRepo = {
+        get: jest.fn(async (_companyId: string, _partyId: string, _itemId: string) => null),
+      };
+      const priceListRepo = makePriceListRepo({
+        getDefaultForCurrency: jest.fn(async () => null) as any,
+      });
+      const itemRepo = {
+        getItem: jest.fn(async () => ({
+          id: 'ITEM-A',
+          companyId: COMPANY_ID,
+          baseUomId: 'uom_each',
+          purchaseUomId: 'uom_each',
+          costCurrency: 'USD',
+          purchasePrice: 65,
+          costingStats: {
+            lastPurchaseCostByCcyUom: {
+              USD__uom_each: {
+                base: 55,
+                ccy: 55,
+                currency: 'USD',
+                fxRateToBase: 1,
+                asOf: '2026-06-19',
+                uomId: 'uom_each',
+              },
+            },
+          },
+        })),
+      };
+
+      const uc = new GetEffectivePurchasePriceUseCase(
+        priceListRepo,
+        partyRepo,
+        partyItemPriceRepo as any,
+        itemRepo as any
+      );
+
+      await expect(uc.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_each',
+      })).resolves.toBeNull();
+      expect(partyItemPriceRepo.get).toHaveBeenCalledWith(COMPANY_ID, 'vendor-1', 'ITEM-A');
+      expect(priceListRepo.getDefaultForCurrency).not.toHaveBeenCalled();
+    });
+
+    it('uses only PRICE_LIST when configured and does not fall back to vendor memory or item default', async () => {
+      const repo = makePriceListRepo({
+        getById: jest.fn(async () => null) as any,
+        getDefaultForCurrency: jest.fn(async () => null) as any,
+      });
+      const partyRepo = makePartyRepo({
+        getById: jest.fn(async () => makeVendor()) as any,
+      });
+      const partyItemPriceRepo = {
+        get: jest.fn(async () => ({
+          lastPurchaseByCcyUom: {
+            USD__uom_each: {
+              base: 70,
+              ccy: 70,
+              currency: 'USD',
+              fxRateToBase: 1,
+              asOf: '2026-06-19',
+              uomId: 'uom_each',
+            },
+          },
+        })),
+      };
+      const itemRepo = {
+        getItem: jest.fn(async () => ({
+          id: 'ITEM-A',
+          companyId: COMPANY_ID,
+          baseUomId: 'uom_each',
+          purchaseUomId: 'uom_each',
+          costCurrency: 'USD',
+          purchasePrice: 65,
+        })),
+      };
+      const uc = new GetEffectivePurchasePriceUseCase(
+        repo,
+        partyRepo,
+        partyItemPriceRepo as any,
+        itemRepo as any,
+        makeInventorySettingsRepo('PRICE_LIST') as any
+      );
+
+      await expect(uc.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_each',
+      })).resolves.toBeNull();
+      expect(partyItemPriceRepo.get).not.toHaveBeenCalled();
+    });
+
+    it('uses only ITEM_DEFAULT when configured and returns the correct source', async () => {
+      const partyRepo = makePartyRepo({
+        getById: jest.fn(async () => makeVendor()) as any,
+      });
+      const uc = new GetEffectivePurchasePriceUseCase(
+        undefined,
+        partyRepo,
+        undefined,
+        {
+          getItem: jest.fn(async () => ({
+            id: 'ITEM-A',
+            companyId: COMPANY_ID,
+            baseUomId: 'uom_each',
+            purchaseUomId: 'uom_each',
+            costCurrency: 'USD',
+            purchasePrice: 65,
+          })),
+        } as any,
+        makeInventorySettingsRepo('ITEM_DEFAULT') as any
+      );
+
+      const result = await uc.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_each',
+      });
+
+      expect(result?.source).toBe('ITEM_DEFAULT');
+      expect(result?.unitPrice).toBe(65);
     });
 
     it('derives same-currency vendor price across UOM only when the purchase setting is enabled', async () => {

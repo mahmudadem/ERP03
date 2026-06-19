@@ -7,6 +7,12 @@ describe('InventorySettings', () => {
     expect(settings.allowNegativeStock).toBe(false);
   });
 
+  it('defaults line price resolution to last party price', () => {
+    const settings = InventorySettings.createDefault('cmp-1', 'usd');
+
+    expect(settings.defaultLinePriceSource).toBe('LAST_PARTY_PRICE');
+  });
+
   it('treats legacy settings with no negative-stock flag as blocked by default', () => {
     const settings = InventorySettings.fromJSON({
       companyId: 'cmp-1',
@@ -19,6 +25,7 @@ describe('InventorySettings', () => {
     });
 
     expect(settings.allowNegativeStock).toBe(false);
+    expect(settings.defaultLinePriceSource).toBe('LAST_PARTY_PRICE');
   });
 
   it('keeps legacy PERIODIC data as real periodic mode', () => {

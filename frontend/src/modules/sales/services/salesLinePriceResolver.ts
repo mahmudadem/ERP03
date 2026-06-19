@@ -6,8 +6,8 @@
  * same auto-filled unit price everywhere.
  *
  * Sourcing rule mirrors `GetEffectivePriceUseCase` on the backend:
- *   customer.defaultPriceListId  →  customer.customerGroup.defaultPriceListId
- *   →  the line matching (itemId, qty) on that price list.
+ * the company price-source policy is strict. A miss returns null so callers
+ * leave the line price blank for manual entry.
  *
  * Returns null on any error/miss; pricing lookup failures are non-fatal —
  * callers should leave the existing unit price as-is.

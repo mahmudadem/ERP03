@@ -180,6 +180,7 @@ describe('SimpleTradingCompanyInitializer', () => {
     expect(inventorySettings[0].allowNegativeStock).toBe(false);
     expect(inventorySettings[0].costingBasis).toBe('GLOBAL');
     expect(inventorySettings[0].accountingMode).toBe('PERIODIC');
+    expect(inventorySettings[0].defaultLinePriceSource).toBe('LAST_PARTY_PRICE');
     expect(summary.inventory.costingBasis).toBe('GLOBAL');
     expect(salesSettings[0].workflowMode).toBe('SIMPLE');
     expect(salesSettings[0].arParentAccountId).toBe(summary.linkedAccounts.arParent.id);

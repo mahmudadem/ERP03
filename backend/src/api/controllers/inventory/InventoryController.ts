@@ -331,7 +331,7 @@ export class InventoryController {
           ?? 'REPLACEMENT',
         defaultLinePriceSource: (req as any).body.defaultLinePriceSource
           ?? current?.defaultLinePriceSource
-          ?? 'PRICE_LIST',
+          ?? 'LAST_PARTY_PRICE',
         defaultCostCurrency: (req as any).body.defaultCostCurrency || current?.defaultCostCurrency || company.baseCurrency,
         defaultInventoryAssetAccountId: modeChanged
           ? current?.defaultInventoryAssetAccountId

@@ -177,6 +177,10 @@ const makePartyRepo = (priceListId?: string) => ({
   delete: jest.fn(),
 });
 
+const makeInventorySettingsRepo = (defaultLinePriceSource: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'ITEM_DEFAULT' = 'PRICE_LIST') => ({
+  getSettings: jest.fn(async () => ({ defaultLinePriceSource })),
+});
+
 describe('GetEffectivePriceUseCase', () => {
   it('falls back to default list when customer has no priceListId override and returns null when no default exists', async () => {
     const priceListRepo = {
@@ -189,7 +193,13 @@ describe('GetEffectivePriceUseCase', () => {
       delete: jest.fn(),
     };
 
-    const uc = new GetEffectivePriceUseCase(priceListRepo as any, makePartyRepo() as any);
+    const uc = new GetEffectivePriceUseCase(
+      priceListRepo as any,
+      makePartyRepo() as any,
+      undefined,
+      undefined,
+      makeInventorySettingsRepo('PRICE_LIST') as any
+    );
 
     const result = await uc.execute({
       companyId: COMPANY_ID,
@@ -219,7 +229,13 @@ describe('GetEffectivePriceUseCase', () => {
       delete: jest.fn(),
     };
 
-    const uc = new GetEffectivePriceUseCase(priceListRepo as any, makePartyRepo() as any);
+    const uc = new GetEffectivePriceUseCase(
+      priceListRepo as any,
+      makePartyRepo() as any,
+      undefined,
+      undefined,
+      makeInventorySettingsRepo('PRICE_LIST') as any
+    );
 
     const result = await uc.execute({
       companyId: COMPANY_ID,
@@ -259,7 +275,10 @@ describe('GetEffectivePriceUseCase', () => {
 
     const uc = new GetEffectivePriceUseCase(
       priceListRepo as any,
-      makePartyRepo(overrideList.id) as any
+      makePartyRepo(overrideList.id) as any,
+      undefined,
+      undefined,
+      makeInventorySettingsRepo('PRICE_LIST') as any
     );
 
     const result = await uc.execute({
@@ -275,6 +294,141 @@ describe('GetEffectivePriceUseCase', () => {
     expect(result!.isDefault).toBe(false);
     // Should not have called getDefaultForCurrency because override was used
     expect(priceListRepo.getDefaultForCurrency).not.toHaveBeenCalled();
+  });
+
+  it('defaults to strict LAST_PARTY_PRICE and does not fall back to item last-event or item default', async () => {
+    const partyRepo = makePartyRepo();
+    const partyItemPriceRepo = {
+      get: jest.fn(async (_companyId: string, _partyId: string, _itemId: string) => null),
+    };
+    const itemRepo = {
+      getItem: jest.fn(async () => ({
+        id: 'ITEM-A',
+        companyId: COMPANY_ID,
+        baseUomId: 'uom_each',
+        salesUomId: 'uom_each',
+        costCurrency: 'USD',
+        salePrice: 120,
+        costingStats: {
+          lastSalePriceByCcyUom: {
+            USD__uom_each: {
+              base: 90,
+              ccy: 90,
+              currency: 'USD',
+              fxRateToBase: 1,
+              asOf: '2026-06-19',
+              uomId: 'uom_each',
+            },
+          },
+        },
+      })),
+    };
+    const priceListRepo = {
+      getById: jest.fn(),
+      getDefaultForCurrency: jest.fn(),
+    };
+
+    const uc = new GetEffectivePriceUseCase(
+      priceListRepo as any,
+      partyRepo as any,
+      partyItemPriceRepo as any,
+      itemRepo as any
+    );
+
+    await expect(uc.execute({
+      companyId: COMPANY_ID,
+      customerId: 'cust-1',
+      itemId: 'ITEM-A',
+      qty: 1,
+      currency: 'USD',
+      uomId: 'uom_each',
+    })).resolves.toBeNull();
+    expect(partyItemPriceRepo.get).toHaveBeenCalledWith(COMPANY_ID, 'cust-1', 'ITEM-A');
+    expect(priceListRepo.getDefaultForCurrency).not.toHaveBeenCalled();
+  });
+
+  it('uses only PRICE_LIST when configured and does not fall back to party memory or item default', async () => {
+    const priceListRepo = {
+      getById: jest.fn(async () => null),
+      getDefaultForCurrency: jest.fn(async () => null),
+      getByName: jest.fn(),
+      list: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+    };
+    const partyItemPriceRepo = {
+      get: jest.fn(async () => ({
+        lastSaleByCcyUom: {
+          USD__uom_each: {
+            base: 75,
+            ccy: 75,
+            currency: 'USD',
+            fxRateToBase: 1,
+            asOf: '2026-06-19',
+            uomId: 'uom_each',
+          },
+        },
+      })),
+    };
+    const itemRepo = {
+      getItem: jest.fn(async () => ({
+        id: 'ITEM-A',
+        companyId: COMPANY_ID,
+        baseUomId: 'uom_each',
+        salesUomId: 'uom_each',
+        costCurrency: 'USD',
+        salePrice: 120,
+      })),
+    };
+    const uc = new GetEffectivePriceUseCase(
+      priceListRepo as any,
+      makePartyRepo() as any,
+      partyItemPriceRepo as any,
+      itemRepo as any,
+      makeInventorySettingsRepo('PRICE_LIST') as any
+    );
+
+    await expect(uc.execute({
+      companyId: COMPANY_ID,
+      customerId: 'cust-1',
+      itemId: 'ITEM-A',
+      qty: 1,
+      currency: 'USD',
+      uomId: 'uom_each',
+    })).resolves.toBeNull();
+    expect(partyItemPriceRepo.get).not.toHaveBeenCalled();
+  });
+
+  it('uses only ITEM_DEFAULT when configured and returns the correct source', async () => {
+    const uc = new GetEffectivePriceUseCase(
+      undefined,
+      makePartyRepo() as any,
+      undefined,
+      {
+        getItem: jest.fn(async () => ({
+          id: 'ITEM-A',
+          companyId: COMPANY_ID,
+          baseUomId: 'uom_each',
+          salesUomId: 'uom_each',
+          costCurrency: 'USD',
+          salePrice: 120,
+        })),
+      } as any,
+      makeInventorySettingsRepo('ITEM_DEFAULT') as any
+    );
+
+    const result = await uc.execute({
+      companyId: COMPANY_ID,
+      customerId: 'cust-1',
+      itemId: 'ITEM-A',
+      qty: 1,
+      currency: 'USD',
+      uomId: 'uom_each',
+    });
+
+    expect(result?.source).toBe('ITEM_DEFAULT');
+    expect(result?.unitPrice).toBe(120);
   });
 
   it('derives same-currency party price across UOM only when the sales setting is enabled', async () => {

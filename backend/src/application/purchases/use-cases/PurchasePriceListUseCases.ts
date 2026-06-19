@@ -271,13 +271,10 @@ export class GetEffectivePurchasePriceUseCase {
   }
 
   private buildSourceOrder(configured?: string): GetEffectivePurchasePriceResult['source'][] {
-    if (configured === 'LAST_PARTY_PRICE') {
-      return ['LAST_PARTY_PRICE', 'PRICE_LIST', 'LAST_EVENT', 'ITEM_DEFAULT'];
+    if (configured === 'PRICE_LIST' || configured === 'ITEM_DEFAULT') {
+      return [configured];
     }
-    if (configured === 'ITEM_DEFAULT') {
-      return ['ITEM_DEFAULT', 'PRICE_LIST', 'LAST_PARTY_PRICE', 'LAST_EVENT'];
-    }
-    return ['PRICE_LIST', 'LAST_PARTY_PRICE', 'LAST_EVENT', 'ITEM_DEFAULT'];
+    return ['LAST_PARTY_PRICE'];
   }
 
   private normalizeCurrency(value?: string | null): string | undefined {
