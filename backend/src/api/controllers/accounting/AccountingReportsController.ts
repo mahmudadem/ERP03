@@ -11,6 +11,7 @@ import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
 import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { isCashLikeAccount } from '../../../application/accounting/utils/cashAccountMatcher';
+import { InventoryValuationService } from '../../../application/inventory/services/InventoryValuationService';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -117,7 +118,15 @@ export class AccountingReportsController {
         diContainer.ledgerRepository,
         diContainer.accountRepository,
         permissionChecker,
-        diContainer.companyRepository
+        diContainer.companyRepository,
+        diContainer.inventorySettingsRepository,
+        diContainer.itemRepository,
+        new InventoryValuationService(
+          diContainer.itemRepository,
+          diContainer.stockLevelRepository,
+          diContainer.stockMovementRepository,
+          diContainer.inventorySettingsRepository
+        )
       );
 
       const report = await useCase.execute(companyId, userId, asOfDate, excludeSpecialPeriods);

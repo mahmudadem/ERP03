@@ -113,4 +113,114 @@ describe('GetBalanceSheetUseCase', () => {
     expect(retainedLine?.balance).toBeCloseTo(1000);
     expect(result.baseCurrency).toBe('USD');
   });
+
+  it('overrides periodic inventory with valuation AND keeps the Balance Sheet balanced via a virtual close', async () => {
+    // Realistic, genuinely-balanced periodic GL (TB balances at 2100/2100):
+    //   capital injected:  Dr Cash 1000 / Cr Capital 1000
+    //   opening stock:     Dr Inventory 200 / Cr Opening Balance Equity 200
+    //   purchase (credit): Dr Purchases 500 / Cr AP 500      (periodic → expensed, NOT inventory)
+    //   sale (cash):       Dr Cash 400 / Cr Sales 400        (periodic → no COGS line)
+    // GL inventory therefore sits at the opening 200; periodic purchases never touch it.
+    // Closing valuation (qty × avg) = 350 → the report must recognise the +150 uplift
+    // on BOTH the asset side and equity (Current Year Earnings) or it won't balance.
+    const inventorySettingsRepo = {
+      getSettings: jest.fn().mockResolvedValue({
+        accountingMode: 'PERIODIC',
+        defaultInventoryAssetAccountId: 'inv',
+      }),
+    } as any;
+    const itemRepo = {
+      getCompanyItems: jest.fn().mockResolvedValue([
+        { id: 'item-1', inventoryAssetAccountId: 'inv' },
+      ]),
+    } as any;
+    const inventoryValuationService = {
+      value: jest.fn().mockResolvedValue({ totalValueBase: 350 }),
+    } as any;
+
+    useCase = new GetBalanceSheetUseCase(
+      ledgerRepo,
+      accountRepo,
+      permissionChecker,
+      companyRepo,
+      inventorySettingsRepo,
+      itemRepo,
+      inventoryValuationService
+    );
+
+    accountRepo.list.mockResolvedValue([
+      { id: 'assets', userCode: '1000', name: 'Assets', classification: 'ASSET', balanceNature: 'DEBIT', accountRole: 'HEADER', parentId: null },
+      { id: 'inv', userCode: '10301', name: 'Goods / Opening Inventory', classification: 'ASSET', balanceNature: 'DEBIT', accountRole: 'POSTING', parentId: 'assets' },
+      { id: 'cash', userCode: '1010', name: 'Cash', classification: 'ASSET', balanceNature: 'DEBIT', accountRole: 'POSTING', parentId: 'assets' },
+      { id: 'ap', userCode: '2010', name: 'Accounts Payable', classification: 'LIABILITY', balanceNature: 'CREDIT', accountRole: 'POSTING', parentId: null },
+      { id: 'capital', userCode: '3000', name: 'Capital', classification: 'EQUITY', balanceNature: 'CREDIT', accountRole: 'POSTING', parentId: null },
+      { id: 'obe', userCode: '303', name: 'Opening Balance Equity', classification: 'EQUITY', balanceNature: 'CREDIT', accountRole: 'POSTING', parentId: null },
+      { id: 'purchases', userCode: '50101', name: 'Purchases', classification: 'EXPENSE', balanceNature: 'DEBIT', accountRole: 'POSTING', parentId: null },
+      { id: 'sales', userCode: '400', name: 'Sales', classification: 'REVENUE', balanceNature: 'CREDIT', accountRole: 'POSTING', parentId: null },
+    ] as any);
+
+    ledgerRepo.getTrialBalance.mockResolvedValue([
+      { accountId: 'cash', debit: 1400, credit: 0 },
+      { accountId: 'inv', debit: 200, credit: 0 },
+      { accountId: 'purchases', debit: 500, credit: 0 },
+      { accountId: 'capital', debit: 0, credit: 1000 },
+      { accountId: 'obe', debit: 0, credit: 200 },
+      { accountId: 'ap', debit: 0, credit: 500 },
+      { accountId: 'sales', debit: 0, credit: 400 },
+    ] as any);
+    companyRepo.findById.mockResolvedValue({ baseCurrency: 'USD' } as any);
+
+    const result = await useCase.execute('company-1', 'user-1', '2026-12-31');
+
+    expect(inventoryValuationService.value).toHaveBeenCalledWith('company-1', '2026-12-31', 'AVERAGE');
+
+    // Asset side: inventory shows the report-time valuation, not the frozen GL 200.
+    const inventoryLine = result.assets.accounts.find((line) => line.accountId === 'inv');
+    expect(inventoryLine?.balance).toBe(350);
+    expect(result.totalAssets).toBe(1750); // cash 1400 + inventory 350
+
+    // Equity side: Current Year Earnings = raw (Sales 400 − Purchases 500) + virtual-close uplift 150 = 50.
+    // This is exactly periodic net profit = Sales 400 − COGS(200 + 500 − 350 = 350) = 50.
+    expect(result.retainedEarnings).toBeCloseTo(50);
+    const retainedLine = result.equity.accounts.find((line) => line.accountId === 'retained-earnings');
+    expect(retainedLine?.balance).toBeCloseTo(50);
+
+    // The whole statement still ties.
+    expect(result.totalLiabilitiesAndEquity).toBeCloseTo(1750);
+    expect(result.isBalanced).toBe(true);
+  });
+
+  it('does not override inventory or adjust equity for non-periodic companies', async () => {
+    const inventorySettingsRepo = {
+      getSettings: jest.fn().mockResolvedValue({
+        accountingMode: 'PERPETUAL',
+        defaultInventoryAssetAccountId: 'inv',
+      }),
+    } as any;
+    const itemRepo = { getCompanyItems: jest.fn().mockResolvedValue([]) } as any;
+    const inventoryValuationService = { value: jest.fn() } as any;
+
+    useCase = new GetBalanceSheetUseCase(
+      ledgerRepo, accountRepo, permissionChecker, companyRepo,
+      inventorySettingsRepo, itemRepo, inventoryValuationService,
+    );
+
+    accountRepo.list.mockResolvedValue([
+      { id: 'inv', userCode: '10301', name: 'Inventory', classification: 'ASSET', balanceNature: 'DEBIT', accountRole: 'POSTING', parentId: null },
+      { id: 'capital', userCode: '3000', name: 'Capital', classification: 'EQUITY', balanceNature: 'CREDIT', accountRole: 'POSTING', parentId: null },
+    ] as any);
+    ledgerRepo.getTrialBalance.mockResolvedValue([
+      { accountId: 'inv', debit: 1000, credit: 0 },
+      { accountId: 'capital', debit: 0, credit: 1000 },
+    ] as any);
+    companyRepo.findById.mockResolvedValue({ baseCurrency: 'USD' } as any);
+
+    const result = await useCase.execute('company-1', 'user-1', '2026-12-31');
+
+    // Perpetual/invoice-driven path is untouched: GL inventory stands, no valuation call.
+    expect(inventoryValuationService.value).not.toHaveBeenCalled();
+    const inventoryLine = result.assets.accounts.find((line) => line.accountId === 'inv');
+    expect(inventoryLine?.balance).toBe(1000);
+    expect(result.isBalanced).toBe(true);
+  });
 });

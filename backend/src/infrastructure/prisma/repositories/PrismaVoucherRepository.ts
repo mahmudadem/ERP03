@@ -318,6 +318,19 @@ export class PrismaVoucherRepository implements IVoucherRepository {
     return data.map(d => this.toDomain(d));
   }
 
+  async hasPostedVouchers(companyId: string): Promise<boolean> {
+    const count = await this.prisma.voucher.count({
+      where: {
+        companyId,
+        // Prisma Voucher currently persists workflow status but not postedAt as a
+        // first-class column. APPROVED is the closest persisted signal available.
+        status: VoucherStatus.APPROVED,
+      },
+    });
+
+    return count > 0;
+  }
+
   // =========================================================================
   // COUNT / AGGREGATION METHODS
   // =========================================================================

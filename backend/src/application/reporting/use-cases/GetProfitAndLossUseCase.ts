@@ -1,6 +1,8 @@
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
+import { InventoryValuationService } from '../../inventory/services/InventoryValuationService';
 
 export interface ProfitAndLossInput {
   companyId: string;
@@ -31,6 +33,13 @@ export interface ProfitAndLossOutput {
     otherExpensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
     unclassifiedRevenueByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
     unclassifiedExpensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+    periodicTrading?: {
+      pricingPolicy: 'AVERAGE';
+      openingInventory: number;
+      netPurchases: number;
+      closingInventory: number;
+      purchaseByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+    };
   };
 }
 
@@ -67,7 +76,9 @@ export class GetProfitAndLossUseCase {
   constructor(
     private ledgerRepo: ILedgerRepository,
     private accountRepository: IAccountRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private inventorySettingsRepo?: IInventorySettingsRepository,
+    private inventoryValuationService?: InventoryValuationService
   ) {}
 
   async execute(input: ProfitAndLossInput): Promise<ProfitAndLossOutput> {
@@ -91,6 +102,7 @@ export class GetProfitAndLossUseCase {
       this.ledgerRepo.getTrialBalance(input.companyId, toDate),
       this.accountRepository.list(input.companyId),
     ]);
+    const inventorySettings = await this.inventorySettingsRepo?.getSettings(input.companyId).catch(() => null);
     const openMap = new Map(
       openingTB.map((row) => [row.accountId, { debit: row.debit || 0, credit: row.credit || 0 }])
     );
@@ -118,6 +130,7 @@ export class GetProfitAndLossUseCase {
     let unclassifiedRevenue = 0;
     let unclassifiedExpenses = 0;
     let hasTaggedSubgroup = false;
+    const cogsAccountIds = new Set<string>();
 
     for (const account of accounts) {
       const classification = classificationOf(account);
@@ -167,6 +180,7 @@ export class GetProfitAndLossUseCase {
           if (subgroup === 'COST_OF_SALES') {
             costOfSales += amount;
             cogsMap.set(account.id, line);
+            cogsAccountIds.add(account.id);
           } else if (subgroup === 'OPERATING_EXPENSES') {
             operatingExpenses += amount;
             opexMap.set(account.id, line);
@@ -181,12 +195,58 @@ export class GetProfitAndLossUseCase {
       }
     }
 
+    let reportedExpenses = totalExpenses;
+    let reportedNetProfit = totalRevenue - totalExpenses;
+    let reportedCostOfSales = costOfSales;
+    let periodicTrading:
+      | {
+          pricingPolicy: 'AVERAGE';
+          openingInventory: number;
+          netPurchases: number;
+          closingInventory: number;
+          purchaseByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+        }
+      | undefined;
+
+    const reportExpenseMap = new Map(expenseMap);
+
+    if (
+      inventorySettings?.accountingMode === 'PERIODIC' &&
+      this.inventoryValuationService
+    ) {
+      // Statements are valued at AVERAGE (costing method of record) so P&L,
+      // Trading, and the Balance Sheet all agree. Policy exploration
+      // (LAST_PURCHASE) lives on the standalone Inventory Valuation report.
+      const [openingInventory, closingInventory] = await Promise.all([
+        this.inventoryValuationService.value(input.companyId, dayBefore, 'AVERAGE'),
+        this.inventoryValuationService.value(input.companyId, toDate, 'AVERAGE'),
+      ]);
+
+      reportedCostOfSales = openingInventory.totalValueBase + costOfSales - closingInventory.totalValueBase;
+      reportedExpenses = (totalExpenses - costOfSales) + reportedCostOfSales;
+      reportedNetProfit = totalRevenue - reportedExpenses;
+
+      cogsAccountIds.forEach((accountId) => reportExpenseMap.delete(accountId));
+      reportExpenseMap.set('periodic-cost-of-sales', {
+        accountName: 'Periodic Cost of Sales',
+        amount: reportedCostOfSales,
+      });
+
+      periodicTrading = {
+        pricingPolicy: 'AVERAGE',
+        openingInventory: round2(openingInventory.totalValueBase),
+        netPurchases: round2(costOfSales),
+        closingInventory: round2(closingInventory.totalValueBase),
+        purchaseByAccount: toSortedAmounts(cogsMap),
+      };
+    }
+
     const output: ProfitAndLossOutput = {
       revenue: round2(totalRevenue),
-      expenses: round2(totalExpenses),
-      netProfit: round2(totalRevenue - totalExpenses),
+      expenses: round2(reportedExpenses),
+      netProfit: round2(reportedNetProfit),
       revenueByAccount: toSortedAmounts(revenueMap),
-      expensesByAccount: toSortedAmounts(expenseMap),
+      expensesByAccount: toSortedAmounts(reportExpenseMap),
       period: {
         from: fromDate,
         to: toDate,
@@ -194,11 +254,11 @@ export class GetProfitAndLossUseCase {
     };
 
     if (hasTaggedSubgroup) {
-      const grossProfit = netSales - costOfSales;
+      const grossProfit = netSales - reportedCostOfSales;
       const operatingProfit = grossProfit - operatingExpenses;
       output.structured = {
         netSales: round2(netSales),
-        costOfSales: round2(costOfSales),
+        costOfSales: round2(reportedCostOfSales),
         grossProfit: round2(grossProfit),
         operatingExpenses: round2(operatingExpenses),
         operatingProfit: round2(operatingProfit),
@@ -211,6 +271,7 @@ export class GetProfitAndLossUseCase {
         otherExpensesByAccount: toSortedAmounts(otherExpenseMap),
         unclassifiedRevenueByAccount: toSortedAmounts(unclassifiedRevenueMap),
         unclassifiedExpensesByAccount: toSortedAmounts(unclassifiedExpenseMap),
+        periodicTrading,
       };
     }
 

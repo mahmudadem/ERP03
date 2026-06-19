@@ -1,6 +1,6 @@
 # Architecture: Inventory Module
 
-**Last updated:** 2026-06-18 (Epic 240 Phase 4 — periodic posting mode)
+**Last updated:** 2026-06-18 (Epic 240 Phase 5 — report-time valuation and trading)
 **Status:** V1 implemented. Moving-average costing live, on either a **per-warehouse** or **company-wide
 (GLOBAL)** basis (see Costing basis). Inventory accounting now supports **three distinct modes**:
 `PERIODIC`, `INVOICE_DRIVEN`, and `PERPETUAL`. FIFO deferred to a follow-up.
@@ -25,6 +25,34 @@ ERP03 now supports three distinct inventory-accounting modes:
 | `PERPETUAL` | Inventory / COGS GL recognized continuously at the stock-operational boundary. | GRN / DN own the stock GL. | Invoice clears GRNI / posts revenue and does not re-recognize stock already handled operationally. | Full perpetual inventory accounting. |
 
 `PERIODIC` is now a **real first-class mode**. Legacy `inventoryAccountingMethod = PERIODIC` no longer gets remapped to `INVOICE_DRIVEN`; it resolves to `accountingMode = PERIODIC`.
+
+## Mode lock and re-seed policy
+
+Epic 240 Phase 6 adds a company-level safety rule around `InventorySettings.accountingMode`:
+
+- **Before the first posted history**: mode changes are allowed.
+- **After the first posted history**: mode changes are blocked.
+
+The lock state is evaluated from:
+
+- any posted accounting voucher
+- any stock movement
+
+`InventoryAccountingModeLockService` is the authoritative backend rule. The Inventory Settings API now returns:
+
+- `accountingModeLocked`
+- `accountingModeLockReason`
+
+### What happens before history exists
+
+Changing the mode does **not** just flip a flag. ERP03 re-runs the same starter initializer used by onboarding so the company gets the matching setup bundle again:
+
+- correct COA template (`periodic_trading` or `standard`)
+- matching inventory mode
+- matching Sales/Purchases workflow defaults
+- matching linked inventory-control accounts
+
+This is an **additive reseed**, not destructive chart cleanup. Existing accounts are preserved and missing ones are added. That is the safer ERP behavior while the company is still pre-live, because it avoids deleting accounts that drafts or references may already point at.
 
 ## Core Concepts
 
@@ -145,6 +173,41 @@ Beyond the per-warehouse cost on `StockLevel` (which the engine uses to cost iss
 
 **Two purchase IN paths are both hooked:** the generic `RecordStockMovementUseCase` (incl. GLOBAL fan-out) **and** the inline receipt block in `PurchaseInvoiceUseCases` (plus `GoodsReceiptUseCases`). Sale-price capture lives in `SalesInvoiceUseCases` + `DeliveryNoteUseCases`. All writes persist via `IItemRepository.updateItemInTransaction` inside the posting transaction (idempotent on re-post), implemented in **both** the Firestore and Prisma repositories.
 
+## Report-time valuation (Epic 240 Phase 5)
+
+Phase 5 turns the costing stats into a real **valuation service** for reporting:
+
+- `application/inventory/services/InventoryValuationService.ts`
+- contract: `value(companyId, asOfDate, pricingPolicy, warehouseId?)`
+- pricing policies implemented today:
+  - `AVERAGE`
+  - `LAST_PURCHASE`
+
+The service returns:
+
+- `asOfDate`
+- `pricingPolicy`
+- `totalValueBase`
+- `totalItems`
+- `items[]` with per item/warehouse:
+  - `qtyOnHand`
+  - `avgCostBase` / `avgCostCCY`
+  - `lastPurchaseCostBase` / `lastPurchaseCostCCY`
+  - `pricingUnitCostBase` / `pricingUnitCostCCY`
+  - `valueBase`
+
+Two valuation paths exist:
+
+- **Current valuation** reads live `StockLevel` quantities plus current `Item.costingStats`.
+- **Historical valuation** replays stock movements up to `asOfDate` to rebuild quantity-on-hand and the relevant pricing point for that date.
+
+Important historical rules:
+
+- In **GLOBAL** costing, when an IN movement changes the company-wide average, replay propagates that new average across every warehouse for the item so historical valuation matches the real GLOBAL invariant.
+- Historical `LAST_PURCHASE` follows the latest qualifying IN movement cost up to the report date. It is not derived from today's item card value.
+
+This service is **read-only**. It does not post a closing journal, rewrite historical stock levels, or mutate ledger balances. Its job is to give Periodic-mode reports a defensible carrying value at any reporting date.
+
 ## Documents (User-facing workflows)
 
 - **Stock Adjustment** — manual IN or OUT for damage/loss/correction/expiry/found. Status: DRAFT → POSTED.
@@ -254,6 +317,18 @@ Epic 240 Phase 4 adds a dedicated **`periodic_trading`** COA template. It includ
 
 The **Simple Trading Company** starter now defaults to this COA and to `InventorySettings.accountingMode = PERIODIC`. In the sidebar, operational stock-flow documents (`Sales Orders`, `Delivery Notes`, `Purchase Orders`, `Goods Receipts`) are hidden by default for simple companies, but can still be surfaced if the workflow later needs them.
 
+### Periodic report-time close
+
+`PERIODIC` mode now relies on a **virtual close at report time**, not on per-transaction Inventory / COGS GL posting:
+
+- **Balance Sheet** overrides the inventory asset line with report-time valuation at the report date.
+- **Trading Account** computes gross profit as:
+  - `Sales − (Opening Inventory + Net Purchases − Closing Inventory)`
+- **Profit & Loss** reuses that same periodic cost-of-sales figure instead of trusting the raw purchases bucket as final expense.
+- **Inventory Valuation report** exposes the pricing-policy switch directly to the user.
+
+The report-time close uses the valuation service above and does **not** create an automatic closing voucher. Stock quantities and immutable ledger rows stay as posted; the reporting layer supplies the missing periodic carrying value.
+
 ### Purchase-invoice discount cost basis
 
 For tracked Purchase Invoices in the perpetual modes:
@@ -312,13 +387,14 @@ V2 plans automatic Accounting vouchers from inventory movements (decoupled from 
 | **Stock Reservation (Sales Order)** | Stub | `reservedQty` field exists but is not populated. |
 | **LIFO / FEFO** | Not in roadmap | Even FIFO is V2. |
 | **Reversal workflows** | Partial | `reversesMovementId` field exists; no cancellation UI. |
-| **As-of valuation** | V2 | Will use Period Snapshots. |
+| **Snapshot-based as-of valuation** | V2 | Current report-time valuation works by movement replay; Period Snapshots are still planned for faster audited closes. |
 
 ## Key Use Cases
 
 | Use case | Purpose |
 |---|---|
 | `RecordStockMovementUseCase` | The cost engine. Implements `processIN()`, `processOUT()`, `processTRANSFER()`. |
+| `InventoryValuationService` | Report-time valuation for Inventory Valuation, periodic Balance Sheet, Trading Account, and P&L. |
 | `InitializeInventoryUseCase` | Module setup (default warehouse, settings). |
 | `StockAdjustmentUseCases`, `StockTransferUseCases`, `OpeningStockDocumentUseCases` | Document lifecycle. |
 | `StockLevelUseCases`, `StockMovementUseCases`, `CostQueryUseCases` | Queries. |

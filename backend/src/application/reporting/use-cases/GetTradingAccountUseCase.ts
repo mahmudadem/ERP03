@@ -1,6 +1,8 @@
 import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
+import { InventoryValuationService } from '../../inventory/services/InventoryValuationService';
 
 export interface TradingAccountInput {
   companyId: string;
@@ -18,6 +20,13 @@ export interface TradingAccountOutput {
   cogsByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
   period: { from: string; to: string };
   hasData: boolean;
+  periodicComputation?: {
+    pricingPolicy: 'AVERAGE';
+    openingInventory: number;
+    netPurchases: number;
+    closingInventory: number;
+    purchaseBreakdown: Array<{ accountId: string; accountName: string; amount: number }>;
+  };
 }
 
 const DATE_ONLY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -51,7 +60,9 @@ export class GetTradingAccountUseCase {
   constructor(
     private ledgerRepo: ILedgerRepository,
     private accountRepository: IAccountRepository,
-    private permissionChecker: PermissionChecker
+    private permissionChecker: PermissionChecker,
+    private inventorySettingsRepo?: IInventorySettingsRepository,
+    private inventoryValuationService?: InventoryValuationService
   ) {}
 
   async execute(input: TradingAccountInput): Promise<TradingAccountOutput> {
@@ -75,6 +86,7 @@ export class GetTradingAccountUseCase {
       this.ledgerRepo.getTrialBalance(input.companyId, toDate),
       this.accountRepository.list(input.companyId),
     ]);
+    const inventorySettings = await this.inventorySettingsRepo?.getSettings(input.companyId).catch(() => null);
 
     const taggedSalesAccounts = accounts.filter(
       (account: any) => String(account?.classification || '').toUpperCase() === 'REVENUE' && account?.plSubgroup === 'SALES'
@@ -105,9 +117,9 @@ export class GetTradingAccountUseCase {
     );
 
     const salesMap = new Map<string, { accountName: string; amount: number }>();
-    const cogsMap = new Map<string, { accountName: string; amount: number }>();
+    const costBucketMap = new Map<string, { accountName: string; amount: number }>();
     let netSales = 0;
-    let costOfSales = 0;
+    let netPurchases = 0;
 
     for (const account of taggedSalesAccounts) {
       const openBal = openMap.get(account.id) || { debit: 0, credit: 0 };
@@ -133,14 +145,50 @@ export class GetTradingAccountUseCase {
       const amount = periodDebit - periodCredit;
 
       if (Math.abs(amount) >= 0.005) {
-        costOfSales += amount;
-        cogsMap.set(account.id, {
+        netPurchases += amount;
+        costBucketMap.set(account.id, {
           accountName: accountLabel(account, account.id),
           amount,
         });
       }
     }
 
+    if (
+      inventorySettings?.accountingMode === 'PERIODIC' &&
+      this.inventoryValuationService
+    ) {
+      // Financial statements (Trading / P&L / Balance Sheet) are always valued at
+      // AVERAGE — the costing method of record — so they agree with each other.
+      // The standalone Inventory Valuation report is where a user can explore
+      // alternative policies (e.g. LAST_PURCHASE) for analysis only.
+      const [openingInventory, closingInventory] = await Promise.all([
+        this.inventoryValuationService.value(input.companyId, dayBefore, 'AVERAGE'),
+        this.inventoryValuationService.value(input.companyId, toDate, 'AVERAGE'),
+      ]);
+      const costOfSales = openingInventory.totalValueBase + netPurchases - closingInventory.totalValueBase;
+      const grossProfit = netSales - costOfSales;
+      const grossProfitMargin = netSales === 0 ? 0 : (grossProfit / netSales) * 100;
+
+      return {
+        netSales: round2(netSales),
+        costOfSales: round2(costOfSales),
+        grossProfit: round2(grossProfit),
+        grossProfitMargin: round2(grossProfitMargin),
+        salesByAccount: toSortedAmounts(salesMap),
+        cogsByAccount: toSortedAmounts(costBucketMap),
+        period: { from: fromDate, to: toDate },
+        hasData: true,
+        periodicComputation: {
+          pricingPolicy: 'AVERAGE',
+          openingInventory: round2(openingInventory.totalValueBase),
+          netPurchases: round2(netPurchases),
+          closingInventory: round2(closingInventory.totalValueBase),
+          purchaseBreakdown: toSortedAmounts(costBucketMap),
+        },
+      };
+    }
+
+    const costOfSales = netPurchases;
     const grossProfit = netSales - costOfSales;
     const grossProfitMargin = netSales === 0 ? 0 : (grossProfit / netSales) * 100;
 
@@ -150,7 +198,7 @@ export class GetTradingAccountUseCase {
       grossProfit: round2(grossProfit),
       grossProfitMargin: round2(grossProfitMargin),
       salesByAccount: toSortedAmounts(salesMap),
-      cogsByAccount: toSortedAmounts(cogsMap),
+      cogsByAccount: toSortedAmounts(costBucketMap),
       period: { from: fromDate, to: toDate },
       hasData: true,
     };

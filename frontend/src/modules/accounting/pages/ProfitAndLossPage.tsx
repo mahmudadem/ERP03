@@ -30,6 +30,13 @@ interface StructuredProfitAndLoss {
   otherExpensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
   unclassifiedRevenueByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
   unclassifiedExpensesByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  periodicTrading?: {
+    pricingPolicy: 'AVERAGE';
+    openingInventory: number;
+    netPurchases: number;
+    closingInventory: number;
+    purchaseByAccount: Array<{ accountId: string; accountName: string; amount: number }>;
+  };
 }
 
 interface ProfitAndLossData {
@@ -305,9 +312,25 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                       <span className="font-semibold text-slate-900">{t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' })}</span>
                       <span className="font-mono font-bold text-rose-700">{expenseFmt(data.structured.costOfSales, currency)}</span>
                     </div>
+                    {data.structured.periodicTrading && (
+                      <div className="pl-4 mt-2 space-y-1 text-sm">
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600">Opening Inventory</span>
+                          <span className="font-mono text-slate-800">{moneyFmt(data.structured.periodicTrading.openingInventory, currency)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600">Net Purchases</span>
+                          <span className="font-mono text-slate-800">{moneyFmt(data.structured.periodicTrading.netPurchases, currency)}</span>
+                        </div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-slate-600">Closing Inventory</span>
+                          <span className="font-mono text-slate-800">({moneyFmt(data.structured.periodicTrading.closingInventory, currency)})</span>
+                        </div>
+                      </div>
+                    )}
                     {data.structured.cogsByAccount.length > 0 && (
                       <div className="pl-4 mt-2 space-y-1">
-                        {data.structured.cogsByAccount.map((row, index) => (
+                        {(data.structured.periodicTrading?.purchaseByAccount || data.structured.cogsByAccount).map((row, index) => (
                           <div key={`${row.accountId}-${index}`} className="flex items-center justify-between text-sm">
                             <span className="text-slate-600">{row.accountName || row.accountId}</span>
                             <span className="font-mono text-rose-700">{expenseFmt(row.amount, currency)}</span>
@@ -393,15 +416,15 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                     totalClassName="text-emerald-700"
                     currency={currency}
                   />
-                  <BreakdownCard
-                    title={t('profitLoss.costOfSalesBreakdown', { defaultValue: 'Cost of Sales Breakdown' })}
-                    rows={data.structured.cogsByAccount}
-                    totalLabel={t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' })}
-                    total={data.structured.costOfSales}
-                    emptyLabel={t('profitLoss.noCogsAccounts', { defaultValue: 'No COGS accounts' })}
-                    totalClassName="text-rose-700"
-                    currency={currency}
-                  />
+                <BreakdownCard
+                  title={data.structured.periodicTrading ? 'Net Purchases Breakdown' : t('profitLoss.costOfSalesBreakdown', { defaultValue: 'Cost of Sales Breakdown' })}
+                  rows={data.structured.periodicTrading?.purchaseByAccount || data.structured.cogsByAccount}
+                  totalLabel={t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' })}
+                  total={data.structured.periodicTrading?.netPurchases || data.structured.costOfSales}
+                  emptyLabel={data.structured.periodicTrading ? 'No purchase accounts' : t('profitLoss.noCogsAccounts', { defaultValue: 'No COGS accounts' })}
+                  totalClassName="text-rose-700"
+                  currency={currency}
+                />
                   <BreakdownCard
                     title={t('profitLoss.operatingExpensesBreakdown', { defaultValue: 'Operating Expenses Breakdown' })}
                     rows={data.structured.opexByAccount}
@@ -511,10 +534,17 @@ const ProfitAndLossPage: React.FC = () => {
       );
       pushSection(
         t('profitLoss.costOfSales', { defaultValue: 'Cost of Sales' }),
-        response.structured.cogsByAccount,
-        t('profitLoss.costOfSalesTotal', { defaultValue: 'Cost of Sales Total' }),
-        response.structured.costOfSales
+        response.structured.periodicTrading?.purchaseByAccount || response.structured.cogsByAccount,
+        response.structured.periodicTrading
+          ? 'Net Purchases Total'
+          : t('profitLoss.costOfSalesTotal', { defaultValue: 'Cost of Sales Total' }),
+        response.structured.periodicTrading?.netPurchases || response.structured.costOfSales
       );
+      if (response.structured.periodicTrading) {
+        rows.push({ section: 'Periodic Formula', account: 'Opening Inventory', amount: response.structured.periodicTrading.openingInventory });
+        rows.push({ section: 'Periodic Formula', account: 'Net Purchases', amount: response.structured.periodicTrading.netPurchases });
+        rows.push({ section: 'Periodic Formula', account: 'Closing Inventory', amount: -response.structured.periodicTrading.closingInventory });
+      }
       rows.push({
         section: t('profitLoss.summary', { defaultValue: 'Summary' }),
         account: t('profitLoss.grossProfit', { defaultValue: 'Gross Profit' }),

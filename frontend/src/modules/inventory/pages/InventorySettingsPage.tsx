@@ -1,12 +1,16 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom'; import { InventorySettingsDTO, inventoryApi, InventoryWarehouseDTO } from '../../../api/inventoryApi'; import { Card } from '../../../components/ui/Card'; import { AccountSelector } from '../../accounting/components/shared/AccountSelector'; import { useAccounts } from '../../../context/AccountsContext'; import { Settings, Info, Warehouse, Hash, DollarSign } from 'lucide-react';
+import { InventorySettingsDTO, inventoryApi, InventoryWarehouseDTO } from '../../../api/inventoryApi';
+import { Card } from '../../../components/ui/Card';
+import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { useAccounts } from '../../../context/AccountsContext';
+import { Info, Warehouse, Hash, DollarSign } from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import {
-  getAccountingModeLabel,
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
 
@@ -18,7 +22,7 @@ const unwrap = <T,>(payload: any): T => {
 type TabId = 'accounting' | 'operational' | 'item-coding';
 
 const InventorySettingsPage: React.FC = () => {
-  const navigate = useNavigate();
+  const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<TabId>('accounting');
   const [settings, setSettings] = useState<InventorySettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<InventorySettingsDTO | null>(null);
@@ -66,6 +70,7 @@ const InventorySettingsPage: React.FC = () => {
     try {
       setSaving(true);
       const payload: Partial<InventorySettingsDTO> = {
+        accountingMode: settings.accountingMode,
         defaultCostCurrency: settings.defaultCostCurrency,
         costingBasis: settings.costingBasis || 'WAREHOUSE',
         defaultInventoryAssetAccountId: settings.defaultInventoryAssetAccountId || undefined,
@@ -107,6 +112,7 @@ const InventorySettingsPage: React.FC = () => {
 
   if (!settings) return null;
   const accountingMode = resolveInventoryAccountingMode(settings);
+  const accountingModeLocked = settings.accountingModeLocked === true;
 
   const tabs = [
     { id: 'accounting', label: 'Accounting Foundation', icon: DollarSign },
@@ -148,13 +154,37 @@ const InventorySettingsPage: React.FC = () => {
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Accounting Mode</label>
-                  <div className="flex items-center gap-2 rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-gray-900 font-semibold shadow-sm">
-                    {getAccountingModeLabel(accountingMode)}
-                  </div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    {t('inventory.settings.accountingMode.label', { defaultValue: 'Accounting Mode' })}
+                  </label>
+                  <select
+                    value={settings.accountingMode}
+                    onChange={(e) => updateSetting('accountingMode', e.target.value as InventorySettingsDTO['accountingMode'])}
+                    disabled={accountingModeLocked}
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none bg-white font-medium disabled:bg-gray-50 disabled:text-gray-500"
+                  >
+                    <option value="PERIODIC">
+                      {t('inventory.settings.accountingMode.options.periodic', { defaultValue: 'Periodic' })}
+                    </option>
+                    <option value="INVOICE_DRIVEN">
+                      {t('inventory.settings.accountingMode.options.invoiceDriven', { defaultValue: 'Invoice-driven' })}
+                    </option>
+                    <option value="PERPETUAL">
+                      {t('inventory.settings.accountingMode.options.perpetual', { defaultValue: 'Perpetual' })}
+                    </option>
+                  </select>
                   <div className="mt-1.5 flex items-start gap-1.5 text-xs text-gray-500">
                     <Info className="h-3.5 w-3.5 mt-0.5" />
-                    <span>The accounting mode is immutable after initialization.</span>
+                    <span>
+                      {accountingModeLocked
+                        ? (settings.accountingModeLockReason
+                          || t('inventory.settings.accountingMode.locked', {
+                            defaultValue: 'Inventory accounting mode is locked after the first posted stock or accounting transaction.',
+                          }))
+                        : t('inventory.settings.accountingMode.unlocked', {
+                          defaultValue: 'You can still change the mode until the first posted stock or accounting transaction.',
+                        })}
+                    </span>
                   </div>
                 </div>
 

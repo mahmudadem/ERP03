@@ -5,6 +5,7 @@ import {
   AsOfValuationDTO,
   InventoryValuationDTO,
   InventoryItemDTO,
+  InventoryPricingPolicy,
   InventoryWarehouseDTO,
 } from '../../../api/inventoryApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
@@ -17,6 +18,7 @@ type Mode = 'CURRENT' | 'AS_OF';
 interface ValuationParams {
   mode: Mode;
   asOfDate?: string;
+  pricingPolicy: InventoryPricingPolicy;
   warehouseId?: string;
   itemId?: string;
 }
@@ -26,6 +28,11 @@ interface UnifiedRow {
   warehouseId: string;
   qtyOnHand: number;
   avgCostBase: number;
+  avgCostCCY: number;
+  lastPurchaseCostBase: number;
+  lastPurchaseCostCCY: number;
+  pricingUnitCostBase: number;
+  pricingUnitCostCCY: number;
   valueBase: number;
 }
 
@@ -46,10 +53,11 @@ const Initiator: React.FC<{
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
 
-  const [mode, setMode]               = useState<Mode>(initialParams?.mode || 'CURRENT');
-  const [asOfDate, setAsOfDate]       = useState(initialParams?.asOfDate || today());
+  const [mode, setMode] = useState<Mode>(initialParams?.mode || 'CURRENT');
+  const [asOfDate, setAsOfDate] = useState(initialParams?.asOfDate || today());
+  const [pricingPolicy, setPricingPolicy] = useState<InventoryPricingPolicy>(initialParams?.pricingPolicy || 'AVERAGE');
   const [warehouseId, setWarehouseId] = useState(initialParams?.warehouseId || '');
-  const [itemId, setItemId]           = useState(initialParams?.itemId || '');
+  const [itemId, setItemId] = useState(initialParams?.itemId || '');
 
   useEffect(() => {
     Promise.all([
@@ -70,6 +78,7 @@ const Initiator: React.FC<{
         onSubmit({
           mode,
           asOfDate: mode === 'AS_OF' ? asOfDate : undefined,
+          pricingPolicy,
           warehouseId: warehouseId || undefined,
           itemId: itemId || undefined,
         });
@@ -101,6 +110,21 @@ const Initiator: React.FC<{
             <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
           </div>
         )}
+
+        <div className="md:col-span-4 space-y-2">
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
+            <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-500" />
+            Pricing Policy
+          </label>
+          <select
+            value={pricingPolicy}
+            onChange={(e) => setPricingPolicy(e.target.value as InventoryPricingPolicy)}
+            className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-fuchsia-300 focus:bg-white focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-500/10 outline-none transition-all"
+          >
+            <option value="AVERAGE">Average Cost</option>
+            <option value="LAST_PURCHASE">Last Purchase Cost</option>
+          </select>
+        </div>
 
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
@@ -181,8 +205,8 @@ const ReportContent: React.FC<{
     setError(null);
 
     const valuationCall = params.mode === 'AS_OF' && params.asOfDate
-      ? inventoryApi.getAsOfValuation(params.asOfDate)
-      : inventoryApi.getValuation();
+      ? inventoryApi.getAsOfValuation(params.asOfDate, params.pricingPolicy)
+      : inventoryApi.getValuation(params.pricingPolicy);
 
     Promise.all([
       valuationCall,
@@ -192,7 +216,7 @@ const ReportContent: React.FC<{
       .then(([val, its, whs]) => {
         if (cancelled) return;
         const raw: UnifiedRow[] = (val as AsOfValuationDTO).items
-          ?? (val as InventoryValuationDTO).levels
+          ?? (val as InventoryValuationDTO).items
           ?? [];
         // Server-side filters not supported yet; for now narrow client-side.
         // (These two filters are SELECTION, not calculation — totals
@@ -215,7 +239,7 @@ const ReportContent: React.FC<{
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [params.mode, params.asOfDate, params.warehouseId, params.itemId]);
+  }, [params.mode, params.asOfDate, params.pricingPolicy, params.warehouseId, params.itemId]);
 
   const itemMap = useMemo(() => new Map(items.map(i => [i.id, i])), [items]);
   const warehouseMap = useMemo(() => new Map(warehouses.map(w => [w.id, w])), [warehouses]);
@@ -239,6 +263,9 @@ const ReportContent: React.FC<{
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-xs font-semibold text-slate-800">
             {params.mode === 'AS_OF' ? (<><CalendarDays className="w-3 h-3 text-indigo-600" /> As of {params.asOfDate}</>) : 'Current (live)'}
+          </span>
+          <span className="text-xs font-semibold text-slate-700 border border-fuchsia-200 bg-fuchsia-50 rounded-full px-2 py-1">
+            Policy: {params.pricingPolicy === 'LAST_PURCHASE' ? 'Last Purchase' : 'Average'}
           </span>
           {snapshotPeriodKey && (
             <span className="text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
@@ -292,6 +319,7 @@ const ReportContent: React.FC<{
                   <th className={`${cellPad} text-left`}>Item Name</th>
                   <th className={`${cellPad} text-left`}>Warehouse</th>
                   <th className={`${cellPad} text-right`}>Qty on Hand</th>
+                  <th className={`${cellPad} text-right`}>Policy Cost (Base)</th>
                   <th className={`${cellPad} text-right`}>Avg Cost (Base)</th>
                   <th className={`${cellPad} text-right`}>Value (Base)</th>
                 </tr>
@@ -306,6 +334,7 @@ const ReportContent: React.FC<{
                       <td className={cellPad}>{item?.name ?? '—'}</td>
                       <td className={cellPad}>{wh?.name ?? r.warehouseId}</td>
                       <td className={`${cellPad} text-right tabular-nums`}>{fmtQty(r.qtyOnHand)}</td>
+                      <td className={`${cellPad} text-right tabular-nums font-semibold text-fuchsia-700`}>{fmt(r.pricingUnitCostBase)}</td>
                       <td className={`${cellPad} text-right tabular-nums`}>{fmt(r.avgCostBase)}</td>
                       <td className={`${cellPad} text-right tabular-nums font-bold text-emerald-700`}>{fmt(r.valueBase)}</td>
                     </tr>
@@ -314,7 +343,7 @@ const ReportContent: React.FC<{
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900">
-                  <td colSpan={5} className={`${cellPad} text-right`}>Grand Total (server)</td>
+                  <td colSpan={6} className={`${cellPad} text-right`}>Grand Total (server)</td>
                   <td className={`${cellPad} text-right tabular-nums text-emerald-800`}>{fmt(totalValueBase)}</td>
                 </tr>
               </tfoot>
@@ -331,7 +360,7 @@ const ReportContent: React.FC<{
 const InventoryValuationPage: React.FC = () => (
   <ReportContainer<ValuationParams>
     title="Inventory Valuation"
-    subtitle="Stock value by item and warehouse"
+    subtitle="Stock value by item, warehouse, and pricing policy"
     initiator={Initiator}
     ReportContent={ReportContent}
     config={{ paginated: true, defaultPageSize: 50 }}

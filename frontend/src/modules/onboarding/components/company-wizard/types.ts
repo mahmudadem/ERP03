@@ -1,5 +1,6 @@
 
 import type { StarterPolicySummary } from '../../api/onboardingApi';
+import type { InventoryAccountingMode } from '../../../../api/inventoryApi';
 
 export interface Bundle {
   id: string;
@@ -23,6 +24,7 @@ export interface CompanyFormData {
   selectedBundleId: string | null;
   autoInitializeModules?: boolean;
   starterTemplateId?: 'simple-trading-company';
+  accountingMode?: InventoryAccountingMode;
   starterPolicySummary?: StarterPolicySummary | null;
   createdCompanyId?: string;
 }

@@ -5,6 +5,7 @@ import { GetProfitAndLossUseCase } from '../../../application/reporting/use-case
 import { GetTradingAccountUseCase } from '../../../application/reporting/use-cases/GetTradingAccountUseCase';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
 import { GetCurrentUserPermissionsForCompanyUseCase } from '../../../application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+import { InventoryValuationService } from '../../../application/inventory/services/InventoryValuationService';
 
 const permissionChecker = new PermissionChecker(
   new GetCurrentUserPermissionsForCompanyUseCase(
@@ -39,7 +40,14 @@ export class ReportingController {
       const useCase = new GetProfitAndLossUseCase(
         diContainer.ledgerRepository,
         diContainer.accountRepository,
-        permissionChecker
+        permissionChecker,
+        diContainer.inventorySettingsRepository,
+        new InventoryValuationService(
+          diContainer.itemRepository,
+          diContainer.stockLevelRepository,
+          diContainer.stockMovementRepository,
+          diContainer.inventorySettingsRepository
+        )
       );
       const data = await useCase.execute({
         companyId,
@@ -71,7 +79,14 @@ export class ReportingController {
       const useCase = new GetTradingAccountUseCase(
         diContainer.ledgerRepository,
         diContainer.accountRepository,
-        permissionChecker
+        permissionChecker,
+        diContainer.inventorySettingsRepository,
+        new InventoryValuationService(
+          diContainer.itemRepository,
+          diContainer.stockLevelRepository,
+          diContainer.stockMovementRepository,
+          diContainer.inventorySettingsRepository
+        )
       );
       const data = await useCase.execute({
         companyId,

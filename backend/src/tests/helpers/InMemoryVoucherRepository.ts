@@ -86,6 +86,10 @@ export class InMemoryVoucherRepository implements IVoucherRepository {
       .slice(0, limit);
   }
 
+  async hasPostedVouchers(companyId: string): Promise<boolean> {
+    return Array.from(this.getCompanyMap(companyId).values()).some(v => v.isPosted);
+  }
+
   async getCounts(companyId: string, monthStart: string, monthEnd: string): Promise<{
     total: number;
     draft: number;

@@ -18,6 +18,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 | **Stock Adjustments** | Record damage, loss, or found stock. |
 | **Stock Transfers** | Move goods between warehouses. |
 | **Inventory Accounting Mode** | Choose whether inventory accounting is Periodic, Invoice-Driven, or Perpetual. |
+| **Inventory Valuation** | Value current or as-of stock using Average or Last Purchase policy. |
 | **Stock Levels** | See what's on hand, what's reserved, and the running average cost. |
 | **Stock Movements** | The full append-only ledger of every movement. |
 | **Alerts** | Items below minimum stock level. |
@@ -85,6 +86,18 @@ Transfer costing rules:
 
 Use this when an auditor asks "show me every transaction that touched item X in May".
 
+### Valuing stock — Inventory Valuation
+
+Open `Inventory → Reports → Inventory Valuation`.
+
+Use it when you need:
+
+- the current stock value
+- an as-of-date stock value
+- a quick comparison between **Average** and **Last Purchase** pricing
+
+For periodic companies, this report is also the source for the Balance Sheet inventory figure and the Trading / Profit & Loss cost-of-sales calculation.
+
 ---
 
 ## How costing works
@@ -143,8 +156,8 @@ The alert is a list, not a notification — there's no email or push (yet). Chec
 
 - **Lot / batch / serial tracking.** Items are treated as fungible. If you need lot tracking for expiry dates or recalls, this is planned but not built.
 - **Reservation** (e.g., "reserve 10 units for this Sales Order"). The field exists but isn't populated.
-- **Period-end snapshots** for true as-of valuation.
-- **Automatic GL posting** from inventory movements. Today, Sales posts COGS and Purchases posts the receipt — Inventory itself doesn't generate journal entries (except via Opening Stock Documents).
+- **Period-end snapshots** for faster audited closes. ERP03 can already do report-time as-of valuation by replaying movements, but it does not yet persist snapshot periods.
+- **Automatic GL posting** from every inventory movement. Today, Sales posts COGS and Purchases posts the receipt; Inventory itself only posts GL in limited controlled cases such as Opening Stock Documents and explicit valuation-related flows.
 
 ---
 
@@ -161,7 +174,7 @@ The alert is a list, not a notification — there's no email or push (yet). Chec
 | `inventory.stock.view` | View on-hand stock |
 | `inventory.stockLevels.view` | View detailed stock-level page |
 | `inventory.movements.view` | View movement ledger |
-| `inventory.valuation.view` | View Unsettled Costs report |
+| `inventory.valuation.view` | View valuation-related inventory reports |
 
 ---
 

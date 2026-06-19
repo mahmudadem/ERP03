@@ -174,11 +174,19 @@ export class OnboardingController {
         dateFormat,
         autoInitializeModules,
         starterTemplateId,
+        accountingMode,
       } = req.body;
       const normalizedCurrency = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
+      const normalizedAccountingMode =
+        accountingMode === 'PERIODIC' || accountingMode === 'INVOICE_DRIVEN' || accountingMode === 'PERPETUAL'
+          ? accountingMode
+          : undefined;
 
       if (autoInitializeModules && !normalizedCurrency) {
         return next(ApiError.badRequest('Base currency is required before auto-initializing the Simple Trading Company template.'));
+      }
+      if (autoInitializeModules && accountingMode && !normalizedAccountingMode) {
+        return next(ApiError.badRequest('accountingMode must be PERIODIC, INVOICE_DRIVEN, or PERPETUAL.'));
       }
 
       // We need a resolver instance
@@ -214,6 +222,7 @@ const useCase = new CreateCompanyUseCase(
         dateFormat,
         autoInitializeModules,
         starterTemplateId,
+        accountingMode: normalizedAccountingMode,
       });
 
       let starterPolicySummary = null;
@@ -245,6 +254,7 @@ const useCase = new CreateCompanyUseCase(
           companyId: result.companyId,
           userId,
           baseCurrency: normalizedCurrency,
+          accountingMode: normalizedAccountingMode,
         });
       }
 

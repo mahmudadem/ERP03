@@ -1772,9 +1772,14 @@
           "title": "Modulleri Ticaret Sirketi - Basit ile otomatik baslat",
           "description": "Standart hesap planini olusturur, Muhasebe, Stok, Satis ve Satinalma modullerini baslatir, varsayilan muhasebe hesaplarini baglar, basit dogrudan faturalama ve invoice-driven stok kullanir, negatif stogu engeller.",
           "inventory": "Invoice-driven stok, negatif stok kapali",
+          "inventoryPeriodic": "Donemsel stok degerleme, global ortalama maliyet, negatif stok kapali",
+          "inventoryInvoiceDriven": "Faturalarda canli stok degeri, global ortalama maliyet, negatif stok kapali",
+          "inventoryPerpetual": "Depo bazli hareketli ortalama maliyet ile surekli stok degerleme",
           "tax": "Vergiye hazir, gizli yasal oran uygulanmaz",
           "currency": "Ana para birimi: {{currency}}",
           "workflow": "Basit satis ve alis",
+          "workflowSimple": "Basit satis ve alis",
+          "workflowOperational": "Mal kabul ve sevkiyat belgeleriyle operasyonel satis ve alis",
           "manualTitle": "Manuel modul kurulumu",
           "manualDescription": "Moduller secilen paketten kurulur, ancak kurulum sihirbazlari manuel kalir.",
           "timezone": "Saat dilimi: {{timezone}}",
@@ -1831,14 +1836,42 @@
           "title": "Ticaret Sirketi - Basit otomatik baslat",
           "description": "Standart kontrollerle hemen alim, satis ve stok hareketi yapmak isteyen kucuk sirketler icin uygundur."
         },
+        "mode": {
+          "title": "Stok Kontrol Modu",
+          "description": "Stok muhasebesi davranisini bir kez secin. Ilk islenmis hareketten once yine de degistirebilirsiniz.",
+          "options": {
+            "simple": {
+              "title": "Basit",
+              "description": "Sadece satislari, alislari ve stok degerini takip etmek istiyorum"
+            },
+            "standard": {
+              "title": "Standart",
+              "description": "Stok degerini canli tut, her islem icin tek fatura kullan"
+            },
+            "advanced": {
+              "title": "Gelişmis",
+              "description": "Mal kabul ve teslimati ayir, tam stok kontrolu sagla"
+            }
+          }
+        },
         "summary": {
           "title": "Sirket Kurulum Ozeti",
           "accounting": "Standart hesap plani",
+          "accountingPeriodic": "Donemsel ticaret hesap plani",
+          "accountingStandard": "Stok varligi ve satilan malin maliyeti hesap plani",
+          "accountingAdvanced": "Stok varligi, satilan malin maliyeti ve GRNI hesap plani",
           "fiscal": "Takvim mali yili ve sirket tarih varsayilanlari",
           "inventory": "Fatura bazli stok ve negatif stok engeli",
+          "inventoryPeriodic": "Kalem bazinda tek sirket ortalama maliyeti ile donemsel degerleme",
+          "inventoryInvoiceDriven": "Kalem bazinda tek sirket ortalama maliyeti ile invoice-driven stok degeri",
+          "inventoryPerpetual": "Depo bazli hareketli ortalama maliyet ile surekli stok degeri",
           "warehouse": "Varsayilan MAIN depo",
           "sales": "Basit dogrudan satis faturasi",
+          "salesSimple": "Basit dogrudan satis faturasi",
+          "salesOperational": "Satis siparisleri, irsaliyeler ve bagli faturalama",
           "purchases": "Basit dogrudan alis faturasi",
+          "purchasesSimple": "Basit dogrudan alis faturasi",
+          "purchasesOperational": "Satinalma siparisleri, mal kabuller ve bagli faturalama",
           "tax": "Gizli yasal oran olmadan vergiye hazir kurulum",
           "policy": "Son politika ozeti, olusturma sonrasi bagli hesaplari ve operasyonel ayarlari gosterir.",
           "companyDefaults": "Para birimi {{currency}}, saat dilimi {{timezone}}",
@@ -2364,6 +2397,18 @@
     "SAVE": "Başarıyla kaydedildi"
   },
   "inventory": {
+    "settings": {
+      "accountingMode": {
+        "label": "Muhasebe Modu",
+        "locked": "Stok muhasebe modu ilk islenmis stok veya muhasebe hareketinden sonra kilitlenir.",
+        "unlocked": "Ilk islenmis stok veya muhasebe hareketine kadar modu degistirebilirsiniz.",
+        "options": {
+          "periodic": "Donemsel",
+          "invoiceDriven": "Fatura bazli",
+          "perpetual": "Surekli"
+        }
+      }
+    },
     "itemsList": {
       "title": "Stok Kalemleri",
       "subtitle": "Satış, satın alma ve stok süreçlerinde kullanılan kalem kartlarını arayın, oluşturun ve açın.",

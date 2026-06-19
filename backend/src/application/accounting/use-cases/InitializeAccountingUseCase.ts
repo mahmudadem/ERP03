@@ -20,6 +20,13 @@ import {
 
 interface InitializeAccountingRequest {
   companyId: string;
+  /**
+   * When true, this is a reseed of an already-initialized company (e.g. an inventory
+   * accounting-mode switch) rather than first-time setup. The COA template and module
+   * wiring are refreshed, but the owner's approval mode and fiscal-year configuration
+   * are preserved instead of being reset to the flexible defaults.
+   */
+  preserveCompanyPolicy?: boolean;
   config: {
     fiscalYearStart: string;
     fiscalYearEnd: string;
@@ -45,7 +52,7 @@ export class InitializeAccountingUseCase {
   ) {}
 
   async execute(request: InitializeAccountingRequest): Promise<void> {
-    const { companyId, config } = request;
+    const { companyId, config, preserveCompanyPolicy } = request;
 
     console.log(`[InitializeAccountingUseCase] Initializing for ${companyId} with template ${config.coaTemplate}`);
 
@@ -120,14 +127,20 @@ export class InitializeAccountingUseCase {
       const forcedRole = isParentInTemplate ? 'HEADER' : (tpl.role || 'POSTING');
 
       const input = {
-        id: tpl.id, 
+        id: tpl.id,
         userCode: tpl.code,
         name: tpl.name,
-        classification: tpl.type, 
+        classification: tpl.type,
         accountRole: forcedRole,
         parentId: parentId, // Use resolved UUID
         fixedCurrencyCode: config.baseCurrency,
         currencyPolicy: 'FIXED' as const,
+        // Carry the template's reporting classification onto the created account.
+        // These drive P&L sub-categorisation, Balance Sheet equity grouping, and the
+        // periodic Trading Account (which keys entirely off plSubgroup SALES/COST_OF_SALES);
+        // dropping them left every seeded account untagged and the Trading Account empty.
+        plSubgroup: tpl.plSubgroup,
+        equitySubgroup: tpl.equitySubgroup,
         createdBy: 'SYSTEM'
       };
 
@@ -160,18 +173,27 @@ export class InitializeAccountingUseCase {
 
     // 4. Sync Definitive Settings to Global Tier (Tier 1)
     // The user has chosen these definitive settings during Accounting Init.
-    await this.companySettingsRepo.updateSettings(companyId, {
-      fiscalYearStart: config.fiscalYearStart,
-      fiscalYearEnd: config.fiscalYearEnd,
-      strictApprovalMode: false // Explicitly set to Flexible
-    });
+    // On a reseed of an existing company (preserveCompanyPolicy) we must NOT overwrite
+    // the owner's approval mode or fiscal-year configuration — only the COA/module
+    // wiring is being refreshed.
+    if (preserveCompanyPolicy) {
+      await this.companyRepo.update(companyId, {
+        baseCurrency: config.baseCurrency,
+      });
+    } else {
+      await this.companySettingsRepo.updateSettings(companyId, {
+        fiscalYearStart: config.fiscalYearStart,
+        fiscalYearEnd: config.fiscalYearEnd,
+        strictApprovalMode: false // Explicitly set to Flexible
+      });
 
-    // Mirror fiscal periods and base currency to main company document
-    await this.companyRepo.update(companyId, {
-      baseCurrency: config.baseCurrency,
-      fiscalYearStart: config.fiscalYearStart ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearStart.split('-')[0]) - 1, parseInt(config.fiscalYearStart.split('-')[1])) : undefined,
-      fiscalYearEnd: config.fiscalYearEnd ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearEnd.split('-')[0]) - 1, parseInt(config.fiscalYearEnd.split('-')[1])) : undefined,
-    });
+      // Mirror fiscal periods and base currency to main company document
+      await this.companyRepo.update(companyId, {
+        baseCurrency: config.baseCurrency,
+        fiscalYearStart: config.fiscalYearStart ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearStart.split('-')[0]) - 1, parseInt(config.fiscalYearStart.split('-')[1])) : undefined,
+        fiscalYearEnd: config.fiscalYearEnd ? new Date(new Date().getFullYear(), parseInt(config.fiscalYearEnd.split('-')[0]) - 1, parseInt(config.fiscalYearEnd.split('-')[1])) : undefined,
+      });
+    }
 
     console.log(`[InitializeAccountingUseCase] Promoted base currency ${config.baseCurrency} and fiscal periods to Global Tier`);
 
@@ -243,11 +265,17 @@ export class InitializeAccountingUseCase {
     }
 
     // 6. Save Accounting Policies to Settings/accounting (Module Tier 3)
+    // On a reseed, keep the owner's existing approval/posting policy and only refresh the
+    // COA template reference. On first init, existing settings are absent so the flexible
+    // defaults below apply exactly as before.
+    const existingAccountingSettings = preserveCompanyPolicy
+      ? await this.settingsRepo.getSettings(companyId, 'accounting')
+      : null;
     await this.settingsRepo.saveSettings(companyId, 'accounting', {
       coaTemplate: config.coaTemplate, // Reference only
-      approvalRequired: false,
-      autoPostEnabled: true,
-      allowEditDeletePosted: true,
+      approvalRequired: existingAccountingSettings?.approvalRequired ?? false,
+      autoPostEnabled: existingAccountingSettings?.autoPostEnabled ?? true,
+      allowEditDeletePosted: existingAccountingSettings?.allowEditDeletePosted ?? true,
       updatedAt: new Date(),
       updatedBy: 'system'
     }, 'system');
