@@ -1,5 +1,15 @@
 # 🎯 Current Focus
 
+## Task 244 NOTE-08 item-card hydration fixed → PR pending (2026-06-19)
+
+- ✅ **Task 244 NOTE-08 only** is implemented on branch `codex/244-note08-item-card-hydration`.
+- Root cause: Windows-mode item list opened item windows with `data.id`, while `ItemCardWindow` passed only `data.itemId` into `ItemMasterCard`; existing items therefore opened as blank new-item forms.
+- Fix: `ItemCardWindow` now passes `win.data?.itemId ?? win.data?.id`, preserving compatibility with both payload shapes.
+- Docs/report updated: `docs/architecture/inventory.md`, `docs/user-guide/inventory/item-master-card.md`, and `planning/done/244-note08-item-card-hydration.md`.
+- Verification: frontend typecheck/build targeted for this slice.
+- Still open in Task 244: NOTE-09, NOTE-10, NOTE-11, and NOTE-14.
+- **Next recommendation:** merge this narrow NOTE-08 fix after review, then assign a separate worker to NOTE-14 because line-UOM availability still blocks 241 cross-UOM QA.
+
 ## Task 242 complete - strict pricing-policy resolution ready for PR (2026-06-19)
 
 - ✅ **[242 — Strict pricing-policy resolution](./tasks/242-strict-pricing-policy-resolution.md)** is implemented on branch `codex/242-strict-pricing-policy-resolution`.

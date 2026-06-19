@@ -359,6 +359,12 @@ GL accounts for adjustments/transfers are configured in **Inventory Settings →
 Gain/Loss is for quantity adjustments, Transfer Clearing is for real added transfer costs, and Inventory
 Revaluation is for value-only cost corrections.
 
+### Item master card opening contract
+
+Inventory item list rows open the shared `ItemMasterCard` in either normal page mode or Windows mode. Both modes must pass the backend item id into the card so `inventoryApi.getItem(id)` hydrates the full editable item record before rendering fields. The Windows wrapper accepts both `win.data.itemId` and the current list-page `win.data.id` payload shape; this prevents existing items from opening as blank new-item cards in Windows mode.
+
+The item card remains a frontend hydration surface only. It does not change item repository reads, inventory valuation, UOM conversion math, GL mappings, posting, or tenant scoping.
+
 ### Sales-mode behavior for missing cost
 
 For stock issues created by Sales documents (DN/SI/SR):

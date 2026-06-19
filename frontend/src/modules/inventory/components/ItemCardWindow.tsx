@@ -6,6 +6,7 @@ import { MdiWindowFrame } from '../../../components/mdi/MdiWindowFrame';
 
 export const ItemCardWindow: React.FC<{ win: UIWindow }> = ({ win }) => {
   const { closeWindow } = useWindowManager();
+  const itemId = win.data?.itemId ?? win.data?.id;
 
   return (
     <MdiWindowFrame
@@ -13,8 +14,8 @@ export const ItemCardWindow: React.FC<{ win: UIWindow }> = ({ win }) => {
       title={win.title}
       onClose={() => closeWindow(win.id)}
     >
-      <ItemMasterCard 
-        itemId={win.data?.itemId} 
+      <ItemMasterCard
+        itemId={itemId}
         isWindow={true}
         onClose={() => closeWindow(win.id)}
         onSaved={() => {
