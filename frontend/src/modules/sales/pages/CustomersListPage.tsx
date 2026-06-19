@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { useWindowManager } from '../../../context/WindowManagerContext';
@@ -8,6 +8,7 @@ import { useUserPreferences } from '../../../hooks/useUserPreferences';
 
 const CustomersListPage: React.FC = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { openWindow } = useWindowManager();
   const { uiMode } = useUserPreferences();
   const [customers, setCustomers] = useState<PartyDTO[]>([]);
@@ -28,7 +29,7 @@ const CustomersListPage: React.FC = () => {
 
   useEffect(() => {
     loadCustomers();
-  }, []);
+  }, [location.state?.masterDataRefreshToken]);
 
   const handleCustomerClick = (customer: PartyDTO) => {
     if (uiMode === 'windows') {
@@ -48,7 +49,7 @@ const CustomersListPage: React.FC = () => {
        openWindow({
          type: 'party',
          title: 'New Customer',
-         data: { partyId: 'new', role: 'CUSTOMER' },
+         data: { partyId: 'new', role: 'CUSTOMER', onSaved: loadCustomers },
          size: { width: 950, height: 650 }
        });
     } else {

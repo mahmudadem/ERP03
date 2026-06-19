@@ -17,7 +17,8 @@ export const WarehouseCardWindow: React.FC<{ win: UIWindow }> = ({ win }) => {
         warehouseId={win.data?.warehouseId} 
         isWindow={true}
         onClose={() => closeWindow(win.id)}
-        onSaved={() => {
+        onSaved={(warehouse) => {
+          win.data?.onSaved?.(warehouse);
           closeWindow(win.id);
         }}
       />

@@ -84,3 +84,17 @@ To maintain a professional, desktop-like app feel, operational list pages must n
 - **Table Component**: `frontend/src/components/ui/DataTable/DataTable.tsx`
 - **Column Priority Hook**: `frontend/src/components/ui/DataTable/useResponsiveColumns.ts` (manages reactive state for checkbox overrides)
 - **Confirm Hook**: `frontend/src/hooks/useConfirm.ts`
+
+## Master Data Save Refresh Contract
+
+Master-data list pages that open native master cards must refresh after a successful save, whether the card is opened as a full route or as a Windows-mode MDI card.
+
+Current covered pages:
+- Customers list -> `PartyMasterCard` with `role=CUSTOMER`
+- Vendors list -> `PartyMasterCard` with `role=VENDOR`
+- Inventory Items list -> `ItemMasterCard`
+- Warehouses list -> `WarehouseMasterCard`
+
+Route mode uses React Router location state key `masterDataRefreshToken` when navigating back to the list. The list page watches that token and reloads its data. Windows mode passes the list reload function through `openWindow(... data.onSaved ...)`; the card window invokes that callback before closing. This keeps refresh behavior local to the list/card pair and avoids a global cache invalidation bus for these simple master-data pages.
+
+Do not rely on browser back/close alone after creating a master record. The successful save callback is the source of truth for list refresh.

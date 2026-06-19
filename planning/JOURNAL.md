@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-19 (Task 245 NOTE-06 - master-data list refresh)
+
+- **Goal:** Implement only Task 245 NOTE-06: master-data list pages should refresh automatically after creating customers, vendors, items, and warehouses.
+- **What was done:** Created branch `codex/245-note06-master-data-list-refresh` from up-to-date `main`. Added route-mode refresh tokens for customer, vendor, and item detail saves. Passed `onSaved` reload callbacks into Windows-mode party, item, and warehouse master-card windows. Kept warehouse page-mode behavior unchanged because it already reloaded after save. Kept the Task 244 item-window id handoff so list-opened item cards receive `itemId` and existing items hydrate.
+- **Accounting/ERP impact:** UI state refresh only. No ledger, posting, taxes, inventory valuation, tenant isolation, permissions, or backend persistence behavior changed. The fix reduces duplicate-entry risk caused by stale lists after successful create.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed.
+- **Docs:** Updated [docs/architecture/operational-lists.md](../docs/architecture/operational-lists.md), added [docs/user-guide/lists/master-data-list-refresh.md](../docs/user-guide/lists/master-data-list-refresh.md), and added [done/245-note06-master-data-list-refresh.md](./done/245-note06-master-data-list-refresh.md).
+- **Time spent:** ~1.2h.
+- **Next:** Review and merge the PR if accepted. The remaining Task 245 notes stay open and should be handled as separate slices.
+
 ### Session: 2026-06-19 (Task 244 NOTE-11 — UOM Conversion Delete)
 
 - **Goal:** Implement only Task 244 NOTE-11 so unused item UOM conversion rows can be deleted, while used rows are refused with clear feedback.

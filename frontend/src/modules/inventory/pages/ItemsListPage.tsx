@@ -14,7 +14,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const ItemsListPage: React.FC = () => {
   const { t } = useTranslation('common');
-  const { pathname } = useLocation();
+  const { pathname, state } = useLocation();
   const navigate = useNavigate();
   const { uiMode } = useUserPreferences();
   const { openWindow } = useWindowManager();
@@ -67,6 +67,11 @@ const ItemsListPage: React.FC = () => {
   };
 
   // Items load only when the user clicks Search or adds a new item.
+  React.useEffect(() => {
+    if (state?.masterDataRefreshToken) {
+      void loadItems(0);
+    }
+  }, [state?.masterDataRefreshToken]);
 
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,7 +107,7 @@ const ItemsListPage: React.FC = () => {
       openWindow({
         type: 'item',
         title: t('inventory.itemsList.newWindowTitle'),
-        data: { itemId: 'new' },
+        data: { itemId: 'new', onSaved: () => loadItems(0) },
         size: { width: 900, height: 700 }
       });
     } else {

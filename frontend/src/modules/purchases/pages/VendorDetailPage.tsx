@@ -12,7 +12,7 @@ const VendorDetailPage: React.FC = () => {
   };
 
   const handleSaved = () => {
-    navigate('/purchases/vendors');
+    navigate('/purchases/vendors', { state: { masterDataRefreshToken: Date.now() } });
   };
 
   return (

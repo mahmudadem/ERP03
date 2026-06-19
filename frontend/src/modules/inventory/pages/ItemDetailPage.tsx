@@ -20,7 +20,7 @@ const ItemDetailPage: React.FC = () => {
   };
 
   const handleSaved = () => {
-    navigate(itemsBasePath);
+    navigate(itemsBasePath, { state: { masterDataRefreshToken: Date.now() } });
   };
 
   return (

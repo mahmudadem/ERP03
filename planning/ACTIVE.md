@@ -1,5 +1,26 @@
 # 🎯 Current Focus
 
+## Task 245 NOTE-06 complete - master-data list refresh PR opened (2026-06-19)
+
+- Implemented only [Task 245 NOTE-06](./tasks/245-master-data-ux-polish-backlog.md): master-data lists refresh after successful create/save for customers, vendors, items, and warehouses.
+- Scope stayed frontend-only:
+  - route-mode saves pass a `masterDataRefreshToken` back to list pages;
+  - Windows-mode master-card wrappers call the originating list reload callback before closing;
+  - item windows keep the Task 244 `itemId` handoff so existing cards hydrate correctly.
+- Accounting/ERP impact: none to posting, GL, taxes, inventory valuation, tenant isolation, permissions, or backend data model.
+- Verification:
+  - `npm --prefix frontend run typecheck` passed.
+  - `npm --prefix frontend run build` passed.
+- Docs/report:
+  - [docs/architecture/operational-lists.md](../docs/architecture/operational-lists.md)
+  - [docs/user-guide/lists/master-data-list-refresh.md](../docs/user-guide/lists/master-data-list-refresh.md)
+  - [planning/done/245-note06-master-data-list-refresh.md](./done/245-note06-master-data-list-refresh.md)
+- Remaining Task 245 notes are intentionally not implemented in this slice.
+
+## Next action
+
+Merge the NOTE-06 bugfix after review/CI. After that, pick the next independent Task 245 note only if explicitly authorized, because most remaining notes are UX polish rather than bug fixes.
+
 ## Task 244 NOTE-11 UOM conversion delete fixed -> PR pending (2026-06-19)
 
 - ✅ **Task 244 NOTE-11 only** is implemented on branch `codex/244-note11-uom-delete-unused`.
