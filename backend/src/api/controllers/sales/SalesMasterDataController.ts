@@ -33,6 +33,24 @@ import {
 } from '../../../application/sales/use-cases/CommissionUseCases';
 
 export class SalesMasterDataController {
+  private static normalizePriceSource(value: unknown):
+    | 'PRICE_LIST'
+    | 'LAST_PARTY_PRICE'
+    | 'LAST_EVENT'
+    | 'ITEM_DEFAULT'
+    | undefined {
+    if (value === undefined || value === null || value === '') return undefined;
+    if (
+      value === 'PRICE_LIST' ||
+      value === 'LAST_PARTY_PRICE' ||
+      value === 'LAST_EVENT' ||
+      value === 'ITEM_DEFAULT'
+    ) {
+      return value;
+    }
+    throw new Error('priceSource must be PRICE_LIST, LAST_PARTY_PRICE, LAST_EVENT or ITEM_DEFAULT');
+  }
+
   private static getCompanyId(req: Request): string {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -147,6 +165,7 @@ export class SalesMasterDataController {
         exchangeRate: q.exchangeRate ? Number(q.exchangeRate) : undefined,
         uomId: q.uomId as string | undefined,
         uom: q.uom as string | undefined,
+        priceSource: SalesMasterDataController.normalizePriceSource(q.priceSource),
       });
       (res as any).json({ success: true, data: result });
     } catch (error) {

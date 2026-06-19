@@ -1,5 +1,35 @@
 # 🎯 Current Focus
 
+## Task 243-A complete - selectable line price source PR-ready (2026-06-19)
+
+- ✅ **Task 243-A only** is implemented on branch `codex/243a-selectable-pricing-policy`.
+- Backend sales and purchase effective-price endpoints now accept an optional document-level `priceSource` override:
+  - `PRICE_LIST`
+  - `LAST_PARTY_PRICE`
+  - `LAST_EVENT`
+  - `ITEM_DEFAULT`
+- Resolution remains strict per Task 242. If the selected source misses, the line remains manual; no fallback chain was reintroduced.
+- Native draft pages now expose **Line price source**:
+  - Sales Invoice
+  - Purchase Invoice
+  - Purchase Order
+- Forms Designer-rendered sales/purchase line tables expose the same selector and pass it through the shared line-price resolvers.
+- Party-level price-list assignment is reconciled with the existing `Party.defaultPriceListId` field. Customer/vendor master cards already save this field, and the strict `PRICE_LIST` resolver uses it before currency default lists.
+- Accounting/ERP impact: price suggestion only. No posting, GL, tax, AR/AP, inventory valuation, approval, period-lock, or audit-record mutation changed.
+- Verification:
+  - `npm --prefix backend test -- --runTestsByPath src/tests/application/sales/PriceListResolution.test.ts src/tests/application/purchases/PurchasePriceListUseCases.test.ts --runInBand` passed.
+  - `npm --prefix frontend run typecheck` passed.
+  - `npm --prefix backend run build` passed.
+  - `npm --prefix frontend run build` passed with existing bundle-size/Browserslist/baseline-data warnings.
+- Docs/report:
+  - [docs/architecture/pricing.md](../docs/architecture/pricing.md)
+  - [docs/user-guide/sales/pricing-policy-selection.md](../docs/user-guide/sales/pricing-policy-selection.md)
+  - [planning/done/243a-selectable-pricing-policy.md](./done/243a-selectable-pricing-policy.md)
+
+## Next action
+
+Open the PR, then continue Task 243-B only after this PR lands because B builds on the selectable policy contract.
+
 ## Task 245 NOTE-06 complete - master-data list refresh PR opened (2026-06-19)
 
 - Implemented only [Task 245 NOTE-06](./tasks/245-master-data-ux-polish-backlog.md): master-data lists refresh after successful create/save for customers, vendors, items, and warehouses.

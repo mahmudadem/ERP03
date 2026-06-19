@@ -431,6 +431,99 @@ describe('GetEffectivePriceUseCase', () => {
     expect(result?.unitPrice).toBe(120);
   });
 
+  it('lets a document-level priceSource override the company default strictly', async () => {
+    const partyItemPriceRepo = {
+      get: jest.fn(async () => ({
+        lastSaleByCcyUom: {
+          USD__uom_each: {
+            base: 75,
+            ccy: 75,
+            currency: 'USD',
+            fxRateToBase: 1,
+            asOf: '2026-06-19',
+            uomId: 'uom_each',
+          },
+        },
+      })),
+    };
+    const itemRepo = {
+      getItem: jest.fn(async () => ({
+        id: 'ITEM-A',
+        companyId: COMPANY_ID,
+        baseUomId: 'uom_each',
+        salesUomId: 'uom_each',
+        costCurrency: 'USD',
+        salePrice: 120,
+      })),
+    };
+    const uc = new GetEffectivePriceUseCase(
+      undefined,
+      makePartyRepo() as any,
+      partyItemPriceRepo as any,
+      itemRepo as any,
+      makeInventorySettingsRepo('LAST_PARTY_PRICE') as any
+    );
+
+    const result = await uc.execute({
+      companyId: COMPANY_ID,
+      customerId: 'cust-1',
+      itemId: 'ITEM-A',
+      qty: 1,
+      currency: 'USD',
+      uomId: 'uom_each',
+      priceSource: 'ITEM_DEFAULT',
+    });
+
+    expect(result?.source).toBe('ITEM_DEFAULT');
+    expect(result?.unitPrice).toBe(120);
+    expect(partyItemPriceRepo.get).not.toHaveBeenCalled();
+  });
+
+  it('resolves LAST_EVENT only when explicitly selected by the document', async () => {
+    const itemRepo = {
+      getItem: jest.fn(async () => ({
+        id: 'ITEM-A',
+        companyId: COMPANY_ID,
+        baseUomId: 'uom_each',
+        salesUomId: 'uom_each',
+        costCurrency: 'USD',
+        salePrice: 120,
+        costingStats: {
+          lastSalePriceByCcyUom: {
+            USD__uom_each: {
+              base: 88,
+              ccy: 88,
+              currency: 'USD',
+              fxRateToBase: 1,
+              asOf: '2026-06-19',
+              uomId: 'uom_each',
+            },
+          },
+        },
+      })),
+    };
+    const uc = new GetEffectivePriceUseCase(
+      undefined,
+      makePartyRepo() as any,
+      undefined,
+      itemRepo as any,
+      makeInventorySettingsRepo('ITEM_DEFAULT') as any
+    );
+
+    const result = await uc.execute({
+      companyId: COMPANY_ID,
+      customerId: 'cust-1',
+      itemId: 'ITEM-A',
+      qty: 1,
+      currency: 'USD',
+      uomId: 'uom_each',
+      priceSource: 'LAST_EVENT',
+    });
+
+    expect(result?.source).toBe('LAST_EVENT');
+    expect(result?.unitPrice).toBe(88);
+  });
+
   it('derives same-currency party price across UOM only when the sales setting is enabled', async () => {
     const partyRepo = makePartyRepo();
     const partyItemPriceRepo = {

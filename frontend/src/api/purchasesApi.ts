@@ -222,9 +222,11 @@ export interface PurchasePriceListDTO {
   updatedAt: string;
 }
 
+export type LinePriceSource = 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
+
 export interface EffectivePurchasePriceDTO {
   unitPrice: number;
-  source?: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
+  source?: LinePriceSource;
   sourcePriceListId?: string;
   sourceLineId?: string;
   isDefault?: boolean;
@@ -818,6 +820,7 @@ export const purchasesApi = {
     exchangeRate?: number;
     uomId?: string;
     uom?: string;
+    priceSource?: LinePriceSource;
   }): Promise<EffectivePurchasePriceDTO> =>
     client.get('/tenant/purchase/price-lists/effective-price', { params }).then((r: any) => r?.data?.data ?? r?.data ?? r),
 

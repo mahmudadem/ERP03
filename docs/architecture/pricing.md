@@ -151,11 +151,25 @@ Task 242 changed line-price resolution from a cascading fallback chain to strict
 |---|---|---|---|
 | `LAST_PARTY_PRICE` | Last price for this customer and item | Last cost for this vendor and item | Blank line |
 | `PRICE_LIST` | Customer/default sales price list | Vendor/default purchase price list | Blank line |
+| `LAST_EVENT` | Last sale event for this item with any customer | Last purchase event for this item with any vendor | Blank line |
 | `ITEM_DEFAULT` | Item `salePrice` | Item `purchasePrice` | Blank line |
 
 The default is `LAST_PARTY_PRICE`. This means a returning customer/vendor can receive their own last price automatically, while a new customer/vendor with no memory gets a blank line for manual entry. The resolver never borrows another customer/vendor's item-level last event and never cascades from one policy to another.
 
-`LAST_EVENT` remains in the effective-price DTO type because historical Task 241 memory stores item-level last sale/purchase events, but it is no longer part of automatic default line-price resolution.
+`LAST_EVENT` is intentionally not part of the persistent `InventorySettings.defaultLinePriceSource` enum. It is available as a document-level override for users who explicitly want the last item event, but the company default stays conservative.
+
+### Document-level source override after Task 243-A
+
+Task 243-A added an optional `priceSource` query parameter to the effective-price endpoints:
+
+| Endpoint | Parameter | Values |
+|---|---|---|
+| `GET /tenant/sales/price-lists/effective-price` | `priceSource` | `PRICE_LIST`, `LAST_PARTY_PRICE`, `LAST_EVENT`, `ITEM_DEFAULT` |
+| `GET /tenant/purchase/price-lists/effective-price` | `priceSource` | `PRICE_LIST`, `LAST_PARTY_PRICE`, `LAST_EVENT`, `ITEM_DEFAULT` |
+
+If `priceSource` is omitted, the resolver uses `InventorySettings.defaultLinePriceSource`. If it is supplied, it replaces the company default for that lookup only. The override is strict: `priceSource=PRICE_LIST` checks only the applicable price list; `priceSource=LAST_EVENT` checks only item-level last event memory; no fallback chain is reintroduced.
+
+Native Sales Invoice, Purchase Invoice, and Purchase Order draft headers expose this as **Line price source**. Forms Designer-rendered sales/purchase line tables expose the same selector above the line grid and pass it through the shared `salesLinePriceResolver` / `purchaseLinePriceResolver` services.
 
 Missing currency records are never auto-converted for prices. A USD document reads USD memory; an EUR document with no EUR record remains manual until the user types the first EUR price.
 
@@ -222,12 +236,14 @@ The shared `Party` entity gained four customer-oriented fields:
 | `customerGroupId` | string (optional) | Reference to a `CustomerGroup` |
 | `creditLimit` | number (optional) | ≥ 0, per-customer override |
 | `creditHoldPolicy` | `'NONE'` \| `'WARN'` \| `'BLOCK'` | Master data only in Phase A |
-| `defaultPriceListId` | string (optional) | Per-customer price list override |
+| `defaultPriceListId` | string (optional) | Per-customer/vendor price list override |
 | `taxExempt` | boolean (optional) | Per-customer tax exemption flag |
 
 **Important:** `creditHoldPolicy` stores the customer's credit-hold intent but enforcement (blocking or warning at Sales Order confirm) is **deferred to Phase B**. Phase A only persists the field.
 
-The relationship between group and customer defaults is hierarchical in intent: a customer with no own `defaultPriceListId` could inherit from its group's `defaultPriceListId`. However, `GetEffectivePriceUseCase` does **not yet walk the group** — it only consults the customer's own `defaultPriceListId` and the currency-level default (see Known Limitations).
+The relationship between group and customer defaults is hierarchical in intent: a customer with no own `defaultPriceListId` could inherit from its group's `defaultPriceListId`. However, `GetEffectivePriceUseCase` does **not yet walk the group** — it only consults the party's own `defaultPriceListId` and the currency-level default (see Known Limitations).
+
+The shared party master card already exposes `defaultPriceListId` for both customer and vendor commercial tabs. Task 243-A reuses that field rather than creating a second party-level pricing setting.
 
 ---
 
@@ -297,10 +313,12 @@ Controller: `backend/src/api/controllers/sales/SalesMasterDataController.ts`
 - **PriceListsPage** — CRUD list/form for price lists, including tiered line editor.
 - **CustomerGroupsPage** — CRUD for customer groups.
 - **PartyMasterCard COMMERCIAL tab** — extended with `customerGroupId`, `creditLimit`, `creditHoldPolicy`, `defaultPriceListId`, `taxExempt`.
-- **SalesInvoice line editor** — auto-fetches effective price when item or qty changes (calls `GET /price-lists/effective-price`).
+- **SalesInvoice line editor** — auto-fetches effective price when item or qty changes (calls `GET /price-lists/effective-price`) and lets users choose the document's line price source.
+- **PurchaseInvoice / PurchaseOrder line editors** — auto-fetch purchase effective price and let users choose the document's line price source.
+- **LinePriceSourceSelector** — shared UI component at `frontend/src/components/shared/pricing/LinePriceSourceSelector.tsx`.
 - **`salesLinePriceResolver`** (`frontend/src/modules/sales/services/salesLinePriceResolver.ts`) — shared resolver used by both the native sales pages and the Forms Designer renderer (`GenericVoucherRenderer`). Exposes:
   - `isSalesDocumentDefinition(definition)` — detects sales documents (invoice, order, quote, return, delivery note) from a Forms Designer config.
-  - `resolveSalesLinePrice({ customerId, itemId, qty, asOfDate })` — non-throwing wrapper around `getEffectivePrice` that returns `null` on miss/error.
+  - `resolveSalesLinePrice({ customerId, itemId, qty, asOfDate, priceSource })` — non-throwing wrapper around `getEffectivePrice` that returns `null` on miss/error.
   Wiring lives in `GenericVoucherRenderer.handleRowChange` (line-level: refires on itemId / quantity change) and a customer-watcher effect (refires every priced line when the header customer changes). This is the mechanism that makes Forms Designer–rendered sales invoices auto-fill the unit price exactly like `SalesInvoiceDetailPage`.
 
 All under `frontend/src/modules/sales/pages/` and `frontend/src/modules/sales/services/`.

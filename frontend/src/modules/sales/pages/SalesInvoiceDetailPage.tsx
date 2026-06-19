@@ -43,6 +43,7 @@ import { SettlementBlock } from '../../../components/shared/settlement/Settlemen
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
 import { PartySelector, ItemSelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
+import { LinePriceSource, LinePriceSourceSelector } from '../../../components/shared/pricing/LinePriceSourceSelector';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
 import { GlImpactModal } from '../components/GlImpactModal';
@@ -144,6 +145,7 @@ interface EditableForm {
   dueDate: string;
   currency: string;
   exchangeRate: number;
+  linePriceSource: LinePriceSource;
   warehouseId?: string;
   notes: string;
   lines: EditableLine[];
@@ -626,6 +628,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     dueDate: '',
     currency: company?.baseCurrency || 'USD',
     exchangeRate: 1,
+    linePriceSource: 'LAST_PARTY_PRICE',
     warehouseId: undefined,
     notes: '',
     lines: padLinesToMin([]),
@@ -1446,6 +1449,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       dueDate: loaded.dueDate || '',
       currency: loaded.currency,
       exchangeRate: loaded.exchangeRate,
+      linePriceSource: 'LAST_PARTY_PRICE',
       warehouseId: loaded.lines?.find((line) => line.warehouseId)?.warehouseId,
       notes: loaded.notes || '',
       lines: padLinesToMin((loaded.lines || []).map((l) => ({
@@ -1669,6 +1673,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             exchangeRate: Number(form.exchangeRate || 1),
             uomId: resolvedUomId,
             uom: resolvedUom,
+            priceSource: form.linePriceSource,
           })
           .then((result) => {
             if (result?.unitPrice != null) {
@@ -1687,6 +1692,39 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           });
       }
     }
+  };
+
+  const refreshLinePrices = async (priceSource: LinePriceSource = form.linePriceSource) => {
+    if (!form.customerId) return;
+    await Promise.all(
+      form.lines.map(async (line, index) => {
+        if (!line.itemId) return;
+        try {
+          const result = await salesMasterDataApi.getEffectivePrice({
+            customerId: form.customerId,
+            itemId: line.itemId,
+            qty: line.invoicedQty || 1,
+            asOfDate: form.invoiceDate || undefined,
+            currency: form.currency,
+            exchangeRate: Number(form.exchangeRate || 1),
+            uomId: line.uomId,
+            uom: line.uom,
+            priceSource,
+          });
+          if (result?.unitPrice != null) {
+            setForm((latest) => {
+              const updatedLines = [...latest.lines];
+              if (updatedLines[index]?.itemId === line.itemId) {
+                updatedLines[index] = { ...updatedLines[index], unitPriceDoc: result.unitPrice };
+              }
+              return { ...latest, lines: updatedLines };
+            });
+          }
+        } catch (err) {
+          console.warn('Effective price refresh failed', err);
+        }
+      }),
+    );
   };
 
   const addLine = () => { setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] })); };
@@ -2579,6 +2617,17 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
                   />
                 </div>
               )}
+              <LinePriceSourceSelector
+                className={headerFieldWrapperClass}
+                labelClassName={headerLabelClass}
+                selectClassName={headerControlClass}
+                value={form.linePriceSource}
+                disabled={busy || isReadOnly}
+                onChange={(source) => {
+                  setForm((prev) => ({ ...prev, linePriceSource: source }));
+                  void refreshLinePrices(source);
+                }}
+              />
               <div className={headerFieldWrapperClass}>
                 <label className={headerLabelClass}>{t('sales.invoiceDetail.salesperson', 'Salesperson')}</label>
                 <select

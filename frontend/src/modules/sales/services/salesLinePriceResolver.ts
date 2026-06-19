@@ -13,7 +13,7 @@
  * callers should leave the existing unit price as-is.
  */
 
-import { salesMasterDataApi, EffectivePriceDTO } from '../../../api/salesMasterDataApi';
+import { salesMasterDataApi, EffectivePriceDTO, LinePriceSource } from '../../../api/salesMasterDataApi';
 
 const SALES_DOC_TOKENS = [
   'sales_invoice',
@@ -61,6 +61,7 @@ export interface ResolveLinePriceArgs {
   exchangeRate?: number;
   uomId?: string;
   uom?: string;
+  priceSource?: LinePriceSource;
 }
 
 /**
@@ -82,6 +83,7 @@ export async function resolveSalesLinePrice(
       exchangeRate: args.exchangeRate,
       uomId: args.uomId,
       uom: args.uom,
+      priceSource: args.priceSource,
     });
     if (!result || result.unitPrice == null) return null;
     return result;
