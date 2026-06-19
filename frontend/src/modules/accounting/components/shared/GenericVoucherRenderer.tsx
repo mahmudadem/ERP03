@@ -18,6 +18,9 @@ import { ItemSelector } from '../../../../components/shared/selectors/ItemSelect
 import { WarehouseSelector } from '../../../../components/shared/selectors/WarehouseSelector';
 import { CustomerAccountSelector, VendorAccountSelector } from '../../../../components/shared/selectors/PartyAccountSelector';
 import { LinePriceSource, LinePriceSourceSelector } from '../../../../components/shared/pricing/LinePriceSourceSelector';
+import { createDocumentPriceOverrideMenuItems, createLinePriceOverrideMenuItems } from '../../../../components/shared/pricing/createPriceOverrideMenuItems';
+import { LinePriceOverrideBadge } from '../../../../components/shared/pricing/LinePriceOverrideBadge';
+import toast from 'react-hot-toast';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
 import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
@@ -1296,8 +1299,24 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
   
   // Line context menu state
   const [lineContextMenu, setLineContextMenu] = useState<{ x: number; y: number; rowId: number } | null>(null);
+  // Task 243 Part C — price column header + cell context menus.
+  const [priceColumnContextMenu, setPriceColumnContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [priceCellContextMenu, setPriceCellContextMenu] = useState<{ x: number; y: number; rowId: number } | null>(null);
   const [highlightedRows, setHighlightedRows] = useState<Set<number>>(new Set());
   const [copiedLineData, setCopiedLineData] = useState<JournalRow | null>(null);
+
+  const closePriceColumnContextMenu = () => setPriceColumnContextMenu(null);
+  const closePriceCellContextMenu = () => setPriceCellContextMenu(null);
+  const handlePriceColumnContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPriceColumnContextMenu({ x: e.clientX, y: e.clientY });
+  };
+  const handlePriceCellContextMenu = (e: React.MouseEvent, rowId: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setPriceCellContextMenu({ x: e.clientX, y: e.clientY, rowId });
+  };
   
   // Line context menu handlers
   const handleLineContextMenu = (e: React.MouseEvent, rowId: number) => {
@@ -1526,6 +1545,9 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     const customerId = formData.customerId || formData.partyId || '';
     const itemId = getRowItemId(row);
     if (!customerId || !itemId) return;
+    if (row?.priceLocked) return; // Task 243 Part C — locked lines never auto-resolve
+    const rowOverride: LinePriceSource | undefined = row?.priceSourceOverride;
+    const effectiveSource: LinePriceSource = rowOverride ?? priceSource ?? formData.linePriceSource;
     const qty = getLineQuantity(row) || 1;
     const asOfDate =
       formData.date ||
@@ -1543,7 +1565,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       exchangeRate: Number(formData.exchangeRate || row.exchangeRate || 1),
       uomId: row.uomId || row.uom_id,
       uom: row.uom,
-      priceSource: priceSource || formData.linePriceSource,
+      priceSource: effectiveSource,
     }).then((result) => {
       if (result?.unitPrice != null) {
         applyResolvedLinePrice(rowId, result.unitPrice);
@@ -1556,6 +1578,9 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     const vendorId = formData.vendorId || formData.partyId || '';
     const itemId = getRowItemId(row);
     if (!vendorId || !itemId) return;
+    if (row?.priceLocked) return; // Task 243 Part C — locked lines never auto-resolve
+    const rowOverride: LinePriceSource | undefined = row?.priceSourceOverride;
+    const effectiveSource: LinePriceSource = rowOverride ?? priceSource ?? formData.linePriceSource;
     const qty = getLineQuantity(row) || 1;
     const asOfDate =
       formData.date ||
@@ -1573,12 +1598,84 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       exchangeRate: Number(formData.exchangeRate || row.exchangeRate || 1),
       uomId: row.uomId || row.uom_id,
       uom: row.uom,
-      priceSource: priceSource || formData.linePriceSource,
+      priceSource: effectiveSource,
     }).then((result) => {
       if (result?.unitPrice != null) {
         applyResolvedLinePrice(rowId, result.unitPrice);
       }
     });
+  };
+
+  // Task 243 Part C — right-click price source override handlers for the
+  // Form-Designer-rendered sales/purchase forms. Mirrors the native page
+  // handlers so the two surfaces stay in feature parity.
+  const handleDocumentPriceSourceOverride = (source: LinePriceSource) => {
+    if (formData.linePriceSource === source) return;
+    setFormData((prev: any) => ({ ...prev, linePriceSource: source }));
+    rowsRef.current.forEach((row) => {
+      if (isSalesDoc) triggerSalesPriceLookup(row.id, row, source);
+      if (isPurchaseDoc) triggerPurchasePriceLookup(row.id, row, source);
+    });
+    toast.success(
+      t('pricing.override.toastDocumentOverrideSet', 'Document price source set to {{source}}', {
+        source: source.replace(/_/g, ' '),
+      }),
+    );
+  };
+  const handleResetDocumentPriceSource = () => {
+    if (formData.linePriceSource === 'LAST_PARTY_PRICE') return;
+    setFormData((prev: any) => ({ ...prev, linePriceSource: 'LAST_PARTY_PRICE' }));
+    rowsRef.current.forEach((row) => {
+      if (isSalesDoc) triggerSalesPriceLookup(row.id, row, 'LAST_PARTY_PRICE');
+      if (isPurchaseDoc) triggerPurchasePriceLookup(row.id, row, 'LAST_PARTY_PRICE');
+    });
+    toast.success(
+      t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+    );
+  };
+  const handleLinePriceSourceOverride = (rowId: number | undefined, source: LinePriceSource | null) => {
+    if (rowId == null) return;
+    setRows((prev: JournalRow[]) => {
+      const next = prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const updated: any = { ...r, priceSourceOverride: source, priceLocked: false };
+        return updated;
+      });
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
+    if (source) {
+      toast.success(
+        t('pricing.override.toastLineOverrideSet', 'Line price source set to {{source}}', {
+          source: source.replace(/_/g, ' '),
+        }),
+      );
+    } else {
+      toast.success(
+        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+      );
+    }
+  };
+  const handleLinePriceLocked = (rowId: number | undefined, locked: boolean) => {
+    if (rowId == null) return;
+    setRows((prev: JournalRow[]) => {
+      const next = prev.map((r) => {
+        if (r.id !== rowId) return r;
+        const updated: any = { ...r, priceLocked: locked, priceSourceOverride: null };
+        return updated;
+      });
+      onChangeRef.current?.({ ...formData, lines: next });
+      return next;
+    });
+    if (locked) {
+      toast.success(
+        t('pricing.override.toastLineLocked', 'Line locked — price will not be auto-resolved'),
+      );
+    } else {
+      toast.success(
+        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+      );
+    }
   };
 
   // When the customer changes on a sales document, refresh prices for every
@@ -3003,29 +3100,37 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                         <thead className="sticky top-0 bg-[var(--color-bg-tertiary)] z-10 transition-colors">
                              <tr className="border-b-2 border-[var(--color-border)]">
                                  <th className="p-2 text-center w-10 text-[11px] font-bold text-[var(--color-text-primary)] border-r border-[var(--color-border)] bg-[var(--color-bg-secondary)]/30">#</th>
-                                 {columns.map(col => {
-                                     const colWidthOverride = columnWidths[col.id];
-                                     const resolvedWidth = colWidthOverride ? `${colWidthOverride}px` : (col.width || '150px');
-                                     
-                                     return (
-                                         <th 
-                                           key={col.id} 
-                                           className="p-2 text-start text-[11px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide border-r border-[var(--color-border)] relative group transition-colors"
-                                           style={{ width: resolvedWidth, minWidth: resolvedWidth }}
-                                         >
-                                           {col.label}
-                                           {/* Resize handle */}
-                                           <div
-                                             className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-400 opacity-0 group-hover:opacity-100 transition-opacity"
-                                             onMouseDown={(e) => {
-                                                 const th = e.currentTarget.parentElement;
-                                                 const currentPxWidth = th ? th.offsetWidth : 150;
-                                                 handleResizeStart(e, col.id, currentPxWidth);
-                                             }}
-                                           />
-                                         </th>
-                                     );
-                                 })}
+                                  {columns.map(col => {
+                                      const colWidthOverride = columnWidths[col.id];
+                                      const resolvedWidth = colWidthOverride ? `${colWidthOverride}px` : (col.width || '150px');
+                                      const isPriceColumn = (isSalesDoc || isPurchaseDoc) && normalizeTableColumnId(col.id) === 'unitPrice';
+                                      const isReadOnlyGvr = readOnly || isPreview;
+                                      return (
+                                          <th
+                                            key={col.id}
+                                            className={`p-2 text-start text-[11px] font-bold text-[var(--color-text-primary)] uppercase tracking-wide border-r border-[var(--color-border)] relative group transition-colors ${isPriceColumn && !isReadOnlyGvr ? 'cursor-context-menu' : ''}`}
+                                            style={{ width: resolvedWidth, minWidth: resolvedWidth }}
+                                            onContextMenu={isPriceColumn && !isReadOnlyGvr ? handlePriceColumnContextMenu : undefined}
+                                            title={isPriceColumn && !isReadOnlyGvr ? t('pricing.override.headerMenuTitle', 'Right-click the Unit Price column header to override the document source') : undefined}
+                                          >
+                                            <span className="inline-flex items-center gap-1.5">
+                                              <span>{col.label}</span>
+                                              {isPriceColumn && !isReadOnlyGvr && formData.linePriceSource && formData.linePriceSource !== 'LAST_PARTY_PRICE' ? (
+                                                <LinePriceOverrideBadge variant="document" source={formData.linePriceSource} />
+                                              ) : null}
+                                            </span>
+                                            {/* Resize handle */}
+                                            <div
+                                              className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary-400 opacity-0 group-hover:opacity-100 transition-opacity"
+                                              onMouseDown={(e) => {
+                                                  const th = e.currentTarget.parentElement;
+                                                  const currentPxWidth = th ? th.offsetWidth : 150;
+                                                  handleResizeStart(e, col.id, currentPxWidth);
+                                              }}
+                                            />
+                                          </th>
+                                      );
+                                  })}
                                  <th className="p-2 w-8 border-[var(--color-border)] border-r-0"></th>
                              </tr>
                         </thead>
@@ -3141,22 +3246,39 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                       </div>
 
                                                   ) : (colId === 'debit' || colId === 'credit' || colId === 'amount' || colId === 'equivalent' || normalizedColType === 'number' || normalizedColType === 'amount') ? (
-                                                      <AmountInput
-                                                          ref={(el) => registerCellRef(index, colIndex, el)}
-                                                          value={parseFloat(getRowValue(row, colId) as any) || 0}
-                                                          disabled={readOnly || col.readOnly}
-                                                          onChange={(val) => handleRowChange(row.id, colId as any, val)}
-                                                          onKeyDown={(e) => {
-                                                              if (colId === 'debit' || colId === 'credit') {
-                                                                  handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIndex);
-                                                              } else {
-                                                                  handleCellKeyDown(e, index, colIndex, totalCols);
-                                                              }
-                                                          }}
-                                                          onBlur={() => onBlurRef.current?.()}
-                                                          placeholder=""
-                                                       />
-                                                 ) : colId === 'parity' ? (
+                                                      <div
+                                                        className={`flex items-center gap-1.5 ${(isSalesDoc || isPurchaseDoc) && normalizeTableColumnId(colId) === 'unitPrice' && !(readOnly || isPreview) ? 'cursor-context-menu' : ''}`}
+                                                        onContextMenu={(e) => {
+                                                          if ((isSalesDoc || isPurchaseDoc) && normalizeTableColumnId(colId) === 'unitPrice' && !(readOnly || isPreview)) {
+                                                            handlePriceCellContextMenu(e, row.id);
+                                                          }
+                                                        }}
+                                                      >
+                                                        <AmountInput
+                                                            ref={(el) => registerCellRef(index, colIndex, el)}
+                                                            value={parseFloat(getRowValue(row, colId) as any) || 0}
+                                                            disabled={readOnly || col.readOnly}
+                                                            onChange={(val) => handleRowChange(row.id, colId as any, val)}
+                                                            onKeyDown={(e) => {
+                                                                if (colId === 'debit' || colId === 'credit') {
+                                                                    handleAmountKeyDown(e, row.id, colId as 'debit' | 'credit', index, colIndex);
+                                                                } else {
+                                                                    handleCellKeyDown(e, index, colIndex, totalCols);
+                                                                }
+                                                            }}
+                                                            onBlur={() => onBlurRef.current?.()}
+                                                            placeholder=""
+                                                            className="flex-1"
+                                                        />
+                                                        {(isSalesDoc || isPurchaseDoc) && normalizeTableColumnId(colId) === 'unitPrice' ? (
+                                                          (row as any).priceLocked ? (
+                                                            <LinePriceOverrideBadge variant="lineLocked" source={null} compact />
+                                                          ) : (row as any).priceSourceOverride ? (
+                                                            <LinePriceOverrideBadge variant="line" source={(row as any).priceSourceOverride} compact />
+                                                          ) : null
+                                                        ) : null}
+                                                      </div>
+                                                  ) : colId === 'parity' ? (
                                                      <div className="relative group/parity">
                                                        <AmountInput
                                                          ref={(el) => registerCellRef(index, colIndex, el)}
@@ -3254,6 +3376,88 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                   </button>
                 )}
                 
+                {/* Task 243 Part C — Price column header context menu */}
+                {priceColumnContextMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-[9998]"
+                      onClick={closePriceColumnContextMenu}
+                      onContextMenu={(e) => { e.preventDefault(); closePriceColumnContextMenu(); }}
+                    />
+                    <div
+                      className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-[9999] py-1.5 w-56 transition-colors"
+                      style={{ left: priceColumnContextMenu.x, top: priceColumnContextMenu.y }}
+                    >
+                      {createDocumentPriceOverrideMenuItems({
+                        currentDocumentSource: (formData.linePriceSource as LinePriceSource) || 'LAST_PARTY_PRICE',
+                        baseSource: 'LAST_PARTY_PRICE',
+                        onSelectDocumentSource: (source) => {
+                          handleDocumentPriceSourceOverride(source);
+                          closePriceColumnContextMenu();
+                        },
+                        onResetDocumentSource: () => {
+                          handleResetDocumentPriceSource();
+                          closePriceColumnContextMenu();
+                        },
+                      }).map((item) => (
+                        <button
+                          key={item.key}
+                          onClick={() => item.onSelect(undefined)}
+                          className={`w-full px-4 py-2 text-left text-sm flex items-center gap-2 transition-colors ${
+                            item.danger
+                              ? 'text-danger-600 hover:bg-danger-50 dark:hover:bg-danger-900/20'
+                              : 'text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)]'
+                          }`}
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
+                {/* Task 243 Part C — Price cell context menu (per-line) */}
+                {priceCellContextMenu && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-[9998]"
+                      onClick={closePriceCellContextMenu}
+                      onContextMenu={(e) => { e.preventDefault(); closePriceCellContextMenu(); }}
+                    />
+                    <div
+                      className="fixed bg-[var(--color-bg-primary)] rounded-lg shadow-2xl border border-[var(--color-border)] z-[9999] py-1.5 w-56 transition-colors"
+                      style={{ left: priceCellContextMenu.x, top: priceCellContextMenu.y }}
+                    >
+                      {createLinePriceOverrideMenuItems({
+                        currentLineSource: null,
+                        currentLineLocked: false,
+                        onSelectLineSource: () => {},
+                        onToggleLineLocked: () => {},
+                      }).map((item) => (
+                        <button
+                          key={item.key}
+                          onClick={() => {
+                            if (item.key === 'line-manual') {
+                              handleLinePriceLocked(priceCellContextMenu.rowId, true);
+                            } else if (item.key === 'line-none') {
+                              handleLinePriceSourceOverride(priceCellContextMenu.rowId, null);
+                            } else {
+                              const source = item.key.replace(/^line-/, '') as LinePriceSource;
+                              handleLinePriceSourceOverride(priceCellContextMenu.rowId, source);
+                            }
+                            closePriceCellContextMenu();
+                          }}
+                          className="w-full px-4 py-2 text-left text-sm text-[var(--color-text-primary)] hover:bg-[var(--color-bg-tertiary)] flex items-center gap-2 transition-colors"
+                        >
+                          {item.icon}
+                          {item.label}
+                        </button>
+                      ))}
+                    </div>
+                  </>
+                )}
+
                 {/* Line Context Menu */}
                 {lineContextMenu && (
                   <>
