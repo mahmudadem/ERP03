@@ -454,6 +454,105 @@ describe('PurchasePriceList Use Cases', () => {
       expect(result?.unitPrice).toBe(65);
     });
 
+    it('lets a document-level priceSource override the company default strictly', async () => {
+      const partyRepo = makePartyRepo({
+        getById: jest.fn(async () => makeVendor()) as any,
+      });
+      const partyItemPriceRepo = {
+        get: jest.fn(async () => ({
+          lastPurchaseByCcyUom: {
+            USD__uom_each: {
+              base: 70,
+              ccy: 70,
+              currency: 'USD',
+              fxRateToBase: 1,
+              asOf: '2026-06-19',
+              uomId: 'uom_each',
+            },
+          },
+        })),
+      };
+      const itemRepo = {
+        getItem: jest.fn(async () => ({
+          id: 'ITEM-A',
+          companyId: COMPANY_ID,
+          baseUomId: 'uom_each',
+          purchaseUomId: 'uom_each',
+          costCurrency: 'USD',
+          purchasePrice: 65,
+        })),
+      };
+      const uc = new GetEffectivePurchasePriceUseCase(
+        undefined,
+        partyRepo,
+        partyItemPriceRepo as any,
+        itemRepo as any,
+        makeInventorySettingsRepo('LAST_PARTY_PRICE') as any
+      );
+
+      const result = await uc.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_each',
+        priceSource: 'ITEM_DEFAULT',
+      });
+
+      expect(result?.source).toBe('ITEM_DEFAULT');
+      expect(result?.unitPrice).toBe(65);
+      expect(partyItemPriceRepo.get).not.toHaveBeenCalled();
+    });
+
+    it('resolves LAST_EVENT only when explicitly selected by the document', async () => {
+      const partyRepo = makePartyRepo({
+        getById: jest.fn(async () => makeVendor()) as any,
+      });
+      const itemRepo = {
+        getItem: jest.fn(async () => ({
+          id: 'ITEM-A',
+          companyId: COMPANY_ID,
+          baseUomId: 'uom_each',
+          purchaseUomId: 'uom_each',
+          costCurrency: 'USD',
+          purchasePrice: 65,
+          costingStats: {
+            lastPurchaseCostByCcyUom: {
+              USD__uom_each: {
+                base: 58,
+                ccy: 58,
+                currency: 'USD',
+                fxRateToBase: 1,
+                asOf: '2026-06-19',
+                uomId: 'uom_each',
+              },
+            },
+          },
+        })),
+      };
+      const uc = new GetEffectivePurchasePriceUseCase(
+        undefined,
+        partyRepo,
+        undefined,
+        itemRepo as any,
+        makeInventorySettingsRepo('ITEM_DEFAULT') as any
+      );
+
+      const result = await uc.execute({
+        companyId: COMPANY_ID,
+        vendorId: 'vendor-1',
+        itemId: 'ITEM-A',
+        qty: 1,
+        currency: 'USD',
+        uomId: 'uom_each',
+        priceSource: 'LAST_EVENT',
+      });
+
+      expect(result?.source).toBe('LAST_EVENT');
+      expect(result?.unitPrice).toBe(58);
+    });
+
     it('derives same-currency vendor price across UOM only when the purchase setting is enabled', async () => {
       const partyRepo = makePartyRepo({
         getById: jest.fn(async () => makeVendor()) as any,

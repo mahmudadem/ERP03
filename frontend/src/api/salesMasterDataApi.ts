@@ -2,6 +2,8 @@ import client from './client';
 
 // ─── DTOs ────────────────────────────────────────────────────────────────────
 
+export type LinePriceSource = 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
+
 export interface PriceListLineDTO {
   itemId: string;
   minQty: number;
@@ -85,7 +87,7 @@ export interface CommissionTotalsDTO {
 
 export interface EffectivePriceDTO {
   unitPrice: number;
-  source?: 'PRICE_LIST' | 'LAST_PARTY_PRICE' | 'LAST_EVENT' | 'ITEM_DEFAULT';
+  source?: LinePriceSource;
   discountPct?: number;
   currency: string;
   uomId?: string;
@@ -129,6 +131,7 @@ export const salesMasterDataApi = {
     exchangeRate?: number;
     uomId?: string;
     uom?: string;
+    priceSource?: LinePriceSource;
   }): Promise<EffectivePriceDTO> =>
     client.get('/tenant/sales/price-lists/effective-price', { params }).then(unwrap<EffectivePriceDTO>),
 

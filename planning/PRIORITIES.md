@@ -135,6 +135,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Antigravity | Main-shell module icon update & custom 2gears icon | 2026-06-13 | ✅ Done |
 | Antigravity | AI Settings Page Division & Switch Unification | 2026-06-19 | ✅ Done |
 | Codex | Task 245 NOTE-06 - master-data list refresh | 2026-06-19 | ✅ Done |
+| Codex | Task 243-A - selectable pricing policy | 2026-06-19 | ✅ Done |
 
 
 **How to use:**

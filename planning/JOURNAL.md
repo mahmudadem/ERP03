@@ -3944,6 +3944,16 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 
 ---
 
+### Session: 2026-06-19 (Task 243-A — Selectable Pricing Policy)
+
+- **Goal:** Implement only Task 243 Part A after Task 242/244/245 NOTE-06 landed: document-level selectable line-price source and party-level price-list assignment reconciliation.
+- **What was done:** Added optional `priceSource` to sales and purchase effective-price use cases/controllers/API clients. The resolver accepts `PRICE_LIST`, `LAST_PARTY_PRICE`, `LAST_EVENT`, and `ITEM_DEFAULT`; omitted values keep using `InventorySettings.defaultLinePriceSource`. Added the shared `LinePriceSourceSelector`, wired it into native Sales Invoice, Purchase Invoice, Purchase Order, and Forms Designer-rendered sales/purchase line tables. Reused existing `Party.defaultPriceListId` for customer/vendor price-list assignment instead of adding duplicate state.
+- **Accounting/ERP impact:** Price suggestion only. No voucher posting, GL, tax, AR/AP, inventory valuation, approval, period-lock, tenant isolation, or audit mutation changed. Strict resolution remains intact: a selected source miss leaves the line manual.
+- **Verification:** Focused backend pricing tests passed (2 suites / 47 tests), frontend typecheck passed, backend build passed, and frontend production build passed with existing bundle-size/Browserslist/baseline-data warnings.
+- **Docs:** Updated `docs/architecture/pricing.md`, added `docs/user-guide/sales/pricing-policy-selection.md`, and added `planning/done/243a-selectable-pricing-policy.md`.
+- **Time spent:** ~1.5h.
+- **Next:** Open the 243-A PR, then start 243-B on a fresh branch after 243-A lands.
+
 ### Session: 2026-06-04 (Apex shell production candidate - Slice 1)
 
 - **Goal:** Start the approved Apex-native shell path: harden Apex separately as a production candidate instead of patching Apex styling onto the legacy tenant shell.

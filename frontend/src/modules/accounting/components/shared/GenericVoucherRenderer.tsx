@@ -17,6 +17,7 @@ import { PartySelector } from '../../../../components/shared/selectors/PartySele
 import { ItemSelector } from '../../../../components/shared/selectors/ItemSelector';
 import { WarehouseSelector } from '../../../../components/shared/selectors/WarehouseSelector';
 import { CustomerAccountSelector, VendorAccountSelector } from '../../../../components/shared/selectors/PartyAccountSelector';
+import { LinePriceSource, LinePriceSourceSelector } from '../../../../components/shared/pricing/LinePriceSourceSelector';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { accountingApi } from '../../../../api/accountingApi';
 import { salesApi, SalesOrderDTO } from '../../../../api/salesApi';
@@ -1520,7 +1521,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     });
   };
 
-  const triggerSalesPriceLookup = (rowId: number, row: any) => {
+  const triggerSalesPriceLookup = (rowId: number, row: any, priceSource?: LinePriceSource) => {
     if (!isSalesDoc) return;
     const customerId = formData.customerId || formData.partyId || '';
     const itemId = getRowItemId(row);
@@ -1542,6 +1543,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       exchangeRate: Number(formData.exchangeRate || row.exchangeRate || 1),
       uomId: row.uomId || row.uom_id,
       uom: row.uom,
+      priceSource: priceSource || formData.linePriceSource,
     }).then((result) => {
       if (result?.unitPrice != null) {
         applyResolvedLinePrice(rowId, result.unitPrice);
@@ -1549,7 +1551,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     });
   };
 
-  const triggerPurchasePriceLookup = (rowId: number, row: any) => {
+  const triggerPurchasePriceLookup = (rowId: number, row: any, priceSource?: LinePriceSource) => {
     if (!isPurchaseDoc) return;
     const vendorId = formData.vendorId || formData.partyId || '';
     const itemId = getRowItemId(row);
@@ -1571,6 +1573,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
       exchangeRate: Number(formData.exchangeRate || row.exchangeRate || 1),
       uomId: row.uomId || row.uom_id,
       uom: row.uom,
+      priceSource: priceSource || formData.linePriceSource,
     }).then((result) => {
       if (result?.unitPrice != null) {
         applyResolvedLinePrice(rowId, result.unitPrice);
@@ -2963,6 +2966,26 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
     if (lowerFid === 'lineitems') {
         const columns = getTableColumns();
         const isClassic = (definition as any).tableStyle === 'classic';
+        const showLinePriceSource = isSalesDoc || isPurchaseDoc;
+        const linePriceSource = (formData.linePriceSource || 'LAST_PARTY_PRICE') as LinePriceSource;
+        const linePriceSourceControl = showLinePriceSource ? (
+          <div className="mb-2 flex justify-end">
+            <LinePriceSourceSelector
+              className="w-full max-w-xs"
+              value={linePriceSource}
+              disabled={readOnly}
+              compact
+              onChange={(source) => {
+                handleInputChange('linePriceSource', source);
+                rowsRef.current.forEach((row) => {
+                  if (!getRowItemId(row)) return;
+                  if (isSalesDoc) triggerSalesPriceLookup(row.id, row, source);
+                  if (isPurchaseDoc) triggerPurchasePriceLookup(row.id, row, source);
+                });
+              }}
+            />
+          </div>
+        ) : null;
         
         // Handle resize start
         const handleResizeStart = (e: React.MouseEvent, columnId: string, currentWidth: number) => {
@@ -2972,6 +2995,8 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
 
         if (isClassic) {
             return (
+              <>
+                {linePriceSourceControl}
                 <div className="border border-[var(--color-border)] rounded overflow-hidden shadow-sm bg-[var(--color-bg-primary)] transition-colors">
                     <div className="max-h-[300px] overflow-y-auto custom-scroll">
                     <table className="w-full text-sm min-w-[600px] border-collapse">
@@ -3297,11 +3322,14 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                   </>
                 )}
             </div>
+              </>
         );
     }
 
     // Default Web Style
     return (
+      <>
+        {linePriceSourceControl}
         <div className="border border-[var(--color-border)] rounded-lg shadow-sm min-h-[200px] bg-[var(--color-bg-primary)] transition-colors w-full overflow-hidden">
             <div className="overflow-x-auto w-full" style={{ maxWidth: '100%', display: 'block' }}>
             <table className="w-full text-sm table-fixed">
@@ -3524,6 +3552,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                </button>
               )}
         </div>
+      </>
     );
 }
 

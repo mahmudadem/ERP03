@@ -1575,6 +1575,15 @@
       }
     }
   },
+  "pricing": {
+    "linePriceSource": {
+      "label": "Line price source",
+      "lastPartyPrice": "Last party price",
+      "priceList": "Price list",
+      "lastEvent": "Last sale/purchase",
+      "itemDefault": "Item default"
+    }
+  },
   "onboarding": {
     "companyWizard": {
       "basic": {

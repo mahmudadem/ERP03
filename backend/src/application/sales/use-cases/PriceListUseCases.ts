@@ -240,6 +240,7 @@ export interface GetEffectivePriceInput {
   exchangeRate?: number;
   uomId?: string;
   uom?: string;
+  priceSource?: GetEffectivePriceResult['source'];
 }
 
 export interface GetEffectivePriceResult {
@@ -275,7 +276,7 @@ export class GetEffectivePriceUseCase {
     const item = this.itemRepo ? await this.itemRepo.getItem(input.itemId) : null;
     const targetUomId = this.resolveTargetUomId(input.uomId, input.uom, item, 'sales');
 
-    for (const source of this.buildSourceOrder(settings?.defaultLinePriceSource)) {
+    for (const source of this.buildSourceOrder(input.priceSource ?? settings?.defaultLinePriceSource)) {
       if (source === 'PRICE_LIST') {
         const resolved = await this.resolveFromPriceList(input, asOf, party?.defaultPriceListId, documentCurrency);
         if (resolved) return resolved;
@@ -301,7 +302,12 @@ export class GetEffectivePriceUseCase {
   }
 
   private buildSourceOrder(configured?: string): GetEffectivePriceResult['source'][] {
-    if (configured === 'PRICE_LIST' || configured === 'ITEM_DEFAULT') {
+    if (
+      configured === 'PRICE_LIST' ||
+      configured === 'LAST_PARTY_PRICE' ||
+      configured === 'LAST_EVENT' ||
+      configured === 'ITEM_DEFAULT'
+    ) {
       return [configured];
     }
     return ['LAST_PARTY_PRICE'];

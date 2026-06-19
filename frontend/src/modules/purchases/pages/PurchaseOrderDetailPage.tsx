@@ -20,6 +20,7 @@ import { CurrencySelector } from '../../accounting/components/shared/CurrencySel
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
+import { LinePriceSource, LinePriceSourceSelector } from '../../../components/shared/pricing/LinePriceSourceSelector';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { FileText } from 'lucide-react';
@@ -69,6 +70,7 @@ interface EditableForm {
   expectedDeliveryDate: string;
   currency: string;
   exchangeRate: number;
+  linePriceSource: LinePriceSource;
   notes: string;
   internalNotes: string;
   lines: EditableLine[];
@@ -97,6 +99,7 @@ const createEmptyForm = (): EditableForm => ({
   expectedDeliveryDate: '',
   currency: 'USD',
   exchangeRate: 1,
+  linePriceSource: 'LAST_PARTY_PRICE',
   notes: '',
   internalNotes: '',
   lines: [createEmptyLine()],
@@ -206,6 +209,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
     expectedDeliveryDate: po.expectedDeliveryDate || '',
     currency: po.currency,
     exchangeRate: po.exchangeRate,
+    linePriceSource: 'LAST_PARTY_PRICE',
     notes: po.notes || '',
     internalNotes: po.internalNotes || '',
     lines: po.lines.map((line) => ({
@@ -369,6 +373,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         exchangeRate: Number(form.exchangeRate || 1),
         uomId: line?.uomId,
         uom: line?.uom,
+        priceSource: form.linePriceSource,
       });
       if (result && result.unitPrice != null) {
         setForm(currentForm => {
@@ -382,6 +387,39 @@ const PurchaseOrderDetailPage: React.FC = () => {
     } catch (err) {
       console.error('Failed to resolve effective purchase price', err);
     }
+  };
+
+  const refreshLinePrices = async (priceSource: LinePriceSource = form.linePriceSource) => {
+    if (!form.vendorId) return;
+    await Promise.all(
+      form.lines.map(async (line, index) => {
+        if (!line.itemId) return;
+        try {
+          const result = await purchasesApi.getEffectivePurchasePrice({
+            vendorId: form.vendorId,
+            itemId: line.itemId,
+            qty: line.orderedQty || 1,
+            asOfDate: form.orderDate || undefined,
+            currency: form.currency,
+            exchangeRate: Number(form.exchangeRate || 1),
+            uomId: line.uomId,
+            uom: line.uom,
+            priceSource,
+          });
+          if (result?.unitPrice != null) {
+            setForm((currentForm) => {
+              const currentLines = [...currentForm.lines];
+              if (currentLines[index]?.itemId === line.itemId) {
+                currentLines[index] = { ...currentLines[index], unitPriceDoc: result.unitPrice };
+              }
+              return { ...currentForm, lines: currentLines };
+            });
+          }
+        } catch (err) {
+          console.error('Failed to refresh effective purchase price', err);
+        }
+      }),
+    );
   };
 
   // Trigger pricing refresh when vendor changes
@@ -816,6 +854,17 @@ const PurchaseOrderDetailPage: React.FC = () => {
               disabled={isReadOnly || saving || actionBusy}
             />
           </DocumentHeaderField>
+          <LinePriceSourceSelector
+            className="min-w-0"
+            labelClassName="mb-1 block text-[10px] font-black uppercase tracking-wide text-slate-500"
+            selectClassName={documentHeaderControlClass}
+            value={form.linePriceSource}
+            disabled={isReadOnly || saving || actionBusy}
+            onChange={(source) => {
+              setForm((prev) => ({ ...prev, linePriceSource: source }));
+              void refreshLinePrices(source);
+            }}
+          />
         </DocumentHeaderGrid>
       </Card>
           ),

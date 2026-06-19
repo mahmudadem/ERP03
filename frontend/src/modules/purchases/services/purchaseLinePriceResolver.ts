@@ -13,7 +13,7 @@
  * callers should leave the existing unit price as-is.
  */
 
-import { purchasesApi, EffectivePurchasePriceDTO } from '../../../api/purchasesApi';
+import { purchasesApi, EffectivePurchasePriceDTO, LinePriceSource } from '../../../api/purchasesApi';
 
 const PURCHASE_DOC_TOKENS = [
   'purchase_invoice',
@@ -57,6 +57,7 @@ export interface ResolvePurchaseLinePriceArgs {
   exchangeRate?: number;
   uomId?: string;
   uom?: string;
+  priceSource?: LinePriceSource;
 }
 
 /**
@@ -78,6 +79,7 @@ export async function resolvePurchaseLinePrice(
       exchangeRate: args.exchangeRate,
       uomId: args.uomId,
       uom: args.uom,
+      priceSource: args.priceSource,
     });
     if (!result || result.unitPrice == null) return null;
     return result;
