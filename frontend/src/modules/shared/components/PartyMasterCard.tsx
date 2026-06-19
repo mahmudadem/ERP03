@@ -46,6 +46,40 @@ const renderPartyAccountCode = (template: string | undefined, ctx: PartyAccountC
     .replace(/\{seq3\}/g, zeroPad(ctx.seq ?? 1, 3));
 };
 
+interface PartyAccountCodePreset {
+  id: 'DASH_PARTY' | 'DASH_SEQ' | 'DOT_PARTY' | 'CUSTOM';
+  template: string;
+  description: string;
+  tokens: string[];
+}
+
+const PARTY_ACCOUNT_CODE_PRESETS: PartyAccountCodePreset[] = [
+  {
+    id: 'DASH_PARTY',
+    template: '{parent}-{partyCode}',
+    description: 'Parent code dash party code (e.g. 10401-C001).',
+    tokens: ['{parent}', '{partyCode}'],
+  },
+  {
+    id: 'DASH_SEQ',
+    template: '{parent}-{seq3}',
+    description: 'Parent code dash 3-digit sequence (e.g. 10401-001).',
+    tokens: ['{parent}', '{seq3}'],
+  },
+  {
+    id: 'DOT_PARTY',
+    template: '{parent}.{partyCode}',
+    description: 'Parent code dot party code (e.g. 10401.C001).',
+    tokens: ['{parent}', '{partyCode}'],
+  },
+];
+
+const presetForTemplate = (template: string | undefined): PartyAccountCodePreset | null => {
+  const tpl = (template || '').trim();
+  if (!tpl) return null;
+  return PARTY_ACCOUNT_CODE_PRESETS.find((preset) => preset.template === tpl) || null;
+};
+
 interface PartyMasterCardProps {
   partyId?: string;
   isWindow?: boolean;
@@ -83,6 +117,9 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [accountStrategy, setAccountStrategy] = useState<PartyAccountStrategy | ''>('');
   const [subAccountParentId, setSubAccountParentId] = useState('');
   const [partyAccountCodeFormat, setPartyAccountCodeFormat] = useState(PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+  const [accountCodeFormatPreset, setAccountCodeFormatPreset] = useState<PartyAccountCodePreset['id'] | 'CUSTOM'>('DASH_PARTY');
+  const [customAccountCodeFormat, setCustomAccountCodeFormat] = useState<string>('');
+  const [accountCodeFormatTouched, setAccountCodeFormatTouched] = useState(false);
 
   const [form, setForm] = useState<Partial<PartyDTO>>({
     code: '',
@@ -118,22 +155,56 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     }
   }, [partyId, role]);
 
+  // NOTE-03: When the company was set up with auto-init sales/purchases (signal:
+  // the parent AR/AP account is already configured in Sales/Purchase Settings),
+  // default the Account Strategy to "Auto-create sub-account" so the user can
+  // start adding parties directly under the parent without picking a strategy.
+  useEffect(() => {
+    if (isNew && !accountStrategy && subAccountParentId) {
+      setAccountStrategy('AUTO_CREATE');
+    }
+  }, [isNew, accountStrategy, subAccountParentId]);
+
+  useEffect(() => {
+    if (accountCodeFormatTouched) return;
+    if (accountCodeFormatPreset === 'CUSTOM') {
+      setPartyAccountCodeFormat(customAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+    } else {
+      const preset = PARTY_ACCOUNT_CODE_PRESETS.find((entry) => entry.id === accountCodeFormatPreset);
+      if (preset) setPartyAccountCodeFormat(preset.template);
+    }
+  }, [accountCodeFormatPreset, customAccountCodeFormat, accountCodeFormatTouched]);
+
   const loadPartyAccountSettings = async () => {
     try {
+      let nextFormat = PARTY_ACCOUNT_CODE_FORMAT_FALLBACK;
+      let nextParentId = '';
       if (role === 'CUSTOMER') {
         const salesSettings = await salesApi.getSettings().catch(() => null);
         const payload = salesSettings as any;
-        setSubAccountParentId(payload?.arParentAccountId || '');
-        setPartyAccountCodeFormat(payload?.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+        nextParentId = payload?.arParentAccountId || '';
+        nextFormat = payload?.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK;
       } else {
         const purchaseSettings = await purchasesApi.getSettings().catch(() => null);
         const payload = purchaseSettings as any;
-        setSubAccountParentId(payload?.apParentAccountId || '');
-        setPartyAccountCodeFormat(payload?.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+        nextParentId = payload?.apParentAccountId || '';
+        nextFormat = payload?.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK;
+      }
+      setSubAccountParentId(nextParentId);
+      setPartyAccountCodeFormat(nextFormat);
+      const matchedPreset = presetForTemplate(nextFormat);
+      if (matchedPreset) {
+        setAccountCodeFormatPreset(matchedPreset.id);
+        setCustomAccountCodeFormat('');
+      } else {
+        setAccountCodeFormatPreset('CUSTOM');
+        setCustomAccountCodeFormat(nextFormat || '');
       }
     } catch {
       setSubAccountParentId('');
       setPartyAccountCodeFormat(PARTY_ACCOUNT_CODE_FORMAT_FALLBACK);
+      setAccountCodeFormatPreset('DASH_PARTY');
+      setCustomAccountCodeFormat('');
     }
   };
 
@@ -230,6 +301,22 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       const res = isNew
         ? await sharedApi.createParty(createPayload)
         : await sharedApi.updateParty(partyId!, form);
+
+      // NOTE-04: For new parties, persist the chosen code format into the
+      // company-level Sales/Purchase settings so the next new party uses the
+      // same template. Only run when the user actually changed the format.
+      if (isNew && accountCodeFormatTouched && accountStrategy === 'AUTO_CREATE' && partyAccountCodeFormat.trim()) {
+        try {
+          if (role === 'CUSTOMER') {
+            await salesApi.updateSettings({ partyAccountCodeFormat: partyAccountCodeFormat.trim() });
+          } else {
+            await purchasesApi.updateSettings({ partyAccountCodeFormat: partyAccountCodeFormat.trim() });
+          }
+        } catch (persistErr: any) {
+          console.warn('Failed to persist partyAccountCodeFormat', persistErr);
+          toast.error(t('parties.form.accounting.formatPersistFailed', 'Party saved, but the chosen account-code format could not be saved as the new default.'));
+        }
+      }
       toast.success(isNew ? 'Created' : 'Updated');
       onSaved?.(res);
     } catch (err: any) {
@@ -281,6 +368,8 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       onClose={onClose}
       updatedAt={form.updatedAt}
       error={error}
+      saveNewLabel={role === 'VENDOR' ? 'Save New Vendor' : 'Save New Customer'}
+      updateLabel={role === 'VENDOR' ? 'Update Vendor' : 'Update Customer'}
     >
       {activeTab === 'GENERAL' && (
         <div className="space-y-6 animate-in fade-in duration-300">
@@ -554,37 +643,81 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
               </Field>
 
               {accountStrategy === 'AUTO_CREATE' && (
-                <div className="rounded-lg border border-indigo-100 bg-indigo-50/30 px-3 py-3 text-xs">
-                  <p className="font-semibold text-indigo-900">
-                    {t('parties.form.accounting.previewTitle', 'Generated account preview')}
-                  </p>
-                  {!subAccountParentId && (
-                    <p className="mt-1 text-amber-700">
-                      {t(
-                        role === 'CUSTOMER'
-                          ? 'parties.form.accounting.missingArParent'
-                          : 'parties.form.accounting.missingApParent',
-                        role === 'CUSTOMER'
-                          ? 'Sales Settings is missing AR Parent Account. Configure it first.'
-                          : 'Purchase Settings is missing AP Parent Account. Configure it first.'
-                      )}
+                <div className="space-y-3">
+                  <div className="rounded-lg border border-indigo-100 bg-indigo-50/30 px-3 py-3 text-xs">
+                    <p className="font-semibold text-indigo-900">
+                      {t('parties.form.accounting.previewTitle', 'Generated account preview')}
                     </p>
-                  )}
-                  {subAccountParentId && !previewPartyCode && (
-                    <p className="mt-1 text-slate-600">
-                      {t('parties.form.accounting.previewNeedsCode', 'Enter a party code to preview the generated account code.')}
+                    {!subAccountParentId && (
+                      <p className="mt-1 text-amber-700">
+                        {t(
+                          role === 'CUSTOMER'
+                            ? 'parties.form.accounting.missingArParent'
+                            : 'parties.form.accounting.missingApParent',
+                          role === 'CUSTOMER'
+                            ? 'Sales Settings is missing AR Parent Account. Configure it first.'
+                            : 'Purchase Settings is missing AP Parent Account. Configure it first.'
+                        )}
+                      </p>
+                    )}
+                    {subAccountParentId && !previewPartyCode && (
+                      <p className="mt-1 text-slate-600">
+                        {t('parties.form.accounting.previewNeedsCode', 'Enter a party code to preview the generated account code.')}
+                      </p>
+                    )}
+                    {subAccountParentId && previewPartyCode && (
+                      <>
+                        <p className="mt-1 text-slate-700">
+                          {t('parties.form.accounting.previewFormat', 'Format: {{format}}', { format: partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK })}
+                        </p>
+                        <p className="mt-1 font-mono font-semibold text-indigo-900">
+                          {previewAccountCode || t('parties.form.accounting.previewUnavailable', 'Preview unavailable')}
+                        </p>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="rounded-lg border border-slate-200 bg-white px-3 py-3 text-xs">
+                    <label htmlFor="party-account-code-format" className="block text-xs font-semibold text-slate-700">
+                      {t('parties.form.accounting.codeFormatLabel', 'Account code format')}
+                    </label>
+                    <p className="mt-0.5 text-[10px] text-slate-500">
+                      {t('parties.form.accounting.codeFormatHelp', 'Pick a preset or write a custom pattern. Available tokens: {parent}, {partyCode}, {seq3}. Saved as the company default on the next party.')}
                     </p>
-                  )}
-                  {subAccountParentId && previewPartyCode && (
-                    <>
-                      <p className="mt-1 text-slate-700">
-                        {t('parties.form.accounting.previewFormat', 'Format: {{format}}', { format: partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK })}
-                      </p>
-                      <p className="mt-1 font-mono font-semibold text-indigo-900">
-                        {previewAccountCode || t('parties.form.accounting.previewUnavailable', 'Preview unavailable')}
-                      </p>
-                    </>
-                  )}
+                    <select
+                      id="party-account-code-format"
+                      className="mt-2 w-full rounded border border-slate-300 bg-white px-2 py-1.5 text-xs"
+                      value={accountCodeFormatPreset}
+                      onChange={(e) => {
+                        const nextPreset = e.target.value as PartyAccountCodePreset['id'] | 'CUSTOM';
+                        setAccountCodeFormatTouched(true);
+                        setAccountCodeFormatPreset(nextPreset);
+                        if (nextPreset !== 'CUSTOM') {
+                          const preset = PARTY_ACCOUNT_CODE_PRESETS.find((entry) => entry.id === nextPreset);
+                          if (preset) setPartyAccountCodeFormat(preset.template);
+                        }
+                      }}
+                    >
+                      {PARTY_ACCOUNT_CODE_PRESETS.map((preset) => (
+                        <option key={preset.id} value={preset.id}>
+                          {preset.template} — {t(`parties.form.accounting.codeFormatPresets.${preset.id}`, preset.description)}
+                        </option>
+                      ))}
+                      <option value="CUSTOM">{t('parties.form.accounting.codeFormatCustom', 'Custom…')}</option>
+                    </select>
+                    {accountCodeFormatPreset === 'CUSTOM' && (
+                      <input
+                        className="mt-2 w-full rounded border border-slate-300 bg-white px-2 py-1.5 font-mono text-xs"
+                        value={customAccountCodeFormat}
+                        onChange={(e) => {
+                          setAccountCodeFormatTouched(true);
+                          setCustomAccountCodeFormat(e.target.value);
+                          setPartyAccountCodeFormat(e.target.value);
+                        }}
+                        placeholder="{parent}-{partyCode}"
+                      />
+                    )}
+                  </div>
                 </div>
               )}
 
