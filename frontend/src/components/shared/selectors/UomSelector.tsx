@@ -25,6 +25,7 @@ interface UomSelectorProps {
 }
 
 const normalize = (value?: string | null) => (value || '').trim().toUpperCase();
+const unwrapApiPayload = <T,>(payload: any): T => (payload?.data?.data ?? payload?.data ?? payload) as T;
 
 export function UomSelector({
   item,
@@ -79,8 +80,10 @@ export function UomSelector({
         currentItem?.id === effectiveItemId && !force ? Promise.resolve(currentItem) : inventoryApi.getItem(effectiveItemId),
         inventoryApi.listUomConversions(effectiveItemId),
       ]);
-      setCurrentItem(freshItem || null);
-      setConversions(Array.isArray(freshConversions) ? freshConversions : []);
+      const nextItem = unwrapApiPayload<InventoryItemDTO | null>(freshItem);
+      const nextConversions = unwrapApiPayload<UomConversionDTO[]>(freshConversions);
+      setCurrentItem(nextItem || null);
+      setConversions(Array.isArray(nextConversions) ? nextConversions : []);
     } catch (error) {
       console.error('Failed to load item UOMs', error);
     } finally {
@@ -150,7 +153,7 @@ export function UomSelector({
           onChange={(event) => setInputValue(normalize(event.target.value))}
           onFocus={(event) => {
             try { event.currentTarget.select(); } catch { /* noop */ }
-            if (options.length > 1) void loadItemUoms();
+            void loadItemUoms();
           }}
           onBlur={resolveInput}
           onKeyDown={(event) => {

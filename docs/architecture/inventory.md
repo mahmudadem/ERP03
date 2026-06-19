@@ -353,6 +353,21 @@ Boundary:
 - the later PI clears **GRNI** and must not create a second receipt
 - `PERIODIC` is unaffected because it does not post inventory-asset lines per transaction
 
+### Item-scoped line UOM selection
+
+Document line UOM selection is item-scoped. The shared frontend selector
+(`frontend/src/components/shared/selectors/UomSelector.tsx`) must build its selectable options from:
+
+- the item's base UOM
+- the item's sales and purchase UOMs
+- active item UOM conversions returned by `/tenant/inventory/uom-conversions/:itemId`
+
+The selector preserves the existing document payload shape (`uomId`, `uom`). It does not create or edit UOM
+conversions; conversion maintenance remains in the item card. Because document pages may receive wrapped API
+responses from the frontend client, the selector unwraps the conversion response before calling
+`buildItemUomOptions()`. This prevents document line pickers from showing only the base UOM when an active
+alternate conversion, such as BOX to PCS, exists.
+
 GL accounts for adjustments/transfers are configured in **Inventory Settings → Accounting** (`defaultInventoryGainAccountId`,
 `defaultInventoryLossAccountId`, `defaultInventoryTransferClearingAccountId`,
 `defaultInventoryRevaluationAccountId`). These accounts have separate meanings:
