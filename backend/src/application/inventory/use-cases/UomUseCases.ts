@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { Uom, UomDimension } from '../../../domain/inventory/entities/Uom';
 import { IUomRepository, UomListOptions } from '../../../repository/interfaces/inventory/IUomRepository';
 
@@ -18,7 +20,7 @@ export class CreateUomUseCase {
   async execute(input: CreateUomInput): Promise<Uom> {
     const existing = await this.repo.getUomByCode(input.companyId, input.code);
     if (existing) {
-      throw new Error(`UOM code already exists: ${input.code}`);
+      throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `UOM code already exists: ${input.code}`, { field: 'code', code: input.code });
     }
 
     const now = new Date();
@@ -51,7 +53,7 @@ export class UpdateUomUseCase {
     if (data.code && data.code.toUpperCase().trim() !== current.code) {
       const existing = await this.repo.getUomByCode(current.companyId, data.code);
       if (existing && existing.id !== id) {
-        throw new Error(`UOM code already exists: ${data.code}`);
+        throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `UOM code already exists: ${data.code}`, { field: 'code', code: data.code });
       }
     }
 

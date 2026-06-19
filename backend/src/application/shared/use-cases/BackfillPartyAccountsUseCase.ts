@@ -1,5 +1,7 @@
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
@@ -163,8 +165,10 @@ export class BackfillPartyAccountsUseCase {
           });
         }
       } else if (await this.accountRepo.existsByUserCode(companyId, userCode)) {
-        throw new Error(
-          `Generated account code already exists: ${userCode}. Add {seq3} to partyAccountCodeFormat to auto-disambiguate.`
+        throw new BusinessError(
+          ErrorCode.VAL_DUPLICATE_ENTRY,
+          `Generated account code already exists: ${userCode}. Add {seq3} to partyAccountCodeFormat to auto-disambiguate.`,
+          { field: 'accountCode', code: userCode },
         );
       }
 

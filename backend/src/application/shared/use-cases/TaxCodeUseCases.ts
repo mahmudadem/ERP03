@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { TaxCode, TaxScope, TaxType } from '../../../domain/shared/entities/TaxCode';
@@ -63,7 +65,7 @@ export class CreateTaxCodeUseCase {
   async execute(input: CreateTaxCodeInput): Promise<TaxCode> {
     const existing = await this.taxCodeRepo.getByCode(input.companyId, input.code);
     if (existing) {
-      throw new Error(`TaxCode code already exists: ${input.code}`);
+      throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `TaxCode code already exists: ${input.code}`, { field: 'code', code: input.code });
     }
 
     validateRateConsistency(input.taxType, input.rate);

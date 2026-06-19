@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { IPriceListRepository } from '../../../repository/interfaces/sales/IPriceListRepository';
@@ -108,7 +110,7 @@ export class CreatePartyUseCase {
 
     const existing = await this.partyRepo.getByCode(input.companyId, input.code);
     if (existing) {
-      throw new Error(`Party code already exists: ${input.code}`);
+      throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Party code already exists: ${input.code}`, { field: 'code', code: input.code });
     }
 
     if (input.defaultCurrency) {
@@ -260,8 +262,10 @@ export class CreatePartyUseCase {
       }
     } else {
       if (await deps.accountRepo.existsByUserCode(companyId, userCode)) {
-        throw new Error(
-          `Generated account code already exists: ${userCode}. Add {seq3} to partyAccountCodeFormat to auto-disambiguate.`
+        throw new BusinessError(
+          ErrorCode.VAL_DUPLICATE_ENTRY,
+          `Generated account code already exists: ${userCode}. Add {seq3} to partyAccountCodeFormat to auto-disambiguate.`,
+          { field: 'accountCode', code: userCode },
         );
       }
     }
@@ -298,7 +302,7 @@ export class UpdatePartyUseCase {
     if (nextCode !== existing.code) {
       const duplicate = await this.partyRepo.getByCode(input.companyId, nextCode);
       if (duplicate && duplicate.id !== existing.id) {
-        throw new Error(`Party code already exists: ${nextCode}`);
+        throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Party code already exists: ${nextCode}`, { field: 'code', code: nextCode });
       }
     }
 

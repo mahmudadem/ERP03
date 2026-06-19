@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { CostCenter, CostCenterStatus } from '../../../domain/accounting/entities/CostCenter';
 import { ICostCenterRepository } from '../../../repository/interfaces/accounting/ICostCenterRepository';
 import { PermissionChecker } from '../../rbac/PermissionChecker';
@@ -16,7 +18,7 @@ export class CreateCostCenterUseCase {
   async execute(companyId: string, userId: string, payload: { name: string; code: string; description?: string; parentId?: string | null }) {
     await this.permissionChecker.assertOrThrow(userId, companyId, 'accounting.settings.write');
     const existing = await this.repo.findByCode(companyId, payload.code);
-    if (existing) throw new Error('Cost center code already exists');
+    if (existing) throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Cost center code already exists: ${payload.code}`, { field: 'code', code: payload.code });
     const cc = new CostCenter(
       randomUUID(),
       companyId,
