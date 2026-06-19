@@ -1,5 +1,15 @@
 # 🎯 Current Focus
 
+## Task 223 complete - Inventory Revaluation (value-only) cherry-picked onto current main, PR-ready (2026-06-19)
+
+- ✅ **Task 223 only** — value-only Inventory Revaluation document — is implemented on branch `feat/223-inventory-revaluation-rebased`.
+- **Provenance / audit note:** the original agent branch `codex/223-inventory-revaluation` was forked from `58d476b3` (243-A), **before 243-B (#24) and 243-C+D (#23) merged, and never rebased**. Merging it as-is would have reverted that work. The feature commit was therefore **cherry-picked onto current `main`**; all 243-B/243-C+D code was verified present afterward.
+- New backend: `InventoryRevaluation` entity, `InventoryRevaluationUseCases` (create/post/list/get), Firestore + Prisma repositories + interface (registered in DI), `InventoryController` + routes + DTOs/validators, Firestore mappers. New frontend: `InventoryRevaluationPage` + `inventoryApi` methods + route + `moduleMenuMap` entry.
+- Posting model: `valueDelta = qty × (newAvgCost − currentAvgCost)`; Dr/Cr Inventory Asset vs Inventory Revaluation account; quantity never changes; GLOBAL re-prices every warehouse; PERIODIC skips GL (sub-ledger only); atomic with rollback; period-lock + missing-account guards; re-post guard.
+- Verification: backend `tsc` build ✅; `InventoryRevaluationUseCases.test.ts` 10/10 ✅; frontend typecheck ✅; frontend production build (CI gate incl. report/menu checks) ✅.
+- ⚠️ **Not yet owner-tested** — needs a fresh-tenant emulator/browser pass (revalue up/down, GL ties, GLOBAL fan-out) before it counts toward closing GP05 step 4.
+- Docs: [docs/architecture/inventory-revaluation.md](../docs/architecture/inventory-revaluation.md), [docs/user-guide/inventory/inventory-revaluation.md](../docs/user-guide/inventory/inventory-revaluation.md), report [planning/done/223-inventory-revaluation.md](./done/223-inventory-revaluation.md).
+
 ## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
 
 - ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).
