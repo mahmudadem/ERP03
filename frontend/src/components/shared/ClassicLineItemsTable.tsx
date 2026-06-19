@@ -47,6 +47,17 @@ export interface ColumnDef<T> {
   id: string;
   /** Column header text. */
   label: string;
+  /**
+   * Optional extra element rendered inline next to the header label
+   * (e.g. a tiny "Override" badge). Kept simple so callers do not need
+   * to reach for a render function for the common case.
+   */
+  labelExtras?: React.ReactNode;
+  /**
+   * Optional title (tooltip) for the column header. Overrides the default
+   * "Right-click for column actions" tooltip.
+   */
+  labelTitle?: string;
   /** Optional fixed width (e.g. `"120px"`, `"15%"`). Defaults to auto. */
   width?: string;
   /** Cell alignment. Defaults: text/select/custom → left, number/computed → right. */
@@ -1141,9 +1152,18 @@ export function ClassicLineItemsTable<T>(props: ClassicLineItemsTableProps<T>) {
                         setContextMenu({ type: 'columnHeader', x: event.clientX, y: event.clientY, columnId: col.id });
                       }
                     : undefined}
-                  title={hasColumnMenu ? t('lineItemsTable.menu.columnActions', 'Right-click for column actions') : undefined}
+                  title={
+                    col.labelTitle
+                      ? col.labelTitle
+                      : hasColumnMenu
+                        ? t('lineItemsTable.menu.columnActions', 'Right-click for column actions')
+                        : undefined
+                  }
                 >
-                  {col.label}
+                  <span className="inline-flex items-center gap-1.5">
+                    <span>{col.label}</span>
+                    {col.labelExtras}
+                  </span>
                   <span
                     role="separator"
                     aria-orientation="vertical"

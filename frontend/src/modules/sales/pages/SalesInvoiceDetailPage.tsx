@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import toast from 'react-hot-toast';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
   CreateSalesInvoicePayload,
@@ -44,6 +45,8 @@ import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/s
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
 import { PartySelector, ItemSelector, UomSelector, WarehouseSelector, TaxCodeSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
 import { LinePriceSource, LinePriceSourceSelector } from '../../../components/shared/pricing/LinePriceSourceSelector';
+import { createDocumentPriceOverrideMenuItems, createLinePriceOverrideMenuItems } from '../../../components/shared/pricing/createPriceOverrideMenuItems';
+import { LinePriceOverrideBadge } from '../../../components/shared/pricing/LinePriceOverrideBadge';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { isPersonaAllowedByGovernance, resolveSalesWorkflowMode } from '../../../utils/documentPolicy';
 import { GlImpactModal } from '../components/GlImpactModal';
@@ -115,6 +118,19 @@ interface EditableLine {
    *  them as intentional free items rather than accidental duplicates. */
   appliedPromotionId?: string;
   appliedPromotionName?: string;
+  /**
+   * Per-line price-source override (Task 243 Part C). When set, this line
+   * resolves its unit price using the chosen source instead of the
+   * document's `linePriceSource`. null = use document source.
+   * Transient: stripped from buildLinePayload before posting.
+   */
+  priceSourceOverride?: LinePriceSource | null;
+  /**
+   * Per-line manual lock. When true, the line is NOT auto-resolved
+   * regardless of the document or per-line source. The user's typed
+   * price is preserved. Transient: stripped from buildLinePayload.
+   */
+  priceLocked?: boolean;
 }
 
 interface EditableCharge {
@@ -209,6 +225,15 @@ const SALES_INVOICE_REFERENCE_CACHE_TTL_MS = 5 * 60 * 1000;
 const salesInvoiceReferenceCache = new Map<string, SalesInvoiceReferenceCacheEntry>();
 
 const getPerfTime = (): number => (typeof performance !== 'undefined' ? performance.now() : Date.now());
+
+/**
+ * Document-level baseline `linePriceSource` (the company/party default).
+ * Task 243 Part C: the "Override" badge is shown when
+ * `form.linePriceSource !== LINE_PRICE_SOURCE_BASE`. Centralized so all
+ * four pricing pages and the Form-Designer renderer agree on the same
+ * fallback when a per-company setting is not yet exposed.
+ */
+export const LINE_PRICE_SOURCE_BASE: LinePriceSource = 'LAST_PARTY_PRICE';
 
 let lineUidSeq = 0;
 const nextLineUid = (): string => `ln_${Date.now().toString(36)}_${(lineUidSeq++).toString(36)}`;
@@ -1141,10 +1166,53 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       {
         id: 'price',
         label: t('sales.invoiceDetail.col.unitPrice', 'Unit Price'),
-        kind: 'number',
-        width: '82px',
-        accessor: (row) => row.unitPriceDoc,
-        setter: (value) => ({ unitPriceDoc: Number(value) }),
+        kind: 'custom',
+        width: '110px',
+        labelExtras:
+          !isReadOnly && form.linePriceSource !== LINE_PRICE_SOURCE_BASE ? (
+            <LinePriceOverrideBadge variant="document" source={form.linePriceSource} />
+          ) : undefined,
+        labelTitle: !isReadOnly
+          ? t(
+              'pricing.override.headerMenuTitle',
+              'Right-click the Unit Price column header to override the document source',
+            )
+          : undefined,
+        render: (row, _index, onChange) => {
+          if (isReadOnly) {
+            return (
+              <div className="flex items-center gap-1.5">
+                <span className="flex-1 text-right text-xs text-slate-800 dark:text-slate-200 tabular-nums">
+                  {row.unitPriceDoc ? Number(row.unitPriceDoc).toFixed(2) : '—'}
+                </span>
+                {row.priceLocked ? (
+                  <LinePriceOverrideBadge variant="lineLocked" source={null} compact />
+                ) : row.priceSourceOverride ? (
+                  <LinePriceOverrideBadge variant="line" source={row.priceSourceOverride} compact />
+                ) : null}
+              </div>
+            );
+          }
+          return (
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                inputMode="decimal"
+                value={row.unitPriceDoc ? String(row.unitPriceDoc) : ''}
+                disabled={busy}
+                onChange={(e) => onChange({ unitPriceDoc: Number(e.target.value) || 0 })}
+                onFocus={(event) => { try { event.currentTarget.select(); } catch { /* noop */ } }}
+                className="h-9 min-w-0 flex-1 bg-transparent px-2 text-right text-xs text-slate-900 outline-none focus:bg-blue-50/40 dark:text-slate-100 dark:focus:bg-blue-950/20 font-mono"
+                placeholder=""
+              />
+              {row.priceLocked ? (
+                <LinePriceOverrideBadge variant="lineLocked" source={null} compact />
+              ) : row.priceSourceOverride ? (
+                <LinePriceOverrideBadge variant="line" source={row.priceSourceOverride} compact />
+              ) : null}
+            </div>
+          );
+        },
       },
       {
         id: 'discountType',
@@ -1655,8 +1723,24 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       return { ...prev, lines };
     });
 
-    const shouldFetchPrice = patch.itemId !== undefined || patch.invoicedQty !== undefined;
+    // Task 243 Part C — re-resolve the price whenever the line context
+    // changes (item, qty, uom) OR the user explicitly toggles the
+    // per-line override/lock. A locked line is never re-resolved.
+    const overrideChanged = patch.priceSourceOverride !== undefined || patch.priceLocked !== undefined;
+    const shouldFetchPrice =
+      patch.itemId !== undefined ||
+      patch.invoicedQty !== undefined ||
+      patch.uomId !== undefined ||
+      patch.uom !== undefined ||
+      overrideChanged;
     if (shouldFetchPrice) {
+      const patchedLine: EditableLine = { ...form.lines[index], ...patch };
+      if (patchedLine.priceLocked) {
+        // Locked lines never auto-resolve.
+        return;
+      }
+      const effectiveSource: LinePriceSource =
+        patchedLine.priceSourceOverride ?? form.linePriceSource;
       const closureLine = form.lines[index];
       const resolvedItemId = patch.itemId !== undefined ? patch.itemId : closureLine?.itemId;
       const resolvedQty = patch.invoicedQty !== undefined ? patch.invoicedQty : closureLine?.invoicedQty ?? 1;
@@ -1673,7 +1757,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             exchangeRate: Number(form.exchangeRate || 1),
             uomId: resolvedUomId,
             uom: resolvedUom,
-            priceSource: form.linePriceSource,
+            priceSource: effectiveSource,
           })
           .then((result) => {
             if (result?.unitPrice != null) {
@@ -1699,6 +1783,12 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     await Promise.all(
       form.lines.map(async (line, index) => {
         if (!line.itemId) return;
+        // Per-line manual lock: skip auto-resolution entirely.
+        if (line.priceLocked) return;
+        // Per-line override takes precedence over the document source
+        // when the document source changes (otherwise per-line overrides
+        // would be silently overwritten by the document refresh).
+        const effectiveSource: LinePriceSource = line.priceSourceOverride ?? priceSource;
         try {
           const result = await salesMasterDataApi.getEffectivePrice({
             customerId: form.customerId,
@@ -1709,7 +1799,7 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
             exchangeRate: Number(form.exchangeRate || 1),
             uomId: line.uomId,
             uom: line.uom,
-            priceSource,
+            priceSource: effectiveSource,
           });
           if (result?.unitPrice != null) {
             setForm((latest) => {
@@ -1725,6 +1815,54 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
         }
       }),
     );
+  };
+
+  // Task 243 Part C — handlers invoked from the right-click context menu.
+  const handleDocumentPriceSourceOverride = (source: LinePriceSource) => {
+    if (form.linePriceSource === source) return;
+    setForm((prev) => ({ ...prev, linePriceSource: source }));
+    void refreshLinePrices(source);
+    toast.success(
+      t('pricing.override.toastDocumentOverrideSet', 'Document price source set to {{source}}', {
+        source: source.replace(/_/g, ' '),
+      }),
+    );
+  };
+  const handleResetDocumentPriceSource = () => {
+    if (form.linePriceSource === LINE_PRICE_SOURCE_BASE) return;
+    setForm((prev) => ({ ...prev, linePriceSource: LINE_PRICE_SOURCE_BASE }));
+    void refreshLinePrices(LINE_PRICE_SOURCE_BASE);
+    toast.success(
+      t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+    );
+  };
+  const handleLinePriceSourceOverride = (rowIndex: number | undefined, source: LinePriceSource | null) => {
+    if (rowIndex == null) return;
+    setLine(rowIndex, { priceSourceOverride: source, priceLocked: false });
+    if (source) {
+      toast.success(
+        t('pricing.override.toastLineOverrideSet', 'Line price source set to {{source}}', {
+          source: source.replace(/_/g, ' '),
+        }),
+      );
+    } else {
+      toast.success(
+        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+      );
+    }
+  };
+  const handleLinePriceLocked = (rowIndex: number | undefined, locked: boolean) => {
+    if (rowIndex == null) return;
+    setLine(rowIndex, { priceLocked: locked, priceSourceOverride: null });
+    if (locked) {
+      toast.success(
+        t('pricing.override.toastLineLocked', 'Line locked — price will not be auto-resolved'),
+      );
+    } else {
+      toast.success(
+        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
+      );
+    }
   };
 
   const addLine = () => { setForm((prev) => ({ ...prev, lines: [...prev.lines, createEmptyLine()] })); };
@@ -1816,6 +1954,10 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
 
   const buildLinePayload = (line: EditableLine, index: number): SalesInvoiceLineInputDTO => {
     const item = itemById[line.itemId];
+    // WARNING: this is a white-list mapper. The transient per-line override
+    // fields `priceSourceOverride` and `priceLocked` (Task 243 Part C) are
+    // UI-only and MUST NOT be spread into the DTO. They are intentionally
+    // omitted here so the override is naturally stripped before posting.
     return {
       lineId: line.lineId,
       lineNo: index + 1,
@@ -2754,6 +2896,46 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
           minRows={1}
           maxBodyHeight="none"
           className="flex-1 min-h-0"
+          columnContextMenus={
+            !isReadOnly
+              ? {
+                  price: createDocumentPriceOverrideMenuItems({
+                    currentDocumentSource: form.linePriceSource,
+                    baseSource: LINE_PRICE_SOURCE_BASE,
+                    onSelectDocumentSource: handleDocumentPriceSourceOverride,
+                    onResetDocumentSource: handleResetDocumentPriceSource,
+                  }),
+                }
+              : undefined
+          }
+          cellContextMenus={
+            !isReadOnly
+              ? {
+                  price: createLinePriceOverrideMenuItems({
+                    currentLineSource: null,
+                    currentLineLocked: false,
+                    onSelectLineSource: () => {
+                      // rowIndex is passed by the table via ColumnContextMenuItem.onSelect
+                    },
+                    onToggleLineLocked: () => {
+                      // rowIndex is passed by the table via ColumnContextMenuItem.onSelect
+                    },
+                  }).map((item) => ({
+                    ...item,
+                    onSelect: (rowIndex) => {
+                      if (item.key === 'line-manual') {
+                        handleLinePriceLocked(rowIndex, true);
+                      } else if (item.key === 'line-none') {
+                        handleLinePriceSourceOverride(rowIndex, null);
+                      } else {
+                        const source = item.key.replace(/^line-/, '') as LinePriceSource;
+                        handleLinePriceSourceOverride(rowIndex, source);
+                      }
+                    },
+                  })),
+                }
+              : undefined
+          }
         />
     );
   };
