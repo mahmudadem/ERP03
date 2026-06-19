@@ -90,6 +90,7 @@ import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
 import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { ErrorCategory, PostingError } from '../../../domain/shared/errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 
 export type SalesInvoicePersona = 'direct' | 'linked' | 'service';
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
@@ -993,12 +994,33 @@ export class PostSalesInvoiceUseCase {
       ? await this.salesInvoiceRepo.getById(companyId, idOrSI)
       : idOrSI;
 
-    if (!si) throw new Error('Invalid sales invoice state');
+    if (!si) {
+      throw new SalesRuleError(
+        ErrorCode.SALES_INVALID_STATE,
+        'Invalid sales invoice state',
+        { fieldHints: ['status'] },
+      );
+    }
 
     if (approvalContext && si.status === 'PENDING_APPROVAL') {
       si.status = 'DRAFT';
     }
-    if (si.status !== 'DRAFT') throw new Error('Invalid sales invoice state');
+    // Re-posting an already-POSTED invoice is rejected cleanly (no duplicate voucher) as a
+    // structured 4xx, instead of leaking a generic 500/INFRA_999. (Task 246.)
+    if (si.status === 'POSTED') {
+      throw new SalesRuleError(
+        ErrorCode.SALES_ALREADY_POSTED,
+        `Sales invoice ${si.invoiceNumber ?? si.id} is already POSTED.`,
+        { fieldHints: ['status'], context: { status: si.status } },
+      );
+    }
+    if (si.status !== 'DRAFT') {
+      throw new SalesRuleError(
+        ErrorCode.SALES_INVALID_STATE,
+        `Cannot post a sales invoice in status ${si.status}; it must be DRAFT.`,
+        { fieldHints: ['status'], context: { status: si.status } },
+      );
+    }
     const id = si.id;
 
     const customer = await this.partyRepo.getById(companyId, si.customerId);

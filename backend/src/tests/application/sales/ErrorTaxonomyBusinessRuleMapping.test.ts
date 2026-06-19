@@ -109,15 +109,20 @@ const buildPostUseCase = (deps: ReturnType<typeof makeDeps>) =>
   );
 
 describe('Task 246: Sales-invoice state guards map to a structured 4xx', () => {
-  it('re-posting an already-POSTED SI is an idempotent no-op (no error, no duplicate voucher)', async () => {
+  it('re-posting an already-POSTED SI → 400 SALES_ALREADY_POSTED, no duplicate voucher', async () => {
     const posted = new SalesInvoice({
       ...buildInvoice('POSTED', 1000), paymentStatus: 'PAID',
       paidAmountBase: 1000, outstandingAmountBase: 0,
     });
     const deps = makeDeps(posted);
     const useCase = buildPostUseCase(deps);
-    const result = await useCase.execute('cmp-1', posted.id, true);
-    expect(result).toBe(posted);
+    const err = await captureRejection(useCase.execute('cmp-1', posted.id, true));
+    const mapped = mapThroughErrorHandler(err);
+    expect(mapped.status).toBe(400);
+    expect(mapped.body.error.code).toBe(ErrorCode.SALES_ALREADY_POSTED);
+    expect(mapped.body.error.message).toMatch(/already POSTED/i);
+    expect(mapped.body.error.guard).toBe('sales');
+    // The clean reject must not create a duplicate voucher / ledger entry.
     expect(deps.ledgerRepo.recordForVoucher).not.toHaveBeenCalled();
     expect(deps.voucherRepo.save).not.toHaveBeenCalled();
   });

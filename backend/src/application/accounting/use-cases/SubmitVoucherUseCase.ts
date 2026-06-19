@@ -1,6 +1,8 @@
 import { IVoucherRepository } from '../../../domain/accounting/repositories/IVoucherRepository';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
+import { VoucherRuleError } from '../../../domain/accounting/errors/VoucherRuleError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { ApprovalPolicyService, ApprovalGateResult, AccountApprovalMetadata } from '../../../domain/accounting/policies/ApprovalPolicyService';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
 import { NotificationService } from '../../system/services/NotificationService';
@@ -69,9 +71,11 @@ export class SubmitVoucherUseCase {
     }
 
     if (voucher.status !== VoucherStatus.DRAFT && voucher.status !== VoucherStatus.REJECTED) {
-      throw new Error(
+      throw new VoucherRuleError(
+        ErrorCode.VOUCH_INVALID_STATUS,
         `Cannot submit voucher in status "${voucher.status}". ` +
-        `Voucher must be in DRAFT or REJECTED status.`
+        `Voucher must be in DRAFT or REJECTED status.`,
+        { fieldHints: ['status'], context: { status: voucher.status } },
       );
     }
 

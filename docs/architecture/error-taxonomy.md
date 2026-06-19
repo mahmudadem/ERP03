@@ -41,30 +41,24 @@ The three `*RuleError` classes share the same shape — extending `PostingError`
 
 ```
 SALES_001  SALES_TRANSITION_BLOCKED            (existing)
-SALES_002  SALES_NOT_FOUND                    (Task 246)
-SALES_003  SALES_INVALID_STATE                (Task 246)
-SALES_004  SALES_ALREADY_POSTED               (Task 246)
-SALES_005  SALES_SETTLEMENT_RULE_VIOLATION    (Task 246)
-SALES_006  SALES_OVERPAYMENT_NOT_ALLOWED      (Task 246)
-SALES_007  QUOTE_INVALID_STATE                (Task 246; was a free string)
+SALES_002  SALES_INVALID_STATE                 (Task 246 — wired)
+SALES_003  SALES_ALREADY_POSTED                (Task 246 — wired)
 
 PURCH_001  PURCHASES_TRANSITION_BLOCKED        (existing)
-PURCH_002  PURCHASES_INVALID_STATE            (Task 246)
-PURCH_003  PURCHASES_ALREADY_POSTED           (Task 246)
-PURCH_004  PURCHASES_SETTLEMENT_RULE_VIOLATION(Task 246)
-PURCH_005  PURCHASES_OVERPAYMENT_NOT_ALLOWED  (Task 246)
 
-VOUCH_001..011 (existing, including VOUCH_INVALID_STATUS = VOUCH_004)
+VOUCH_001..011 (existing, including VOUCH_INVALID_STATUS = VOUCH_004 — reused by Task 246)
 ```
+
+> The over-payment / settlement-rule sales rejections already use `SalesRuleError` (with the free-string codes `OVERPAYMENT_NOT_ALLOWED` / `SETTLEMENT_RULE_VIOLATION`) from Task 242 — they were already 4xx and were not touched by Task 246. The purchases mirror (`PurchaseRuleError`) exists as the designated purchases guard class but its throw sites are **not yet converted** (logged follow-up).
 
 ## 4. Worked example — the full envelope
 
 ```ts
 // In the use case:
 throw new SalesRuleError(
-  ErrorCode.SALES_OVERPAYMENT_NOT_ALLOWED,
-  'MULTI settlement total (1500) exceeds outstanding amount (1000). Enable "allow over-payment" in Sales settings to record the excess as a customer credit.',
-  { fieldHints: ['settlementTotal'], category: ErrorCategory.VALIDATION }
+  ErrorCode.SALES_INVALID_STATE,
+  `Cannot post a sales invoice in status ${si.status}; it must be DRAFT.`,
+  { fieldHints: ['status'], context: { status: si.status } }
 );
 ```
 
@@ -77,21 +71,17 @@ Content-Type: application/json
 {
   "success": false,
   "error": {
-    "code": "SALES_006",
-    "message": "MULTI settlement total (1500) exceeds outstanding amount (1000). Enable \"allow over-payment\" in Sales settings to record the excess as a customer credit.",
-    "category": "VALIDATION",
+    "code": "SALES_002",
+    "message": "Cannot post a sales invoice in status CANCELLED; it must be DRAFT.",
+    "category": "CONFLICT",
     "severity": "error",
     "guard": "sales",
     "details": {
       "violations": [
-        {
-          "code": "SALES_006",
-          "message": "MULTI settlement total (1500) exceeds outstanding amount (1000). Enable \"allow over-payment\" in Sales settings to record the excess as a customer credit.",
-          "fieldHints": ["settlementTotal"]
-        }
+        { "code": "SALES_002", "message": "Cannot post a sales invoice in status CANCELLED; it must be DRAFT.", "fieldHints": ["status"] }
       ]
     },
-    "fieldHints": ["settlementTotal"],
+    "fieldHints": ["status"],
     "timestamp": "2026-06-19T22:00:00.000Z"
   }
 }
@@ -103,61 +93,26 @@ The frontend `errorHandler.ts` already unwraps this envelope and pushes the `mes
 
 **When refusing a request, throw a `*RuleError extends PostingError` (or one of the existing specialized subclasses). Do not throw `new Error(...)` for lifecycle, state, settlement, or any other business-rule guard. The `errorHandler` will surface a 4xx with the right `code` and `guard`.**
 
-The single carve-out is idempotent re-post: if the operation has already completed (e.g. a `POSTED` invoice is being posted again), the use case returns the existing entity with the same status instead of throwing. The Functions emulator will respond 200 with the same body. Mirroring the existing `SubmitVoucherUseCase` precedent (`if (voucher.status === APPROVED) return voucher;`), this prevents legitimate retries from dressing as failures.
+There is **no** silent-200 carve-out. An already-completed operation (e.g. re-posting a `POSTED` invoice) is rejected with a clean **400** (`SALES_ALREADY_POSTED`) and creates no duplicate — a double action is *visibly* refused rather than silently swallowed. (This was a deliberate choice over the `SubmitVoucherUseCase` APPROVED-returns-voucher precedent; for posting, an explicit refusal is safer.)
 
 ## 6. Verifying the contract
 
-Two test files own this contract:
+Two jest suites own this contract (run via `npm --prefix backend test`):
 
-- `backend/src/tests/application/sales/SalesRuleErrorMapping.test.ts` — the legacy sales/quote/over-payment rejections (quote-lifecycle, over-payment guard, idempotent re-post). The pre-existing tests prove the new error envelope renders as 400 with the right `code` + `guard: 'sales'`.
-- `backend/src/tests/application/sales/ErrorTaxonomyBusinessRuleMapping.test.ts` — Task 246: idempotent re-post of an already-POSTED SI, posting a non-DRAFT SI, re-submitting a PENDING voucher, `VoucherEntity.submit` on a non-DRAFT voucher. 4 tests, all green.
-- `backend/scripts/task246-error-taxonomy-smoke.cjs` — uses the **compiled** `backend/lib/` (not the source), drives the real use cases through the real `errorHandler`, and asserts the captured HTTP status / body for each of the 4 confirmed scenarios plus a "real infra error stays 500" negative case. 6 scenarios, all green.
+- `backend/src/tests/application/sales/SalesRuleErrorMapping.test.ts` — pre-existing: proves sales rejections render as 400 with the right `code` + `guard: 'sales'`.
+- `backend/src/tests/application/sales/ErrorTaxonomyBusinessRuleMapping.test.ts` — Task 246: re-post of an already-POSTED SI → 400 `SALES_ALREADY_POSTED` (no duplicate voucher); posting a non-DRAFT SI → 400 `SALES_INVALID_STATE`; re-submitting a PENDING voucher → 400 `VOUCH_INVALID_STATUS`; `VoucherEntity.submit` on an APPROVED voucher → 400 `VOUCH_INVALID_STATUS`. 4 tests, all green.
 
-```
-$ node backend/scripts/task246-error-taxonomy-smoke.cjs
-Task 246 — Error taxonomy business-rule 4xx smoke
----
-Scenario 1: Quote lifecycle (DRAFT -> accept/convert)
-  PASS status: 400
-  PASS code: "SALES_007"
-  PASS guard: "sales"
-Scenario 2: Over-payment guard (flag OFF)
-  PASS status: 400
-  PASS code: "SALES_006"
-  PASS guard: "sales"
-Scenario 3: Re-posting an already-POSTED SI
-  PASS status: 400
-  PASS code: "SALES_003"
-  PASS guard: "sales"
-  PASS message contains CANCELLED
-Scenario 4: Re-submitting an already-PENDING voucher
-  PASS status: 400
-  PASS code: "VOUCH_004"
-  PASS guard: "accounting"
-  PASS message contains pending
-Scenario 5: VoucherEntity.submit on APPROVED voucher
-  PASS status: 400
-  PASS code: "VOUCH_004"
-  PASS guard: "accounting"
-  PASS message contains approved
-Scenario 6: Genuine infra error stays 500 (no over-classification)
-  PASS status: 500
-  PASS code: "INFRA_999"
-  PASS severity: "critical"
----
-SMOKE PASSED
-```
+The full sales + accounting + domain-accounting groups (61 suites / 505 tests) pass with these changes.
 
 ## 7. What changed in Task 246
 
-For the 4 confirmed leak sites in the QA findings:
+The 3 genuine leak sites (the over-payment guard was already 4xx from Task 242):
 
-1. `backend/src/application/sales/use-cases/SalesInvoiceUseCases.ts:996` — not-found: `new SalesRuleError(ErrorCode.SALES_NOT_FOUND, …)`. 400 / `SALES_002`.
-2. `backend/src/application/sales/use-cases/SalesInvoiceUseCases.ts:1001` — non-DRAFT status: now **idempotent re-post** for `POSTED` (returns the existing invoice, no duplicate voucher) and a clean 4xx for everything else. 200 (idempotent) / 400 (other) / `SALES_003`.
-3. `backend/src/application/accounting/use-cases/SubmitVoucherUseCase.ts:72` — non-DRAFT/REJECTED status: `new VoucherRuleError(ErrorCode.VOUCH_INVALID_STATUS, …)`. 400 / `VOUCH_004`.
-4. `backend/src/domain/accounting/entities/VoucherEntity.ts:335` — same guard, same code, same shape. 400 / `VOUCH_004`.
+1. `SalesInvoiceUseCases.ts` `PostSalesInvoiceUseCase.execute` — not-found → `SalesRuleError(SALES_INVALID_STATE)`; already-`POSTED` → `SalesRuleError(SALES_ALREADY_POSTED)` (no duplicate voucher); other non-`DRAFT` → `SalesRuleError(SALES_INVALID_STATE)`. All 400.
+2. `SubmitVoucherUseCase.ts` — non-DRAFT/REJECTED submit → `VoucherRuleError(VOUCH_INVALID_STATUS)`. 400.
+3. `VoucherEntity.ts` `submit()` — same guard / code. 400.
 
-Sibling conversions (audit step in §2 of Task 246): `VoucherEntity` lifecycle methods (`approve`, `cancel`, `post`, `reject`, `createReversal`, `satisfyFinancialApproval`, `confirmCustody`) and `VoucherApprovalUseCases` now throw `VoucherRuleError` for their status guards. The purchases mirror (`PurchaseOrderUseCases`, `PurchaseInvoiceUseCases`, `PurchaseReturnUseCases`, `PaymentSyncUseCases`) throws `PurchaseRuleError` for the same class of guard. **Genuine infrastructure errors are unchanged — those still surface as 500 / `INFRA_999` / `critical`.**
+**Not done (logged follow-up):** the purchases mirror. `PurchaseRuleError` exists as the designated purchases guard class, but `PurchaseInvoiceUseCases` / `PurchaseOrderUseCases` / `PurchaseReturnUseCases` / purchases `PaymentSyncUseCases` throw sites were **not** converted — there is no QA-confirmed 500 leak there today. The `VoucherEntity` lifecycle methods beyond `submit` were also left as-is. **Genuine infrastructure errors are unchanged — still 500 / `INFRA_999` / `critical`.**
 
 ## 8. Frontend impact
 

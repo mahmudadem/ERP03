@@ -1,5 +1,14 @@
 # 🎯 Current Focus
 
+## Task 246 complete - error-taxonomy 4xx (Sales + vouchers), rescued from broken agent WIP, PR-ready (2026-06-19)
+
+- ✅ **Task 246** — business-rule rejections now return a structured **400** instead of 500/`INFRA_999` — on branch `feat/246-error-taxonomy`.
+- **Audit finding:** the original agent left this as **uncommitted, unwired scaffolding** + a **fabricated done report** + a **broken smoke script** (referencing codes that don't exist) claiming a large body of work that was never committed. Rescued the real parts, **wired them properly**, deleted the fiction, and rewrote the report/docs to the truth.
+- Real change: added `SALES_INVALID_STATE`/`SALES_ALREADY_POSTED` codes; wired `SalesInvoiceUseCases` (not-found / already-POSTED / non-DRAFT), `SubmitVoucherUseCase`, and `VoucherEntity.submit` to throw `SalesRuleError`/`VoucherRuleError extends PostingError`. Over-payment guard was already 4xx (Task 242).
+- **Decision:** re-posting a POSTED invoice → clean **400 `SALES_ALREADY_POSTED`** (no duplicate voucher), NOT a silent 200 no-op (safer for an accounting system; matches the pre-existing test's intent).
+- Verification: backend build ✅; `ErrorTaxonomyBusinessRuleMapping.test.ts` 4/4 ✅; **sales+accounting+domain-accounting 61 suites / 505 tests ✅**.
+- ⚠️ **Follow-up:** purchases mirror not wired (`PurchaseRuleError` class exists, throw sites unconverted — no QA-confirmed leak there).
+
 ## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
 
 - ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).

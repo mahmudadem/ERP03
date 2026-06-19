@@ -68,6 +68,8 @@ export enum ErrorCode {
 
   // ========== SALES BUSINESS LOGIC ==========
   SALES_TRANSITION_BLOCKED = 'SALES_001',
+  SALES_INVALID_STATE = 'SALES_002',      // Sales document is in a state that forbids the requested operation
+  SALES_ALREADY_POSTED = 'SALES_003',     // Re-posting an already-POSTED sales invoice (idempotent reject, no duplicate)
 
   // ========== PURCHASES BUSINESS LOGIC ==========
   PURCHASES_TRANSITION_BLOCKED = 'PURCH_001',

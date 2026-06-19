@@ -1,6 +1,8 @@
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../types/VoucherTypes';
 import { VoucherLineEntity, MONEY_EPS, moneyEquals, roundMoney } from './VoucherLineEntity';
 import { LedgerEntry } from '../models/LedgerEntry';
+import { VoucherRuleError } from '../errors/VoucherRuleError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 
 
 /**
@@ -332,7 +334,11 @@ export class VoucherEntity {
    */
   submit(submittedBy: string): VoucherEntity {
     if (this.status !== VoucherStatus.DRAFT && this.status !== VoucherStatus.REJECTED) {
-      throw new Error(`Cannot submit voucher in status: ${this.status}`);
+      throw new VoucherRuleError(
+        ErrorCode.VOUCH_INVALID_STATUS,
+        `Cannot submit voucher in status: ${this.status}`,
+        { fieldHints: ['status'], context: { status: this.status } },
+      );
     }
 
     return new VoucherEntity(

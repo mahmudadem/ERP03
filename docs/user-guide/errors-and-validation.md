@@ -24,7 +24,7 @@ The sales invoice is not in **Draft** (or **Pending Approval** with an approval 
 **Fix:**
 - If the invoice is **Pending Approval**: open the Approval Center, review the invoice, and approve it; then retry Post.
 - If the invoice is **Cancelled** or already **Posted**: you can't post it again. Open a new invoice instead.
-- **Side benefit:** re-clicking **Post** on a **Posted** invoice is now a no-op (returns the same invoice, doesn't create a duplicate voucher). The system used to throw 500 here; now it just succeeds.
+- **Side benefit:** re-clicking **Post** on a **Posted** invoice now shows a clear "already POSTED" message and **never creates a duplicate voucher**. The system used to throw a scary "Request failed with status code 500" here; now it's a clean, readable refusal.
 
 ## Purchases
 
@@ -39,7 +39,9 @@ Same idea as the sales over-payment guard, but for vendor bills. By default the 
 **Fix:** reduce the settlement amount, or turn on **Allow over-payment** under **Purchase → Settings → Settlement** to record the excess as a vendor credit.
 
 ### "Only DRAFT purchase invoices can be posted"
-The bill is not in Draft. **Posted** bills can't be re-posted (no duplicate voucher) — the second click is a no-op and you can move on. Other statuses (Cancelled, Pending Approval without context) need a different action: open the bill and check the status pill.
+The bill is not in Draft. **Posted** bills can't be re-posted and won't create a duplicate voucher. Other statuses (Cancelled, Pending Approval without context) need a different action: open the bill and check the status pill.
+
+> Note: the *Purchases* error-message wording is still surfaced, but the purchases throw sites have not yet been converted to the structured 4xx envelope (Task 246 covered Sales + vouchers). See the architecture doc's "logged follow-up".
 
 ## Accounting
 

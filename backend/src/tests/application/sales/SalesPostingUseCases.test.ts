@@ -1283,7 +1283,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const first = await useCase.execute(COMPANY_ID, si.id);
     expect(first.status).toBe('POSTED');
 
-    await expect(useCase.execute(COMPANY_ID, si.id)).rejects.toThrow('Invalid sales invoice state');
+    await expect(useCase.execute(COMPANY_ID, si.id)).rejects.toThrow(/already POSTED/i);
     expect(inventoryService.writeStockMovement).toHaveBeenCalledTimes(1);
     expect(inventoryService.writeStockLevel).toHaveBeenCalledTimes(1);
     expect(itemRepo.updateItemInTransaction).toHaveBeenCalledTimes(1);
