@@ -20,6 +20,23 @@
 
 ## Next action (owner + CTO)
 Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./done/247-pos-module.md#consolidated-manual-test-script-owner-runnable) end-to-end on a fresh company with the POS module entitled. Each step is a single API call or a single UI flow. The cash-drawer / over-short paths are the headline to exercise first; the split-payment and CASH-change paths are the second headline.
+## Task 246B complete - Sales Gross Profit report UI ready for owner QA (2026-06-20)
+
+- ✅ **Done on `codex/246-sales-gross-profit-ui`:**
+  - Added two Sales report pages under the mandatory `ReportContainer` shell:
+    - `/sales/reports/gross-profit/by-document`
+    - `/sales/reports/gross-profit/by-item`
+  - Added Sales -> Reports menu entries for **Gross Profit by Document** and **Gross Profit by Item**.
+  - Added `salesReportingApi.getGrossProfitByDocument()` and `getGrossProfitByItem()` client methods.
+  - Filters: date range, document scope, shared item selector, document currency, row limit.
+  - Mixed document-currency groups display `docCurrencyBreakdown[]` instead of a fake summed currency amount.
+  - Updated architecture/user docs and completion report.
+- ✅ **Verification:** `npm --prefix frontend run check:reports` ✅, `npm --prefix frontend run typecheck` ✅, `npm --prefix frontend run build` ✅.
+- **Accounting/ERP impact:** UI/reporting only. No GL voucher, COGS posting, inventory valuation, tax, AR/AP, FX revaluation, period lock, or approval behavior changed.
+
+## Next action
+
+Open a PR for `codex/246-sales-gross-profit-ui`, then owner QA should test both pages from Sales -> Reports using default filters, sales-invoice-only, sales-return-only, item filter, document-currency filter, and a mixed-currency grouping.
 
 ## Task 246 PR review fixes ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
 
@@ -37,9 +54,9 @@ Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./d
 - **Known v1 limitation:** SR/PR entities don't persist net post-discount, post-tax line totals. SR/PR profit facts use gross amounts. Documented as a follow-up.
 - **Freeze note:** Task was marked "post-freeze candidate". Owner explicitly authorized this work despite the 2026-06-13 freeze.
 
-## Next action
+## Prior next action
 
-Merge PR #29 after review/CI, then schedule frontend slice (ReportContainer + module menu wiring for the 2 gross-profit reports). Documented follow-ups: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration, optional purchase/all-document management report.
+PR #29 was merged; this follow-up frontend slice is complete. Documented follow-ups remain: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration, optional purchase/all-document management report.
 
 ## Task 245 UX sweep complete - cherry-picked onto current main, PR-ready (2026-06-19)
 

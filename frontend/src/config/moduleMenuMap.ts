@@ -137,6 +137,8 @@ export const moduleMenuMap: Record<
           { label: 'AR Aging', path: '/sales/reports/ar-aging', icon: 'Clock3' },
           { label: 'Customer Statement', path: '/sales/reports/customer-statement', icon: 'ScrollText' },
           { label: 'Sales Analytics', path: '/sales/reports/sales-analytics', icon: 'PieChart' },
+          { label: 'Gross Profit by Document', path: '/sales/reports/gross-profit/by-document', icon: 'ReceiptText' },
+          { label: 'Gross Profit by Item', path: '/sales/reports/gross-profit/by-item', icon: 'PackageCheck' },
           { label: 'Aged Backlog', path: '/sales/aged-backlog', icon: 'Clock3' },
         ],
       },

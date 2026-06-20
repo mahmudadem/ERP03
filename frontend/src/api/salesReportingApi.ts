@@ -179,9 +179,95 @@ export interface SalesBySalespersonReportDTO {
   totals: SalesBySalespersonTotalsDTO;
 }
 
+// Gross Profit Facts
+
+export type GrossProfitDocumentType =
+  | 'SALES_INVOICE'
+  | 'SALES_RETURN'
+  | 'PURCHASE_INVOICE'
+  | 'PURCHASE_RETURN';
+
+export interface GrossProfitFilters {
+  fromDate?: string;
+  toDate?: string;
+  documentType?: GrossProfitDocumentType | GrossProfitDocumentType[];
+  itemId?: string;
+  docCurrency?: string;
+  limit?: number;
+}
+
+export interface GrossProfitCurrencyTotalsDTO {
+  docCurrency: string;
+  revenueAmountDocIn: number;
+  costAmountDocIn: number;
+  profitAmountDocIn: number;
+  revenueAmountDocOut: number;
+  costAmountDocOut: number;
+  profitAmountDocOut: number;
+  profitAmountDocNet: number;
+}
+
+export interface GrossProfitRowDTO {
+  groupKey: string;
+  groupLabel: string;
+  lineCount: number;
+  revenueAmountBaseIn: number;
+  revenueAmountDocIn: number;
+  costAmountBaseIn: number;
+  costAmountDocIn: number;
+  profitAmountBaseIn: number;
+  profitAmountDocIn: number;
+  revenueAmountBaseOut: number;
+  revenueAmountDocOut: number;
+  costAmountBaseOut: number;
+  costAmountDocOut: number;
+  profitAmountBaseOut: number;
+  profitAmountDocOut: number;
+  profitAmountBaseNet: number;
+  docCurrency: string | null;
+  hasMixedDocCurrencies: boolean;
+  profitAmountDocNet: number;
+  docCurrencyBreakdown: GrossProfitCurrencyTotalsDTO[];
+}
+
+export interface GrossProfitTotalsDTO {
+  lineCount: number;
+  profitBaseNet: number;
+  profitBaseIn: number;
+  profitBaseOut: number;
+  revenueBaseIn: number;
+  revenueBaseOut: number;
+  costBaseIn: number;
+  costBaseOut: number;
+}
+
+export interface GrossProfitReportDTO {
+  fromDate?: string;
+  toDate?: string;
+  documentType?: GrossProfitDocumentType | GrossProfitDocumentType[];
+  rows: GrossProfitRowDTO[];
+  totals: GrossProfitTotalsDTO;
+}
+
 // ─── unwrap helper ────────────────────────────────────────────────────────────
 
-const unwrap = <T>(payload: any): T => (payload?.data ?? payload) as T;
+const unwrap = <T>(payload: any): T => (payload?.data?.data ?? payload?.data ?? payload) as T;
+
+const mapGrossProfitParams = (params?: GrossProfitFilters) => {
+  if (!params) return undefined;
+  const documentType = Array.isArray(params.documentType)
+    ? params.documentType.join(',')
+    : params.documentType;
+
+  return {
+    from: params.fromDate,
+    to: params.toDate,
+    documentType,
+    itemId: params.itemId,
+    docCurrency: params.docCurrency,
+    limit: params.limit,
+  };
+};
 
 // ─── API Object ──────────────────────────────────────────────────────────────
 
@@ -200,4 +286,10 @@ export const salesReportingApi = {
 
   getSalesBySalesperson: (params?: { fromDate?: string; toDate?: string }): Promise<SalesBySalespersonReportDTO> =>
     client.get('/tenant/sales/reports/sales-by-salesperson', { params }).then(unwrap<SalesBySalespersonReportDTO>),
+
+  getGrossProfitByDocument: (params?: GrossProfitFilters): Promise<GrossProfitReportDTO> =>
+    client.get('/tenant/sales/reports/gross-profit/by-document', { params: mapGrossProfitParams(params) }).then(unwrap<GrossProfitReportDTO>),
+
+  getGrossProfitByItem: (params?: GrossProfitFilters): Promise<GrossProfitReportDTO> =>
+    client.get('/tenant/sales/reports/gross-profit/by-item', { params: mapGrossProfitParams(params) }).then(unwrap<GrossProfitReportDTO>),
 };
