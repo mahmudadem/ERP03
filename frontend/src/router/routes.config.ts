@@ -161,6 +161,8 @@ const AgedBacklogPage = lazy(() => import('../modules/sales/pages/AgedBacklogPag
 const ArAgingReportPage = lazy(() => import('../modules/sales/pages/ArAgingReportPage'));
 const CustomerStatementPage = lazy(() => import('../modules/sales/pages/CustomerStatementPage'));
 const SalesAnalyticsPage = lazy(() => import('../modules/sales/pages/SalesAnalyticsPage'));
+const SalesGrossProfitByDocumentPage = lazy(() => import('../modules/sales/pages/SalesGrossProfitByDocumentPage'));
+const SalesGrossProfitByItemPage = lazy(() => import('../modules/sales/pages/SalesGrossProfitByItemPage'));
 const RecurringInvoicesPage = lazy(() => import('../modules/sales/pages/RecurringInvoicesPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
@@ -374,6 +376,8 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/reports/ar-aging', label: 'AR Aging', component: ArAgingReportPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/reports/customer-statement', label: 'Customer Statement', component: CustomerStatementPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/reports/sales-analytics', label: 'Sales Analytics', component: SalesAnalyticsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/gross-profit/by-document', label: 'Gross Profit by Document', component: SalesGrossProfitByDocumentPage, section: 'INVENTORY', requiredPermission: 'accounting.reports.tradingAccount.view', requiredModule: 'sales' },
+  { path: '/sales/reports/gross-profit/by-item', label: 'Gross Profit by Item', component: SalesGrossProfitByItemPage, section: 'INVENTORY', requiredPermission: 'accounting.reports.tradingAccount.view', requiredModule: 'sales' },
   { path: '/sales/recurring-invoices', label: 'Recurring Invoices', component: RecurringInvoicesPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Dynamic Sales Documents (designed in Forms Designer)

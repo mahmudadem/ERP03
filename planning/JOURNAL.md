@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-20 (Task 246B — Sales Gross Profit report UI)
+
+- **Goal:** Finish the frontend for the already-merged Task 246 backend so the owner can QA Gross Profit by Document and Gross Profit by Item from the Sales module.
+- **What was done:** Created a shared `SalesGrossProfitReportPage` implementation plus two routed pages. Added frontend API DTOs/methods for `/tenant/sales/reports/gross-profit/by-document` and `/by-item`, mapped `fromDate/toDate` to backend `from/to`, wired both routes into `routes.config.ts`, added both entries under Sales -> Reports in `moduleMenuMap.ts`, and added `common.salesGrossProfit` i18n keys in en/ar/tr.
+- **Accounting/ERP impact:** Reporting UI only. No GL vouchers, stock movements, COGS, valuation, tax, AR/AP, approval, period lock, or FX revaluation behavior changed. The UI defaults to sales-side facts and exposes purchase-side facts only when the user explicitly chooses all tracked document types or purchase-only scopes.
+- **Docs updated:** `docs/architecture/reporting.md`, `docs/user-guide/reporting/sales-gross-profit.md`, and `planning/done/246b-sales-gross-profit-frontend.md`.
+- **Verification:** `npm --prefix frontend run check:reports` passed; `npm --prefix frontend run typecheck` passed; `npm --prefix frontend run build` passed with existing Vite bundle-size / Browserslist / baseline-browser-mapping warnings only.
+- **Time spent:** ~1.8h.
+- **Next:** Open a PR for `codex/246-sales-gross-profit-ui`. Owner QA should test both Sales -> Reports pages with default sales scope, invoice-only/return-only scope, item filter, document-currency filter, and mixed-currency rows.
+
 ### Session: 2026-06-20 (Task 246 — PR #29 review fixes before merge)
 
 - **Goal:** Review and harden PR #29 before merge, then merge only if the branch is clean enough for owner/Codex QA.

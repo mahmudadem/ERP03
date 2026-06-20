@@ -1,8 +1,9 @@
 # Reporting Architecture (Sales Gross Profit — Task 246)
 
-> Status: **Live** on `codex/246-sales-gross-profit-facts` (PR-ready). Owner
-> has authorized this work despite the 2026-06-13 feature freeze (task
-> marked "post-freeze candidate").
+> Status: **Backend merged in PR #29; frontend report pages added in
+> `codex/246-sales-gross-profit-ui`.** Owner has authorized this work
+> despite the 2026-06-13 feature freeze (task marked "post-freeze
+> candidate").
 
 ## Scope
 
@@ -263,6 +264,36 @@ without changing the use-case contract).
 Query params: `from`, `to` (ISO YYYY-MM-DD), `documentType` (single
 or comma-separated), `itemId`, `docCurrency`, `limit`.
 
+## Frontend Report Pages
+
+The UI slice exposes the two endpoints through the mandatory report
+shell:
+
+| Sidebar entry | Route | Page |
+|---------------|-------|------|
+| Sales -> Reports -> Gross Profit by Document | `/sales/reports/gross-profit/by-document` | `SalesGrossProfitByDocumentPage` |
+| Sales -> Reports -> Gross Profit by Item | `/sales/reports/gross-profit/by-item` | `SalesGrossProfitByItemPage` |
+
+Both pages reuse `ReportContainer` and are registered in
+`frontend/src/config/moduleMenuMap.ts`, so `frontend/scripts/check-reports.mjs`
+can enforce the report-page convention. The shared implementation lives
+in `frontend/src/modules/sales/pages/SalesGrossProfitReportPage.tsx`.
+
+Frontend filters:
+
+- `fromDate` / `toDate` are mapped to backend `from` / `to`.
+- Document scope defaults to sales-side facts (`SALES_INVOICE` +
+  `SALES_RETURN`) by omitting `documentType`, matching the backend
+  default.
+- Item uses the shared `ItemSelector`, not a free-text item id field.
+- Document currency is an optional 3-letter filter.
+- Row limit is explicit to prevent unbounded report reads.
+
+The table displays base-currency IN/OUT/net values and shows
+document-currency profit per row. Mixed-currency grouped rows use the
+API's `docCurrencyBreakdown[]`; the UI does not display a single fake
+document-currency total for USD + TRY + EUR rows.
+
 ## What the Owner Will See in Reports
 
 - **Per document** (e.g. SI-00001): one row showing revenue IN/OUT,
@@ -278,9 +309,6 @@ or comma-separated), `itemId`, `docCurrency`, `limit`.
 
 ## Future / Out of Scope
 
-- **Frontend report pages** — separate slice. The two backend endpoints
-  are ready; the frontend `ReportContainer` + module menu wiring is a
-  follow-up.
 - **Purchase-side reporting UI** — the read model stores PI/PR facts,
   but the sales endpoints default to SI/SR. A separate purchase or
   all-document management report can expose PI/PR by default if the

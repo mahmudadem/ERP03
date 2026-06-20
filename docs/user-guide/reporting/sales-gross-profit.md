@@ -31,19 +31,19 @@ Accounting → Reports. The two report families are complementary.
 
 ## How to Open
 
-(Sidebar — once the frontend pages ship; the backend is ready now.)
-
 - **Sales → Reports → Gross Profit by Document**
 - **Sales → Reports → Gross Profit by Item**
 
-Backend endpoints (already live, for any direct consumer):
+Direct API endpoints for integrations:
 
 - `GET /api/v1/sales/reports/gross-profit/by-document`
 - `GET /api/v1/sales/reports/gross-profit/by-item`
 
-You can filter by date range, document type, item, or document
-currency. All filters are optional; leave them off to see the sales
-history (`SALES_INVOICE` and `SALES_RETURN`).
+You can filter by date range, document scope, item, document currency,
+and row limit. Leave document scope on **Sales invoices and returns**
+to see the normal sales history (`SALES_INVOICE` and `SALES_RETURN`).
+Use **All tracked document types** only when you intentionally want the
+purchase-side facts in the same management analysis.
 
 ## How to Read the Output
 
