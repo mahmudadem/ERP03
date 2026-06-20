@@ -175,18 +175,50 @@ export class OnboardingController {
         autoInitializeModules,
         starterTemplateId,
         accountingMode,
+        coaTemplate,
+        costingBasis,
+        defaultWarehouseCode,
+        defaultWarehouseName,
+        salesWorkflowMode,
+        purchaseWorkflowMode,
       } = req.body;
       const normalizedCurrency = typeof currency === 'string' ? currency.trim().toUpperCase() : '';
       const normalizedAccountingMode =
         accountingMode === 'PERIODIC' || accountingMode === 'INVOICE_DRIVEN' || accountingMode === 'PERPETUAL'
           ? accountingMode
           : undefined;
+      const normalizedCoaTemplate =
+        coaTemplate === 'periodic_trading' || coaTemplate === 'standard' ? coaTemplate : undefined;
+      const normalizedCostingBasis =
+        costingBasis === 'GLOBAL' || costingBasis === 'WAREHOUSE' ? costingBasis : undefined;
+      const normalizedSalesWorkflowMode =
+        salesWorkflowMode === 'SIMPLE' || salesWorkflowMode === 'OPERATIONAL' ? salesWorkflowMode : undefined;
+      const normalizedPurchaseWorkflowMode =
+        purchaseWorkflowMode === 'SIMPLE' || purchaseWorkflowMode === 'OPERATIONAL' ? purchaseWorkflowMode : undefined;
 
       if (autoInitializeModules && !normalizedCurrency) {
         return next(ApiError.badRequest('Base currency is required before auto-initializing the Simple Trading Company template.'));
       }
       if (autoInitializeModules && accountingMode && !normalizedAccountingMode) {
         return next(ApiError.badRequest('accountingMode must be PERIODIC, INVOICE_DRIVEN, or PERPETUAL.'));
+      }
+      if (autoInitializeModules && coaTemplate !== undefined && !normalizedCoaTemplate) {
+        return next(ApiError.badRequest('coaTemplate must be "periodic_trading" or "standard".'));
+      }
+      if (autoInitializeModules && costingBasis !== undefined && !normalizedCostingBasis) {
+        return next(ApiError.badRequest('costingBasis must be "GLOBAL" or "WAREHOUSE".'));
+      }
+      if (autoInitializeModules && salesWorkflowMode !== undefined && !normalizedSalesWorkflowMode) {
+        return next(ApiError.badRequest('salesWorkflowMode must be "SIMPLE" or "OPERATIONAL".'));
+      }
+      if (autoInitializeModules && purchaseWorkflowMode !== undefined && !normalizedPurchaseWorkflowMode) {
+        return next(ApiError.badRequest('purchaseWorkflowMode must be "SIMPLE" or "OPERATIONAL".'));
+      }
+      if (autoInitializeModules && defaultWarehouseCode !== undefined && (typeof defaultWarehouseCode !== 'string' || !defaultWarehouseCode.trim())) {
+        return next(ApiError.badRequest('defaultWarehouseCode must be a non-empty string.'));
+      }
+      if (autoInitializeModules && defaultWarehouseName !== undefined && (typeof defaultWarehouseName !== 'string' || !defaultWarehouseName.trim())) {
+        return next(ApiError.badRequest('defaultWarehouseName must be a non-empty string.'));
       }
 
       // We need a resolver instance
@@ -217,8 +249,8 @@ const useCase = new CreateCompanyUseCase(
         bundleId,
         logoData,
         currency: normalizedCurrency || currency,
-        language, 
-        timezone, 
+        language,
+        timezone,
         dateFormat,
         autoInitializeModules,
         starterTemplateId,
@@ -255,6 +287,12 @@ const useCase = new CreateCompanyUseCase(
           userId,
           baseCurrency: normalizedCurrency,
           accountingMode: normalizedAccountingMode,
+          coaTemplate: normalizedCoaTemplate,
+          costingBasis: normalizedCostingBasis,
+          defaultWarehouseCode: typeof defaultWarehouseCode === 'string' ? defaultWarehouseCode : undefined,
+          defaultWarehouseName: typeof defaultWarehouseName === 'string' ? defaultWarehouseName : undefined,
+          salesWorkflowMode: normalizedSalesWorkflowMode,
+          purchaseWorkflowMode: normalizedPurchaseWorkflowMode,
         });
       }
 

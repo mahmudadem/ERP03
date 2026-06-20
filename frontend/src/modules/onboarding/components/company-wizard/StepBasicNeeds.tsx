@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { CheckCircle2, Coins, ReceiptText, ShieldCheck, Wand2 } from 'lucide-react';
+import { CheckCircle2, ChevronDown, ChevronUp, Coins, ReceiptText, Settings2, ShieldCheck, Wand2, Warehouse } from 'lucide-react';
 import { WizardStepProps } from './types';
 import { getCountryDefaults } from '../../../accounting/utils/countryDefaults';
 import { STARTER_MODE_OPTIONS, getStarterModeOption } from './starterModeOptions';
@@ -44,8 +44,16 @@ const LANGUAGE_OPTIONS = [
 export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack }) => {
   const { t } = useTranslation('common');
   const [error, setError] = React.useState('');
+  const [advancedOpen, setAdvancedOpen] = React.useState(false);
   const isStarterEnabled = data.autoInitializeModules !== false;
   const selectedMode = getStarterModeOption(data.accountingMode);
+
+  // NOTE-01: track which advanced fields the user has explicitly touched so
+  // changing the mode still updates the others back to the mode default.
+  const [touchedFields, setTouchedFields] = React.useState<Record<string, boolean>>({});
+  const markTouched = React.useCallback((field: string) => {
+    setTouchedFields((prev) => (prev[field] ? prev : { ...prev, [field]: true }));
+  }, []);
 
   const countryDefaults = React.useMemo(() => {
     return data.country ? getCountryDefaults(data.country) : getCountryDefaults('');
@@ -63,6 +71,28 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
       updateData(defaults);
     }
   }, [countryDefaults, data.currency, data.dateFormat, data.language, data.timezone, updateData]);
+
+  // NOTE-01: when the user changes the mode, auto-sync the editable policies
+  // to the mode default — but only for fields the user hasn't touched.
+  React.useEffect(() => {
+    if (!isStarterEnabled) return;
+    const next: Partial<typeof data> = {};
+    if (!touchedFields.coaTemplate && data.coaTemplate !== selectedMode.coaTemplate) {
+      next.coaTemplate = selectedMode.coaTemplate;
+    }
+    if (!touchedFields.costingBasis && data.costingBasis !== selectedMode.costingBasis) {
+      next.costingBasis = selectedMode.costingBasis;
+    }
+    if (!touchedFields.salesWorkflowMode && data.salesWorkflowMode !== selectedMode.salesWorkflowMode) {
+      next.salesWorkflowMode = selectedMode.salesWorkflowMode;
+    }
+    if (!touchedFields.purchaseWorkflowMode && data.purchaseWorkflowMode !== selectedMode.purchaseWorkflowMode) {
+      next.purchaseWorkflowMode = selectedMode.purchaseWorkflowMode;
+    }
+    if (Object.keys(next).length > 0) {
+      updateData(next);
+    }
+  }, [data.accountingMode, isStarterEnabled, selectedMode, touchedFields, data.coaTemplate, data.costingBasis, data.salesWorkflowMode, data.purchaseWorkflowMode, updateData]);
 
   const currencyOptions = React.useMemo(() => {
     return Array.from(new Set([suggestedCurrency, data.currency, ...COMMON_CURRENCIES].filter(Boolean)));
@@ -259,6 +289,148 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* NOTE-01: editable policy overrides. Defaults follow the
+                      chosen mode unless the user picks something different. */}
+                  <div className="mt-4 border-t border-slate-100 pt-4">
+                    <button
+                      type="button"
+                      onClick={() => setAdvancedOpen((value) => !value)}
+                      className="flex w-full items-center justify-between rounded-md border border-slate-200 bg-white px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-50"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Settings2 size={14} aria-hidden={true} />
+                        {t('onboarding.companyWizard.needs.advanced.toggle', { defaultValue: 'Customize starter policies (COA, costing, workflow)' })}
+                      </span>
+                      {advancedOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                    </button>
+                    {advancedOpen && (
+                      <div className="mt-3 space-y-3 rounded-md border border-slate-200 bg-slate-50/60 p-3">
+                        <div>
+                          <label htmlFor="wizard-coa" className="block text-xs font-semibold text-slate-600">
+                            {t('onboarding.companyWizard.needs.advanced.coaLabel', { defaultValue: 'Chart of Accounts' })}
+                          </label>
+                          <select
+                            id="wizard-coa"
+                            className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary-600"
+                            value={data.coaTemplate ?? selectedMode.coaTemplate}
+                            onChange={(event) => {
+                              markTouched('coaTemplate');
+                              updateData({ coaTemplate: event.target.value as 'periodic_trading' | 'standard' });
+                            }}
+                          >
+                            <option value="periodic_trading">
+                              {t('onboarding.companyWizard.needs.advanced.coaPeriodic', { defaultValue: 'Periodic trading COA — minimal periodic-trading accounts' })}
+                            </option>
+                            <option value="standard">
+                              {t('onboarding.companyWizard.needs.advanced.coaStandard', { defaultValue: 'Standard COA — full asset, COGS, GRNI, discount accounts' })}
+                            </option>
+                          </select>
+                        </div>
+
+                        <div>
+                          <label htmlFor="wizard-costing-basis" className="block text-xs font-semibold text-slate-600">
+                            {t('onboarding.companyWizard.needs.advanced.costingBasisLabel', { defaultValue: 'Costing basis' })}
+                          </label>
+                          <select
+                            id="wizard-costing-basis"
+                            className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary-600"
+                            value={data.costingBasis ?? selectedMode.costingBasis}
+                            onChange={(event) => {
+                              markTouched('costingBasis');
+                              updateData({ costingBasis: event.target.value as 'GLOBAL' | 'WAREHOUSE' });
+                            }}
+                          >
+                            <option value="GLOBAL">
+                              {t('onboarding.companyWizard.needs.advanced.costingBasisGlobal', { defaultValue: 'Global — one average cost per item across the company' })}
+                            </option>
+                            <option value="WAREHOUSE">
+                              {t('onboarding.companyWizard.needs.advanced.costingBasisWarehouse', { defaultValue: 'Warehouse — separate average cost per warehouse' })}
+                            </option>
+                          </select>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="wizard-default-warehouse-code" className="block text-xs font-semibold text-slate-600">
+                              {t('onboarding.companyWizard.needs.advanced.warehouseCodeLabel', { defaultValue: 'Default warehouse code' })}
+                            </label>
+                            <div className="mt-1 flex items-center gap-2">
+                              <Warehouse size={14} aria-hidden={true} className="text-slate-400" />
+                              <input
+                                id="wizard-default-warehouse-code"
+                                className="h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-mono font-semibold uppercase text-slate-800 focus:outline-none focus:border-primary-600"
+                                value={data.defaultWarehouseCode ?? 'MAIN'}
+                                onChange={(event) => updateData({ defaultWarehouseCode: event.target.value.toUpperCase() })}
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label htmlFor="wizard-default-warehouse-name" className="block text-xs font-semibold text-slate-600">
+                              {t('onboarding.companyWizard.needs.advanced.warehouseNameLabel', { defaultValue: 'Default warehouse name' })}
+                            </label>
+                            <input
+                              id="wizard-default-warehouse-name"
+                              className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary-600"
+                              value={data.defaultWarehouseName ?? 'Main Warehouse'}
+                              onChange={(event) => updateData({ defaultWarehouseName: event.target.value })}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                          <div>
+                            <label htmlFor="wizard-sales-workflow" className="block text-xs font-semibold text-slate-600">
+                              {t('onboarding.companyWizard.needs.advanced.salesWorkflowLabel', { defaultValue: 'Sales workflow' })}
+                            </label>
+                            <select
+                              id="wizard-sales-workflow"
+                              className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary-600"
+                              value={data.salesWorkflowMode ?? selectedMode.salesWorkflowMode}
+                              onChange={(event) => {
+                                markTouched('salesWorkflowMode');
+                                updateData({ salesWorkflowMode: event.target.value as 'SIMPLE' | 'OPERATIONAL' });
+                              }}
+                            >
+                              <option value="SIMPLE">
+                                {t('onboarding.companyWizard.needs.advanced.workflowSimple', { defaultValue: 'SIMPLE — direct sales invoicing' })}
+                              </option>
+                              <option value="OPERATIONAL">
+                                {t('onboarding.companyWizard.needs.advanced.workflowOperational', { defaultValue: 'OPERATIONAL — sales orders, delivery notes, linked invoicing' })}
+                              </option>
+                            </select>
+                          </div>
+                          <div>
+                            <label htmlFor="wizard-purchase-workflow" className="block text-xs font-semibold text-slate-600">
+                              {t('onboarding.companyWizard.needs.advanced.purchaseWorkflowLabel', { defaultValue: 'Purchase workflow' })}
+                            </label>
+                            <select
+                              id="wizard-purchase-workflow"
+                              className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary-600"
+                              value={data.purchaseWorkflowMode ?? selectedMode.purchaseWorkflowMode}
+                              onChange={(event) => {
+                                markTouched('purchaseWorkflowMode');
+                                updateData({ purchaseWorkflowMode: event.target.value as 'SIMPLE' | 'OPERATIONAL' });
+                              }}
+                            >
+                              <option value="SIMPLE">
+                                {t('onboarding.companyWizard.needs.advanced.workflowSimple', { defaultValue: 'SIMPLE — direct purchase invoicing' })}
+                              </option>
+                              <option value="OPERATIONAL">
+                                {t('onboarding.companyWizard.needs.advanced.workflowOperational', { defaultValue: 'OPERATIONAL — purchase orders, goods receipts, linked invoicing' })}
+                              </option>
+                            </select>
+                          </div>
+                        </div>
+
+                        <p className="text-[10px] text-slate-500">
+                          {t('onboarding.companyWizard.needs.advanced.help', {
+                            defaultValue: 'Each field defaults to the recommended value for the chosen mode. Changing the mode resets untouched fields to the new default.',
+                          })}
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

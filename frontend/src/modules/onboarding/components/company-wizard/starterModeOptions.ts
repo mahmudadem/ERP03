@@ -18,6 +18,11 @@ export type StarterModeOption = {
   summarySalesDefault: string;
   summaryPurchasesKey: string;
   summaryPurchasesDefault: string;
+  // NOTE-01: explicit defaults exposed for the editable policy selectors.
+  coaTemplate: 'periodic_trading' | 'standard';
+  costingBasis: 'GLOBAL' | 'WAREHOUSE';
+  salesWorkflowMode: 'SIMPLE' | 'OPERATIONAL';
+  purchaseWorkflowMode: 'SIMPLE' | 'OPERATIONAL';
 };
 
 export const STARTER_MODE_OPTIONS: StarterModeOption[] = [
@@ -39,6 +44,10 @@ export const STARTER_MODE_OPTIONS: StarterModeOption[] = [
     summarySalesDefault: 'Simple direct sales invoicing',
     summaryPurchasesKey: 'onboarding.companyWizard.needs.summary.purchasesSimple',
     summaryPurchasesDefault: 'Simple direct purchase invoicing',
+    coaTemplate: 'periodic_trading',
+    costingBasis: 'GLOBAL',
+    salesWorkflowMode: 'SIMPLE',
+    purchaseWorkflowMode: 'SIMPLE',
   },
   {
     value: 'INVOICE_DRIVEN',
@@ -58,6 +67,10 @@ export const STARTER_MODE_OPTIONS: StarterModeOption[] = [
     summarySalesDefault: 'Simple direct sales invoicing',
     summaryPurchasesKey: 'onboarding.companyWizard.needs.summary.purchasesSimple',
     summaryPurchasesDefault: 'Simple direct purchase invoicing',
+    coaTemplate: 'standard',
+    costingBasis: 'GLOBAL',
+    salesWorkflowMode: 'SIMPLE',
+    purchaseWorkflowMode: 'SIMPLE',
   },
   {
     value: 'PERPETUAL',
@@ -77,6 +90,10 @@ export const STARTER_MODE_OPTIONS: StarterModeOption[] = [
     summarySalesDefault: 'Sales orders, delivery notes, and linked invoicing',
     summaryPurchasesKey: 'onboarding.companyWizard.needs.summary.purchasesOperational',
     summaryPurchasesDefault: 'Purchase orders, goods receipts, and linked invoicing',
+    coaTemplate: 'standard',
+    costingBasis: 'WAREHOUSE',
+    salesWorkflowMode: 'OPERATIONAL',
+    purchaseWorkflowMode: 'OPERATIONAL',
   },
 ];
 
