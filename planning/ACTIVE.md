@@ -1,5 +1,25 @@
 # 🎯 Current Focus
 
+## Task 246 PR review fixes ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
+
+- ✅ **Done on `codex/246-sales-gross-profit-facts` (5 incremental commits + review-fix commit):**
+  - Slice 1: `SalesProfitLineFact` entity + interface + Firestore + Prisma + DI + 17 direction tests.
+  - Slice 2: `RecordSalesProfitLineFactsUseCase` + wired into SI/SR/PI/PR posting inside the existing transaction. 8 tests.
+  - Slice 3: `GetGrossProfitByDocumentUseCase` + `GetGrossProfitByItemUseCase` + `SalesGrossProfitController` + 2 routes (`/reports/gross-profit/by-document`, `/reports/gross-profit/by-item`).
+  - Slice 4/5: architecture/user docs and completion report.
+  - Review-fix slice: Prisma client now generates before backend typecheck/build; Firestore date filters are applied before `limit`; sales reports default to SI/SR only; mixed document-currency rows expose `docCurrencyBreakdown` instead of silently summing currencies.
+- ✅ **Verification after PR review fixes:** `npm --prefix backend run typecheck` ✅, focused reporting tests 33/33 ✅, `npm --prefix backend run build` ✅, full backend suite 168/170 suites passed / 1508 tests passed / 18 skipped ✅.
+- ✅ **Scope/model locked (2026-06-20):**
+  - **Type-agnostic fact storage** — facts for SI, SR, PI, PR. Sales report endpoints default to SI/SR only; PI/PR are explicit-filter only.
+  - **Absolute + direction** — `amount + 'IN'|'OUT'` per metric. Reports show IN/OUT separately.
+  - **No broad dimensions** on fact rows. Only `documentNumber` (display).
+- **Known v1 limitation:** SR/PR entities don't persist net post-discount, post-tax line totals. SR/PR profit facts use gross amounts. Documented as a follow-up.
+- **Freeze note:** Task was marked "post-freeze candidate". Owner explicitly authorized this work despite the 2026-06-13 freeze.
+
+## Next action
+
+Merge PR #29 after review/CI, then schedule frontend slice (ReportContainer + module menu wiring for the 2 gross-profit reports). Documented follow-ups: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration, optional purchase/all-document management report.
+
 ## Task 245 UX sweep complete - cherry-picked onto current main, PR-ready (2026-06-19)
 
 - ✅ **Task 245 notes NOTE-01,02,03,04,05,07,12,13** implemented on branch `feat/245-ux-polish-sweep-rebased` (NOTE-06 was already merged separately).
