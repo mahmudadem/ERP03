@@ -2,11 +2,17 @@ import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntit
 import { InventoryPricingPolicy, Item } from '../../../domain/inventory/entities/Item';
 import { InventoryCostingBasis } from '../../../domain/inventory/entities/InventorySettings';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
-import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
+import { IInventoryRevaluationRepository } from '../../../repository/interfaces/inventory/IInventoryRevaluationRepository';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
 import { IStockMovementRepository } from '../../../repository/interfaces/inventory/IStockMovementRepository';
+import {
+  applyMovementToReplayState,
+  applyRevaluationToReplayState,
+  buildInventoryReplayEvents,
+  sortInventoryReplayEvents,
+} from './InventoryRevaluationReplayService';
 
 export interface InventoryValuationLine {
   itemId: string;
@@ -42,30 +48,17 @@ interface LastInboundCostState {
   unitCostCCY: number;
 }
 
-const LEVEL_KEY_SEPARATOR = '__';
 const MIN_DATE = '1900-01-01';
 
-const buildLevelKey = (itemId: string, warehouseId: string) =>
-  `${itemId}${LEVEL_KEY_SEPARATOR}${warehouseId}`;
-
 const todayIso = () => new Date().toISOString().slice(0, 10);
-
-const compareMovementOrder = (a: StockMovement, b: StockMovement): number => {
-  const dateCmp = a.date.localeCompare(b.date);
-  if (dateCmp !== 0) return dateCmp;
-
-  const postedCmp = a.postedAt.getTime() - b.postedAt.getTime();
-  if (postedCmp !== 0) return postedCmp;
-
-  return a.id.localeCompare(b.id);
-};
 
 export class InventoryValuationService {
   constructor(
     private readonly itemRepo: IItemRepository,
     private readonly stockLevelRepo: IStockLevelRepository,
     private readonly stockMovementRepo: IStockMovementRepository,
-    private readonly inventorySettingsRepo: IInventorySettingsRepository
+    private readonly inventorySettingsRepo: IInventorySettingsRepository,
+    private readonly inventoryRevaluationRepo?: IInventoryRevaluationRepository
   ) {}
 
   async value(
@@ -129,42 +122,39 @@ export class InventoryValuationService {
     pricingPolicy: InventoryPricingPolicy,
     warehouseId?: string
   ): Promise<InventoryValuationLine[]> {
-    const movements = await this.stockMovementRepo.getMovementsByDateRange(companyId, MIN_DATE, asOfDate);
-    movements.sort(compareMovementOrder);
+    const [movements, revaluations] = await Promise.all([
+      this.stockMovementRepo.getMovementsByDateRange(companyId, MIN_DATE, asOfDate),
+      this.inventoryRevaluationRepo?.getByStatus(companyId, 'POSTED') ?? Promise.resolve([]),
+    ]);
+    const filteredRevaluations = revaluations.filter((revaluation) => revaluation.date <= asOfDate);
+    const events = sortInventoryReplayEvents(buildInventoryReplayEvents(movements, filteredRevaluations));
 
     const levelsByKey = new Map<string, ReplayLevelState>();
     const lastInboundByItem = new Map<string, LastInboundCostState>();
 
-    for (const movement of movements) {
-      if (movement.date > asOfDate) continue;
+    for (const event of events) {
+      if (event.date > asOfDate) continue;
 
-      const key = buildLevelKey(movement.itemId, movement.warehouseId);
-      const existing = levelsByKey.get(key) || {
-        itemId: movement.itemId,
-        warehouseId: movement.warehouseId,
-        qtyOnHand: 0,
-        avgCostBase: 0,
-        avgCostCCY: 0,
-      };
+      if (event.kind === 'MOVEMENT') {
+        const movement = event.movement;
+        applyMovementToReplayState(levelsByKey, movement);
 
-      existing.qtyOnHand = movement.qtyAfter;
-      existing.avgCostBase = movement.avgCostBaseAfter;
-      existing.avgCostCCY = movement.avgCostCCYAfter;
-      levelsByKey.set(key, existing);
-
-      if (movement.direction === 'IN') {
-        lastInboundByItem.set(movement.itemId, {
-          unitCostBase: movement.unitCostBase,
-          unitCostCCY: movement.unitCostCCY,
-        });
-      }
-
-      if (costingBasis === 'GLOBAL') {
-        for (const level of levelsByKey.values()) {
-          if (level.itemId !== movement.itemId) continue;
-          level.avgCostBase = movement.avgCostBaseAfter;
-          level.avgCostCCY = movement.avgCostCCYAfter;
+        if (movement.direction === 'IN') {
+          lastInboundByItem.set(movement.itemId, {
+            unitCostBase: movement.unitCostBase,
+            unitCostCCY: movement.unitCostCCY,
+          });
         }
+
+        if (costingBasis === 'GLOBAL') {
+          for (const level of levelsByKey.values()) {
+            if (level.itemId !== movement.itemId) continue;
+            level.avgCostBase = movement.avgCostBaseAfter;
+            level.avgCostCCY = movement.avgCostCCYAfter;
+          }
+        }
+      } else {
+        applyRevaluationToReplayState(levelsByKey, event.revaluation, costingBasis);
       }
     }
 

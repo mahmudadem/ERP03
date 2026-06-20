@@ -1,8 +1,17 @@
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { InventoryPeriodSnapshot } from '../../../domain/inventory/entities/InventoryPeriodSnapshot';
 import { IInventoryPeriodSnapshotRepository } from '../../../repository/interfaces/inventory/IInventoryPeriodSnapshotRepository';
+import { IInventoryRevaluationRepository } from '../../../repository/interfaces/inventory/IInventoryRevaluationRepository';
+import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
 import { IStockMovementRepository } from '../../../repository/interfaces/inventory/IStockMovementRepository';
+import {
+  applyMovementToReplayState,
+  applyRevaluationToReplayState,
+  buildInventoryReplayEvents,
+  buildLevelKey,
+  sortInventoryReplayEvents,
+} from '../services/InventoryRevaluationReplayService';
 
 export interface CreatePeriodSnapshotInput {
   companyId: string;
@@ -20,11 +29,9 @@ interface ReplayState {
   qtyOnHand: number;
   avgCostBase: number;
   avgCostCCY: number;
-  lastCostBase: number;
-  lastCostCCY: number;
+  lastCostBase?: number;
+  lastCostCCY?: number;
 }
-
-const buildLevelKey = (itemId: string, warehouseId: string) => `${itemId}__${warehouseId}`;
 
 const isValidPeriodKey = (value: string) => /^\d{4}-\d{2}$/.test(value);
 const isValidIsoDate = (value: string) => /^\d{4}-\d{2}-\d{2}$/.test(value);
@@ -83,7 +90,9 @@ export class CreatePeriodSnapshotUseCase {
 export class GetAsOfValuationUseCase {
   constructor(
     private readonly snapshotRepo: IInventoryPeriodSnapshotRepository,
-    private readonly movementRepo: IStockMovementRepository
+    private readonly movementRepo: IStockMovementRepository,
+    private readonly revaluationRepo?: IInventoryRevaluationRepository,
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
   async execute(input: GetAsOfValuationInput): Promise<{
@@ -124,68 +133,50 @@ export class GetAsOfValuationUseCase {
       });
     }
 
+    const [settings, revaluations] = await Promise.all([
+      this.inventorySettingsRepo?.getSettings(input.companyId) ?? Promise.resolve(null),
+      this.revaluationRepo?.getByStatus(input.companyId, 'POSTED') ?? Promise.resolve([]),
+    ]);
+    const costingBasis = settings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
+
     let movements = await this.movementRepo.getMovementsByDateRange(
       input.companyId,
       '1900-01-01',
       input.asOfDate
     );
+    let filteredRevaluations = revaluations.filter((revaluation) => revaluation.date <= input.asOfDate);
 
     if (snapshot) {
       movements = movements.filter((movement) => movement.postedAt > snapshot.createdAt);
+      filteredRevaluations = filteredRevaluations.filter((revaluation) => (
+        revaluation.postedAt ? revaluation.postedAt > snapshot.createdAt : false
+      ));
     }
 
-    movements.sort((a, b) => {
-      const keyA = buildLevelKey(a.itemId, a.warehouseId);
-      const keyB = buildLevelKey(b.itemId, b.warehouseId);
-      if (keyA !== keyB) return keyA.localeCompare(keyB);
-      return a.postingSeq - b.postingSeq;
-    });
+    const events = sortInventoryReplayEvents(buildInventoryReplayEvents(movements, filteredRevaluations));
 
-    for (const movement of movements) {
-      if (movement.date > input.asOfDate) continue;
+    for (const event of events) {
+      if (event.date > input.asOfDate) continue;
 
-      const key = buildLevelKey(movement.itemId, movement.warehouseId);
-      const current = state.get(key) || {
-        itemId: movement.itemId,
-        warehouseId: movement.warehouseId,
-        qtyOnHand: 0,
-        avgCostBase: 0,
-        avgCostCCY: 0,
-        lastCostBase: 0,
-        lastCostCCY: 0,
-      };
-
-      if (movement.direction === 'IN') {
-        const qtyBefore = current.qtyOnHand;
-
-        if (qtyBefore <= 0) {
-          current.avgCostBase = movement.unitCostBase;
-          current.avgCostCCY = movement.unitCostCCY;
-        } else {
-          const newQty = qtyBefore + movement.qty;
-          if (newQty !== 0) {
-            current.avgCostBase = roundMoney(
-              ((current.avgCostBase * qtyBefore) + (movement.unitCostBase * movement.qty)) / newQty
-            );
-            current.avgCostCCY = roundMoney(
-              ((current.avgCostCCY * qtyBefore) + (movement.unitCostCCY * movement.qty)) / newQty
-            );
+      if (event.kind === 'MOVEMENT') {
+        applyMovementToReplayState(state, event.movement);
+        if (costingBasis === 'GLOBAL') {
+          for (const level of state.values()) {
+            if (level.itemId !== event.movement.itemId) continue;
+            level.avgCostBase = event.movement.avgCostBaseAfter;
+            level.avgCostCCY = event.movement.avgCostCCYAfter;
           }
         }
-
-        current.qtyOnHand += movement.qty;
-        current.lastCostBase = movement.unitCostBase;
-        current.lastCostCCY = movement.unitCostCCY;
       } else {
-        current.qtyOnHand -= movement.qty;
+        applyRevaluationToReplayState(state, event.revaluation, costingBasis);
       }
-
-      state.set(key, current);
     }
 
     const items = Array.from(state.values())
       .map((line) => ({
         ...line,
+        lastCostBase: line.lastCostBase ?? 0,
+        lastCostCCY: line.lastCostCCY ?? 0,
         valueBase: roundMoney(line.qtyOnHand * line.avgCostBase),
       }))
       .sort((a, b) => {

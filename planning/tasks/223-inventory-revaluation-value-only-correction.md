@@ -1,6 +1,7 @@
 # Task 223 — Inventory Revaluation (value-only cost correction)
 
-**Status:** Backlog (post-pilot candidate). Logged 2026-06-13.
+**Status:** Implemented (2026-06-20). See [done/223-inventory-revaluation.md](../done/223-inventory-revaluation.md).
+Branch: `codex/223-inventory-revaluation-fresh`.
 **Module:** Inventory · **Touches:** Accounting (GL posting)
 **Owner-confirmed need:** during GP02 GLOBAL costing QA on TESTCO, the only un-fixable
 state was item `001`'s value drift (stock value ≠ GL). There is no in-app way to correct a

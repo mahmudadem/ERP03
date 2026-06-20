@@ -1,6 +1,46 @@
 # 🎯 Current Focus
 
-## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
+## Task 223 complete - Inventory Revaluation (value-only cost correction) PR-ready (2026-06-20)
+
+- ✅ **Task 223 only** is implemented on branch `codex/223-inventory-revaluation-fresh` (~25 files).
+- New document: `Inventory → Forms → Revaluations` reuses the Stock Adjustment scaffold visually but has different business behavior:
+  - Quantity is never changed. The line table has qty/current avg cost/current value as read-only; **only New Avg Cost is editable**.
+  - Reasons: `COST_CORRECTION`, `BASIS_CHANGE`, `MIGRATION_FIX`, `WRITE_OFF`, `OTHER`.
+  - Costing basis awareness: `WAREHOUSE` revalues the named level; `GLOBAL` re-prices every level to the new company average.
+  - Mode-aware posting:
+    - `INVOICE_DRIVEN` / `PERPETUAL`: balanced `JOURNAL_ENTRY` voucher through `SubledgerVoucherPostingService` (Dr/Cr Inventory Asset vs `InventorySettings.defaultInventoryRevaluationAccountId`). Period-lock + approval honored via the same `PostingGateway` as every other inventory-origin write.
+    - `PERIODIC`: sub-ledger average cost updated, **no daily Inventory Asset GL voucher** — report-time `Inventory Valuation` uses the new basis.
+  - Sub-ledger write + GL post + revaluation status update are wrapped in one `transactionManager.runTransaction` so a GL failure rolls the sub-ledger write back.
+  - Hard guards: missing revaluation account blocks posting in live modes (readable error), zero qty blocks posting, posted cannot be re-edited or re-posted (DRAFT-only).
+- Backend additions:
+  - Domain entity `InventoryRevaluation` (DRAFT/POSTED, append-only audit fields, 2-/6-decimal normalization).
+  - `IInventoryRevaluationRepository` + Firestore + Prisma impls.
+  - New Prisma models `InventoryRevaluation` + `InventoryRevaluationLine` with company/status/date indexes, plus the matching inverse relation on `Item`.
+  - Use cases: `CreateInventoryRevaluationUseCase` (re-reads sub-ledger to authoritatively snapshot qty/avg cost), `PostInventoryRevaluationUseCase` (in-transaction write + GL post), `ListInventoryRevaluationsUseCase`, `GetInventoryRevaluationUseCase`.
+- Frontend additions:
+  - `frontend/src/modules/inventory/pages/InventoryRevaluationPage.tsx` — list + scaffold form, uses `DocumentDetailScaffold` + `ClassicLineItemsTable` + `OperationalListLayout` + shared `ItemSelector` / `WarehouseSelector` / `DatePicker` + shared `ConfirmDialog` (warning tone) for post; toasts on every server response.
+  - 3 routes (`/inventory/revaluations`, `/new`, `/:id`), sidebar entry under `Inventory → Forms → Revaluations` (Scale icon, `inventory.stock.adjust` permission), `inventoryApi` methods + DTOs + reason enum, i18n key `revaluations` in en/ar/tr.
+- Audit hardening added before PR:
+  - Revaluation detail reads are tenant-scoped by `(companyId, id)`.
+  - Historical inventory valuation, period as-of valuation, and stock reconciliation replay posted revaluations alongside stock movements.
+  - WAREHOUSE mode updates `Item.costingStats.avgCost` as the weighted item-level average across all warehouses.
+  - GLOBAL mode draft UI can create company-wide lines without requiring a warehouse.
+  - The Revaluations page has full `en/ar/tr` i18n keys, not just sidebar text.
+- Verification:
+  - `npm --prefix backend run typecheck` — clean.
+  - `npm --prefix backend run build` — clean (`npx prisma generate` re-run for the new schema models).
+  - `npm --prefix backend test` — **166 suites passed / 2 suites skipped / 0 failures; 1492 tests passed / 18 skipped / 1510 total**.
+  - `npm --prefix frontend run typecheck` — clean.
+  - `npm --prefix frontend run build` — clean (existing bundle-size / Browserslist / baseline-data warnings only).
+- Docs:
+  - [docs/architecture/inventory-revaluation.md](../docs/architecture/inventory-revaluation.md) — new technical doc.
+  - [docs/user-guide/inventory/inventory-revaluation.md](../docs/user-guide/inventory/inventory-revaluation.md) — new end-user walkthrough.
+  - [planning/done/223-inventory-revaluation.md](./done/223-inventory-revaluation.md) — completion report.
+- **Not yet owner-tested** — needs a browser pass over `/inventory/revaluations` (web + windows modes) to confirm: a) revalue-up posts balanced voucher + sub-ledger avg updates, b) revalue-down reverses GL direction, c) PERIODIC skip works, d) the readiness rail and post confirm dialog look right.
+
+## Next action
+
+Open a PR for `codex/223-inventory-revaluation-fresh` against `main`. Then owner can browser-test the revaluation flow on a fresh tenant.
 
 - ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).
 - Two right-click affordances on the line-items table, identical on the four native pricing pages (SI/PI/PO) and the Form-Designer renderer (Part D parity):

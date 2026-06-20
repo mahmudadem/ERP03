@@ -48,6 +48,7 @@ const WarehousesPage = lazy(() => import('../modules/inventory/pages/WarehousesP
 const StockLevelsPage = lazy(() => import('../modules/inventory/pages/StockLevelsPage'));
 const StockMovementsPage = lazy(() => import('../modules/inventory/pages/StockMovementsPage'));
 const StockAdjustmentPage = lazy(() => import('../modules/inventory/pages/StockAdjustmentPage'));
+const InventoryRevaluationPage = lazy(() => import('../modules/inventory/pages/InventoryRevaluationPage'));
 const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningStockPage'));
 const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTransfersPage'));
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
@@ -244,6 +245,10 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/adjustments/new', label: 'New Adjustment', component: StockAdjustmentPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/adjustments/:id', label: 'Adjustment Detail', component: StockAdjustmentPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/adjustments', label: 'Adjustments', component: StockAdjustmentPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+
+  { path: '/inventory/revaluations/new', label: 'New Inventory Revaluation', component: InventoryRevaluationPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/revaluations/:id', label: 'Inventory Revaluation Detail', component: InventoryRevaluationPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/revaluations', label: 'Revaluations', component: InventoryRevaluationPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },

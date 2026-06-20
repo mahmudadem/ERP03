@@ -7,6 +7,7 @@ import { ItemCategory } from '../../domain/inventory/entities/ItemCategory';
 import { InventorySettings } from '../../domain/inventory/entities/InventorySettings';
 import { OpeningStockDocument } from '../../domain/inventory/entities/OpeningStockDocument';
 import { InventoryPeriodSnapshot } from '../../domain/inventory/entities/InventoryPeriodSnapshot';
+import { InventoryRevaluation } from '../../domain/inventory/entities/InventoryRevaluation';
 import { StockAdjustment } from '../../domain/inventory/entities/StockAdjustment';
 import { StockLevel } from '../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../domain/inventory/entities/StockMovement';
@@ -268,6 +269,35 @@ export interface StockAdjustmentDTO {
     unitCostBase: number;
     unitCostCCY: number;
   }>;
+}
+
+export interface InventoryRevaluationLineDTO {
+  itemId: string;
+  warehouseId?: string;
+  qtyOnHand: number;
+  currentAvgCostBase: number;
+  currentAvgCostCCY: number;
+  newAvgCostBase: number;
+  newAvgCostCCY: number;
+  valueDeltaBase: number;
+  valueDeltaCCY: number;
+  reason?: string;
+}
+
+export interface InventoryRevaluationDTO {
+  id: string;
+  companyId: string;
+  date: string;
+  reason: 'COST_CORRECTION' | 'BASIS_CHANGE' | 'MIGRATION_FIX' | 'WRITE_OFF' | 'OTHER';
+  notes?: string;
+  status: 'DRAFT' | 'POSTED';
+  voucherId?: string;
+  totalValueDeltaBase: number;
+  totalValueDeltaCCY: number;
+  createdBy: string;
+  createdAt: string;
+  postedAt?: string;
+  lines: InventoryRevaluationLineDTO[];
 }
 
 export interface StockTransferDTO {
@@ -552,6 +582,24 @@ export class InventoryDTOMapper {
       createdAt: adjustment.createdAt.toISOString(),
       postedAt: adjustment.postedAt?.toISOString(),
       lines: adjustment.lines.map((line) => ({ ...line })),
+    };
+  }
+
+  static toInventoryRevaluationDTO(revaluation: InventoryRevaluation): InventoryRevaluationDTO {
+    return {
+      id: revaluation.id,
+      companyId: revaluation.companyId,
+      date: revaluation.date,
+      reason: revaluation.reason,
+      notes: revaluation.notes,
+      status: revaluation.status,
+      voucherId: revaluation.voucherId,
+      totalValueDeltaBase: revaluation.totalValueDeltaBase,
+      totalValueDeltaCCY: revaluation.totalValueDeltaCCY,
+      createdBy: revaluation.createdBy,
+      createdAt: revaluation.createdAt.toISOString(),
+      postedAt: revaluation.postedAt?.toISOString(),
+      lines: revaluation.lines.map((line) => ({ ...line })),
     };
   }
 
