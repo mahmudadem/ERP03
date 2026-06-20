@@ -4,3 +4,4 @@ export * from './IPosShiftRepository';
 export * from './IPosCashMovementRepository';
 export * from './IPosReceiptRepository';
 export * from './IPosPaymentRepository';
+export * from './IPosReturnRepository';

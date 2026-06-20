@@ -38,4 +38,9 @@ router.get('/receipts', permissionGuard('pos.terminal.access'), PosController.li
 router.get('/receipts/:id', permissionGuard('pos.terminal.access'), PosController.getReceipt);
 router.get('/receipts/:id/reprint', permissionGuard('pos.receipt.reprint'), PosController.reprintReceipt);
 
+// Returns
+router.post('/returns', idempotencyMiddleware, permissionGuard('pos.return.create'), PosController.completeReturn);
+router.get('/returns', permissionGuard('pos.terminal.access'), PosController.listReturns);
+router.get('/returns/:id', permissionGuard('pos.terminal.access'), PosController.getReturn);
+
 export default router;

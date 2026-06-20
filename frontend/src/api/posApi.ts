@@ -131,6 +131,19 @@ export const posApi = {
 
   getReceipt: async (id: string): Promise<{ receipt: any; payments: any[] }> =>
     ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}`)),
+
+  // ===== Returns =====
+  completeReturn: async (payload: {
+    originalReceiptId: string;
+    registerId: string;
+    shiftId?: string;
+    lines: Array<{ itemId: string; qty: number }>;
+    refundMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+  }): Promise<any> =>
+    ok(client.post('/tenant/pos/returns', payload)),
+
+  listReturns: async (params?: { shiftId?: string; originalReceiptId?: string; limit?: number }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/returns', { params: params || {} })),
 };
 
 export default posApi;

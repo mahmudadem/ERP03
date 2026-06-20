@@ -151,5 +151,38 @@
       "opening": "Açılış tutarı",
       "variance": "Fark"
     }
+  },
+  "return": {
+    "title": "İade işlemi",
+    "receiptPlaceholder": "Fiş numarası veya kimliği",
+    "lookup": "Ara",
+    "receiptFor": "Fiş",
+    "si": "Fatura",
+    "item": "Ürün",
+    "sold": "Satılan",
+    "return": "İade",
+    "price": "Fiyat",
+    "lineTotal": "Satır toplamı",
+    "refundMethod": "İade yöntemi",
+    "total": "İade toplamı",
+    "post": "İadeyi kaydet",
+    "enterReceipt": "Fiş numarası girin.",
+    "noLines": "İade için en az bir satır seçin.",
+    "needOpenShift": "Bu kasa için açık vardiya yok.",
+    "completed": "İade kaydedildi. İade tutarı: {{amount}}.",
+    "historyTitle": "İade geçmişi",
+    "historySubtitle": "Bu şirketin son iadeleri.",
+    "empty": "Henüz iade yok.",
+    "confirmTitle": "İadeyi kaydet?",
+    "confirmBody": "Bu, satış iadesi oluşturur, gelir/vergi iptali yapar, envanteri politika gereği depolar ve (NAKİT için) kasa çekmecesini azaltır. Devam edilsin mi?",
+    "confirm": "İadeyi kaydet",
+    "col": {
+      "number": "İade #",
+      "original": "Orijinal fiş",
+      "method": "İade yöntemi",
+      "amount": "İade tutarı",
+      "sr": "Satış iadesi #",
+      "date": "Tarih"
+    }
   }
 }

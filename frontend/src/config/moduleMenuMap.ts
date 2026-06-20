@@ -213,6 +213,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access', icon: 'Calculator' },
       { label: 'Shift', path: '/pos/shift', permission: 'pos.shift.open', icon: 'Clock' },
+      { label: 'Returns', path: '/pos/returns', permission: 'pos.return.create', icon: 'Undo2' },
       { label: 'Registers', path: '/pos/registers', permission: 'pos.registers.manage', icon: 'MonitorSmartphone' },
       { label: 'Settings', path: '/pos/settings', permission: 'pos.settings.manage', icon: 'Settings' },
     ],

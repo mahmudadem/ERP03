@@ -151,5 +151,38 @@
       "opening": "Opening",
       "variance": "Variance"
     }
+  },
+  "return": {
+    "title": "Process return",
+    "receiptPlaceholder": "Receipt number or ID",
+    "lookup": "Look up",
+    "receiptFor": "Receipt",
+    "si": "SI",
+    "item": "Item",
+    "sold": "Sold",
+    "return": "Return",
+    "price": "Price",
+    "lineTotal": "Line total",
+    "refundMethod": "Refund method",
+    "total": "Refund total",
+    "post": "Post return",
+    "enterReceipt": "Enter a receipt number.",
+    "noLines": "Pick at least one line to return.",
+    "needOpenShift": "No open shift for this register.",
+    "completed": "Return posted. Refund: {{amount}}.",
+    "historyTitle": "Return history",
+    "historySubtitle": "Recent returns for this company.",
+    "empty": "No returns yet.",
+    "confirmTitle": "Post return?",
+    "confirmBody": "This posts a sales return, reverses revenue/tax, restocks inventory (per policy), and (for CASH) reduces the shift drawer. Continue?",
+    "confirm": "Post return",
+    "col": {
+      "number": "Return #",
+      "original": "Original receipt",
+      "method": "Refund method",
+      "amount": "Refund",
+      "sr": "Sales Return #",
+      "date": "Date"
+    }
   }
 }

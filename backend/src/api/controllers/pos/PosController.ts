@@ -8,7 +8,7 @@
  */
 import { NextFunction, Request, Response } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
-import { PosDTOMapper, PosCashMovementDTO, PosXReportDTO, PosReceiptDTO, PosPaymentDTO } from '../../dtos/PosDTOs';
+import { PosDTOMapper, PosCashMovementDTO, PosXReportDTO, PosReceiptDTO, PosPaymentDTO, PosReturnDTO } from '../../dtos/PosDTOs';
 import {
   CreatePosRegisterUseCase,
   GetPosRegisterUseCase,
@@ -41,6 +41,11 @@ import {
   PostSalesInvoiceUseCase,
   CreateAndPostSalesInvoiceUseCase,
 } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import {
+  CreateSalesReturnUseCase,
+  PostSalesReturnUseCase,
+} from '../../../application/sales/use-cases/SalesReturnUseCases';
+import { CompletePosReturnUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
 import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
 import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
 import {
@@ -514,5 +519,112 @@ export class PosController {
   static async reprintReceipt(req: Request, res: Response, next: NextFunction) {
     // Reprint = same as getReceipt (read-only, no state change).
     return PosController.getReceipt(req, res, next);
+  }
+
+  // ===== Returns =====
+
+  private static buildCreateSalesReturnUseCase(recordChangeService?: RecordChangeService): CreateSalesReturnUseCase {
+    return new CreateSalesReturnUseCase(
+      diContainer.salesSettingsRepository,
+      diContainer.salesReturnRepository,
+      diContainer.salesInvoiceRepository,
+      diContainer.deliveryNoteRepository,
+      recordChangeService,
+      diContainer.companyCurrencyRepository
+    );
+  }
+
+  private static buildPostSalesReturnUseCase(recordChangeService?: RecordChangeService): PostSalesReturnUseCase {
+    return new PostSalesReturnUseCase(
+      diContainer.salesSettingsRepository,
+      diContainer.inventorySettingsRepository,
+      diContainer.salesReturnRepository,
+      diContainer.salesInvoiceRepository,
+      diContainer.deliveryNoteRepository,
+      diContainer.salesOrderRepository,
+      diContainer.partyRepository,
+      diContainer.taxCodeRepository,
+      diContainer.itemRepository,
+      diContainer.itemCategoryRepository,
+      diContainer.uomConversionRepository,
+      diContainer.companyCurrencyRepository,
+      null as any,
+      diContainer.companyModuleRepository,
+      PosController.buildAccountingPostingService(),
+      diContainer.accountRepository,
+      diContainer.transactionManager,
+      recordChangeService,
+      diContainer.postingLogRepository,
+      diContainer.partyItemPriceRepository,
+      diContainer.recordSalesProfitLineFactsUseCase
+    );
+  }
+
+  static async completeReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const userEmail = PosController.getUserEmail(req);
+      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const useCase = new CompletePosReturnUseCase(
+        diContainer.posReceiptRepository,
+        diContainer.posReturnRepository,
+        diContainer.posShiftRepository,
+        diContainer.posSettingsRepository,
+        diContainer.posCashMovementRepository,
+        diContainer.transactionManager,
+        PosController.buildCreateSalesReturnUseCase(recordChangeService),
+        PosController.buildPostSalesReturnUseCase(recordChangeService)
+      );
+      const result = await useCase.execute({
+        companyId,
+        originalReceiptId: String((req as any).body?.originalReceiptId),
+        registerId: String((req as any).body?.registerId),
+        shiftId: (req as any).body?.shiftId ? String((req as any).body.shiftId) : undefined,
+        lines: (req as any).body?.lines || [],
+        refundMethod: String((req as any).body?.refundMethod) as any,
+        actor: { userId, userEmail },
+      });
+      (res as any).status(201).json({
+        success: true,
+        data: {
+          posReturn: PosReturnDTO.fromDomain(result.posReturn),
+          salesReturnId: result.salesReturn.id,
+          salesReturnNumber: result.salesReturn.returnNumber,
+          refundTotal: result.refundTotal,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listReturns(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const list = await diContainer.posReturnRepository.list(companyId, {
+        shiftId: (req as any).query?.shiftId ? String((req as any).query.shiftId) : undefined,
+        originalReceiptId: (req as any).query?.originalReceiptId ? String((req as any).query.originalReceiptId) : undefined,
+        limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
+      });
+      (res as any).json({ success: true, data: list.map((r) => PosReturnDTO.fromDomain(r)) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getReturn(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const ret = await diContainer.posReturnRepository.getById(companyId, id);
+      if (!ret) {
+        (res as any).status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Return not found' } });
+        return;
+      }
+      (res as any).json({ success: true, data: PosReturnDTO.fromDomain(ret) });
+    } catch (error) {
+      next(error);
+    }
   }
 }

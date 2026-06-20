@@ -8,6 +8,7 @@ import { PosShift } from '../../domain/pos/entities/PosShift';
 import { PosCashMovement } from '../../domain/pos/entities/PosCashMovement';
 import { PosReceipt, PosReceiptLineSnapshot } from '../../domain/pos/entities/PosReceipt';
 import { PosPayment } from '../../domain/pos/entities/PosPayment';
+import { PosReturn, PosReturnLine } from '../../domain/pos/entities/PosReturn';
 import { PosCashMovementTotals } from '../../repository/interfaces/pos/IPosCashMovementRepository';
 
 export interface PosRegisterDTO {
@@ -253,6 +254,54 @@ export const PosPaymentDTO = {
       changeGiven: p.changeGiven,
       reference: p.reference,
       createdAt: p.createdAt.toISOString(),
+    };
+  },
+};
+
+export interface PosReturnLineDTO {
+  itemId: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  originalLineId?: string;
+}
+
+export interface PosReturnDTO {
+  id: string;
+  companyId: string;
+  shiftId: string;
+  registerId: string;
+  returnNumber: string;
+  originalReceiptId: string;
+  originalReceiptNumber: string;
+  salesInvoiceId: string;
+  lines: PosReturnLineDTO[];
+  refundMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+  refundTotal: number;
+  salesReturnId?: string;
+  salesReturnNumber?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export const PosReturnDTO = {
+  fromDomain(r: PosReturn): PosReturnDTO {
+    return {
+      id: r.id,
+      companyId: r.companyId,
+      shiftId: r.shiftId,
+      registerId: r.registerId,
+      returnNumber: r.returnNumber,
+      originalReceiptId: r.originalReceiptId,
+      originalReceiptNumber: r.originalReceiptNumber,
+      salesInvoiceId: r.salesInvoiceId,
+      lines: r.lines,
+      refundMethod: r.refundMethod,
+      refundTotal: r.refundTotal,
+      salesReturnId: r.salesReturnId,
+      salesReturnNumber: r.salesReturnNumber,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt.toISOString(),
     };
   },
 };

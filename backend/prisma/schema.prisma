@@ -67,6 +67,7 @@ model Company {
   posCashMovements PosCashMovement[]
   posReceipts     PosReceipt[]
   posPayments     PosPayment[]
+  posReturns      PosReturn[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
   budgets         Budget[]
@@ -1784,6 +1785,34 @@ model PosPayment {
 
   @@index([companyId, receiptId])
   @@map("pos_payments")
+}
+
+model PosReturn {
+  id                    String   @id @default(uuid())
+  companyId             String
+  shiftId               String
+  registerId            String
+  returnNumber          String
+  originalReceiptId     String
+  originalReceiptNumber String
+  salesInvoiceId        String
+  lines                 Json
+  refundMethod          String
+  refundTotal           Float    @default(0)
+  salesReturnId         String?
+  salesReturnNumber     String?
+  createdBy             String
+  createdAt             DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, returnNumber])
+  @@index([companyId])
+  @@index([companyId, shiftId])
+  @@index([companyId, originalReceiptId])
+  @@index([companyId, salesInvoiceId])
+  @@index([companyId, createdAt])
+  @@map("pos_returns")
 }
 
 // ============================================

@@ -67,6 +67,7 @@ const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
 const PosSettingsPage = lazy(() => import('../modules/pos/pages/PosSettingsPage'));
 const PosRegistersPage = lazy(() => import('../modules/pos/pages/PosRegistersPage'));
 const PosShiftPage = lazy(() => import('../modules/pos/pages/PosShiftPage'));
+const PosReturnPage = lazy(() => import('../modules/pos/pages/PosReturnPage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
@@ -272,6 +273,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/pos/settings', label: 'Settings', component: PosSettingsPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
   { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },
   { path: '/pos/shift', label: 'Shift', component: PosShiftPage, section: 'POS', requiredPermission: 'pos.shift.open', requiredModule: 'pos' },
+  { path: '/pos/returns', label: 'Returns', component: PosReturnPage, section: 'POS', requiredPermission: 'pos.return.create', requiredModule: 'pos' },
 
 
   // SETTINGS
