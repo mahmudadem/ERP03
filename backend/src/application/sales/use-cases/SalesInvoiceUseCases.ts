@@ -42,6 +42,7 @@ import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { RecordSalesProfitLineFactsUseCase, PostedLineForProfitFact } from '../../reporting/use-cases/RecordSalesProfitLineFactsUseCase';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
 import {
   IPartyItemPriceRepository,
@@ -952,7 +953,8 @@ export class PostSalesInvoiceUseCase {
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly recordChangeService?: RecordChangeService,
-    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
@@ -1610,6 +1612,38 @@ export class PostSalesInvoiceUseCase {
       // for approval — clear it so it can never be replayed twice.
       si.pendingSettlement = null;
       await this.salesInvoiceRepo.update(si, transaction);
+
+      // Task 246: record gross-profit facts inside the posting transaction.
+      // Read-model only — does not affect GL/COGS/valuation/tax/AR-AP.
+      if (this.profitFactRecorder) {
+        const lines: PostedLineForProfitFact[] = si.lines.map((l) => {
+          const lineCostBase = l.lineCostBase ?? 0;
+          const rate = si.exchangeRate || 1;
+          return {
+            lineId: l.lineId,
+            itemId: l.itemId,
+            qtyBase: l.invoicedQty,
+            uomId: l.uomId || '',
+            revenueAmountDoc: l.lineTotalDoc,
+            revenueAmountBase: l.lineTotalBase,
+            costAmountDoc: rate > 0 ? lineCostBase / rate : lineCostBase,
+            costAmountBase: lineCostBase,
+            exchangeRateDocToBase: rate,
+          };
+        });
+        await this.profitFactRecorder.execute({
+          companyId: si.companyId,
+          documentType: 'SALES_INVOICE',
+          documentId: si.id,
+          documentNumber: si.invoiceNumber,
+          documentDate: si.invoiceDate,
+          docCurrency: si.currency,
+          baseCurrency: (baseCurrency || si.currency || 'USD').toUpperCase(),
+          snapshotVersion: 1,
+          lines,
+          transaction,
+        });
+      }
     };
 
     try {

@@ -32,6 +32,7 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { RecordSalesProfitLineFactsUseCase, PostedLineForProfitFact } from '../../reporting/use-cases/RecordSalesProfitLineFactsUseCase';
 import { IPaymentHistoryRepository } from '../../../repository/interfaces/shared/IPaymentHistoryRepository';
 import {
   IPartyItemPriceRepository,
@@ -526,7 +527,8 @@ export class PostPurchaseInvoiceUseCase {
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
-    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {
     this.accountRepo = accountRepo;
   }
@@ -1047,6 +1049,35 @@ export class PostPurchaseInvoiceUseCase {
         // approval — clear it so it can never be replayed twice.
         pi.pendingSettlement = null;
         await this.purchaseInvoiceRepo.update(pi, transaction);
+
+        // Task 246: record gross-profit facts inside the posting transaction.
+        // PI: revenue=0, cost=lineTotalBase (the purchase cost is the line total).
+        if (this.profitFactRecorder) {
+          const rate = pi.exchangeRate || 1;
+          const lines: PostedLineForProfitFact[] = pi.lines.map((l) => ({
+            lineId: l.lineId,
+            itemId: l.itemId,
+            qtyBase: l.invoicedQty,
+            uomId: l.uomId || '',
+            revenueAmountDoc: 0,
+            revenueAmountBase: 0,
+            costAmountDoc: l.lineTotalDoc,
+            costAmountBase: l.lineTotalBase,
+            exchangeRateDocToBase: rate,
+          }));
+          await this.profitFactRecorder.execute({
+            companyId: pi.companyId,
+            documentType: 'PURCHASE_INVOICE',
+            documentId: pi.id,
+            documentNumber: pi.invoiceNumber,
+            documentDate: pi.invoiceDate,
+            docCurrency: pi.currency,
+            baseCurrency: (baseCurrency || pi.currency || 'USD').toUpperCase(),
+            snapshotVersion: 1,
+            lines,
+            transaction,
+          });
+        }
 
         if (po) {
           po.status = updatePOStatus(po);

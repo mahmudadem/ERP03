@@ -37,6 +37,7 @@ import { ICompanySettingsRepository } from '../../../repository/interfaces/core/
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { RecordSalesProfitLineFactsUseCase, PostedLineForProfitFact } from '../../reporting/use-cases/RecordSalesProfitLineFactsUseCase';
 import {
   IPartyItemPriceRepository,
   PartyItemPriceUpsertInput,
@@ -490,7 +491,8 @@ export class PostPurchaseReturnUseCase {
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {}
 
 async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<PurchaseReturn> {
@@ -1171,6 +1173,42 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
       purchaseReturn.postedAt = new Date();
       purchaseReturn.updatedAt = new Date();
       await this.purchaseReturnRepo.update(purchaseReturn, transaction);
+
+      // Task 246: record gross-profit facts inside the posting transaction.
+      // Known limitation v1: PR's `PurchaseReturnLine` entity does not persist
+      // the post-discount, post-tax net line totals. We use gross amounts here
+      // (returnQty × unitCost). A follow-up can add the net line totals to
+      // the entity for accuracy.
+      if (this.profitFactRecorder) {
+        const rate = purchaseReturn.exchangeRate || 1;
+        const lines: PostedLineForProfitFact[] = purchaseReturn.lines.map((l) => {
+          const grossLineTotalDoc = l.unitCostDoc * l.returnQty;
+          const grossLineTotalBase = l.unitCostBase * l.returnQty;
+          return {
+            lineId: l.lineId,
+            itemId: l.itemId,
+            qtyBase: l.returnQty,
+            uomId: l.uomId || '',
+            revenueAmountDoc: 0,
+            revenueAmountBase: 0,
+            costAmountDoc: grossLineTotalDoc,
+            costAmountBase: grossLineTotalBase,
+            exchangeRateDocToBase: rate,
+          };
+        });
+        await this.profitFactRecorder.execute({
+          companyId: purchaseReturn.companyId,
+          documentType: 'PURCHASE_RETURN',
+          documentId: purchaseReturn.id,
+          documentNumber: purchaseReturn.returnNumber,
+          documentDate: purchaseReturn.returnDate,
+          docCurrency: purchaseReturn.currency,
+          baseCurrency: (baseCurrency || purchaseReturn.currency || 'USD').toUpperCase(),
+          snapshotVersion: 1,
+          lines,
+          transaction,
+        });
+      }
 
       if (purchaseOrder) {
         purchaseOrder.status = updatePOStatus(purchaseOrder);

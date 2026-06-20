@@ -317,6 +317,7 @@ import { PrismaSalesSettingsRepository } from '../prisma/repositories/sales/Pris
 import { FirestoreSalesProfitLineFactRepository } from '../firestore/repositories/reporting/FirestoreSalesProfitLineFactRepository';
 import { PrismaSalesProfitLineFactRepository } from '../prisma/repositories/reporting/PrismaSalesProfitLineFactRepository';
 import { ISalesProfitLineFactRepository } from '../../repository/interfaces/reporting/ISalesProfitLineFactRepository';
+import { RecordSalesProfitLineFactsUseCase } from '../../application/reporting/use-cases/RecordSalesProfitLineFactsUseCase';
 
 import { PrismaPartyRepository } from '../prisma/repositories/shared/PrismaPartyRepository';
 import { PrismaPartyItemPriceRepository } from '../prisma/repositories/shared/PrismaPartyItemPriceRepository';
@@ -363,6 +364,13 @@ const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
 // Shared Services
 const settingsResolver = new SettingsResolver(getDb());
 const settingsResolverSQL = new SettingsResolverSQL();
+
+// REPORTING — Sales Gross Profit Facts recorder (Task 246)
+const profitFactRecorder = new RecordSalesProfitLineFactsUseCase(
+  DB_TYPE === 'SQL'
+    ? new PrismaSalesProfitLineFactRepository(getPrismaClient())
+    : new FirestoreSalesProfitLineFactRepository(getDb())
+);
 const moduleActivationService = DB_TYPE === 'SQL'
   ? new ModuleActivationService(new PrismaCompanyModuleRepository(getPrismaClient()))
   : new ModuleActivationService(new FirestoreCompanyModuleRepository(getDb()));
@@ -1338,6 +1346,11 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   get realtimeDispatcher() {
     const { FirebaseRealtimeDispatcher } = require('../realtime/FirebaseRealtimeDispatcher');
     return new FirebaseRealtimeDispatcher();
+  },
+
+  // REPORTING — Sales Gross Profit Facts recorder (Task 246)
+  get recordSalesProfitLineFactsUseCase(): RecordSalesProfitLineFactsUseCase {
+    return profitFactRecorder;
   },
 
   // REPORTING — Sales Gross Profit Facts (Task 246)
