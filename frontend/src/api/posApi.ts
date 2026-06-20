@@ -87,6 +87,28 @@ export const posApi = {
 
   updateRegister: async (id: string, payload: Partial<PosRegisterDTO>): Promise<PosRegisterDTO> =>
     ok(client.put(`/tenant/pos/registers/${encodeURIComponent(id)}`, payload)),
+
+  // ===== Shifts =====
+  openShift: async (payload: { registerId: string; cashierUserId?: string; openingFloat: number }): Promise<PosShiftDTO> =>
+    ok(client.post('/tenant/pos/shifts/open', payload)),
+
+  closeShift: async (id: string, payload: { countedCash: number }): Promise<any> =>
+    ok(client.post(`/tenant/pos/shifts/${encodeURIComponent(id)}/close`, payload)),
+
+  forceCloseShift: async (id: string, payload: { countedCash: number }): Promise<any> =>
+    ok(client.post(`/tenant/pos/shifts/${encodeURIComponent(id)}/force-close`, payload)),
+
+  createCashMovement: async (id: string, payload: { type: 'PAYIN' | 'PAYOUT' | 'DROP'; amount: number; reason?: string }): Promise<any> =>
+    ok(client.post(`/tenant/pos/shifts/${encodeURIComponent(id)}/cash-movements`, payload)),
+
+  listShifts: async (filters?: { registerId?: string; status?: string; limit?: number }): Promise<PosShiftDTO[]> =>
+    ok(client.get('/tenant/pos/shifts', { params: filters || {} })),
+
+  getShift: async (id: string): Promise<PosShiftDTO> =>
+    ok(client.get(`/tenant/pos/shifts/${encodeURIComponent(id)}`)),
+
+  getXReport: async (id: string): Promise<{ shift: PosShiftDTO; totals: any; generatedAt: string }> =>
+    ok(client.get(`/tenant/pos/shifts/${encodeURIComponent(id)}/x-report`)),
 };
 
 export default posApi;

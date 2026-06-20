@@ -5,6 +5,8 @@
 import { PosRegister } from '../../domain/pos/entities/PosRegister';
 import { PosSettings } from '../../domain/pos/entities/PosSettings';
 import { PosShift } from '../../domain/pos/entities/PosShift';
+import { PosCashMovement } from '../../domain/pos/entities/PosCashMovement';
+import { PosCashMovementTotals } from '../../repository/interfaces/pos/IPosCashMovementRepository';
 
 export interface PosRegisterDTO {
   id: string;
@@ -115,3 +117,57 @@ export class PosDTOMapper {
     };
   }
 }
+
+export interface PosCashMovementDTO {
+  id: string;
+  companyId: string;
+  shiftId: string;
+  registerId: string;
+  type: 'OPENING_FLOAT' | 'PAYIN' | 'PAYOUT' | 'DROP' | 'SALE_CASH' | 'REFUND_CASH';
+  amount: number;
+  reason?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export const PosCashMovementDTO = {
+  fromDomain(m: PosCashMovement): PosCashMovementDTO {
+    return {
+      id: m.id,
+      companyId: m.companyId,
+      shiftId: m.shiftId,
+      registerId: m.registerId,
+      type: m.type,
+      amount: m.amount,
+      reason: m.reason,
+      createdBy: m.createdBy,
+      createdAt: m.createdAt.toISOString(),
+    };
+  },
+};
+
+export interface PosCashMovementTotalsDTO {
+  OPENING_FLOAT: number;
+  PAYIN: number;
+  PAYOUT: number;
+  DROP: number;
+  SALE_CASH: number;
+  REFUND_CASH: number;
+  expectedCash: number;
+}
+
+export interface PosXReportDTO {
+  shift: PosShiftDTO;
+  totals: PosCashMovementTotalsDTO;
+  generatedAt: string;
+}
+
+export const PosXReportDTO = {
+  fromDomain(report: { shift: PosShift; totals: PosCashMovementTotals; generatedAt: string }): PosXReportDTO {
+    return {
+      shift: PosDTOMapper.toShiftDTO(report.shift),
+      totals: report.totals,
+      generatedAt: report.generatedAt,
+    };
+  },
+};

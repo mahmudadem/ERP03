@@ -5,13 +5,10 @@
  *   - Reads `req.user.companyId/uid/email`
  *   - Builds a use case from `diContainer` collaborators
  *   - Maps to DTOs and returns `{ success, data }`
- *
- * Phase 0 (247a) methods: settings, registers.
- * Later phases will append shift, sale, return, report methods here.
  */
 import { NextFunction, Request, Response } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
-import { PosDTOMapper } from '../../dtos/PosDTOs';
+import { PosDTOMapper, PosCashMovementDTO, PosXReportDTO } from '../../dtos/PosDTOs';
 import {
   CreatePosRegisterUseCase,
   GetPosRegisterUseCase,
@@ -23,6 +20,17 @@ import {
   InitializePosUseCase,
   UpdatePosSettingsUseCase,
 } from '../../../application/pos/use-cases/PosSettingsUseCases';
+import {
+  ClosePosShiftUseCase,
+  CreatePosCashMovementUseCase,
+  ForceClosePosShiftUseCase,
+  GetPosShiftUseCase,
+  GetPosXReportUseCase,
+  ListPosShiftsUseCase,
+  OpenPosShiftUseCase,
+} from '../../../application/pos/use-cases/PosShiftUseCases';
+import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
+import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import {
   validateUpdatePosSettingsInput,
   validateUpsertPosRegisterInput,
@@ -134,6 +142,182 @@ export class PosController {
       const useCase = new UpdatePosRegisterUseCase(diContainer.posRegisterRepository);
       const register = await useCase.execute(companyId, id, (req as any).body || {});
       (res as any).json({ success: true, data: PosDTOMapper.toRegisterDTO(register) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ===== Shifts =====
+
+  private static buildAccountingPostingService(): SubledgerVoucherPostingService {
+    return new SubledgerVoucherPostingService(
+      diContainer.voucherRepository,
+      diContainer.ledgerRepository,
+      diContainer.companyCurrencyRepository,
+      diContainer.accountRepository,
+      new VoucherValidationService(),
+      diContainer.periodLockService,
+      diContainer.policyRegistry as any
+    );
+  }
+
+  static async openShift(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const useCase = new OpenPosShiftUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posRegisterRepository,
+        diContainer.posSettingsRepository,
+        diContainer.posCashMovementRepository,
+        diContainer.transactionManager
+      );
+      const shift = await useCase.execute({
+        companyId,
+        registerId: String((req as any).body?.registerId),
+        cashierUserId: String((req as any).body?.cashierUserId || userId),
+        openingFloat: Number((req as any).body?.openingFloat) || 0,
+        actor: { userId },
+      });
+      (res as any).status(201).json({ success: true, data: PosDTOMapper.toShiftDTO(shift) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async closeShift(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const id = String((req as any).params.id);
+      const useCase = new ClosePosShiftUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posSettingsRepository,
+        diContainer.posRegisterRepository,
+        diContainer.posCashMovementRepository,
+        diContainer.accountRepository,
+        PosController.buildAccountingPostingService(),
+        diContainer.transactionManager
+      );
+      const result = await useCase.execute({
+        companyId,
+        shiftId: id,
+        countedCash: Number((req as any).body?.countedCash) || 0,
+        actor: { userId },
+      });
+      (res as any).json({
+        success: true,
+        data: {
+          shift: PosDTOMapper.toShiftDTO(result.shift),
+          totals: result.totals,
+          overShortAmount: result.overShortAmount,
+          overShortVoucherId: result.overShortVoucherId,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async forceCloseShift(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const id = String((req as any).params.id);
+      const useCase = new ForceClosePosShiftUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posSettingsRepository,
+        diContainer.posRegisterRepository,
+        diContainer.posCashMovementRepository,
+        diContainer.accountRepository,
+        PosController.buildAccountingPostingService(),
+        diContainer.transactionManager
+      );
+      const result = await useCase.execute({
+        companyId,
+        shiftId: id,
+        countedCash: Number((req as any).body?.countedCash) || 0,
+        actor: { userId },
+      });
+      (res as any).json({
+        success: true,
+        data: {
+          shift: PosDTOMapper.toShiftDTO(result.shift),
+          totals: result.totals,
+          overShortAmount: result.overShortAmount,
+          overShortVoucherId: result.overShortVoucherId,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createCashMovement(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const id = String((req as any).params.id);
+      const useCase = new CreatePosCashMovementUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posCashMovementRepository,
+        diContainer.transactionManager
+      );
+      const movement = await useCase.execute({
+        companyId,
+        shiftId: id,
+        type: String((req as any).body?.type) as any,
+        amount: Number((req as any).body?.amount) || 0,
+        reason: (req as any).body?.reason as string | undefined,
+        actor: { userId },
+      });
+      (res as any).status(201).json({ success: true, data: PosCashMovementDTO.fromDomain(movement) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listShifts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new ListPosShiftsUseCase(diContainer.posShiftRepository);
+      const list = await useCase.execute(companyId, {
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
+        status: (req as any).query?.status ? String((req as any).query.status) : undefined,
+        limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
+      });
+      (res as any).json({ success: true, data: list.map((s) => PosDTOMapper.toShiftDTO(s)) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getShift(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new GetPosShiftUseCase(diContainer.posShiftRepository);
+      const shift = await useCase.execute(companyId, id);
+      if (!shift) {
+        (res as any).status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Shift not found' } });
+        return;
+      }
+      (res as any).json({ success: true, data: PosDTOMapper.toShiftDTO(shift) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getXReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new GetPosXReportUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posCashMovementRepository
+      );
+      const report = await useCase.execute({ companyId, shiftId: id });
+      (res as any).json({ success: true, data: PosXReportDTO.fromDomain(report) });
     } catch (error) {
       next(error);
     }

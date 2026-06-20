@@ -20,4 +20,13 @@ router.post('/registers', permissionGuard('pos.registers.manage'), PosController
 router.get('/registers/:id', permissionGuard('pos.registers.manage'), PosController.getRegister);
 router.put('/registers/:id', permissionGuard('pos.registers.manage'), PosController.updateRegister);
 
+// Shifts
+router.post('/shifts/open', permissionGuard('pos.shift.open'), PosController.openShift);
+router.post('/shifts/:id/close', permissionGuard('pos.shift.close'), PosController.closeShift);
+router.post('/shifts/:id/force-close', permissionGuard('pos.shift.forceClose'), PosController.forceCloseShift);
+router.post('/shifts/:id/cash-movements', permissionGuard('pos.cash.movement'), PosController.createCashMovement);
+router.get('/shifts', permissionGuard('pos.terminal.access'), PosController.listShifts);
+router.get('/shifts/:id', permissionGuard('pos.terminal.access'), PosController.getShift);
+router.get('/shifts/:id/x-report', permissionGuard('pos.terminal.access'), PosController.getXReport);
+
 export default router;

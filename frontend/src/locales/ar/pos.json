@@ -76,5 +76,45 @@
       "cashAccount": "حساب الصندوق",
       "status": "الحالة"
     }
+  },
+  "shift": {
+    "title": "وردية نقطة البيع",
+    "open": "فتح وردية",
+    "openTitle": "فتح وردية",
+    "closeShift": "إغلاق الوردية",
+    "closeTitle": "إغلاق الوردية",
+    "noOpen": "لا توجد وردية مفتوحة. افتح وردية للبدء بالبيع.",
+    "opened": "تم فتح الوردية.",
+    "closed": "تم إغلاق الوردية.",
+    "closedWithVoucher": "تم إغلاق الوردية. الفرق {{direction}} {{amount}} → سند {{voucherId}}.",
+    "openNeedRegister": "اختر سجلاً.",
+    "addMovement": "إضافة حركة نقدية",
+    "movementAdded": "تم تسجيل الحركة النقدية.",
+    "amountPositive": "يجب أن يكون المبلغ موجباً.",
+    "movementType": "النوع",
+    "payin": "إضافة (نقدية مضافة)",
+    "payout": "سحب (نقدية مسحوبة)",
+    "drop": "إيداع في الخزنة",
+    "amount": "المبلغ",
+    "reason": "السبب",
+    "register": "السجل",
+    "openingFloat": "رصيد الافتتاح",
+    "expected": "النقدية المتوقعة",
+    "cashSales": "مبيعات نقدية",
+    "refunds": "المبالغ المستردة",
+    "counted": "النقدية المعدودة",
+    "close": "إغلاق",
+    "historyTitle": "سجل الورديات",
+    "historySubtitle": "الورديات الأخيرة لهذه الشركة.",
+    "empty": "لا توجد ورديات بعد.",
+    "col": {
+      "id": "الوردية",
+      "register": "السجل",
+      "status": "الحالة",
+      "opened": "وقت الفتح",
+      "closed": "وقت الإغلاق",
+      "opening": "الافتتاح",
+      "variance": "الفرق"
+    }
   }
 }

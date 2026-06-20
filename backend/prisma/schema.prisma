@@ -64,6 +64,7 @@ model Company {
   posRegisters    PosRegister[]
   posSettings     PosSettings[]
   posShifts       PosShift[]
+  posCashMovements PosCashMovement[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
   budgets         Budget[]
@@ -1715,6 +1716,25 @@ model PosShift {
   @@index([companyId, status])
   @@index([companyId, openedAt])
   @@map("pos_shifts")
+}
+
+model PosCashMovement {
+  id          String   @id @default(uuid())
+  companyId   String
+  shiftId     String
+  registerId  String
+  type        String
+  amount      Float
+  reason      String?
+  createdBy   String
+  createdAt   DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, shiftId])
+  @@index([companyId, registerId])
+  @@index([companyId, type])
+  @@map("pos_cash_movements")
 }
 
 // ============================================

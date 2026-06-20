@@ -76,5 +76,45 @@
       "cashAccount": "Kasa hesabı",
       "status": "Durum"
     }
+  },
+  "shift": {
+    "title": "POS Vardiyası",
+    "open": "Vardiya aç",
+    "openTitle": "Vardiya aç",
+    "closeShift": "Vardiyayı kapat",
+    "closeTitle": "Vardiyayı kapat",
+    "noOpen": "Açık vardiya yok. Satışa başlamak için bir tane açın.",
+    "opened": "Vardiya açıldı.",
+    "closed": "Vardiya kapatıldı.",
+    "closedWithVoucher": "Vardiya kapatıldı. Fark {{direction}} {{amount}} → fiş {{voucherId}}.",
+    "openNeedRegister": "Bir kasa seçin.",
+    "addMovement": "Nakit hareketi ekle",
+    "movementAdded": "Nakit hareketi kaydedildi.",
+    "amountPositive": "Miktar pozitif olmalıdır.",
+    "movementType": "Tür",
+    "payin": "Para girişi",
+    "payout": "Para çıkışı",
+    "drop": "Kasa düşürme",
+    "amount": "Miktar",
+    "reason": "Sebep",
+    "register": "Kasa",
+    "openingFloat": "Açılış tutarı",
+    "expected": "Beklenen nakit",
+    "cashSales": "Nakit satışlar",
+    "refunds": "Nakit iadeler",
+    "counted": "Sayılan nakit",
+    "close": "Kapat",
+    "historyTitle": "Vardiya geçmişi",
+    "historySubtitle": "Bu şirketin son vardiyaları.",
+    "empty": "Henüz vardiya yok.",
+    "col": {
+      "id": "Vardiya",
+      "register": "Kasa",
+      "status": "Durum",
+      "opened": "Açılış",
+      "closed": "Kapanış",
+      "opening": "Açılış tutarı",
+      "variance": "Fark"
+    }
   }
 }
