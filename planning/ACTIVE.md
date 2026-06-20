@@ -1,32 +1,30 @@
 # 🎯 Current Focus
 
-## Task 246 in progress - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
+## Task 246 PR-ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
 
+- ✅ **Done on `codex/246-sales-gross-profit-facts` (4 incremental commits):**
+  - Slice 1: `SalesProfitLineFact` entity + interface + Firestore + Prisma + DI + 17 direction tests.
+  - Slice 2: `RecordSalesProfitLineFactsUseCase` + wired into SI/SR/PI/PR posting (optional ctor param, called inside the existing transaction right after the entity `update`). 8 tests.
+  - Slice 3: `GetGrossProfitByDocumentUseCase` + `GetGrossProfitByItemUseCase` + `SalesGrossProfitController` + 2 routes (`/reports/gross-profit/by-document`, `/reports/gross-profit/by-item`). 6 tests.
+  - Slice 4: `npx tsc --noEmit` clean, `npm run build` clean, `npm test` → 168/170 suites pass (1506 tests, 18 pre-existing skipped, 0 failures). 70/70 SI/SR/PI/PR posting tests pass (no regression). 31/31 reporting tests pass.
 - ✅ **Scope/model locked (2026-06-20):**
-  - **Scope:** TYPE-AGNOSTIC. Generate profit facts for ALL invoice types: `SALES_INVOICE`, `SALES_RETURN`, `PURCHASE_INVOICE`, `PURCHASE_RETURN` (and any future Form Designer document type). Not sales-only.
-  - **Model:** **ABSOLUTE + DIRECTION** (not plain signed). Per-metric amount + dir.
-    - `revenueAmountDoc` / `revenueAmountBase` + `revenueDir` ('IN' | 'OUT')
-    - `costAmountDoc` / `costAmountBase` + `costDir` ('IN' | 'OUT')
-    - `profitAmountDoc` / `profitAmountBase` + `profitDir` ('IN' | 'OUT')
-    - `marginPct` (denominator = absolute revenue)
+  - **Type-agnostic** — facts for SI, SR, PI, PR (not sales-only). Future Form Designer doc types are a follow-up.
+  - **Absolute + direction** — `amount + 'IN'|'OUT'` per metric. Reports show IN/OUT separately.
   - **Per-type direction table (locked):**
-    - SI: revDir=IN, costDir=OUT → profitDir=IN
-    - SR: revDir=OUT, costDir=IN → profitDir=OUT. **SR cost basis = current avg cost at time of return** (from `ItemCostingStatsService`, Task 240c). NOT the original SI cost.
-    - PI: rev=0, costDir=IN → profitDir=OUT (loss)
-    - PR: rev=0, costDir=OUT → profitDir=IN (gain)
-  - **Reports can show IN/OUT separately, filter by documentType, group by document/item, etc. User decides presentation.**
-  - **No broad dimensions on fact rows:** no customerId, no salespersonId, no itemName. Joined at report time. Only `documentNumber` is stored (display identifier, not a grouping dimension).
-- **Worktree:** `D:\DEV2026\ERP03-246-sales-gross-profit` on branch `codex/246-sales-gross-profit-facts` (from `main @ 119e372f`).
-- **Freeze note:** Task file is marked "post-freeze candidate". Owner explicitly authorized this work despite the 2026-06-13 feature freeze.
-- **Accounting boundary (HARD):** no GL vouchers, no COGS posting, no inventory valuation, no stock movement costing, no FX revaluation, no Trading Account, no P&L, no tax posting, no AR/AP changes. Read-model only.
-- **Reports in v1 (backend):** Gross Profit by Invoice, Gross Profit by Item. Filters: fromDate, toDate, documentType, itemId, docCurrency.
-- **Estimate:** ~13 h.
+    - SI: revDir=IN, costDir=OUT → profitDir follows revenue (flips on net loss)
+    - SR: revDir=OUT, costDir=IN → profitDir follows revenue (flips on net gain)
+    - PI: costDir=IN → profitDir=OUT (loss)
+    - PR: costDir=OUT → profitDir=IN (gain)
+  - **No broad dimensions** on fact rows. Only `documentNumber` (display).
+- **Known v1 limitation:** SR/PR entities don't persist net post-discount, post-tax line totals. SR/PR profit facts use gross amounts. Documented as a follow-up.
+- **Worktree:** `D:\DEV2026\ERP03-246-sales-gross-profit` on branch `codex/246-sales-gross-profit-facts`.
+- **Freeze note:** Task was marked "post-freeze candidate". Owner explicitly authorized this work despite the 2026-06-13 freeze.
 
 ## Next action
 
-Begin recon (read-only): SI/SR/PI/PR posting paths, line shape (`lineCostBase`, `lineTotalBase`, `lineTotalDoc`, `exchangeRateDocToBase`), `ItemCostingStatsService`, existing reporting module structure (`GetTradingAccountUseCase` etc.), Firestore `runInTransaction` pattern, Prisma state, `bindRepositories.ts` registration pattern. Then start entity + interface.
+Open PR for `codex/246-sales-gross-profit-facts` against `main`. After merge, schedule frontend slice (ReportContainer + module menu wiring for the 2 gross-profit reports). Documented follow-ups: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration.
 
-## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
+## Task 245 UX polish sweep complete - cherry-picked onto current main, PR-ready (2026-06-19)
 
 - ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).
 - Two right-click affordances on the line-items table, identical on the four native pricing pages (SI/PI/PO) and the Form-Designer renderer (Part D parity):

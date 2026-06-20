@@ -2,6 +2,28 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-20 (Task 246 — Sales Gross Profit Facts and Management Reports, backend-first slice)
+
+- **Goal:** Implement a lean `SalesProfitLineFact` read model and 2 management reports (Gross Profit by Document, by Item) on the backend, generated automatically when an SI/SR/PI/PR posts. Pure reporting read-model; no GL/COGS/valuation/stock/FX/Trading/P&L/tax/AR-AP changes.
+- **Decisions (owner-locked 2026-06-20):**
+  - **Type-agnostic** — generate facts for SI, SR, PI, PR (not sales-only). Future Form Designer doc types can be added without schema change.
+  - **Absolute + direction** (not plain signed) — each metric stored as `amount + 'IN'|'OUT'`. Lets reports show IN-side and OUT-side separately.
+  - **Per-type direction table:** SI rev=IN, cost=OUT; SR rev=OUT, cost=IN; PI cost=IN; PR cost=OUT. Profit follows revenue when rev>0, opposite-of-costDir when rev=0; net-loss/net-gain cases flip the rule.
+  - **No broad dimensions on fact rows** — no customerId/salespersonId/itemName; only documentNumber (display).
+  - **Snapshot in the same transaction** as posting — fact writes succeed/fail with the posting.
+- **Recon findings (one important course-correction):** the actual SR posting does NOT need a special `ItemCostingStatsService` lookup. The SR's `lineCostBase` is already correctly set by the SR posting logic (`resolveReturnUnitCostBase` picks the original SI's cost for post-invoice returns, or the current stock avg for direct returns). We just use whatever is on the posted line. Simplified Slice C; no dependency on `ItemCostingStatsService`.
+- **What was done (4 incremental commits on `codex/246-sales-gross-profit-facts`):**
+  - **Slice 1** — Domain entity, `ISalesProfitLineFactRepository`, Firestore + Prisma implementations, `SalesProfitLineFact` Prisma model + back-relation on `Company`, DI registration, 17 unit tests for the direction strategy.
+  - **Slice 2** — `RecordSalesProfitLineFactsUseCase`, wired into `PostSalesInvoiceUseCase`, `PostSalesReturnUseCase`, `PostPurchaseInvoiceUseCase`, `PostPurchaseReturnUseCase` as optional ctor params called inside the existing transaction right after the entity `update`. 8 new unit tests (idempotency, foreign ccy, all 4 types, mixed-type aggregation). 5 production instantiation sites in SalesController + PurchaseController updated to pass the recorder.
+  - **Slice 3** — `GetGrossProfitByDocumentUseCase` + `GetGrossProfitByItemUseCase` + `SalesGrossProfitController` + 2 new routes (`/reports/gross-profit/by-document`, `/reports/gross-profit/by-item`). 6 new unit tests (by-doc grouping, type filter, date filter, permission check, SUPERSEDED exclusion, by-item mixed-direction).
+  - **Slice 4** — `npx tsc --noEmit` clean; `npm run build` clean; `npm test` → **168/170 suites pass, 0 failures** (1506 tests pass, 18 pre-existing skipped). 70/70 SI/SR/PI/PR posting tests pass with no regression. Full backend suite green.
+- **Docs:** `docs/architecture/reporting.md` (full technical doc, file map, per-type table, idempotency, what's out of scope), `docs/user-guide/reporting/sales-gross-profit.md` (end-user walkthrough with worked example, IN/OUT explanation, FX behavior, when to use vs Trading Account, troubleshooting), `planning/done/246-sales-gross-profit-facts.md` (completion report).
+- **Known limitation v1:** SR/PR entities don't persist net post-discount, post-tax line totals. SR/PR profit facts use gross amounts (`returnQty × unitPrice` for revenue, `returnQty × unitCost` for cost). Documented in code + docs as a follow-up.
+- **Freeze note:** Task was marked "post-freeze candidate" in planning/tasks/246. Owner explicitly authorized this work despite the 2026-06-13 freeze.
+- **Verification:** Backend typecheck ✅, build ✅, full suite ✅ (168/170 suites, 1506 tests), reporting tests ✅ (31/31), posting regression ✅ (70/70).
+- **Time spent:** ~13h (matched the task estimate).
+- **Next:** Open PR for `codex/246-sales-gross-profit-facts`. After merge, do the frontend slice (ReportContainer + module menu wiring). Known follow-ups in the completion report: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/customer-group reports, dedicated permission.
+
 ### Session: 2026-06-19 (Task 245 UX polish sweep - NOTE-01..05,07,12,13)
 
 - **Goal:** Implement the remaining 8 Task 245 manual-test findings (NOTE-01, 02, 03, 04, 05, 07, 12, 13) in a single sweep, on branch `codex/245-ux-polish-sweep-2`. NOTE-06 was already done in an earlier slice.
