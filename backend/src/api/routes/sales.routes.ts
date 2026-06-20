@@ -3,6 +3,7 @@ import { SalesController } from '../controllers/sales/SalesController';
 import { SalesMasterDataController } from '../controllers/sales/SalesMasterDataController';
 import { SalesOperationalController } from '../controllers/sales/SalesOperationalController';
 import { SalesReportingController } from '../controllers/sales/SalesReportingController';
+import { SalesGrossProfitController } from '../controllers/sales/SalesGrossProfitController';
 import { RecurringInvoiceController } from '../controllers/sales/RecurringInvoiceController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
 import { SalesInvoiceAttachmentController } from '../controllers/sales/SalesInvoiceAttachmentController';
@@ -156,6 +157,10 @@ router.get('/customers/:partyId/statement', SalesReportingController.getCustomer
 router.get('/reports/sales-by-customer', SalesReportingController.getSalesByCustomer);
 router.get('/reports/sales-by-item', SalesReportingController.getSalesByItem);
 router.get('/reports/sales-by-salesperson', SalesReportingController.getSalesBySalesperson);
+
+// Task 246 — Sales Gross Profit Facts (management reporting read model)
+router.get('/reports/gross-profit/by-document', SalesGrossProfitController.grossProfitByDocument);
+router.get('/reports/gross-profit/by-item', SalesGrossProfitController.grossProfitByItem);
 
 // Audit log
 router.get('/audit-log', RecordAuditController.getByEntity);
