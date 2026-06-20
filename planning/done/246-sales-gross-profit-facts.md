@@ -1,6 +1,6 @@
 # Task 246 — Sales Gross Profit Facts and Management Reports (backend-first slice)
 
-**Status:** PR-ready on `codex/246-sales-gross-profit-facts`
+**Status:** PR opened, review fixes applied on `codex/246-sales-gross-profit-facts`
 **Worktree:** `D:\DEV2026\ERP03-246-sales-gross-profit`
 **Branched from:** `main @ 119e372f` (merge of Task 243-B)
 **Owner-authorized:** yes (despite 2026-06-13 feature freeze — task
@@ -31,14 +31,18 @@ instead of being forced into a single signed number.
   Repository contract with tx-aware methods:
   `replaceForDocumentVersion`, `markSupersededForDocument`,
   `markReversedForDocument`, `queryFacts`, `aggregateByDocument`,
-  `aggregateByItem`.
+  `aggregateByItem`. Aggregation rows expose base-currency totals as
+  single numbers and document-currency totals through
+  `docCurrencyBreakdown` when a row contains mixed currencies.
 - `backend/src/application/reporting/use-cases/RecordSalesProfitLineFactsUseCase.ts`
   Snapshot generator: takes a posted-line shape, builds facts via the
   per-type table, writes them via the repo inside the caller's tx.
 - `backend/src/application/reporting/use-cases/GetGrossProfitByDocumentUseCase.ts`
-  Report use case (grouped by document).
+  Report use case (grouped by document). Defaults to sales-side
+  document types (`SALES_INVOICE`, `SALES_RETURN`) unless the caller
+  explicitly passes a `documentType` filter.
 - `backend/src/application/reporting/use-cases/GetGrossProfitByItemUseCase.ts`
-  Report use case (grouped by item).
+  Report use case (grouped by item). Same sales-side default.
 - `backend/src/infrastructure/firestore/repositories/reporting/FirestoreSalesProfitLineFactRepository.ts`
   Firestore implementation, path
   `companies/{companyId}/reporting/Data/profit_line_facts/{factId}`.
@@ -53,8 +57,9 @@ instead of being forced into a single signed number.
   8 unit tests for the snapshot generator (idempotency, foreign ccy,
   all 4 types, mixed-type aggregation).
 - `backend/src/tests/application/reporting/GrossProfitReportUseCases.test.ts`
-  6 unit tests for the report use cases (by-doc grouping, filters,
-  permission, status filter; by-item grouping with mixed direction).
+  8 unit tests for the report use cases (by-doc grouping, filters,
+  permission, status filter, sales-side default, mixed document
+  currency breakdown; by-item grouping with mixed direction).
 
 ### Modified backend files
 - `backend/prisma/schema.prisma` — added `SalesProfitLineFact` model +
@@ -135,8 +140,9 @@ This handles:
 1. **Type-agnostic** — the model supports all 4 built-in invoice
    types (SI, SR, PI, PR) in v1, and the type field is a plain string
    so future Form Designer document types can be wired in without
-   schema change. Custom types will need a follow-up to supply the
-   right per-type direction rule.
+   schema change. The sales report endpoints default to SI/SR only;
+   PI/PR are included only when explicitly requested. Custom types
+   will need a follow-up to supply the right per-type direction rule.
 2. **Absolute + direction** (not plain signed) — the user/owner
    decided that storing `amount + 'IN'|'OUT'` per metric is more
    flexible than a single signed number, because it lets reports show
@@ -150,6 +156,10 @@ This handles:
 4. **Snapshot generation in the same transaction** as the posting —
    so fact writes succeed/fail with posting; reports can never miss
    a posted invoice.
+5. **No mixed document-currency summing** — base-currency totals can
+   be summed across all rows. Document-currency totals are shown as
+   single row fields only when a row has one currency; otherwise the
+   row returns `docCurrencyBreakdown[]`.
 
 ## Acceptance Criteria Status
 
@@ -163,6 +173,11 @@ This handles:
   `GrossProfitReportUseCases.test.ts`.
 - [x] Gross Profit by Item is derived by grouping line facts by
   `itemId`. Verified.
+- [x] The sales endpoints default to `SALES_INVOICE` and
+  `SALES_RETURN`, so purchase-side facts do not appear in a normal
+  sales gross-profit report unless explicitly requested.
+- [x] Mixed document-currency rows do not silently sum USD/EUR/etc.;
+  document-currency amounts are exposed through `docCurrencyBreakdown`.
 - [x] Posting retry does not duplicate facts (deterministic id).
   Verified by the "is idempotent" test in
   `RecordSalesProfitLineFactsUseCase.test.ts`.
@@ -177,18 +192,20 @@ This handles:
   rows are touched.
 - [x] Backend build passes (`npm run build` clean).
 - [x] Focused backend tests cover currency, grouping, idempotency.
-  31/31 reporting tests pass.
+  33/33 reporting tests pass.
 - [ ] Frontend report pages — explicitly out of scope for this slice.
   Backend endpoints are live; the `ReportContainer` + module menu
   wiring is a follow-up task.
 
 ## Verification Summary
 
-- `npx tsc --noEmit` → 0 errors
-- `npm run build` → clean
+- `npm --prefix backend run typecheck` → clean (`pretypecheck` runs
+  `prisma generate`)
+- `npm --prefix backend run build` → clean (`prebuild` runs
+  `prisma generate`)
 - `npm test` (full backend suite) → 168/170 suites pass, 0 failures
-  (1506 tests pass, 18 pre-existing skipped)
-- 31/31 new reporting tests pass (direction strategy, snapshot
+  (1508 tests pass, 18 skipped)
+- 33/33 new reporting tests pass (direction strategy, snapshot
   generator, report use cases)
 - 70/70 SI/SR/PI/PR posting tests pass (no regression)
 - DI registration: both Firestore + Prisma wired; DB_TYPE switch
@@ -224,10 +241,11 @@ This handles:
    permission is straightforward to add once it's registered in
    the platform permissions catalog.
 6. **Composite Firestore indexes** for the new collection — the
-   project uses single-field auto-indexes by default. If query
-   performance is needed on `(companyId, documentId, snapshotVersion)`
-   or `(companyId, itemId, documentDate)` for large tenants, add
-   composite indexes in `backend/firestore.indexes.json`.
+   project uses single-field auto-indexes by default. The repository
+   now pushes `documentDate` range filters into Firestore before
+   `limit`; if production reports combine date ranges with equality
+   filters such as `itemId`, `status`, or `documentType`, add the
+   required composite indexes in `backend/firestore.indexes.json`.
 
 ## What Was INTENTIONALLY NOT Changed
 

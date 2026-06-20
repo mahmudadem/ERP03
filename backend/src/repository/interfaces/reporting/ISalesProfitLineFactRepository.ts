@@ -34,6 +34,25 @@ export interface ProfitFactAggregationRow {
   profitAmountDocOut: number;
   // net = IN - OUT
   profitAmountBaseNet: number;
+  /**
+   * Single-currency document totals. These fields are populated only when every
+   * fact in the row has the same docCurrency; mixed-currency rows expose their
+   * document-currency amounts only through docCurrencyBreakdown.
+   */
+  docCurrency: string | null;
+  hasMixedDocCurrencies: boolean;
+  profitAmountDocNet: number;
+  docCurrencyBreakdown: ProfitFactCurrencyTotals[];
+}
+
+export interface ProfitFactCurrencyTotals {
+  docCurrency: string;
+  revenueAmountDocIn: number;
+  costAmountDocIn: number;
+  profitAmountDocIn: number;
+  revenueAmountDocOut: number;
+  costAmountDocOut: number;
+  profitAmountDocOut: number;
   profitAmountDocNet: number;
 }
 

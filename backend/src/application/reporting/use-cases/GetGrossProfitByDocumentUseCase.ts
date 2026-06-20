@@ -13,6 +13,11 @@ import {
 } from '../../../repository/interfaces/reporting/ISalesProfitLineFactRepository';
 import { ProfitDocumentType } from '../../../domain/reporting/entities/SalesProfitLineFact';
 
+const DEFAULT_SALES_PROFIT_DOCUMENT_TYPES: ProfitDocumentType[] = [
+  'SALES_INVOICE',
+  'SALES_RETURN',
+];
+
 export interface GetGrossProfitByDocumentInput {
   companyId: string;
   userId: string;
@@ -59,7 +64,7 @@ export class GetGrossProfitByDocumentUseCase {
     const filters: ProfitFactFilters = {
       fromDate: input.fromDate,
       toDate: input.toDate,
-      documentType: input.documentType,
+      documentType: input.documentType ?? DEFAULT_SALES_PROFIT_DOCUMENT_TYPES,
       itemId: input.itemId,
       docCurrency: input.docCurrency,
       status: 'ACTIVE',

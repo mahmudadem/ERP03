@@ -226,10 +226,28 @@ Each returns:
 ```ts
 {
   fromDate, toDate, documentType,
-  rows: ProfitFactAggregationRow[],   // per group: IN/OUT/net in base + doc currency
+  rows: ProfitFactAggregationRow[],   // per group: IN/OUT/net in base + per doc-currency breakdown
   totals: { lineCount, profitBaseNet, profitBaseIn, profitBaseOut, ... }
 }
 ```
+
+The `/sales/reports/gross-profit/*` use cases default to
+`SALES_INVOICE` + `SALES_RETURN` when no `documentType` filter is
+provided. PI/PR facts are recorded by the same read model for future
+type-agnostic management analysis, but they are included in these sales
+routes only when the caller explicitly passes
+`documentType=PURCHASE_INVOICE`, `PURCHASE_RETURN`, or a comma-separated
+combination.
+
+`ProfitFactAggregationRow` always exposes base-currency totals as
+single numeric columns. Document-currency totals are safe only when a
+row contains one `docCurrency`; in that case the legacy
+`revenueAmountDoc*`, `costAmountDoc*`, and `profitAmountDoc*` fields are
+populated and `docCurrency` is set. If a grouped row contains multiple
+document currencies, `hasMixedDocCurrencies = true`, `docCurrency =
+null`, the single doc-total fields are zero, and callers must display
+`docCurrencyBreakdown[]`. This prevents USD + TRY + EUR from being
+silently summed into one meaningless document-currency number.
 
 Permission: `'accounting.reports.tradingAccount.view'` (v1 reuse; a
 dedicated `'reporting.salesProfit.view'` permission can be introduced
@@ -248,20 +266,25 @@ or comma-separated), `itemId`, `docCurrency`, `limit`.
 ## What the Owner Will See in Reports
 
 - **Per document** (e.g. SI-00001): one row showing revenue IN/OUT,
-  cost IN/OUT, profit IN/OUT (all in base currency), with the same
-  breakdown in the document's currency. Plus IN/OUT separate
-  columns on the row.
+  cost IN/OUT, profit IN/OUT (all in base currency), with document
+  currency totals shown either in the row's single currency or in
+  `docCurrencyBreakdown[]` when the group is mixed-currency.
 - **Per item** (e.g. `itm_a`): one row summing across all documents
   that touched the item, with IN/OUT separate.
 - **Net** is always available: `profitBaseNet = profitBaseIn − profitBaseOut`.
-- The user can filter by `documentType` to see e.g. only
-  `SALES_INVOICE` or only `PURCHASE_RETURN`.
+- The default sales report includes `SALES_INVOICE` and `SALES_RETURN`
+  only. The user can filter by `documentType` to see e.g. only
+  `SALES_INVOICE` or explicitly include purchase-side facts.
 
 ## Future / Out of Scope
 
 - **Frontend report pages** — separate slice. The two backend endpoints
   are ready; the frontend `ReportContainer` + module menu wiring is a
   follow-up.
+- **Purchase-side reporting UI** — the read model stores PI/PR facts,
+  but the sales endpoints default to SI/SR. A separate purchase or
+  all-document management report can expose PI/PR by default if the
+  product decision is made.
 - **`EntityDimensionAssignment` model** for branch/region/customer-group
   reports — future task. The current fact model does not store these
   dimensions; they are joined at report time from the document header.
@@ -273,10 +296,10 @@ or comma-separated), `itemId`, `docCurrency`, `limit`.
 
 ## Verification Summary
 
-- `npx tsc --noEmit` → 0 errors
-- `npm run build` → clean
+- `npm --prefix backend run typecheck` → clean (`pretypecheck` runs `prisma generate`)
+- `npm --prefix backend run build` → clean (`prebuild` runs `prisma generate`)
 - `npm test` (full backend suite) → 168/170 suites pass, 0 failures
-  (1506 tests pass, 18 pre-existing skipped)
-- 31/31 reporting tests pass (direction strategy, snapshot generator,
+  (1508 tests pass, 18 skipped)
+- 33/33 reporting tests pass (direction strategy, snapshot generator,
   report use cases)
 - 70/70 SI/SR/PI/PR posting tests pass (no regression)

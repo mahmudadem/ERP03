@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-20 (Task 246 — PR #29 review fixes before merge)
+
+- **Goal:** Review and harden PR #29 before merge, then merge only if the branch is clean enough for owner/Codex QA.
+- **What was fixed:** Added backend `prisma:generate` plus `pretypecheck`/`prebuild` so the new Prisma `SalesProfitLineFact` model is available before `tsc`; moved Firestore `documentDate` filtering into the Firestore query before `limit`; changed sales gross-profit report defaults to include only `SALES_INVOICE` and `SALES_RETURN` unless `documentType` is explicitly provided; changed aggregation rows so document-currency totals are not silently summed across mixed currencies and are instead exposed through `docCurrencyBreakdown`.
+- **Accounting/ERP impact:** Reporting correctness only. No GL vouchers, stock movements, COGS, valuation, tax, AR/AP, period-lock, or FX revaluation behavior changed. The sales endpoint now avoids mixing purchase-side facts into a normal sales gross-profit report by default.
+- **Docs updated:** `docs/architecture/reporting.md`, `docs/user-guide/reporting/sales-gross-profit.md`, `planning/done/246-sales-gross-profit-facts.md`, and this planning handoff.
+- **Verification:** `npm --prefix backend test -- --runTestsByPath src/tests/application/reporting/GrossProfitReportUseCases.test.ts src/tests/application/reporting/RecordSalesProfitLineFactsUseCase.test.ts src/tests/application/reporting/SalesProfitDirectionStrategy.test.ts --runInBand` passed (33/33). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full `npm --prefix backend test` passed: 168/170 suites, 1508 tests, 18 skipped, 0 failures.
+- **Time spent:** ~1.4h.
+- **Next:** Push the review-fix commit to `codex/246-sales-gross-profit-facts`, wait for PR/mergeability status, then merge PR #29 if checks stay green.
+
 ### Session: 2026-06-20 (Task 246 — Sales Gross Profit Facts and Management Reports, backend-first slice)
 
 - **Goal:** Implement a lean `SalesProfitLineFact` read model and 2 management reports (Gross Profit by Document, by Item) on the backend, generated automatically when an SI/SR/PI/PR posts. Pure reporting read-model; no GL/COGS/valuation/stock/FX/Trading/P&L/tax/AR-AP changes.

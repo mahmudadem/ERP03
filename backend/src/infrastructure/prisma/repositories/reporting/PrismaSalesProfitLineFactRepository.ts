@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import {
   ProfitFactAggregationRow,
+  ProfitFactCurrencyTotals,
   ProfitFactFilters,
   ISalesProfitLineFactRepository,
 } from '../../../../repository/interfaces/reporting/ISalesProfitLineFactRepository';
@@ -90,11 +91,52 @@ const buildWhere = (companyId: string, filters: ProfitFactFilters): Record<strin
   return where;
 };
 
+const emptyCurrencyTotals = (docCurrency: string): ProfitFactCurrencyTotals => ({
+  docCurrency,
+  revenueAmountDocIn: 0,
+  costAmountDocIn: 0,
+  profitAmountDocIn: 0,
+  revenueAmountDocOut: 0,
+  costAmountDocOut: 0,
+  profitAmountDocOut: 0,
+  profitAmountDocNet: 0,
+});
+
+const finalizeCurrencyTotals = (
+  row: ProfitFactAggregationRow & { _label: string; _docCurrencies: Map<string, ProfitFactCurrencyTotals> }
+) => {
+  const breakdown = Array.from(row._docCurrencies.values()).map((totals) => ({
+    ...totals,
+    profitAmountDocNet: totals.profitAmountDocIn - totals.profitAmountDocOut,
+  }));
+  row.docCurrencyBreakdown = breakdown;
+  row.hasMixedDocCurrencies = breakdown.length > 1;
+  row.docCurrency = breakdown.length === 1 ? breakdown[0].docCurrency : null;
+  if (breakdown.length === 1) {
+    const only = breakdown[0];
+    row.revenueAmountDocIn = only.revenueAmountDocIn;
+    row.costAmountDocIn = only.costAmountDocIn;
+    row.profitAmountDocIn = only.profitAmountDocIn;
+    row.revenueAmountDocOut = only.revenueAmountDocOut;
+    row.costAmountDocOut = only.costAmountDocOut;
+    row.profitAmountDocOut = only.profitAmountDocOut;
+    row.profitAmountDocNet = only.profitAmountDocNet;
+  } else {
+    row.revenueAmountDocIn = 0;
+    row.costAmountDocIn = 0;
+    row.profitAmountDocIn = 0;
+    row.revenueAmountDocOut = 0;
+    row.costAmountDocOut = 0;
+    row.profitAmountDocOut = 0;
+    row.profitAmountDocNet = 0;
+  }
+};
+
 const aggregateFacts = (
   facts: SalesProfitLineFact[],
   groupBy: (f: SalesProfitLineFact) => { key: string; label: string }
 ): ProfitFactAggregationRow[] => {
-  const map = new Map<string, ProfitFactAggregationRow & { _label: string }>();
+  const map = new Map<string, ProfitFactAggregationRow & { _label: string; _docCurrencies: Map<string, ProfitFactCurrencyTotals> }>();
   for (const f of facts) {
     const { key, label } = groupBy(f);
     let row = map.get(key);
@@ -118,35 +160,47 @@ const aggregateFacts = (
         profitAmountDocOut: 0,
         profitAmountBaseNet: 0,
         profitAmountDocNet: 0,
+        docCurrency: null,
+        hasMixedDocCurrencies: false,
+        docCurrencyBreakdown: [],
+        _docCurrencies: new Map(),
       };
       map.set(key, row);
+    }
+    let currencyTotals = row._docCurrencies.get(f.docCurrency);
+    if (!currencyTotals) {
+      currencyTotals = emptyCurrencyTotals(f.docCurrency);
+      row._docCurrencies.set(f.docCurrency, currencyTotals);
     }
     row.lineCount += 1;
     if (f.revenueDir === 'IN') {
       row.revenueAmountBaseIn += f.revenueAmountBase;
-      row.revenueAmountDocIn += f.revenueAmountDoc;
+      currencyTotals.revenueAmountDocIn += f.revenueAmountDoc;
     } else if (f.revenueDir === 'OUT') {
       row.revenueAmountBaseOut += f.revenueAmountBase;
-      row.revenueAmountDocOut += f.revenueAmountDoc;
+      currencyTotals.revenueAmountDocOut += f.revenueAmountDoc;
     }
     if (f.costDir === 'IN') {
       row.costAmountBaseIn += f.costAmountBase;
-      row.costAmountDocIn += f.costAmountDoc;
+      currencyTotals.costAmountDocIn += f.costAmountDoc;
     } else {
       row.costAmountBaseOut += f.costAmountBase;
-      row.costAmountDocOut += f.costAmountDoc;
+      currencyTotals.costAmountDocOut += f.costAmountDoc;
     }
     if (f.profitDir === 'IN') {
       row.profitAmountBaseIn += f.profitAmountBase;
-      row.profitAmountDocIn += f.profitAmountDoc;
+      currencyTotals.profitAmountDocIn += f.profitAmountDoc;
     } else {
       row.profitAmountBaseOut += f.profitAmountBase;
-      row.profitAmountDocOut += f.profitAmountDoc;
+      currencyTotals.profitAmountDocOut += f.profitAmountDoc;
     }
     row.profitAmountBaseNet = row.profitAmountBaseIn - row.profitAmountBaseOut;
-    row.profitAmountDocNet = row.profitAmountDocIn - row.profitAmountDocOut;
   }
-  return Array.from(map.values()).map(({ _label, ...rest }) => rest);
+  return Array.from(map.values()).map((row) => {
+    finalizeCurrencyTotals(row);
+    const { _label, _docCurrencies, ...rest } = row;
+    return rest;
+  });
 };
 
 export class PrismaSalesProfitLineFactRepository implements ISalesProfitLineFactRepository {
@@ -258,6 +312,7 @@ export class PrismaSalesProfitLineFactRepository implements ISalesProfitLineFact
   async queryFacts(companyId: string, filters: ProfitFactFilters): Promise<SalesProfitLineFact[]> {
     const rows = await this.prisma.salesProfitLineFact.findMany({
       where: buildWhere(companyId, filters),
+      orderBy: { documentDate: 'asc' },
       take: filters.limit ?? 5000,
     });
     return rows.map((r) => toDomain(r as PrismaFactRow));

@@ -42,8 +42,8 @@ Backend endpoints (already live, for any direct consumer):
 - `GET /api/v1/sales/reports/gross-profit/by-item`
 
 You can filter by date range, document type, item, or document
-currency. All filters are optional; leave them off to see the whole
-history.
+currency. All filters are optional; leave them off to see the sales
+history (`SALES_INVOICE` and `SALES_RETURN`).
 
 ## How to Read the Output
 
@@ -85,12 +85,20 @@ anything; returns cost us 1,200; net 14,800."
 
 ## Document Types Included
 
-The reports include all four posting types the system tracks:
+By default, the Sales Gross Profit reports include only sales-side
+documents:
 
 | Type | What it is | How the metric flows |
 |------|-----------|----------------------|
 | `SALES_INVOICE` (SI) | Sale to a customer | Revenue IN, Cost OUT, Profit IN (when sale is profitable) |
 | `SALES_RETURN` (SR) | Customer returns goods | Revenue OUT, Cost IN, Profit OUT (reverses a sale) |
+
+The same backend fact table also records purchase-side documents for
+future purchase/all-document management reports. You can explicitly
+include them by using the document type filter:
+
+| Type | What it is | How the metric flows |
+|------|-----------|----------------------|
 | `PURCHASE_INVOICE` (PI) | Buy from a vendor | No revenue, Cost IN, Profit OUT (a cost event) |
 | `PURCHASE_RETURN` (PR) | Return goods to a vendor | No revenue, Cost OUT, Profit IN (a cost reversal) |
 
@@ -113,10 +121,11 @@ that was used at posting time.
   you issue invoices in multiple currencies.
 
 Reports never silently sum different currencies. The base-currency
-`Net` is always trustworthy; the `*Doc` columns are shown per-currency
-side-by-side. If you issue invoices in EUR, USD, and SYP on the same
-day, the by-document report will show those as three separate rows
-with their own `*Doc` totals.
+`Net` is always trustworthy. If a grouped row contains one document
+currency, the `*Doc` columns show that currency. If a grouped row
+contains more than one document currency, the single `*Doc` totals are
+left blank/zero and the API returns a `docCurrencyBreakdown` list
+instead, with one subtotal per currency.
 
 ## When Are Facts Written?
 

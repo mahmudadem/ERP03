@@ -67,7 +67,7 @@ class InMemoryProfitFactRepository implements ISalesProfitLineFactRepository {
     facts: SalesProfitLineFact[],
     groupBy: (f: SalesProfitLineFact) => { key: string; label: string }
   ): ProfitFactAggregationRow[] {
-    const map = new Map<string, ProfitFactAggregationRow>();
+    const map = new Map<string, ProfitFactAggregationRow & { _docCurrencies: Map<string, any> }>();
     for (const f of facts) {
       const { key, label } = groupBy(f);
       let row = map.get(key);
@@ -81,20 +81,56 @@ class InMemoryProfitFactRepository implements ISalesProfitLineFactRepository {
           costAmountBaseOut: 0, costAmountDocOut: 0,
           profitAmountBaseOut: 0, profitAmountDocOut: 0,
           profitAmountBaseNet: 0, profitAmountDocNet: 0,
+          docCurrency: null,
+          hasMixedDocCurrencies: false,
+          docCurrencyBreakdown: [],
+          _docCurrencies: new Map(),
         };
         map.set(key, row);
       }
+      let c = row._docCurrencies.get(f.docCurrency);
+      if (!c) {
+        c = {
+          docCurrency: f.docCurrency,
+          revenueAmountDocIn: 0,
+          costAmountDocIn: 0,
+          profitAmountDocIn: 0,
+          revenueAmountDocOut: 0,
+          costAmountDocOut: 0,
+          profitAmountDocOut: 0,
+          profitAmountDocNet: 0,
+        };
+        row._docCurrencies.set(f.docCurrency, c);
+      }
       row.lineCount += 1;
-      if (f.revenueDir === 'IN') { row.revenueAmountBaseIn += f.revenueAmountBase; row.revenueAmountDocIn += f.revenueAmountDoc; }
-      else if (f.revenueDir === 'OUT') { row.revenueAmountBaseOut += f.revenueAmountBase; row.revenueAmountDocOut += f.revenueAmountDoc; }
-      if (f.costDir === 'IN') { row.costAmountBaseIn += f.costAmountBase; row.costAmountDocIn += f.costAmountDoc; }
-      else { row.costAmountBaseOut += f.costAmountBase; row.costAmountDocOut += f.costAmountDoc; }
-      if (f.profitDir === 'IN') { row.profitAmountBaseIn += f.profitAmountBase; row.profitAmountDocIn += f.profitAmountDoc; }
-      else { row.profitAmountBaseOut += f.profitAmountBase; row.profitAmountDocOut += f.profitAmountDoc; }
+      if (f.revenueDir === 'IN') { row.revenueAmountBaseIn += f.revenueAmountBase; c.revenueAmountDocIn += f.revenueAmountDoc; }
+      else if (f.revenueDir === 'OUT') { row.revenueAmountBaseOut += f.revenueAmountBase; c.revenueAmountDocOut += f.revenueAmountDoc; }
+      if (f.costDir === 'IN') { row.costAmountBaseIn += f.costAmountBase; c.costAmountDocIn += f.costAmountDoc; }
+      else { row.costAmountBaseOut += f.costAmountBase; c.costAmountDocOut += f.costAmountDoc; }
+      if (f.profitDir === 'IN') { row.profitAmountBaseIn += f.profitAmountBase; c.profitAmountDocIn += f.profitAmountDoc; }
+      else { row.profitAmountBaseOut += f.profitAmountBase; c.profitAmountDocOut += f.profitAmountDoc; }
       row.profitAmountBaseNet = row.profitAmountBaseIn - row.profitAmountBaseOut;
-      row.profitAmountDocNet = row.profitAmountDocIn - row.profitAmountDocOut;
     }
-    return Array.from(map.values());
+    return Array.from(map.values()).map((row) => {
+      const breakdown = Array.from(row._docCurrencies.values()).map((c) => ({
+        ...c,
+        profitAmountDocNet: c.profitAmountDocIn - c.profitAmountDocOut,
+      }));
+      row.docCurrencyBreakdown = breakdown;
+      row.hasMixedDocCurrencies = breakdown.length > 1;
+      row.docCurrency = breakdown.length === 1 ? breakdown[0].docCurrency : null;
+      if (breakdown.length === 1) {
+        row.revenueAmountDocIn = breakdown[0].revenueAmountDocIn;
+        row.costAmountDocIn = breakdown[0].costAmountDocIn;
+        row.profitAmountDocIn = breakdown[0].profitAmountDocIn;
+        row.revenueAmountDocOut = breakdown[0].revenueAmountDocOut;
+        row.costAmountDocOut = breakdown[0].costAmountDocOut;
+        row.profitAmountDocOut = breakdown[0].profitAmountDocOut;
+        row.profitAmountDocNet = breakdown[0].profitAmountDocNet;
+      }
+      const { _docCurrencies, ...rest } = row;
+      return rest;
+    });
   }
   async aggregateByDocument(companyId: string, filters: ProfitFactFilters): Promise<ProfitFactAggregationRow[]> {
     const facts = await this.queryFacts(companyId, filters);
@@ -204,6 +240,53 @@ describe('Gross Profit report use cases (Task 246)', () => {
       });
       expect(out.rows).toHaveLength(1);
       expect(out.rows[0].groupKey).toBe('SALES_INVOICE::si_1');
+    });
+
+    it('defaults the sales report to sales document types only', async () => {
+      await seed([
+        { id: 'si', documentId: 'si_1', documentType: 'SALES_INVOICE', profitAmountBase: 10, profitDir: 'IN' },
+        { id: 'pi', documentId: 'pi_1', documentType: 'PURCHASE_INVOICE', profitAmountBase: 99, profitDir: 'OUT' },
+      ]);
+
+      const out = await byDoc.execute({ companyId: 'cmp_test', userId: 'u1' });
+
+      expect(out.rows).toHaveLength(1);
+      expect(out.rows[0].groupKey).toBe('SALES_INVOICE::si_1');
+    });
+
+    it('does not collapse mixed document currencies into one doc-currency total', async () => {
+      await seed([
+        {
+          id: 'usd',
+          documentId: 'si_1',
+          documentType: 'SALES_INVOICE',
+          docCurrency: 'USD',
+          profitAmountDoc: 3,
+          profitAmountBase: 90,
+          profitDir: 'IN',
+        },
+        {
+          id: 'eur',
+          documentId: 'si_1',
+          documentType: 'SALES_INVOICE',
+          docCurrency: 'EUR',
+          profitAmountDoc: 4,
+          profitAmountBase: 120,
+          profitDir: 'IN',
+        },
+      ]);
+
+      const out = await byDoc.execute({ companyId: 'cmp_test', userId: 'u1' });
+      const row = out.rows[0];
+
+      expect(row.profitAmountBaseNet).toBe(210);
+      expect(row.hasMixedDocCurrencies).toBe(true);
+      expect(row.docCurrency).toBeNull();
+      expect(row.profitAmountDocNet).toBe(0);
+      expect(row.docCurrencyBreakdown).toEqual(expect.arrayContaining([
+        expect.objectContaining({ docCurrency: 'USD', profitAmountDocNet: 3 }),
+        expect.objectContaining({ docCurrency: 'EUR', profitAmountDocNet: 4 }),
+      ]));
     });
 
     it('filters by date range', async () => {

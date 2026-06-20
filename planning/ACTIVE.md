@@ -1,14 +1,15 @@
 # 🎯 Current Focus
 
-## Task 246 PR-ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
+## Task 246 PR review fixes ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
 
 - ✅ **Done on `codex/246-sales-gross-profit-facts` (4 incremental commits):**
   - Slice 1: `SalesProfitLineFact` entity + interface + Firestore + Prisma + DI + 17 direction tests.
   - Slice 2: `RecordSalesProfitLineFactsUseCase` + wired into SI/SR/PI/PR posting (optional ctor param, called inside the existing transaction right after the entity `update`). 8 tests.
   - Slice 3: `GetGrossProfitByDocumentUseCase` + `GetGrossProfitByItemUseCase` + `SalesGrossProfitController` + 2 routes (`/reports/gross-profit/by-document`, `/reports/gross-profit/by-item`). 6 tests.
   - Slice 4: `npx tsc --noEmit` clean, `npm run build` clean, `npm test` → 168/170 suites pass (1506 tests, 18 pre-existing skipped, 0 failures). 70/70 SI/SR/PI/PR posting tests pass (no regression). 31/31 reporting tests pass.
+  - Review-fix slice: Prisma client now generates before backend typecheck/build; Firestore date filters are applied before `limit`; sales reports default to SI/SR only; mixed document-currency rows expose `docCurrencyBreakdown` instead of silently summing currencies. Verification: `npm --prefix backend run typecheck` ✅, focused reporting tests 33/33 ✅, `npm --prefix backend run build` ✅, full backend suite 168/170 suites passed / 1508 tests passed / 18 skipped ✅.
 - ✅ **Scope/model locked (2026-06-20):**
-  - **Type-agnostic** — facts for SI, SR, PI, PR (not sales-only). Future Form Designer doc types are a follow-up.
+  - **Type-agnostic fact storage** — facts for SI, SR, PI, PR. Sales report endpoints default to SI/SR only; PI/PR are explicit-filter only.
   - **Absolute + direction** — `amount + 'IN'|'OUT'` per metric. Reports show IN/OUT separately.
   - **Per-type direction table (locked):**
     - SI: revDir=IN, costDir=OUT → profitDir follows revenue (flips on net loss)
@@ -22,7 +23,7 @@
 
 ## Next action
 
-Open PR for `codex/246-sales-gross-profit-facts` against `main`. After merge, schedule frontend slice (ReportContainer + module menu wiring for the 2 gross-profit reports). Documented follow-ups: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration.
+Merge PR #29 after review/CI, then schedule frontend slice (ReportContainer + module menu wiring for the 2 gross-profit reports). Documented follow-ups: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration, optional purchase/all-document management report.
 
 ## Task 245 UX polish sweep complete - cherry-picked onto current main, PR-ready (2026-06-19)
 

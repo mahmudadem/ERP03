@@ -92,7 +92,7 @@ class InMemoryProfitFactRepository implements ISalesProfitLineFactRepository {
     facts: SalesProfitLineFact[],
     groupBy: (f: SalesProfitLineFact) => { key: string; label: string }
   ): ProfitFactAggregationRow[] {
-    const map = new Map<string, ProfitFactAggregationRow>();
+    const map = new Map<string, ProfitFactAggregationRow & { _docCurrencies: Map<string, any> }>();
     for (const f of facts) {
       const { key, label } = groupBy(f);
       let row = map.get(key);
@@ -108,20 +108,56 @@ class InMemoryProfitFactRepository implements ISalesProfitLineFactRepository {
           costAmountBaseOut: 0, costAmountDocOut: 0,
           profitAmountBaseOut: 0, profitAmountDocOut: 0,
           profitAmountBaseNet: 0, profitAmountDocNet: 0,
+          docCurrency: null,
+          hasMixedDocCurrencies: false,
+          docCurrencyBreakdown: [],
+          _docCurrencies: new Map(),
         };
         map.set(key, row);
       }
+      let c = row._docCurrencies.get(f.docCurrency);
+      if (!c) {
+        c = {
+          docCurrency: f.docCurrency,
+          revenueAmountDocIn: 0,
+          costAmountDocIn: 0,
+          profitAmountDocIn: 0,
+          revenueAmountDocOut: 0,
+          costAmountDocOut: 0,
+          profitAmountDocOut: 0,
+          profitAmountDocNet: 0,
+        };
+        row._docCurrencies.set(f.docCurrency, c);
+      }
       row.lineCount += 1;
-      if (f.revenueDir === 'IN') { row.revenueAmountBaseIn += f.revenueAmountBase; row.revenueAmountDocIn += f.revenueAmountDoc; }
-      else if (f.revenueDir === 'OUT') { row.revenueAmountBaseOut += f.revenueAmountBase; row.revenueAmountDocOut += f.revenueAmountDoc; }
-      if (f.costDir === 'IN') { row.costAmountBaseIn += f.costAmountBase; row.costAmountDocIn += f.costAmountDoc; }
-      else { row.costAmountBaseOut += f.costAmountBase; row.costAmountDocOut += f.costAmountDoc; }
-      if (f.profitDir === 'IN') { row.profitAmountBaseIn += f.profitAmountBase; row.profitAmountDocIn += f.profitAmountDoc; }
-      else { row.profitAmountBaseOut += f.profitAmountBase; row.profitAmountDocOut += f.profitAmountDoc; }
+      if (f.revenueDir === 'IN') { row.revenueAmountBaseIn += f.revenueAmountBase; c.revenueAmountDocIn += f.revenueAmountDoc; }
+      else if (f.revenueDir === 'OUT') { row.revenueAmountBaseOut += f.revenueAmountBase; c.revenueAmountDocOut += f.revenueAmountDoc; }
+      if (f.costDir === 'IN') { row.costAmountBaseIn += f.costAmountBase; c.costAmountDocIn += f.costAmountDoc; }
+      else { row.costAmountBaseOut += f.costAmountBase; c.costAmountDocOut += f.costAmountDoc; }
+      if (f.profitDir === 'IN') { row.profitAmountBaseIn += f.profitAmountBase; c.profitAmountDocIn += f.profitAmountDoc; }
+      else { row.profitAmountBaseOut += f.profitAmountBase; c.profitAmountDocOut += f.profitAmountDoc; }
       row.profitAmountBaseNet = row.profitAmountBaseIn - row.profitAmountBaseOut;
-      row.profitAmountDocNet = row.profitAmountDocIn - row.profitAmountDocOut;
     }
-    return Array.from(map.values());
+    return Array.from(map.values()).map((row) => {
+      const breakdown = Array.from(row._docCurrencies.values()).map((c) => ({
+        ...c,
+        profitAmountDocNet: c.profitAmountDocIn - c.profitAmountDocOut,
+      }));
+      row.docCurrencyBreakdown = breakdown;
+      row.hasMixedDocCurrencies = breakdown.length > 1;
+      row.docCurrency = breakdown.length === 1 ? breakdown[0].docCurrency : null;
+      if (breakdown.length === 1) {
+        row.revenueAmountDocIn = breakdown[0].revenueAmountDocIn;
+        row.costAmountDocIn = breakdown[0].costAmountDocIn;
+        row.profitAmountDocIn = breakdown[0].profitAmountDocIn;
+        row.revenueAmountDocOut = breakdown[0].revenueAmountDocOut;
+        row.costAmountDocOut = breakdown[0].costAmountDocOut;
+        row.profitAmountDocOut = breakdown[0].profitAmountDocOut;
+        row.profitAmountDocNet = breakdown[0].profitAmountDocNet;
+      }
+      const { _docCurrencies, ...rest } = row;
+      return rest;
+    });
   }
 
   async aggregateByDocument(companyId: string, filters: ProfitFactFilters): Promise<ProfitFactAggregationRow[]> {
