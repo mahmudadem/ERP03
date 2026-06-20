@@ -46,6 +46,14 @@ import {
   PostSalesReturnUseCase,
 } from '../../../application/sales/use-cases/SalesReturnUseCases';
 import { CompletePosReturnUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
+import {
+  GetCashierSalesSummaryUseCase,
+  GetCashOverShortReportUseCase,
+  GetDailyPosSummaryUseCase,
+  GetPaymentMethodSummaryUseCase,
+  GetPosZReportUseCase,
+  GetReceiptHistoryUseCase,
+} from '../../../application/pos/use-cases/PosReportingUseCases';
 import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
 import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
 import {
@@ -623,6 +631,111 @@ export class PosController {
         return;
       }
       (res as any).json({ success: true, data: PosReturnDTO.fromDomain(ret) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ===== Reports =====
+
+  static async getZReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new GetPosZReportUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posCashMovementRepository,
+        diContainer.posReceiptRepository,
+        diContainer.posReturnRepository
+      );
+      const data = await useCase.execute({ companyId, shiftId: id });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getDailySummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetDailyPosSummaryUseCase(
+        diContainer.posReceiptRepository,
+        diContainer.posReturnRepository
+      );
+      const data = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
+      });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPaymentMethodSummary(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetPaymentMethodSummaryUseCase(diContainer.posReceiptRepository);
+      const data = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
+      });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCashierSales(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetCashierSalesSummaryUseCase(
+        diContainer.posShiftRepository,
+        diContainer.posReceiptRepository
+      );
+      const data = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+      });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCashOverShort(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetCashOverShortReportUseCase(diContainer.posShiftRepository);
+      const data = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+      });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getReceiptHistory(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetReceiptHistoryUseCase(diContainer.posReceiptRepository);
+      const data = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
+        customerId: (req as any).query?.customerId ? String((req as any).query.customerId) : undefined,
+        limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
+      });
+      (res as any).json({ success: true, data });
     } catch (error) {
       next(error);
     }

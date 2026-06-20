@@ -184,5 +184,43 @@
       "sr": "Sales Return #",
       "date": "Date"
     }
+  },
+  "report": {
+    "dateFrom": "Date from",
+    "dateTo": "Date to",
+    "z": {
+      "title": "Z Report (by shift)",
+      "subtitle": "Finalized close summary for a closed POS shift.",
+      "shiftId": "Shift ID",
+      "opening": "Opening float",
+      "expected": "Expected cash",
+      "gross": "Gross sales",
+      "returns": "Returns",
+      "net": "Net sales",
+      "receipts": "Receipts",
+      "returnsCount": "Returns count",
+      "variance": "Over/short",
+      "voucher": "Voucher"
+    },
+    "daily": {
+      "title": "Daily POS Summary",
+      "subtitle": "Receipts and returns per day."
+    },
+    "payments": {
+      "title": "Payment Methods",
+      "subtitle": "Receipts and amounts per POS payment method."
+    },
+    "cashier": {
+      "title": "Cashier Sales",
+      "subtitle": "Totals per cashier (uid) for the period."
+    },
+    "overShort": {
+      "title": "Cash Over/Short",
+      "subtitle": "Per-shift variance and voucher link."
+    },
+    "receipts": {
+      "title": "Receipt History",
+      "subtitle": "All POS receipts in the period, with the linked SI number."
+    }
   }
 }

@@ -184,5 +184,43 @@
       "sr": "Satış iadesi #",
       "date": "Tarih"
     }
+  },
+  "report": {
+    "dateFrom": "Başlangıç tarihi",
+    "dateTo": "Bitiş tarihi",
+    "z": {
+      "title": "Z Raporu (vardiya bazlı)",
+      "subtitle": "Kapatılmış bir POS vardiyasının özet özeti.",
+      "shiftId": "Vardiya kimliği",
+      "opening": "Açılış tutarı",
+      "expected": "Beklenen nakit",
+      "gross": "Brüt satışlar",
+      "returns": "İadeler",
+      "net": "Net satışlar",
+      "receipts": "Fişler",
+      "returnsCount": "İade sayısı",
+      "variance": "Fark",
+      "voucher": "Fiş"
+    },
+    "daily": {
+      "title": "Günlük POS Özeti",
+      "subtitle": "Günlere göre fişler ve iadeler."
+    },
+    "payments": {
+      "title": "Ödeme Yöntemleri",
+      "subtitle": "POS ödeme yöntemine göre fişler ve tutarlar."
+    },
+    "cashier": {
+      "title": "Kasiyer Satışları",
+      "subtitle": "Dönem için kasiyer (uid) bazında toplamlar."
+    },
+    "overShort": {
+      "title": "Nakit Fazla/Eksik",
+      "subtitle": "Vardiya bazında fark ve fiş bağlantısı."
+    },
+    "receipts": {
+      "title": "Fiş Geçmişi",
+      "subtitle": "Dönemdeki tüm POS fişleri, bağlı fatura numarasıyla."
+    }
   }
 }

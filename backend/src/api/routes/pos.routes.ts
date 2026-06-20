@@ -43,4 +43,12 @@ router.post('/returns', idempotencyMiddleware, permissionGuard('pos.return.creat
 router.get('/returns', permissionGuard('pos.terminal.access'), PosController.listReturns);
 router.get('/returns/:id', permissionGuard('pos.terminal.access'), PosController.getReturn);
 
+// Reports
+router.get('/shifts/:id/z-report', permissionGuard('pos.reports.view'), PosController.getZReport);
+router.get('/reports/daily-summary', permissionGuard('pos.reports.view'), PosController.getDailySummary);
+router.get('/reports/payment-methods', permissionGuard('pos.reports.view'), PosController.getPaymentMethodSummary);
+router.get('/reports/cashier-sales', permissionGuard('pos.reports.view'), PosController.getCashierSales);
+router.get('/reports/cash-over-short', permissionGuard('pos.reports.view'), PosController.getCashOverShort);
+router.get('/reports/receipt-history', permissionGuard('pos.reports.view'), PosController.getReceiptHistory);
+
 export default router;

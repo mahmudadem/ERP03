@@ -68,6 +68,12 @@ const PosSettingsPage = lazy(() => import('../modules/pos/pages/PosSettingsPage'
 const PosRegistersPage = lazy(() => import('../modules/pos/pages/PosRegistersPage'));
 const PosShiftPage = lazy(() => import('../modules/pos/pages/PosShiftPage'));
 const PosReturnPage = lazy(() => import('../modules/pos/pages/PosReturnPage'));
+const PosZReportPage = lazy(() => import('../modules/pos/pages/PosZReportPage'));
+const PosDailySummaryReportPage = lazy(() => import('../modules/pos/pages/PosDailySummaryReportPage'));
+const PosPaymentMethodReportPage = lazy(() => import('../modules/pos/pages/PosPaymentMethodReportPage'));
+const PosCashierSalesReportPage = lazy(() => import('../modules/pos/pages/PosCashierSalesReportPage'));
+const PosCashOverShortReportPage = lazy(() => import('../modules/pos/pages/PosCashOverShortReportPage'));
+const PosReceiptHistoryReportPage = lazy(() => import('../modules/pos/pages/PosReceiptHistoryReportPage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
@@ -274,6 +280,12 @@ export const routesConfig: AppRoute[] = [
   { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },
   { path: '/pos/shift', label: 'Shift', component: PosShiftPage, section: 'POS', requiredPermission: 'pos.shift.open', requiredModule: 'pos' },
   { path: '/pos/returns', label: 'Returns', component: PosReturnPage, section: 'POS', requiredPermission: 'pos.return.create', requiredModule: 'pos' },
+  { path: '/pos/reports/z', label: 'Z Report', component: PosZReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/daily', label: 'Daily Summary', component: PosDailySummaryReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/payments', label: 'Payment Methods', component: PosPaymentMethodReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/cashiers', label: 'Cashier Sales', component: PosCashierSalesReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/over-short', label: 'Cash Over/Short', component: PosCashOverShortReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/receipts', label: 'Receipt History', component: PosReceiptHistoryReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
 
 
   // SETTINGS

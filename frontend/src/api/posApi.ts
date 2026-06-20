@@ -144,6 +144,25 @@ export const posApi = {
 
   listReturns: async (params?: { shiftId?: string; originalReceiptId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/returns', { params: params || {} })),
+
+  // ===== Reports =====
+  getZReport: async (shiftId: string): Promise<any> =>
+    ok(client.get(`/tenant/pos/shifts/${encodeURIComponent(shiftId)}/z-report`)),
+
+  getDailySummary: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/daily-summary', { params: params || {} })),
+
+  getPaymentMethodSummary: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/payment-methods', { params: params || {} })),
+
+  getCashierSales: async (params?: { dateFrom?: string; dateTo?: string }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/cashier-sales', { params: params || {} })),
+
+  getCashOverShort: async (params?: { dateFrom?: string; dateTo?: string }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/cash-over-short', { params: params || {} })),
+
+  getReceiptHistoryReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; customerId?: string; limit?: number }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/receipt-history', { params: params || {} })),
 };
 
 export default posApi;
