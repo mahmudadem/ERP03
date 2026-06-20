@@ -1,0 +1,227 @@
+{
+  "title": "Point of Sale",
+  "home": {
+    "title": "Point of Sale",
+    "subtitle": "Cashier terminal. Opens to the register the current user is signed in on.",
+    "comingSoon": "Cashier screen lands in Phase 247c. Configure registers and settings in the meantime."
+  },
+  "terminal": {
+    "searchTitle": "Search products",
+    "searchPlaceholder": "Scan barcode / search SKU / name",
+    "cartTitle": "Cart",
+    "cartEmpty": "Cart is empty. Add items from the left.",
+    "item": "Item",
+    "qty": "Qty",
+    "price": "Price",
+    "total": "Total",
+    "subtotal": "Subtotal",
+    "discount": "Discount",
+    "tax": "Tax",
+    "grandTotal": "Grand total",
+    "customer": "Customer",
+    "pay": "Pay",
+    "tenderTitle": "Tender",
+    "method": "Method",
+    "amount": "Amount",
+    "reference": "Reference",
+    "addTender": "Add tender",
+    "tendered": "Tendered",
+    "change": "Change",
+    "applied": "Applied to invoice",
+    "completeSale": "Complete sale",
+    "tenderNeedAmount": "Pick a method and amount.",
+    "tenderMismatch": "Tendered total does not match grand total.",
+    "completed": "Sale completed.",
+    "needOpenShift": "No open shift for this register.",
+    "openShiftCta": "Open a shift",
+    "noResults": "No matches.",
+    "cashierLabel": "Cashier",
+    "bootstrapError": "Failed to load POS data.",
+    "lastReceipt": "Last receipt",
+    "receiptNumber": "Receipt",
+    "siNumber": "Sales Invoice"
+  },
+  "settings": {
+    "title": "POS Settings",
+    "subtitle": "Configure registers, payment methods, and the governance gate for direct sales.",
+    "loadError": "Failed to load POS settings.",
+    "saved": "POS settings saved.",
+    "general": {
+      "title": "General"
+    },
+    "requireOpenShift": "Require an open shift to sell",
+    "allowPosDirectSales": "Allow POS direct sales",
+    "allowPosDirectSalesHelp": "When enabled, the backend creates a form-scoped governance rule allowing the \"direct\" persona for formType \"pos_sale\" so cashiers can post direct Sales Invoices. Disabling it removes the rule.",
+    "walkInCustomer": "Walk-in customer",
+    "walkInCustomerHelp": "Default customer for receipts with no named party. Required when completing a sale.",
+    "receiptPrefix": "Receipt number prefix",
+    "cashRounding": "Cash rounding",
+    "cashRoundingHelp": "V1 reserves this field; \"none\" is applied at the till.",
+    "rounding": {
+      "none": "None",
+      "nearest_05": "Nearest 0.05",
+      "nearest_1": "Nearest 1"
+    },
+    "paymentMethods": {
+      "title": "Payment methods"
+    },
+    "method": {
+      "code": "Code",
+      "label": "Label",
+      "account": "Settlement account",
+      "change": "Allows change",
+      "reference": "Requires ref",
+      "enabled": "Enabled"
+    },
+    "overShort": {
+      "title": "Cash over/short accounts"
+    },
+    "cashOver": "Cash over account",
+    "cashOverHelp": "Credit account for over-counts at shift close.",
+    "cashShort": "Cash short account",
+    "cashShortHelp": "Debit account for short-counts at shift close. Required to close a shift that has a non-zero over/short.",
+    "confirmAllowDirect": {
+      "title": "Toggle POS direct sales?",
+      "body": "This will change whether direct cash sales are allowed from the POS terminal."
+    }
+  },
+  "registers": {
+    "title": "POS Registers",
+    "subtitle": "Tills. Each register is tied to a warehouse and a cash-drawer account.",
+    "loadError": "Failed to load POS registers.",
+    "new": "New Register",
+    "newTitle": "New Register",
+    "editTitle": "Edit Register",
+    "empty": "No registers yet. Create one to start selling.",
+    "created": "Register created.",
+    "updated": "Register updated.",
+    "statusUpdated": "Register status updated.",
+    "requiredFields": "Code, name, warehouse, and cash-drawer account are required.",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "branchHelp": "Free-text branch id. The ERP has no first-class Branch entity yet.",
+    "toggleStatus": {
+      "title": "Toggle register status?",
+      "body": "Change the register status."
+    },
+    "col": {
+      "code": "Code",
+      "name": "Name",
+      "branch": "Branch",
+      "warehouse": "Warehouse",
+      "cashAccount": "Cash account",
+      "status": "Status"
+    }
+  },
+  "shift": {
+    "title": "POS Shift",
+    "open": "Open shift",
+    "openTitle": "Open shift",
+    "closeShift": "Close shift",
+    "closeTitle": "Close shift",
+    "noOpen": "No open shift. Open one to start selling.",
+    "opened": "Shift opened.",
+    "closed": "Shift closed.",
+    "closedWithVoucher": "Shift closed. Variance {{direction}} {{amount}} → voucher {{voucherId}}.",
+    "openNeedRegister": "Pick a register.",
+    "addMovement": "Add cash movement",
+    "movementAdded": "Cash movement recorded.",
+    "amountPositive": "Amount must be positive.",
+    "movementType": "Type",
+    "payin": "Pay-in (cash added)",
+    "payout": "Pay-out (cash removed)",
+    "drop": "Drop (to safe)",
+    "amount": "Amount",
+    "reason": "Reason",
+    "register": "Register",
+    "openingFloat": "Opening float",
+    "expected": "Expected cash",
+    "cashSales": "Cash sales",
+    "refunds": "Cash refunds",
+    "counted": "Counted cash",
+    "close": "Close",
+    "historyTitle": "Shift history",
+    "historySubtitle": "Recent shifts for this company.",
+    "empty": "No shifts yet.",
+    "col": {
+      "id": "Shift",
+      "register": "Register",
+      "status": "Status",
+      "opened": "Opened",
+      "closed": "Closed",
+      "opening": "Opening",
+      "variance": "Variance"
+    }
+  },
+  "return": {
+    "title": "Process return",
+    "receiptPlaceholder": "Receipt number or ID",
+    "lookup": "Look up",
+    "receiptFor": "Receipt",
+    "si": "SI",
+    "item": "Item",
+    "sold": "Sold",
+    "return": "Return",
+    "price": "Price",
+    "lineTotal": "Line total",
+    "refundMethod": "Refund method",
+    "total": "Refund total",
+    "post": "Post return",
+    "enterReceipt": "Enter a receipt number.",
+    "noLines": "Pick at least one line to return.",
+    "needOpenShift": "No open shift for this register.",
+    "completed": "Return posted. Refund: {{amount}}.",
+    "historyTitle": "Return history",
+    "historySubtitle": "Recent returns for this company.",
+    "empty": "No returns yet.",
+    "confirmTitle": "Post return?",
+    "confirmBody": "This posts a sales return, reverses revenue/tax, restocks inventory (per policy), and (for CASH) reduces the shift drawer. Continue?",
+    "confirm": "Post return",
+    "col": {
+      "number": "Return #",
+      "original": "Original receipt",
+      "method": "Refund method",
+      "amount": "Refund",
+      "sr": "Sales Return #",
+      "date": "Date"
+    }
+  },
+  "report": {
+    "dateFrom": "Date from",
+    "dateTo": "Date to",
+    "z": {
+      "title": "Z Report (by shift)",
+      "subtitle": "Finalized close summary for a closed POS shift.",
+      "shiftId": "Shift ID",
+      "opening": "Opening float",
+      "expected": "Expected cash",
+      "gross": "Gross sales",
+      "returns": "Returns",
+      "net": "Net sales",
+      "receipts": "Receipts",
+      "returnsCount": "Returns count",
+      "variance": "Over/short",
+      "voucher": "Voucher"
+    },
+    "daily": {
+      "title": "Daily POS Summary",
+      "subtitle": "Receipts and returns per day."
+    },
+    "payments": {
+      "title": "Payment Methods",
+      "subtitle": "Receipts and amounts per POS payment method."
+    },
+    "cashier": {
+      "title": "Cashier Sales",
+      "subtitle": "Totals per cashier (uid) for the period."
+    },
+    "overShort": {
+      "title": "Cash Over/Short",
+      "subtitle": "Per-shift variance and voucher link."
+    },
+    "receipts": {
+      "title": "Receipt History",
+      "subtitle": "All POS receipts in the period, with the linked SI number."
+    }
+  }
+}

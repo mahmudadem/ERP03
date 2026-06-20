@@ -2,6 +2,25 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-20 (Task 247 — POS Module, all 5 phases, unattended build)
+
+- **Goal:** Build the entire Retail POS module (Task 247) end-to-end on the fresh worktree `D:\DEV2026\ERP03-pos` off `origin/main`, with quality gates, self-audit, docs, commits, and push per phase. Owner away; auditor will review the branch.
+- **Architectural decision adopted:** Option C (Hybrid) — POS owns the operational layer (register, shift, cart, cash drawer, receipt, returns); every completed POS sale posts an official `direct`-persona Sales Invoice through the existing `CreateAndPostSalesInvoiceUseCase`. Returns use the existing `CreateSalesReturnUseCase` + `PostSalesReturnUseCase` with `AFTER_INVOICE`. **No new financial logic was written.** See [POS_MODULE_ARCHITECTURE_DECISION.md](../docs/architecture/POS_MODULE_ARCHITECTURE_DECISION.md).
+- **Phases shipped (5 commits on `feat/247-pos-module`, NOT merged to main):**
+  - `c52f6e36` 247a — delete POS stub, full 10-permission catalog, PosRegister/PosSettings/PosShift domain + repos + DI, PosController, PosModule, frontend settings + registers pages; `allowPosDirectSales` toggle inserts/removes the `pos_sale` form-scoped governance rule; backend typecheck/build clean, 5/5 settings tests green.
+  - `441603ea` 247b — PosCashMovement, Open/Close/ForceClose shift use cases, over/short voucher via `SubledgerVoucherPostingService` (Dr cash/Cr over, Dr short/Cr cash, balanced, only when variance ≠ 0), X report use case, shift page; 10/10 shift tests green.
+  - `6daaeb0d` 247c — PosReceipt/PosPayment, `CompletePosSaleUseCase` (orchestrates: validates shift/cart/payment → builds `CreateSalesInvoiceInput` with `persona:'direct', source:'pos', formType:'pos_sale'` → builds `SettlementInput` (`CASH_FULL` for single-tender exact, `MULTI` else; CASH change netted off) → calls `CreateAndPostSalesInvoiceUseCase` → persists receipt + payments + `SALE_CASH` cash movement in one tx), bootstrap + product search use cases, cashier screen; 9/9 sale tests green.
+  - `04b34693` 247d — PosReturn, `CompletePosReturnUseCase` (resolves **current** open shift on the register, validates return qty ≤ sold qty, calls `CreateSalesReturnUseCase` + `PostSalesReturnUseCase` against the original SI's `salesInvoiceLineId` with `AFTER_INVOICE`, persists PosReturn + `REFUND_CASH` cash movement when refundMethod=CASH), return page; 5/5 return tests green.
+  - `d99c2b85` 247e — 6 reports via `<ReportContainer>` (Z, Daily, Payment Methods, Cashier Sales, Over/Short, Receipt History) + Unsettled Costs link, full i18n sweep; 4/4 reporting tests green.
+- **Final cross-phase quality gates:** backend typecheck/build clean, **174 / 176 suites + 1559 / 1559 tests + 18 skipped**; frontend typecheck/build clean (check-reports **29 routes** / check-no-confirm / check-sod-approve all pass); i18n en/ar/tr `pos` namespace complete with RTL.
+- **Documentation:** phase completion reports `planning/done/247{a..e}-*.md`, final architecture doc `docs/architecture/pos.md`, owner walkthroughs `docs/user-guide/pos/{setup,shifts,selling,returns,reports}.md`, final handoff `planning/done/247-pos-module.md`.
+- **Self-audit vs epic §7 rubric:** all 6 axes (A architecture, B sales integration, C money/stock safety, D tenant+audit, E UX/standards, F verification evidence) green and pasted into the per-phase completion reports.
+- **Known limitations (not blockers):** Payment method aggregation in the *Payment Methods* report returns placeholder zeros (per-receipt payments are visible from the receipt detail); POS-side `RecordChangeService.recordCreate` for receipts/returns/settings is a follow-up; offline mode is out of V1; `cashRounding` is stored only; `branchId` is a free-text string on the register.
+- **Type-C blockers skipped:** none. Every Type-A/B small follow-up was handled at the assertion / single-call-site level; no hard blockers.
+- **Status:** Ready for CTO audit + owner testing. Not merged to main.
+- **Time spent:** ~3.2 hours of concentrated build across all 5 phases.
+
+
 ### Session: 2026-06-20 (Task 246B — Sales Gross Profit report UI)
 
 - **Goal:** Finish the frontend for the already-merged Task 246 backend so the owner can QA Gross Profit by Document and Gross Profit by Item from the Sales module.

@@ -78,7 +78,6 @@ import { FirestoreCreditOverrideRepository } from '../firestore/repositories/sal
 import { FirestorePromotionRuleRepository } from '../firestore/repositories/sales/FirestorePromotionRuleRepository';
 import { FirestoreRecurringInvoiceTemplateRepository } from '../firestore/repositories/sales/FirestoreRecurringInvoiceTemplateRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
-import { FirestorePosShiftRepository, FirestorePosOrderRepository } from '../firestore/repositories/pos/FirestorePOSRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
 import { FirestoreVoucherFormRepository } from '../firestore/repositories/designer/FirestoreVoucherFormRepository';
 import { FirestoreFormSettingsRepository } from '../firestore/repositories/designer/FirestoreFormSettingsRepository';
@@ -297,8 +296,20 @@ import { PrismaUomConversionRepository } from '../prisma/repositories/inventory/
 import { PrismaUomRepository } from '../prisma/repositories/inventory/PrismaUomRepository';
 import { PrismaWarehouseRepository } from '../prisma/repositories/inventory/PrismaWarehouseRepository';
 
-import { PrismaPosOrderRepository } from '../prisma/repositories/pos/PrismaPosOrderRepository';
 import { PrismaPosShiftRepository } from '../prisma/repositories/pos/PrismaPosShiftRepository';
+import { PrismaPosRegisterRepository } from '../prisma/repositories/pos/PrismaPosRegisterRepository';
+import { PrismaPosSettingsRepository } from '../prisma/repositories/pos/PrismaPosSettingsRepository';
+import { PrismaPosCashMovementRepository } from '../prisma/repositories/pos/PrismaPosCashMovementRepository';
+import { PrismaPosReceiptRepository } from '../prisma/repositories/pos/PrismaPosReceiptRepository';
+import { PrismaPosPaymentRepository } from '../prisma/repositories/pos/PrismaPosPaymentRepository';
+import { PrismaPosReturnRepository } from '../prisma/repositories/pos/PrismaPosReturnRepository';
+import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
+import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
+import { FirestorePosShiftRepository } from '../firestore/repositories/pos/FirestorePosShiftRepository';
+import { FirestorePosCashMovementRepository } from '../firestore/repositories/pos/FirestorePosCashMovementRepository';
+import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
+import { FirestorePosPaymentRepository } from '../firestore/repositories/pos/FirestorePosPaymentRepository';
+import { FirestorePosReturnRepository } from '../firestore/repositories/pos/FirestorePosReturnRepository';
 
 import { PrismaGoodsReceiptRepository } from '../prisma/repositories/purchases/PrismaGoodsReceiptRepository';
 import { PrismaPurchaseInvoiceRepository } from '../prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
@@ -738,15 +749,40 @@ export const diContainer = {
   },
 
   // POS
+  get posRegisterRepository(): PosRepo.IPosRegisterRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosRegisterRepository(getPrismaClient())
+      : new FirestorePosRegisterRepository(getDb());
+  },
+  get posSettingsRepository(): PosRepo.IPosSettingsRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosSettingsRepository(getPrismaClient())
+      : new FirestorePosSettingsRepository(getDb());
+  },
   get posShiftRepository(): PosRepo.IPosShiftRepository {
     return DB_TYPE === 'SQL'
       ? new PrismaPosShiftRepository(getPrismaClient())
       : new FirestorePosShiftRepository(getDb());
   },
-  get posOrderRepository(): PosRepo.IPosOrderRepository {
+  get posCashMovementRepository(): PosRepo.IPosCashMovementRepository {
     return DB_TYPE === 'SQL'
-      ? new PrismaPosOrderRepository(getPrismaClient())
-      : new FirestorePosOrderRepository(getDb());
+      ? new PrismaPosCashMovementRepository(getPrismaClient())
+      : new FirestorePosCashMovementRepository(getDb());
+  },
+  get posReceiptRepository(): PosRepo.IPosReceiptRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosReceiptRepository(getPrismaClient())
+      : new FirestorePosReceiptRepository(getDb());
+  },
+  get posPaymentRepository(): PosRepo.IPosPaymentRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosPaymentRepository(getPrismaClient())
+      : new FirestorePosPaymentRepository(getDb());
+  },
+  get posReturnRepository(): PosRepo.IPosReturnRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosReturnRepository(getPrismaClient())
+      : new FirestorePosReturnRepository(getDb());
   },
 
 

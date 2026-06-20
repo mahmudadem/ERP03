@@ -214,6 +214,23 @@ export const moduleMenuMap: Record<
     icon: 'Monitor',
     items: [
       { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access', icon: 'Calculator' },
+      { label: 'Shift', path: '/pos/shift', permission: 'pos.shift.open', icon: 'Clock' },
+      { label: 'Returns', path: '/pos/returns', permission: 'pos.return.create', icon: 'Undo2' },
+      { label: 'Registers', path: '/pos/registers', permission: 'pos.registers.manage', icon: 'MonitorSmartphone' },
+      {
+        label: 'Reports',
+        icon: 'BarChart3',
+        children: [
+          { label: 'Z Report (by shift)', path: '/pos/reports/z', permission: 'pos.reports.view', icon: 'ReceiptText' },
+          { label: 'Daily Summary', path: '/pos/reports/daily', permission: 'pos.reports.view', icon: 'CalendarDays' },
+          { label: 'Payment Methods', path: '/pos/reports/payments', permission: 'pos.reports.view', icon: 'CreditCard' },
+          { label: 'Cashier Sales', path: '/pos/reports/cashiers', permission: 'pos.reports.view', icon: 'Users' },
+          { label: 'Cash Over/Short', path: '/pos/reports/over-short', permission: 'pos.reports.view', icon: 'Scale' },
+          { label: 'Receipt History', path: '/pos/reports/receipts', permission: 'pos.reports.view', icon: 'History' },
+          { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'pos.reports.view', icon: 'CircleDollarSign' },
+        ],
+      },
+      { label: 'Settings', path: '/pos/settings', permission: 'pos.settings.manage', icon: 'Settings' },
     ],
   },
   manufacturing: {

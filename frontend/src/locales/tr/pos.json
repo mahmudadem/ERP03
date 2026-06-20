@@ -1,0 +1,227 @@
+{
+  "title": "Satış Noktası",
+  "home": {
+    "title": "Satış Noktası",
+    "subtitle": "Kasiyer ekranı. Geçerli kullanıcının oturum açtığı kasaya açılır.",
+    "comingSoon": "Kasiyer ekranı 247c aşamasında. Bu arada kasaları ve ayarları yapılandırın."
+  },
+  "terminal": {
+    "searchTitle": "Ürün ara",
+    "searchPlaceholder": "Barkod okut / SKU veya ad ile ara",
+    "cartTitle": "Sepet",
+    "cartEmpty": "Sepet boş. Soldan ürün ekleyin.",
+    "item": "Ürün",
+    "qty": "Miktar",
+    "price": "Fiyat",
+    "total": "Toplam",
+    "subtotal": "Ara toplam",
+    "discount": "İndirim",
+    "tax": "Vergi",
+    "grandTotal": "Genel toplam",
+    "customer": "Müşteri",
+    "pay": "Öde",
+    "tenderTitle": "Tahsilat",
+    "method": "Yöntem",
+    "amount": "Miktar",
+    "reference": "Referans",
+    "addTender": "Tahsilat ekle",
+    "tendered": "Alınan",
+    "change": "Para üstü",
+    "applied": "Faturaya uygulanan",
+    "completeSale": "Satışı tamamla",
+    "tenderNeedAmount": "Yöntem ve miktar seçin.",
+    "tenderMismatch": "Alınan toplam genel toplamla eşleşmiyor.",
+    "completed": "Satış tamamlandı.",
+    "needOpenShift": "Bu kasa için açık vardiya yok.",
+    "openShiftCta": "Vardiya aç",
+    "noResults": "Sonuç yok.",
+    "cashierLabel": "Kasiyer",
+    "bootstrapError": "POS verileri yüklenemedi.",
+    "lastReceipt": "Son fiş",
+    "receiptNumber": "Fiş",
+    "siNumber": "Satış faturası"
+  },
+  "settings": {
+    "title": "POS Ayarları",
+    "subtitle": "Kasaları, ödeme yöntemlerini ve doğrudan satışlar için yönetim kapısını yapılandırın.",
+    "loadError": "POS ayarları yüklenemedi.",
+    "saved": "POS ayarları kaydedildi.",
+    "general": {
+      "title": "Genel"
+    },
+    "requireOpenShift": "Satış için açık vardiya zorunlu",
+    "allowPosDirectSales": "POS'tan doğrudan satışlara izin ver",
+    "allowPosDirectSalesHelp": "Etkinleştirildiğinde, arka uç pos_sale formType için 'direct' personaya izin veren forma özel bir yönetim kuralı oluşturur.",
+    "walkInCustomer": "Yürüyen müşteri",
+    "walkInCustomerHelp": "Adı olmayan fişler için varsayılan müşteri. Satış tamamlamak için gereklidir.",
+    "receiptPrefix": "Fiş numarası öneki",
+    "cashRounding": "Nakit yuvarlama",
+    "cashRoundingHelp": "V1'de ayrılmış alan; kasada 'yok' uygulanır.",
+    "rounding": {
+      "none": "Yok",
+      "nearest_05": "En yakın 0,05",
+      "nearest_1": "En yakın 1"
+    },
+    "paymentMethods": {
+      "title": "Ödeme yöntemleri"
+    },
+    "method": {
+      "code": "Kod",
+      "label": "Etiket",
+      "account": "Hesap kapatma",
+      "change": "Para üstü verir",
+      "reference": "Referans gerekli",
+      "enabled": "Etkin"
+    },
+    "overShort": {
+      "title": "Nakit fazla/eksik hesapları"
+    },
+    "cashOver": "Nakit fazlası hesabı",
+    "cashOverHelp": "Vardiya kapatmada fazla için alacaklı hesap.",
+    "cashShort": "Nakit eksiği hesabı",
+    "cashShortHelp": "Vardiya kapatmada eksik için borçlu hesap. Sıfır olmayan farkla vardiya kapatmak için gereklidir.",
+    "confirmAllowDirect": {
+      "title": "POS doğrudan satışları değiştirilsin mi?",
+      "body": "Bu, POS terminalinden doğrudan satışlara izin verilip verilmediğini değiştirecek."
+    }
+  },
+  "registers": {
+    "title": "POS Kasaları",
+    "subtitle": "Yazar kasalar. Her kasa bir depoya ve bir kasa çekmecesi hesabına bağlıdır.",
+    "loadError": "POS kasaları yüklenemedi.",
+    "new": "Yeni Kasa",
+    "newTitle": "Yeni Kasa",
+    "editTitle": "Kasayı Düzenle",
+    "empty": "Henüz kasa yok. Satışa başlamak için bir tane oluşturun.",
+    "created": "Kasa oluşturuldu.",
+    "updated": "Kasa güncellendi.",
+    "statusUpdated": "Kasa durumu güncellendi.",
+    "requiredFields": "Kod, ad, depo ve kasa çekmecesi hesabı zorunludur.",
+    "activate": "Etkinleştir",
+    "deactivate": "Devre dışı bırak",
+    "branchHelp": "Serbest metin şube kimliği. Sistemde henüz ayrı Şube varlığı yok.",
+    "toggleStatus": {
+      "title": "Kasa durumu değiştirilsin mi?",
+      "body": "Kasa durumunu değiştir."
+    },
+    "col": {
+      "code": "Kod",
+      "name": "Ad",
+      "branch": "Şube",
+      "warehouse": "Depo",
+      "cashAccount": "Kasa hesabı",
+      "status": "Durum"
+    }
+  },
+  "shift": {
+    "title": "POS Vardiyası",
+    "open": "Vardiya aç",
+    "openTitle": "Vardiya aç",
+    "closeShift": "Vardiyayı kapat",
+    "closeTitle": "Vardiyayı kapat",
+    "noOpen": "Açık vardiya yok. Satışa başlamak için bir tane açın.",
+    "opened": "Vardiya açıldı.",
+    "closed": "Vardiya kapatıldı.",
+    "closedWithVoucher": "Vardiya kapatıldı. Fark {{direction}} {{amount}} → fiş {{voucherId}}.",
+    "openNeedRegister": "Bir kasa seçin.",
+    "addMovement": "Nakit hareketi ekle",
+    "movementAdded": "Nakit hareketi kaydedildi.",
+    "amountPositive": "Miktar pozitif olmalıdır.",
+    "movementType": "Tür",
+    "payin": "Para girişi",
+    "payout": "Para çıkışı",
+    "drop": "Kasa düşürme",
+    "amount": "Miktar",
+    "reason": "Sebep",
+    "register": "Kasa",
+    "openingFloat": "Açılış tutarı",
+    "expected": "Beklenen nakit",
+    "cashSales": "Nakit satışlar",
+    "refunds": "Nakit iadeler",
+    "counted": "Sayılan nakit",
+    "close": "Kapat",
+    "historyTitle": "Vardiya geçmişi",
+    "historySubtitle": "Bu şirketin son vardiyaları.",
+    "empty": "Henüz vardiya yok.",
+    "col": {
+      "id": "Vardiya",
+      "register": "Kasa",
+      "status": "Durum",
+      "opened": "Açılış",
+      "closed": "Kapanış",
+      "opening": "Açılış tutarı",
+      "variance": "Fark"
+    }
+  },
+  "return": {
+    "title": "İade işlemi",
+    "receiptPlaceholder": "Fiş numarası veya kimliği",
+    "lookup": "Ara",
+    "receiptFor": "Fiş",
+    "si": "Fatura",
+    "item": "Ürün",
+    "sold": "Satılan",
+    "return": "İade",
+    "price": "Fiyat",
+    "lineTotal": "Satır toplamı",
+    "refundMethod": "İade yöntemi",
+    "total": "İade toplamı",
+    "post": "İadeyi kaydet",
+    "enterReceipt": "Fiş numarası girin.",
+    "noLines": "İade için en az bir satır seçin.",
+    "needOpenShift": "Bu kasa için açık vardiya yok.",
+    "completed": "İade kaydedildi. İade tutarı: {{amount}}.",
+    "historyTitle": "İade geçmişi",
+    "historySubtitle": "Bu şirketin son iadeleri.",
+    "empty": "Henüz iade yok.",
+    "confirmTitle": "İadeyi kaydet?",
+    "confirmBody": "Bu, satış iadesi oluşturur, gelir/vergi iptali yapar, envanteri politika gereği depolar ve (NAKİT için) kasa çekmecesini azaltır. Devam edilsin mi?",
+    "confirm": "İadeyi kaydet",
+    "col": {
+      "number": "İade #",
+      "original": "Orijinal fiş",
+      "method": "İade yöntemi",
+      "amount": "İade tutarı",
+      "sr": "Satış iadesi #",
+      "date": "Tarih"
+    }
+  },
+  "report": {
+    "dateFrom": "Başlangıç tarihi",
+    "dateTo": "Bitiş tarihi",
+    "z": {
+      "title": "Z Raporu (vardiya bazlı)",
+      "subtitle": "Kapatılmış bir POS vardiyasının özet özeti.",
+      "shiftId": "Vardiya kimliği",
+      "opening": "Açılış tutarı",
+      "expected": "Beklenen nakit",
+      "gross": "Brüt satışlar",
+      "returns": "İadeler",
+      "net": "Net satışlar",
+      "receipts": "Fişler",
+      "returnsCount": "İade sayısı",
+      "variance": "Fark",
+      "voucher": "Fiş"
+    },
+    "daily": {
+      "title": "Günlük POS Özeti",
+      "subtitle": "Günlere göre fişler ve iadeler."
+    },
+    "payments": {
+      "title": "Ödeme Yöntemleri",
+      "subtitle": "POS ödeme yöntemine göre fişler ve tutarlar."
+    },
+    "cashier": {
+      "title": "Kasiyer Satışları",
+      "subtitle": "Dönem için kasiyer (uid) bazında toplamlar."
+    },
+    "overShort": {
+      "title": "Nakit Fazla/Eksik",
+      "subtitle": "Vardiya bazında fark ve fiş bağlantısı."
+    },
+    "receipts": {
+      "title": "Fiş Geçmişi",
+      "subtitle": "Dönemdeki tüm POS fişleri, bağlı fatura numarasıyla."
+    }
+  }
+}
