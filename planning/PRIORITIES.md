@@ -137,6 +137,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | Codex | Task 245 NOTE-06 - master-data list refresh | 2026-06-19 | ✅ Done |
 | Codex | Task 243-A - selectable pricing policy | 2026-06-19 | ✅ Done |
 | Codex | Task 243-B - per-form settings | 2026-06-19 | ✅ Done |
+| OpenCode | Task 246 - Sales Gross Profit Facts & Reports (type-agnostic, absolute+direction, backend-first) | 2026-06-20 | 🔵 In Progress |
 
 
 **How to use:**

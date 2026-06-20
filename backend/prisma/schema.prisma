@@ -91,6 +91,7 @@ model Company {
   aiChatMessages   AiChatMessage[]
   aiProviderConfig AiProviderConfig?
   aiUsageLogs      AiUsageLog[]
+  salesProfitLineFacts SalesProfitLineFact[]
 
   @@index([ownerId])
   @@map("companies")
@@ -2220,11 +2221,11 @@ model AiUsageLog {
   companyId         String
   userId            String
   providerType      String   // 'mock' | 'openai_compatible' | 'ollama'
-  model             String   // Provider-specific model identifier
+  model             String
   messageCount      Int      @default(0)  // Number of messages in request context
-  promptTokens      Int?     // Tokens in the prompt (if reported by provider)
-  completionTokens  Int?     // Tokens in the completion (if reported by provider)
-  totalTokens       Int?     // Total tokens used (if reported by provider)
+  promptTokens      Int?
+  completionTokens  Int?
+  totalTokens       Int?
   status            String   @default("success") // 'success' | 'failure'
   errorCode         String?  // Normalized error code (e.g., 'AI_PROVIDER_AUTH_ERROR')
   latencyMs         Int?     // Response latency in milliseconds
@@ -2236,4 +2237,58 @@ model AiUsageLog {
   @@index([companyId, userId])
   @@index([companyId, createdAt])
   @@map("ai_usage_logs")
+}
+
+// ============================================
+// REPORTING — Sales Gross Profit Facts (Task 246)
+// Read model for management reporting. Not a posting model.
+// One row per posted invoice line. type-agnostic (SALES_INVOICE,
+// SALES_RETURN, PURCHASE_INVOICE, PURCHASE_RETURN, future custom).
+// Direction flags let reports show IN-side and OUT-side separately.
+// ============================================
+model SalesProfitLineFact {
+  id                     String   @id
+  companyId              String
+  documentType           String   // 'SALES_INVOICE' | 'SALES_RETURN' | 'PURCHASE_INVOICE' | 'PURCHASE_RETURN'
+  documentId             String
+  documentNumber         String
+  documentLineId         String
+  documentDate           String   // ISO YYYY-MM-DD
+  itemId                 String
+  qtyBase                Float
+  uomId                  String
+
+  docCurrency            String
+  baseCurrency           String
+  exchangeRateDocToBase  Float
+
+  revenueAmountDoc       Float
+  revenueAmountBase      Float
+  revenueDir             String?  // 'IN' | 'OUT' | null (when revenueAmount = 0)
+
+  costAmountDoc          Float
+  costAmountBase         Float
+  costDir                String   // 'IN' | 'OUT'
+
+  profitAmountDoc        Float
+  profitAmountBase       Float
+  profitDir              String   // 'IN' | 'OUT'
+
+  marginPct              Float
+
+  snapshotVersion        Int      @default(1)
+  status                 String   @default("ACTIVE") // 'ACTIVE' | 'SUPERSEDED' | 'REVERSED'
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, documentId, documentLineId, snapshotVersion])
+  @@index([companyId, documentDate])
+  @@index([companyId, documentId])
+  @@index([companyId, itemId, documentDate])
+  @@index([companyId, documentType, documentDate])
+  @@index([companyId, status])
+  @@map("sales_profit_line_facts")
 }

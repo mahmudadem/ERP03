@@ -314,6 +314,10 @@ import { PrismaSalesOrderRepository } from '../prisma/repositories/sales/PrismaS
 import { PrismaSalesReturnRepository } from '../prisma/repositories/sales/PrismaSalesReturnRepository';
 import { PrismaSalesSettingsRepository } from '../prisma/repositories/sales/PrismaSalesSettingsRepository';
 
+import { FirestoreSalesProfitLineFactRepository } from '../firestore/repositories/reporting/FirestoreSalesProfitLineFactRepository';
+import { PrismaSalesProfitLineFactRepository } from '../prisma/repositories/reporting/PrismaSalesProfitLineFactRepository';
+import { ISalesProfitLineFactRepository } from '../../repository/interfaces/reporting/ISalesProfitLineFactRepository';
+
 import { PrismaPartyRepository } from '../prisma/repositories/shared/PrismaPartyRepository';
 import { PrismaPartyItemPriceRepository } from '../prisma/repositories/shared/PrismaPartyItemPriceRepository';
 import { PrismaTaxCodeRepository } from '../prisma/repositories/shared/PrismaTaxCodeRepository';
@@ -1334,6 +1338,13 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   get realtimeDispatcher() {
     const { FirebaseRealtimeDispatcher } = require('../realtime/FirebaseRealtimeDispatcher');
     return new FirebaseRealtimeDispatcher();
+  },
+
+  // REPORTING — Sales Gross Profit Facts (Task 246)
+  get salesProfitLineFactRepository(): ISalesProfitLineFactRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaSalesProfitLineFactRepository(getPrismaClient())
+      : new FirestoreSalesProfitLineFactRepository(getDb());
   },
 
   // NOTIFICATION SERVICE

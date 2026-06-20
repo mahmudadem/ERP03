@@ -1,5 +1,31 @@
 # 🎯 Current Focus
 
+## Task 246 in progress - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
+
+- ✅ **Scope/model locked (2026-06-20):**
+  - **Scope:** TYPE-AGNOSTIC. Generate profit facts for ALL invoice types: `SALES_INVOICE`, `SALES_RETURN`, `PURCHASE_INVOICE`, `PURCHASE_RETURN` (and any future Form Designer document type). Not sales-only.
+  - **Model:** **ABSOLUTE + DIRECTION** (not plain signed). Per-metric amount + dir.
+    - `revenueAmountDoc` / `revenueAmountBase` + `revenueDir` ('IN' | 'OUT')
+    - `costAmountDoc` / `costAmountBase` + `costDir` ('IN' | 'OUT')
+    - `profitAmountDoc` / `profitAmountBase` + `profitDir` ('IN' | 'OUT')
+    - `marginPct` (denominator = absolute revenue)
+  - **Per-type direction table (locked):**
+    - SI: revDir=IN, costDir=OUT → profitDir=IN
+    - SR: revDir=OUT, costDir=IN → profitDir=OUT. **SR cost basis = current avg cost at time of return** (from `ItemCostingStatsService`, Task 240c). NOT the original SI cost.
+    - PI: rev=0, costDir=IN → profitDir=OUT (loss)
+    - PR: rev=0, costDir=OUT → profitDir=IN (gain)
+  - **Reports can show IN/OUT separately, filter by documentType, group by document/item, etc. User decides presentation.**
+  - **No broad dimensions on fact rows:** no customerId, no salespersonId, no itemName. Joined at report time. Only `documentNumber` is stored (display identifier, not a grouping dimension).
+- **Worktree:** `D:\DEV2026\ERP03-246-sales-gross-profit` on branch `codex/246-sales-gross-profit-facts` (from `main @ 119e372f`).
+- **Freeze note:** Task file is marked "post-freeze candidate". Owner explicitly authorized this work despite the 2026-06-13 feature freeze.
+- **Accounting boundary (HARD):** no GL vouchers, no COGS posting, no inventory valuation, no stock movement costing, no FX revaluation, no Trading Account, no P&L, no tax posting, no AR/AP changes. Read-model only.
+- **Reports in v1 (backend):** Gross Profit by Invoice, Gross Profit by Item. Filters: fromDate, toDate, documentType, itemId, docCurrency.
+- **Estimate:** ~13 h.
+
+## Next action
+
+Begin recon (read-only): SI/SR/PI/PR posting paths, line shape (`lineCostBase`, `lineTotalBase`, `lineTotalDoc`, `exchangeRateDocToBase`), `ItemCostingStatsService`, existing reporting module structure (`GetTradingAccountUseCase` etc.), Firestore `runInTransaction` pattern, Prisma state, `bindRepositories.ts` registration pattern. Then start entity + interface.
+
 ## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
 
 - ✅ **Task 243 Parts C and D only** are implemented on branch `feat/243cd-price-override-and-parity` (4 commits, ~12 files).
