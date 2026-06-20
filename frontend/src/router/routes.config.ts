@@ -64,6 +64,8 @@ const EmployeesListPage = lazy(() => import('../modules/hr/pages/EmployeesListPa
 
 // POS
 const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
+const PosSettingsPage = lazy(() => import('../modules/pos/pages/PosSettingsPage'));
+const PosRegistersPage = lazy(() => import('../modules/pos/pages/PosRegistersPage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
@@ -266,6 +268,8 @@ export const routesConfig: AppRoute[] = [
 
   // POS
   { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
+  { path: '/pos/settings', label: 'Settings', component: PosSettingsPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
+  { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },
 
 
   // SETTINGS

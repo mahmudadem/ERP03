@@ -1,0 +1,80 @@
+{
+  "title": "Point of Sale",
+  "home": {
+    "title": "Point of Sale",
+    "subtitle": "Cashier terminal. Opens to the register the current user is signed in on.",
+    "comingSoon": "Cashier screen lands in Phase 247c. Configure registers and settings in the meantime."
+  },
+  "settings": {
+    "title": "POS Settings",
+    "subtitle": "Configure registers, payment methods, and the governance gate for direct sales.",
+    "loadError": "Failed to load POS settings.",
+    "saved": "POS settings saved.",
+    "general": {
+      "title": "General"
+    },
+    "requireOpenShift": "Require an open shift to sell",
+    "allowPosDirectSales": "Allow POS direct sales",
+    "allowPosDirectSalesHelp": "When enabled, the backend creates a form-scoped governance rule allowing the \"direct\" persona for formType \"pos_sale\" so cashiers can post direct Sales Invoices. Disabling it removes the rule.",
+    "walkInCustomer": "Walk-in customer",
+    "walkInCustomerHelp": "Default customer for receipts with no named party. Required when completing a sale.",
+    "receiptPrefix": "Receipt number prefix",
+    "cashRounding": "Cash rounding",
+    "cashRoundingHelp": "V1 reserves this field; \"none\" is applied at the till.",
+    "rounding": {
+      "none": "None",
+      "nearest_05": "Nearest 0.05",
+      "nearest_1": "Nearest 1"
+    },
+    "paymentMethods": {
+      "title": "Payment methods"
+    },
+    "method": {
+      "code": "Code",
+      "label": "Label",
+      "account": "Settlement account",
+      "change": "Allows change",
+      "reference": "Requires ref",
+      "enabled": "Enabled"
+    },
+    "overShort": {
+      "title": "Cash over/short accounts"
+    },
+    "cashOver": "Cash over account",
+    "cashOverHelp": "Credit account for over-counts at shift close.",
+    "cashShort": "Cash short account",
+    "cashShortHelp": "Debit account for short-counts at shift close. Required to close a shift that has a non-zero over/short.",
+    "confirmAllowDirect": {
+      "title": "Toggle POS direct sales?",
+      "body": "This will change whether direct cash sales are allowed from the POS terminal."
+    }
+  },
+  "registers": {
+    "title": "POS Registers",
+    "subtitle": "Tills. Each register is tied to a warehouse and a cash-drawer account.",
+    "loadError": "Failed to load POS registers.",
+    "new": "New Register",
+    "newTitle": "New Register",
+    "editTitle": "Edit Register",
+    "empty": "No registers yet. Create one to start selling.",
+    "created": "Register created.",
+    "updated": "Register updated.",
+    "statusUpdated": "Register status updated.",
+    "requiredFields": "Code, name, warehouse, and cash-drawer account are required.",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "branchHelp": "Free-text branch id. The ERP has no first-class Branch entity yet.",
+    "toggleStatus": {
+      "title": "Toggle register status?",
+      "body": "Change the register status."
+    },
+    "col": {
+      "code": "Code",
+      "name": "Name",
+      "branch": "Branch",
+      "warehouse": "Warehouse",
+      "cashAccount": "Cash account",
+      "status": "Status"
+    }
+  }
+}

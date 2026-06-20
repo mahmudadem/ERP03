@@ -1,0 +1,80 @@
+{
+  "title": "Satış Noktası",
+  "home": {
+    "title": "Satış Noktası",
+    "subtitle": "Kasiyer ekranı. Geçerli kullanıcının oturum açtığı kasaya açılır.",
+    "comingSoon": "Kasiyer ekranı 247c aşamasında. Bu arada kasaları ve ayarları yapılandırın."
+  },
+  "settings": {
+    "title": "POS Ayarları",
+    "subtitle": "Kasaları, ödeme yöntemlerini ve doğrudan satışlar için yönetim kapısını yapılandırın.",
+    "loadError": "POS ayarları yüklenemedi.",
+    "saved": "POS ayarları kaydedildi.",
+    "general": {
+      "title": "Genel"
+    },
+    "requireOpenShift": "Satış için açık vardiya zorunlu",
+    "allowPosDirectSales": "POS'tan doğrudan satışlara izin ver",
+    "allowPosDirectSalesHelp": "Etkinleştirildiğinde, arka uç pos_sale formType için 'direct' personaya izin veren forma özel bir yönetim kuralı oluşturur.",
+    "walkInCustomer": "Yürüyen müşteri",
+    "walkInCustomerHelp": "Adı olmayan fişler için varsayılan müşteri. Satış tamamlamak için gereklidir.",
+    "receiptPrefix": "Fiş numarası öneki",
+    "cashRounding": "Nakit yuvarlama",
+    "cashRoundingHelp": "V1'de ayrılmış alan; kasada 'yok' uygulanır.",
+    "rounding": {
+      "none": "Yok",
+      "nearest_05": "En yakın 0,05",
+      "nearest_1": "En yakın 1"
+    },
+    "paymentMethods": {
+      "title": "Ödeme yöntemleri"
+    },
+    "method": {
+      "code": "Kod",
+      "label": "Etiket",
+      "account": "Hesap kapatma",
+      "change": "Para üstü verir",
+      "reference": "Referans gerekli",
+      "enabled": "Etkin"
+    },
+    "overShort": {
+      "title": "Nakit fazla/eksik hesapları"
+    },
+    "cashOver": "Nakit fazlası hesabı",
+    "cashOverHelp": "Vardiya kapatmada fazla için alacaklı hesap.",
+    "cashShort": "Nakit eksiği hesabı",
+    "cashShortHelp": "Vardiya kapatmada eksik için borçlu hesap. Sıfır olmayan farkla vardiya kapatmak için gereklidir.",
+    "confirmAllowDirect": {
+      "title": "POS doğrudan satışları değiştirilsin mi?",
+      "body": "Bu, POS terminalinden doğrudan satışlara izin verilip verilmediğini değiştirecek."
+    }
+  },
+  "registers": {
+    "title": "POS Kasaları",
+    "subtitle": "Yazar kasalar. Her kasa bir depoya ve bir kasa çekmecesi hesabına bağlıdır.",
+    "loadError": "POS kasaları yüklenemedi.",
+    "new": "Yeni Kasa",
+    "newTitle": "Yeni Kasa",
+    "editTitle": "Kasayı Düzenle",
+    "empty": "Henüz kasa yok. Satışa başlamak için bir tane oluşturun.",
+    "created": "Kasa oluşturuldu.",
+    "updated": "Kasa güncellendi.",
+    "statusUpdated": "Kasa durumu güncellendi.",
+    "requiredFields": "Kod, ad, depo ve kasa çekmecesi hesabı zorunludur.",
+    "activate": "Etkinleştir",
+    "deactivate": "Devre dışı bırak",
+    "branchHelp": "Serbest metin şube kimliği. Sistemde henüz ayrı Şube varlığı yok.",
+    "toggleStatus": {
+      "title": "Kasa durumu değiştirilsin mi?",
+      "body": "Kasa durumunu değiştir."
+    },
+    "col": {
+      "code": "Kod",
+      "name": "Ad",
+      "branch": "Şube",
+      "warehouse": "Depo",
+      "cashAccount": "Kasa hesabı",
+      "status": "Durum"
+    }
+  }
+}

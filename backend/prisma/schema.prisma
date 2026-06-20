@@ -61,7 +61,8 @@ model Company {
   deliveryNotes   DeliveryNote[]
   salesInvoices   SalesInvoice[]
   salesReturns    SalesReturn[]
-  posOrders       PosOrder[]
+  posRegisters    PosRegister[]
+  posSettings     PosSettings[]
   posShifts       PosShift[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
@@ -112,7 +113,6 @@ model User {
   // Relations
   companies       CompanyUser[]
   preferences     UserPreferences?
-  posShifts       PosShift[]
 
   @@index([activeCompanyId])
   @@map("users")
@@ -614,12 +614,11 @@ model Item {
   salesOrderLines SalesOrderLine[]
   salesInvoiceLines SalesInvoiceLine[]
   salesReturnLines SalesReturnLine[]
-  posOrderItems   PosOrderItem[]
+  partyItemPrices PartyItemPrice[]
   stockAdjustmentLines StockAdjustmentLine[]
   stockTransferLines StockTransferLine[]
   openingStockLines OpeningStockLine[]
   inventoryRevaluationLines InventoryRevaluationLine[]
-  partyItemPrices PartyItemPrice[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -1660,62 +1659,62 @@ model Attendance {
 // POS MODULE
 // ============================================
 
+model PosRegister {
+  id                  String   @id @default(uuid())
+  companyId           String
+  code                String
+  name                String
+  branchId            String?
+  warehouseId         String
+  cashDrawerAccountId String
+  status              String   @default("ACTIVE")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("pos_registers")
+}
+
+model PosSettings {
+  id        String   @id @default(uuid())
+  companyId String   @unique
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("pos_settings")
+}
+
 model PosShift {
-  id             String   @id @default(uuid())
-  companyId      String
-  userId         String
-  openedAt       DateTime
-  openingBalance Float    @default(0)
-  closedAt       DateTime?
-  closingBalance Float?
-  notes          String?
+  id                 String    @id @default(uuid())
+  companyId          String
+  registerId         String
+  cashierUserId      String
+  status             String    @default("OPEN")
+  openedAt           DateTime
+  openingFloat       Float     @default(0)
+  closedAt           DateTime?
+  expectedCash       Float?
+  countedCash        Float?
+  overShortAmount    Float?
+  overShortVoucherId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    User     @relation(fields: [userId], references: [id])
-  orders  PosOrder[]
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
-  @@index([companyId, userId])
+  @@index([companyId, registerId])
+  @@index([companyId, cashierUserId])
+  @@index([companyId, status])
+  @@index([companyId, openedAt])
   @@map("pos_shifts")
-}
-
-model PosOrder {
-  id          String   @id @default(uuid())
-  companyId   String
-  shiftId     String
-  orderNo     String
-  totalAmount Float    @default(0)
-  status      String   @default("COMPLETED")
-  customerId  String?
-  notes       String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  shift   PosShift @relation(fields: [shiftId], references: [id])
-  items   PosOrderItem[]
-
-  @@unique([companyId, orderNo])
-  @@index([companyId])
-  @@index([companyId, shiftId])
-  @@map("pos_orders")
-}
-
-model PosOrderItem {
-  id       String   @id @default(uuid())
-  orderId  String
-  itemId   String
-  name     String
-  qty      Float
-  price    Float
-  discount Float    @default(0)
-  total    Float    @default(0)
-
-  order PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  item  Item     @relation(fields: [itemId], references: [id])
-
-  @@index([orderId])
-  @@map("pos_order_items")
 }
 
 // ============================================

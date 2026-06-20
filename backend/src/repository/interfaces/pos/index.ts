@@ -1,3 +1,3 @@
-
+export * from './IPosRegisterRepository';
+export * from './IPosSettingsRepository';
 export * from './IPosShiftRepository';
-export * from './IPosOrderRepository';

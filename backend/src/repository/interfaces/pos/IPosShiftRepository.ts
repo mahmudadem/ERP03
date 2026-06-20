@@ -1,12 +1,14 @@
-
-import { POSShift } from '../../../domain/pos/entities/POSShift';
+import { PosShift } from '../../../domain/pos/entities/PosShift';
 
 /**
- * Interface for Point of Sale Shifts.
+ * Persistence contract for POS shifts (cashier sessions).
+ * `getOpenShiftForRegister` is the gate that enforces "one OPEN shift per register".
  */
 export interface IPosShiftRepository {
-  openShift(shift: POSShift): Promise<void>;
-  closeShift(id: string, closedAt: Date, closingBalance: number): Promise<void>;
-  getShift(id: string): Promise<POSShift | null>;
-  getCompanyShifts(companyId: string): Promise<POSShift[]>;
+  create(shift: PosShift, tx?: unknown): Promise<void>;
+  update(shift: PosShift, tx?: unknown): Promise<void>;
+  getById(companyId: string, id: string): Promise<PosShift | null>;
+  getOpenShiftForRegister(companyId: string, registerId: string): Promise<PosShift | null>;
+  getOpenShiftForCashier(companyId: string, cashierUserId: string): Promise<PosShift | null>;
+  list(companyId: string, filters?: { registerId?: string; status?: string; limit?: number }): Promise<PosShift[]>;
 }
