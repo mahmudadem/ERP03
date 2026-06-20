@@ -1,5 +1,26 @@
 # 🎯 Current Focus
 
+## Task 247 — POS Module (all 5 phases) complete on `feat/247-pos-module` (2026-06-20)
+
+- ✅ **All 5 phases shipped and pushed (NOT merged to main):**
+  - **247a** foundations — registers, settings, governance toggle (commit `c52f6e36`)
+  - **247b** shift lifecycle — open/close/forceClose, cash movements, over/short voucher, X report (commit `441603ea`)
+  - **247c** core sale — `CompletePosSaleUseCase` calls the existing `CreateAndPostSalesInvoiceUseCase` with `persona:'direct', source:'pos', formType:'pos_sale'` (commit `6daaeb0d`)
+  - **247d** returns — `CompletePosReturnUseCase` calls `CreateSalesReturnUseCase` + `PostSalesReturnUseCase` with `AFTER_INVOICE` (commit `04b34693`)
+  - **247e** reports — 6 reports via `<ReportContainer>` (Z, Daily, Payment Methods, Cashier Sales, Over/Short, Receipt History) + Unsettled Costs link + i18n sweep (commit `d99c2b85`)
+- ✅ **Cross-phase quality gates (final run):** backend typecheck/build clean, backend tests 174/176 suites + 1559/1559 tests + 18 skipped, frontend typecheck/build clean (check-reports 29 routes, check-no-confirm, check-sod-approve all pass), i18n en/ar/tr `pos` namespace complete.
+- ✅ **Self-audit** vs epic §7 rubric rolled up in the per-phase completion reports and the final handoff ([planning/done/247-pos-module.md](./done/247-pos-module.md)).
+- ✅ **Architectural decisions honored:**
+  - No Firestore/Prisma in `domain/` or `application/`.
+  - No duplicated sales/tax/COGS/inventory posting in POS code. Only the over/short voucher is a direct GL write and it goes through `SubledgerVoucherPostingService`.
+  - `PersonaNotAllowedError` is surfaced, never caught-and-converted.
+  - `workflowMode` is never mutated. The Allow POS direct sales toggle is the only way to enable POS direct sales; it inserts/removes a form-scoped governance rule.
+- 🟡 **Known limitations (not blockers):** Payment method aggregation report returns placeholder zeros (per-receipt payments are visible); POS-side `recordCreate` for receipts/returns/settings is a follow-up; offline mode is out of V1; `cashRounding` is stored only; `branchId` is a free-text string on the register.
+- 🛑 **NOT merged to main** — owner and CTO audit first.
+
+## Next action (owner + CTO)
+Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./done/247-pos-module.md#consolidated-manual-test-script-owner-runnable) end-to-end on a fresh company with the POS module entitled. Each step is a single API call or a single UI flow. The cash-drawer / over-short paths are the headline to exercise first; the split-payment and CASH-change paths are the second headline.
+
 ## Task 246 PR review fixes ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
 
 - ✅ **Done on `codex/246-sales-gross-profit-facts` (5 incremental commits + review-fix commit):**
