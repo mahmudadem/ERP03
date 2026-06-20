@@ -109,6 +109,28 @@ export const posApi = {
 
   getXReport: async (id: string): Promise<{ shift: PosShiftDTO; totals: any; generatedAt: string }> =>
     ok(client.get(`/tenant/pos/shifts/${encodeURIComponent(id)}/x-report`)),
+
+  // ===== Sale / Receipts =====
+  getBootstrap: async (params: { registerId?: string; cashierUserId?: string }): Promise<any> =>
+    ok(client.get('/tenant/pos/bootstrap', { params })),
+
+  searchProducts: async (q: string, limit = 25): Promise<{ items: any[] }> =>
+    ok(client.get('/tenant/pos/products/search', { params: { q, limit } })),
+
+  completeSale: async (payload: {
+    registerId: string;
+    shiftId: string;
+    customerId?: string;
+    lines: Array<{ itemId: string; qty: number; unitPrice: number; discountType?: 'PERCENT' | 'AMOUNT'; discountValue?: number; taxCodeId?: string }>;
+    payments: Array<{ method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM'; amount: number; reference?: string }>;
+  }): Promise<any> =>
+    ok(client.post('/tenant/pos/sales', payload)),
+
+  listReceipts: async (params?: { shiftId?: string; registerId?: string; customerId?: string; limit?: number }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/receipts', { params: params || {} })),
+
+  getReceipt: async (id: string): Promise<{ receipt: any; payments: any[] }> =>
+    ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}`)),
 };
 
 export default posApi;

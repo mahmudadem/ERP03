@@ -300,10 +300,14 @@ import { PrismaPosShiftRepository } from '../prisma/repositories/pos/PrismaPosSh
 import { PrismaPosRegisterRepository } from '../prisma/repositories/pos/PrismaPosRegisterRepository';
 import { PrismaPosSettingsRepository } from '../prisma/repositories/pos/PrismaPosSettingsRepository';
 import { PrismaPosCashMovementRepository } from '../prisma/repositories/pos/PrismaPosCashMovementRepository';
+import { PrismaPosReceiptRepository } from '../prisma/repositories/pos/PrismaPosReceiptRepository';
+import { PrismaPosPaymentRepository } from '../prisma/repositories/pos/PrismaPosPaymentRepository';
 import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
 import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
 import { FirestorePosShiftRepository } from '../firestore/repositories/pos/FirestorePosShiftRepository';
 import { FirestorePosCashMovementRepository } from '../firestore/repositories/pos/FirestorePosCashMovementRepository';
+import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
+import { FirestorePosPaymentRepository } from '../firestore/repositories/pos/FirestorePosPaymentRepository';
 
 import { PrismaGoodsReceiptRepository } from '../prisma/repositories/purchases/PrismaGoodsReceiptRepository';
 import { PrismaPurchaseInvoiceRepository } from '../prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
@@ -762,6 +766,16 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaPosCashMovementRepository(getPrismaClient())
       : new FirestorePosCashMovementRepository(getDb());
+  },
+  get posReceiptRepository(): PosRepo.IPosReceiptRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosReceiptRepository(getPrismaClient())
+      : new FirestorePosReceiptRepository(getDb());
+  },
+  get posPaymentRepository(): PosRepo.IPosPaymentRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosPaymentRepository(getPrismaClient())
+      : new FirestorePosPaymentRepository(getDb());
   },
 
 

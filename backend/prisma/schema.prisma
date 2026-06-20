@@ -65,6 +65,8 @@ model Company {
   posSettings     PosSettings[]
   posShifts       PosShift[]
   posCashMovements PosCashMovement[]
+  posReceipts     PosReceipt[]
+  posPayments     PosPayment[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
   budgets         Budget[]
@@ -1735,6 +1737,53 @@ model PosCashMovement {
   @@index([companyId, registerId])
   @@index([companyId, type])
   @@map("pos_cash_movements")
+}
+
+model PosReceipt {
+  id                  String   @id @default(uuid())
+  companyId           String
+  shiftId             String
+  registerId          String
+  receiptNumber       String
+  status              String   @default("COMPLETED")
+  customerId          String
+  customerName        String?
+  lines               Json
+  subtotal            Float    @default(0)
+  discountTotal       Float    @default(0)
+  taxTotal            Float    @default(0)
+  grandTotal          Float    @default(0)
+  salesInvoiceId      String?
+  salesInvoiceNumber  String?
+  createdBy           String
+  createdAt           DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, receiptNumber])
+  @@index([companyId])
+  @@index([companyId, shiftId])
+  @@index([companyId, registerId])
+  @@index([companyId, customerId])
+  @@index([companyId, salesInvoiceId])
+  @@index([companyId, createdAt])
+  @@map("pos_receipts")
+}
+
+model PosPayment {
+  id           String   @id @default(uuid())
+  companyId    String
+  receiptId    String
+  method       String
+  amount       Float
+  changeGiven  Float    @default(0)
+  reference    String?
+  createdAt    DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, receiptId])
+  @@map("pos_payments")
 }
 
 // ============================================

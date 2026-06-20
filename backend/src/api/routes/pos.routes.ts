@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { PosController } from '../controllers/pos/PosController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
+import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
 
 const router = Router();
 router.use(authMiddleware);
@@ -28,5 +29,13 @@ router.post('/shifts/:id/cash-movements', permissionGuard('pos.cash.movement'), 
 router.get('/shifts', permissionGuard('pos.terminal.access'), PosController.listShifts);
 router.get('/shifts/:id', permissionGuard('pos.terminal.access'), PosController.getShift);
 router.get('/shifts/:id/x-report', permissionGuard('pos.terminal.access'), PosController.getXReport);
+
+// Sale / Receipts
+router.get('/bootstrap', permissionGuard('pos.terminal.access'), PosController.getBootstrap);
+router.get('/products/search', permissionGuard('pos.terminal.access'), PosController.searchProducts);
+router.post('/sales', idempotencyMiddleware, permissionGuard('pos.terminal.access'), PosController.completeSale);
+router.get('/receipts', permissionGuard('pos.terminal.access'), PosController.listReceipts);
+router.get('/receipts/:id', permissionGuard('pos.terminal.access'), PosController.getReceipt);
+router.get('/receipts/:id/reprint', permissionGuard('pos.receipt.reprint'), PosController.reprintReceipt);
 
 export default router;

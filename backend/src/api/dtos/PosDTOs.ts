@@ -6,6 +6,8 @@ import { PosRegister } from '../../domain/pos/entities/PosRegister';
 import { PosSettings } from '../../domain/pos/entities/PosSettings';
 import { PosShift } from '../../domain/pos/entities/PosShift';
 import { PosCashMovement } from '../../domain/pos/entities/PosCashMovement';
+import { PosReceipt, PosReceiptLineSnapshot } from '../../domain/pos/entities/PosReceipt';
+import { PosPayment } from '../../domain/pos/entities/PosPayment';
 import { PosCashMovementTotals } from '../../repository/interfaces/pos/IPosCashMovementRepository';
 
 export interface PosRegisterDTO {
@@ -168,6 +170,89 @@ export const PosXReportDTO = {
       shift: PosDTOMapper.toShiftDTO(report.shift),
       totals: report.totals,
       generatedAt: report.generatedAt,
+    };
+  },
+};
+
+export interface PosReceiptLineSnapshotDTO {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  qty: number;
+  uom: string;
+  unitPrice: number;
+  lineDiscount: number;
+  taxCodeId?: string;
+  lineTotal: number;
+  salesInvoiceLineId?: string;
+}
+
+export interface PosReceiptDTO {
+  id: string;
+  companyId: string;
+  shiftId: string;
+  registerId: string;
+  receiptNumber: string;
+  status: 'COMPLETED' | 'VOIDED';
+  customerId: string;
+  customerName?: string;
+  lines: PosReceiptLineSnapshotDTO[];
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  salesInvoiceId?: string;
+  salesInvoiceNumber?: string;
+  createdBy: string;
+  createdAt: string;
+}
+
+export const PosReceiptDTO = {
+  fromDomain(r: PosReceipt): PosReceiptDTO {
+    return {
+      id: r.id,
+      companyId: r.companyId,
+      shiftId: r.shiftId,
+      registerId: r.registerId,
+      receiptNumber: r.receiptNumber,
+      status: r.status,
+      customerId: r.customerId,
+      customerName: r.customerName,
+      lines: r.lines,
+      subtotal: r.subtotal,
+      discountTotal: r.discountTotal,
+      taxTotal: r.taxTotal,
+      grandTotal: r.grandTotal,
+      salesInvoiceId: r.salesInvoiceId,
+      salesInvoiceNumber: r.salesInvoiceNumber,
+      createdBy: r.createdBy,
+      createdAt: r.createdAt.toISOString(),
+    };
+  },
+};
+
+export interface PosPaymentDTO {
+  id: string;
+  companyId: string;
+  receiptId: string;
+  method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+  amount: number;
+  changeGiven: number;
+  reference?: string;
+  createdAt: string;
+}
+
+export const PosPaymentDTO = {
+  fromDomain(p: PosPayment): PosPaymentDTO {
+    return {
+      id: p.id,
+      companyId: p.companyId,
+      receiptId: p.receiptId,
+      method: p.method,
+      amount: p.amount,
+      changeGiven: p.changeGiven,
+      reference: p.reference,
+      createdAt: p.createdAt.toISOString(),
     };
   },
 };
