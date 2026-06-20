@@ -97,7 +97,26 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.qty * l.unitPrice, 0), [cart]);
   const discountTotal = useMemo(() => cart.reduce((s, l) => s + l.lineDiscount, 0), [cart]);
-  const grandTotal = useMemo(() => Math.max(0, subtotal - discountTotal), [subtotal, discountTotal]);
+
+  // Tax-inclusive total comes from the backend quote (same calc the SI uses). While the
+  // quote loads we fall back to a tax-exclusive estimate; the backend stays authoritative.
+  const [quote, setQuote] = useState<{ subtotal: number; taxTotal: number; grandTotal: number } | null>(null);
+  useEffect(() => {
+    if (cart.length === 0) { setQuote(null); return; }
+    const handle = setTimeout(async () => {
+      try {
+        const q = await posApi.previewSale(cart.map((l) => ({ itemId: l.itemId, qty: l.qty, unitPrice: l.unitPrice })));
+        setQuote(q);
+      } catch (err) {
+        console.error('Preview failed', err);
+        setQuote(null);
+      }
+    }, 250);
+    return () => clearTimeout(handle);
+  }, [cart]);
+
+  const taxTotal = quote?.taxTotal ?? 0;
+  const grandTotal = quote?.grandTotal ?? Math.max(0, subtotal - discountTotal);
   const tenderedCash = useMemo(() => payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0), [payments]);
   const tenderedTotal = useMemo(() => payments.reduce((s, p) => s + p.amount, 0), [payments]);
   const change = Math.max(0, tenderedCash - grandTotal);
@@ -322,6 +341,10 @@ const PosTerminalPage: React.FC<Props> = () => {
               <div className="flex justify-between">
                 <span>{t('pos.terminal.discount', { defaultValue: 'Discount' })}</span>
                 <span className="font-mono">{discountTotal.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>{t('pos.terminal.tax', { defaultValue: 'Tax' })}</span>
+                <span className="font-mono">{taxTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between text-lg font-bold">
                 <span>{t('pos.terminal.grandTotal', { defaultValue: 'Grand total' })}</span>

@@ -10,7 +10,8 @@ import { IPosReceiptRepository } from '../../../repository/interfaces/pos/IPosRe
 import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPaymentRepository';
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { CreateAndPostSalesInvoiceUseCase } from '../../sales/use-cases/SalesInvoiceUseCases';
+import { CreateSalesInvoiceUseCase, PostSalesInvoiceUseCase, SettlementInput } from '../../sales/use-cases/SalesInvoiceUseCases';
+import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
@@ -88,7 +89,9 @@ export class CompletePosSaleUseCase {
     private readonly paymentRepo: IPosPaymentRepository,
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly transactionManager: ITransactionManager,
-    private readonly createAndPostSalesInvoiceUseCase: CreateAndPostSalesInvoiceUseCase
+    private readonly createSalesInvoiceUseCase: CreateSalesInvoiceUseCase,
+    private readonly postSalesInvoiceUseCase: PostSalesInvoiceUseCase,
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository
   ) {}
 
   async execute(input: CompletePosSaleInput): Promise<CompletePosSaleResult> {
@@ -127,51 +130,13 @@ export class CompletePosSaleUseCase {
       throw new Error(`POS register not found: ${input.registerId}`);
     }
 
-    // Compute cart totals.
-    const lines: PosReceiptLineSnapshot[] = input.lines.map((l) => {
-      const lineGross = l.qty * l.unitPrice;
-      let lineDiscount = 0;
-      if (l.discountType === 'PERCENT' && l.discountValue) {
-        lineDiscount = round2((lineGross * l.discountValue) / 100);
-      } else if (l.discountType === 'AMOUNT' && l.discountValue) {
-        lineDiscount = round2(l.discountValue);
-      }
-      return {
-        itemId: l.itemId,
-        itemCode: '',
-        itemName: '',
-        qty: l.qty,
-        uom: '',
-        unitPrice: l.unitPrice,
-        lineDiscount,
-        taxCodeId: l.taxCodeId,
-        lineTotal: round2(lineGross - lineDiscount),
-      };
-    });
-    const subtotal = round2(lines.reduce((s, l) => s + (l.qty * l.unitPrice), 0));
-    const discountTotal = round2(lines.reduce((s, l) => s + l.lineDiscount, 0));
-
-    // Validate payment methods.
-    const cashTendered = round2(
-      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0)
-    );
-    const cashChange = round2(Math.max(0, cashTendered - (subtotal - discountTotal)));
-    const appliedTotal = round2(
-      input.payments.reduce((s, p) => s + p.amount, 0) - cashChange
-    );
-    const grandTotal = round2(subtotal - discountTotal);
-    if (Math.abs(appliedTotal - grandTotal) > 0.005) {
-      throw new Error(
-        `Payment total (${appliedTotal}) must equal the receipt grand total (${grandTotal}). ` +
-        `Cash change of ${cashChange} is allowed.`
-      );
-    }
+    // Validate payment-method config up front (independent of the total).
     for (const p of input.payments) {
-      if (p.method !== 'CASH' && p.changeGiven && p.changeGiven > 0) {
-        throw new Error(`Only CASH may give change; ${p.method} cannot.`);
-      }
       if (p.amount <= 0) {
         throw new Error(`Payment amount must be positive.`);
+      }
+      if (p.method !== 'CASH' && p.changeGiven && p.changeGiven > 0) {
+        throw new Error(`Only CASH may give change; ${p.method} cannot.`);
       }
       const cfg = settings.getPaymentMethod(p.method);
       if (!cfg || !cfg.isEnabled) {
@@ -182,7 +147,8 @@ export class CompletePosSaleUseCase {
       }
     }
 
-    // Build SI input (let Sales do all financial math).
+    // Build SI input. The Sales module owns ALL financial math — tax (inclusive/exclusive),
+    // discounts, COGS, inventory OUT. POS never recomputes the total or the tax.
     const salesInvoiceInput = {
       companyId: input.companyId,
       customerId,
@@ -202,15 +168,39 @@ export class CompletePosSaleUseCase {
       })),
     };
 
-    // Build SettlementInput.
+    // Step 1 — create the SI as DRAFT so we can read its AUTHORITATIVE, tax-inclusive
+    // grand total before collecting/settling payment.
+    const { salesInvoice: draft } = await this.createSalesInvoiceUseCase.execute(
+      salesInvoiceInput as any,
+      undefined,
+      { userId: input.actor.userId, userEmail: input.actor.userEmail }
+    );
+
+    // Step 2 — validate the tendered payment against the SI grand total (incl. tax).
+    const grandTotal = round2(draft.grandTotalBase);
+    const cashTendered = round2(
+      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0)
+    );
+    const cashChange = round2(Math.max(0, cashTendered - grandTotal));
+    const appliedTotal = round2(
+      input.payments.reduce((s, p) => s + p.amount, 0) - cashChange
+    );
+    if (Math.abs(appliedTotal - grandTotal) > 0.005) {
+      // No orphan: discard the draft we just created before failing.
+      await this.salesInvoiceRepo.delete(input.companyId, draft.id);
+      throw new Error(
+        `Payment total (${appliedTotal.toFixed(2)}) must equal the invoice grand total ` +
+        `incl. tax (${grandTotal.toFixed(2)}). Cash change of ${cashChange.toFixed(2)} is allowed.`
+      );
+    }
+
+    // Step 3 — build the settlement from the authoritative total. CASH_FULL only for a
+    // single tender that exactly equals the total with no change; MULTI otherwise.
     const singleTenderExact =
-      input.payments.length === 1 &&
-      round2(input.payments[0].amount) === grandTotal &&
-      input.payments[0].method === 'CASH' &&
-      cashChange === 0;
-    const settlementInput = singleTenderExact
+      input.payments.length === 1 && appliedTotal === grandTotal && cashChange === 0;
+    const settlementInput: SettlementInput = singleTenderExact
       ? {
-          settlementMode: 'CASH_FULL' as const,
+          settlementMode: 'CASH_FULL',
           settlements: [
             {
               paymentMethod: POS_METHOD_TO_SI_METHOD[input.payments[0].method],
@@ -220,28 +210,43 @@ export class CompletePosSaleUseCase {
           ],
         }
       : {
-          settlementMode: 'MULTI' as const,
-          settlements: input.payments.map((p) => {
-            const applied = p.method === 'CASH' ? round2(p.amount - cashChange) : round2(p.amount);
-            return {
-              paymentMethod: POS_METHOD_TO_SI_METHOD[p.method],
-              amountBase: applied,
-              reference: p.reference,
-            };
-          }),
+          settlementMode: 'MULTI',
+          settlements: input.payments.map((p) => ({
+            paymentMethod: POS_METHOD_TO_SI_METHOD[p.method],
+            amountBase: p.method === 'CASH' ? round2(p.amount - cashChange) : round2(p.amount),
+            reference: p.reference,
+          })),
         };
 
-    // Post SI. Errors (PersonaNotAllowedError, UnsettledCostError, ...) propagate.
-    const salesInvoice: SalesInvoice = await this.createAndPostSalesInvoiceUseCase.execute(
-      salesInvoiceInput as any,
-      settlementInput as any,
+    // Step 4 — post the SI with settlement. Creates revenue/tax/COGS vouchers, inventory OUT,
+    // and one receipt voucher per settlement row, clearing AR to zero. Errors propagate.
+    const salesInvoice: SalesInvoice = await this.postSalesInvoiceUseCase.execute(
+      input.companyId,
+      draft.id,
+      true,
+      undefined,
+      settlementInput,
       undefined,
       { userId: input.actor.userId, userEmail: input.actor.userEmail }
     );
 
-    // Persist POS-side artifacts.
+    // Persist POS-side artifacts. Receipt totals + line snapshots are hydrated from the
+    // posted SI so the printed receipt is the financial truth (incl. tax + resolved names).
     const receiptNumber = settings.receiptPrefix + '-' + String(settings.receiptNextSeq).padStart(6, '0');
     settings.receiptNextSeq += 1;
+
+    const receiptLines: PosReceiptLineSnapshot[] = salesInvoice.lines.map((l) => ({
+      itemId: l.itemId,
+      itemCode: l.itemCode,
+      itemName: l.itemName,
+      qty: l.invoicedQty,
+      uom: l.uom,
+      unitPrice: l.unitPriceDoc,
+      lineDiscount: round2(l.discountAmountBase ?? 0),
+      taxCodeId: l.taxCodeId,
+      lineTotal: round2(l.lineTotalBase),
+    }));
+    const discountTotal = round2(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 
     const receipt = new PosReceipt({
       id: `rcp_${randomUUID()}`,
@@ -251,12 +256,12 @@ export class CompletePosSaleUseCase {
       receiptNumber,
       status: 'COMPLETED',
       customerId,
-      customerName: undefined,
-      lines,
-      subtotal,
+      customerName: draft.customerName,
+      lines: receiptLines,
+      subtotal: round2(salesInvoice.subtotalBase),
       discountTotal,
-      taxTotal: 0, // Sales owns the tax math; we don't recompute it here.
-      grandTotal,
+      taxTotal: round2(salesInvoice.taxTotalBase),
+      grandTotal: round2(salesInvoice.grandTotalBase),
       salesInvoiceId: salesInvoice.id,
       salesInvoiceNumber: salesInvoice.invoiceNumber,
       createdBy: input.actor.userId,

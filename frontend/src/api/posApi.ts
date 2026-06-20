@@ -117,6 +117,11 @@ export const posApi = {
   searchProducts: async (q: string, limit = 25): Promise<{ items: any[] }> =>
     ok(client.get('/tenant/pos/products/search', { params: { q, limit } })),
 
+  /** Calculation-only quote (tax-inclusive) for the cashier screen. Does not persist. */
+  previewSale: async (lines: Array<{ itemId: string; qty: number; unitPrice: number }>):
+    Promise<{ subtotal: number; taxTotal: number; grandTotal: number; lines: any[] }> =>
+    ok(client.post('/tenant/pos/sales/preview', { lines })),
+
   completeSale: async (payload: {
     registerId: string;
     shiftId: string;

@@ -33,6 +33,7 @@ router.get('/shifts/:id/x-report', permissionGuard('pos.terminal.access'), PosCo
 // Sale / Receipts
 router.get('/bootstrap', permissionGuard('pos.terminal.access'), PosController.getBootstrap);
 router.get('/products/search', permissionGuard('pos.terminal.access'), PosController.searchProducts);
+router.post('/sales/preview', permissionGuard('pos.terminal.access'), PosController.previewSale);
 router.post('/sales', idempotencyMiddleware, permissionGuard('pos.terminal.access'), PosController.completeSale);
 router.get('/receipts', permissionGuard('pos.terminal.access'), PosController.listReceipts);
 router.get('/receipts/:id', permissionGuard('pos.terminal.access'), PosController.getReceipt);
