@@ -85,6 +85,7 @@ export const moduleMenuMap: Record<
         children: [
           { label: 'Opening Stock Documents', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
           { label: 'Adjustments', path: '/inventory/adjustments', permission: 'inventory.stock.adjust', icon: 'SlidersHorizontal' },
+          { label: 'Revaluations', path: '/inventory/revaluations', permission: 'inventory.stock.adjust', icon: 'Scale' },
           { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory.stock.adjust', icon: 'ArrowLeftRight' },
         ],
       },

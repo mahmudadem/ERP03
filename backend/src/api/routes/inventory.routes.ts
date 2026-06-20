@@ -63,6 +63,11 @@ router.post('/adjustments', permissionGuard('inventory.stock.adjust'), Inventory
 router.get('/adjustments', permissionGuard('inventory.stock.adjust'), InventoryController.listAdjustments);
 router.post('/adjustments/:id/post', permissionGuard('inventory.stock.adjust'), InventoryController.postAdjustment);
 
+router.post('/revaluations', permissionGuard('inventory.stock.adjust'), InventoryController.createInventoryRevaluation);
+router.get('/revaluations', permissionGuard('inventory.stock.adjust'), InventoryController.listInventoryRevaluations);
+router.get('/revaluations/:id', permissionGuard('inventory.stock.adjust'), InventoryController.getInventoryRevaluation);
+router.post('/revaluations/:id/post', permissionGuard('inventory.stock.adjust'), InventoryController.postInventoryRevaluation);
+
 router.post('/transfers', permissionGuard('inventory.stock.adjust'), InventoryController.createTransfer);
 router.put('/transfers/:id', permissionGuard('inventory.stock.adjust'), InventoryController.updateTransfer);
 router.post('/transfers/:id/complete', permissionGuard('inventory.stock.adjust'), InventoryController.completeTransfer);
