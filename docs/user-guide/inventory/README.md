@@ -16,6 +16,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 | **Units of Measure** | Define base UOM per item, plus conversions (1 box = 12 pcs). |
 | **Opening Stock** | Initial stock entry when you start using the system. |
 | **Stock Adjustments** | Record damage, loss, or found stock. |
+| **Inventory Revaluations** | Correct the **carrying cost** of stock without changing quantity. See [inventory-revaluation.md](./inventory-revaluation.md). |
 | **Stock Transfers** | Move goods between warehouses. |
 | **Inventory Accounting Mode** | Choose whether inventory accounting is Periodic, Invoice-Driven, or Perpetual. |
 | **Inventory Valuation** | Value current or as-of stock using Average or Last Purchase policy. |
