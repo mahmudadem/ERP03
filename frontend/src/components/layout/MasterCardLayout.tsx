@@ -31,6 +31,13 @@ interface MasterCardLayoutProps {
   onClose?: () => void;
   updatedAt?: string;
   error?: string | null;
+  /**
+   * Entity-specific labels for the primary action button.
+   * When omitted, falls back to neutral "Save" / "Update" labels instead of
+   * the old generic "SAVE NEW RECORD" / "UPDATE MASTER RECORD" copy.
+   */
+  saveNewLabel?: string;
+  updateLabel?: string;
   children: React.ReactNode;
 }
 
@@ -50,6 +57,8 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
   onClose,
   updatedAt,
   error,
+  saveNewLabel,
+  updateLabel,
   children
 }) => {
   return (
@@ -147,13 +156,15 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                         BACK
                     </button>
                 )}
-                <button 
+                <button
                     disabled={saving || !canEdit}
                     onClick={onSave}
                     className="flex-1 sm:flex-none flex items-center justify-center gap-2 bg-blue-600 text-white px-6 py-2 rounded-lg text-[11px] font-bold hover:bg-blue-700 active:scale-[0.98] disabled:opacity-50 transition-all uppercase tracking-normal"
                 >
                     {saving ? <Spinner size="xs" variant="white" /> : <Save size={14} />}
-                    {isNew ? 'SAVE NEW RECORD' : 'UPDATE MASTER RECORD'}
+                    {isNew
+                      ? (saveNewLabel || 'Save')
+                      : (updateLabel || 'Update')}
                 </button>
              </div>
           </div>

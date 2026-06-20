@@ -46,7 +46,8 @@ export class ReportingController {
           diContainer.itemRepository,
           diContainer.stockLevelRepository,
           diContainer.stockMovementRepository,
-          diContainer.inventorySettingsRepository
+          diContainer.inventorySettingsRepository,
+          diContainer.inventoryRevaluationRepository
         )
       );
       const data = await useCase.execute({
@@ -85,7 +86,8 @@ export class ReportingController {
           diContainer.itemRepository,
           diContainer.stockLevelRepository,
           diContainer.stockMovementRepository,
-          diContainer.inventorySettingsRepository
+          diContainer.inventorySettingsRepository,
+          diContainer.inventoryRevaluationRepository
         )
       );
       const data = await useCase.execute({

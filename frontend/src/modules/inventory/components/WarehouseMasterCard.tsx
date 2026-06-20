@@ -128,6 +128,8 @@ const WarehouseMasterCard: React.FC<WarehouseMasterCardProps> = ({
       onClose={onClose}
       updatedAt={form.updatedAt}
       error={error}
+      saveNewLabel="Save New Warehouse"
+      updateLabel="Update Warehouse"
     >
       {activeTab === 'GENERAL' && (
         <div className="space-y-6 animate-in fade-in duration-300">

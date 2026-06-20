@@ -349,6 +349,42 @@ export interface StockAdjustmentDTO {
   }>;
 }
 
+export interface InventoryRevaluationLineDTO {
+  itemId: string;
+  warehouseId?: string;
+  qtyOnHand: number;
+  currentAvgCostBase: number;
+  currentAvgCostCCY: number;
+  newAvgCostBase: number;
+  newAvgCostCCY: number;
+  valueDeltaBase: number;
+  valueDeltaCCY: number;
+  reason?: string;
+}
+
+export type InventoryRevaluationReason =
+  | 'COST_CORRECTION'
+  | 'BASIS_CHANGE'
+  | 'MIGRATION_FIX'
+  | 'WRITE_OFF'
+  | 'OTHER';
+
+export interface InventoryRevaluationDTO {
+  id: string;
+  companyId: string;
+  date: string;
+  reason: InventoryRevaluationReason;
+  notes?: string;
+  status: 'DRAFT' | 'POSTED';
+  voucherId?: string;
+  totalValueDeltaBase: number;
+  totalValueDeltaCCY: number;
+  createdBy: string;
+  createdAt: string;
+  postedAt?: string;
+  lines: InventoryRevaluationLineDTO[];
+}
+
 export interface StockTransferDTO {
   id: string;
   companyId: string;
@@ -700,6 +736,28 @@ export const inventoryApi = {
 
   postAdjustment: (id: string): Promise<StockAdjustmentDTO> =>
     client.post(`/tenant/inventory/adjustments/${id}/post`, {}),
+
+  createInventoryRevaluation: (payload: {
+    date: string;
+    reason: InventoryRevaluationReason;
+    notes?: string;
+    lines: Array<{
+      itemId: string;
+      warehouseId?: string;
+      newAvgCostBase: number;
+      newAvgCostCCY: number;
+      reason?: string;
+    }>;
+  }): Promise<InventoryRevaluationDTO> => client.post('/tenant/inventory/revaluations', payload),
+
+  listInventoryRevaluations: (status?: 'DRAFT' | 'POSTED'): Promise<InventoryRevaluationDTO[]> =>
+    client.get('/tenant/inventory/revaluations', { params: { status } }),
+
+  getInventoryRevaluation: (id: string): Promise<InventoryRevaluationDTO> =>
+    client.get(`/tenant/inventory/revaluations/${id}`),
+
+  postInventoryRevaluation: (id: string): Promise<InventoryRevaluationDTO> =>
+    client.post(`/tenant/inventory/revaluations/${id}/post`, {}),
 
   createTransfer: (payload: {
     sourceWarehouseId: string;

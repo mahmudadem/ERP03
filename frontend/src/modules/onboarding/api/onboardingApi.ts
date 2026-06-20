@@ -151,5 +151,13 @@ export interface CreateCompanyRequest {
   autoInitializeModules?: boolean;
   starterTemplateId?: 'simple-trading-company';
   accountingMode?: InventoryAccountingMode;
+  // NOTE-01: optional starter-policy overrides. When omitted, the existing
+  // mode → policy mapping is the default.
+  coaTemplate?: 'periodic_trading' | 'standard';
+  costingBasis?: 'GLOBAL' | 'WAREHOUSE';
+  defaultWarehouseCode?: string;
+  defaultWarehouseName?: string;
+  salesWorkflowMode?: 'SIMPLE' | 'OPERATIONAL';
+  purchaseWorkflowMode?: 'SIMPLE' | 'OPERATIONAL';
 }
 

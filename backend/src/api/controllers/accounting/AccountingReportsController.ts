@@ -125,7 +125,8 @@ export class AccountingReportsController {
           diContainer.itemRepository,
           diContainer.stockLevelRepository,
           diContainer.stockMovementRepository,
-          diContainer.inventorySettingsRepository
+          diContainer.inventorySettingsRepository,
+          diContainer.inventoryRevaluationRepository
         )
       );
 

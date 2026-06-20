@@ -56,6 +56,7 @@ import { FirestoreOpeningStockDocumentRepository } from '../firestore/repositori
 import { FirestoreStockAdjustmentRepository } from '../firestore/repositories/inventory/FirestoreStockAdjustmentRepository';
 import { FirestoreStockTransferRepository } from '../firestore/repositories/inventory/FirestoreStockTransferRepository';
 import { FirestoreInventoryPeriodSnapshotRepository } from '../firestore/repositories/inventory/FirestoreInventoryPeriodSnapshotRepository';
+import { FirestoreInventoryRevaluationRepository } from '../firestore/repositories/inventory/FirestoreInventoryRevaluationRepository';
 import { FirestorePurchaseSettingsRepository } from '../firestore/repositories/purchases/FirestorePurchaseSettingsRepository';
 import { FirestorePurchaseOrderRepository } from '../firestore/repositories/purchases/FirestorePurchaseOrderRepository';
 import { FirestoreGoodsReceiptRepository } from '../firestore/repositories/purchases/FirestoreGoodsReceiptRepository';
@@ -291,6 +292,7 @@ import { PrismaStockAdjustmentRepository } from '../prisma/repositories/inventor
 import { PrismaStockLevelRepository } from '../prisma/repositories/inventory/PrismaStockLevelRepository';
 import { PrismaStockMovementRepository } from '../prisma/repositories/inventory/PrismaStockMovementRepository';
 import { PrismaStockTransferRepository } from '../prisma/repositories/inventory/PrismaStockTransferRepository';
+import { PrismaInventoryRevaluationRepository } from '../prisma/repositories/inventory/PrismaInventoryRevaluationRepository';
 import { PrismaUomConversionRepository } from '../prisma/repositories/inventory/PrismaUomConversionRepository';
 import { PrismaUomRepository } from '../prisma/repositories/inventory/PrismaUomRepository';
 import { PrismaWarehouseRepository } from '../prisma/repositories/inventory/PrismaWarehouseRepository';
@@ -595,6 +597,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaInventoryPeriodSnapshotRepository(getPrismaClient())
       : new FirestoreInventoryPeriodSnapshotRepository(getDb());
+  },
+  get inventoryRevaluationRepository(): InvRepo.IInventoryRevaluationRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaInventoryRevaluationRepository(getPrismaClient())
+      : new FirestoreInventoryRevaluationRepository(getDb());
   },
 
   // PURCHASES
@@ -1175,6 +1182,7 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
             this.stockLevelRepository,
             this.stockMovementRepository,
             this.inventorySettingsRepository,
+            this.inventoryRevaluationRepository,
           ),
         );
         return [

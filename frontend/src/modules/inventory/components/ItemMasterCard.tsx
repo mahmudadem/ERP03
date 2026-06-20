@@ -407,6 +407,8 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       onClose={onClose}
       updatedAt={item.updatedAt}
       error={error}
+      saveNewLabel="Save New Item"
+      updateLabel="Update Item"
     >
       {activeTab === 'GENERAL' && (
         <div className="space-y-6">
