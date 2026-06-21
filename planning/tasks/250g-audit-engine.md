@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 2 (during V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 1–2 days
-**Status:** ✅ Done 2026-06-21 — see [250g completion report](../done/250g-audit-engine.md)
+**Status:** ✅ Done & CTO-audited green 2026-06-21, commit `382689a1` — see [250g completion report](../done/250g-audit-engine.md)
 
 ## Objective
 
