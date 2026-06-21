@@ -20,3 +20,6 @@ export * from './adapters/LegacyAccountingBridgeAdapter';
 export * from './adapters/LegacyAuditEngineAdapter';
 
 export * from './PolicyEngine';
+export * from './approval/ApprovalEngine';
+export * from './approval/ApprovalSubjectRegistry';
+export * from './approval/plugins/LedgerCustodyApprovalPlugin';

@@ -44,6 +44,14 @@ The minimum policy model is POS-owned:
 - `CashierRolePolicy` can require approval for direct sale; until the Approval Engine phase wires approved decisions, the policy engine blocks the sale unless `approvedOverride` is present in context.
 
 POS uses most-restrictive-wins. A narrower policy can tighten a broader allow, but it cannot loosen a broader deny; an explicit approved override is the only escape from a deny. This keeps POS authorization independent from Sales `governanceRules` while preserving existing Sales posting compatibility until 250d removes the POS-to-Sales use-case dependency.
+
+## Approval Engine
+
+250e promotes approval to a subject-agnostic System Core seam. `ApprovalEngine` evaluates `ApprovalSubject` records through `ApprovalSubjectRegistry` plug-ins. Subjects can be voucher-based (`accounting_voucher`) or non-voucher operational approvals such as `below_cost_sale`, `price_override`, `discount_override`, `tax_override`, or `pos_manager_override`.
+
+The existing accounting Smart FA/CC logic was not duplicated. It is wrapped by `LedgerCustodyApprovalPlugin`, which supports only `accounting_voucher` and delegates to `ApprovalPolicyService.evaluateSmartGates(...)`. `SubmitVoucherUseCase` now asks the approval engine for the accounting voucher decision, then consumes the same `ApprovalGateResult` metadata as before, preserving voucher status transitions and notification behavior.
+
+Non-voucher subjects currently use the generic engine fallback: a payload with `requiresApproval: true` returns `PENDING`, and the calling module decides which action to block until an approved override exists. Concrete override capture and UI flows remain later Commercial Core/POS work.
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.

@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Task 250e - Subject-agnostic approval engine)
+
+- **Goal:** Complete the Phase 1 approval seam after 250d/250d2, then hard-stop for CTO audit.
+- **What was done:** Added `ApprovalEngine`, `ApprovalSubjectRegistry`, and `LedgerCustodyApprovalPlugin`. Wrapped the existing `ApprovalPolicyService` Smart FA/CC logic as an `accounting_voucher` plug-in rather than duplicating it. Rewired `SubmitVoucherUseCase` to evaluate voucher gates through the approval engine while preserving the same `ApprovalGateResult` metadata, status transition, and notification behavior. Replaced the DI approval seam with the new subject-agnostic engine.
+- **Accounting/ERP impact:** Existing voucher approval behavior is intended unchanged. Posting is still rejected unless approval state is real and approved under `ApprovalRequiredPolicy`; 250e changes the approval dependency shape so future POS/Sales/Purchases override subjects can use the same engine.
+- **Verification:** Focused 250e tests passed: `ApprovalEngine.test.ts`, existing `ApprovalGateWorkflow`, `ApprovalRequiredPolicy`, `AccountingPolicyRegistry.isApprovalRequiredForVoucherType`, and `SubledgerVoucherPostingServicePolicy` suites (5 suites / 19 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Updated `docs/architecture/system-core.md` and added `planning/done/250e-approval-engine.md`.
+- **Time spent:** ~0.9h.
+- **Next:** Commit 250e, then stop and hand back for CTO audit. Do not start Phase 2.
+
 ### Session: 2026-06-21 (Task 250d2 - POS return posting entry point)
 
 - **Goal:** Execute 250d2 after green 250d: decouple POS returns from Sales return use-cases and enable the folder-wide POS-to-Sales application/domain import ban.

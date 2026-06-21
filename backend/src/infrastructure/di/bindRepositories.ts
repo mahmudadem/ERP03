@@ -133,7 +133,8 @@ import { SettingsResolver } from '../../application/common/services/SettingsReso
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
 import {
   LegacyAccountingBridgeAdapter,
-  LegacyApprovalEngineAdapter,
+  ApprovalEngine,
+  ApprovalSubjectRegistry,
   LegacyAuditEngineAdapter,
   LegacyCommercialCoreAdapter,
   LegacyDocumentCoreAdapter,
@@ -1023,7 +1024,7 @@ export const diContainer = {
     return new PolicyEngine(this.posPolicyRepository, this.policyRegistry);
   },
   get approvalEngine(): IApprovalEngine {
-    return new LegacyApprovalEngineAdapter(this.policyRegistry);
+    return new ApprovalEngine(new ApprovalSubjectRegistry());
   },
   get accountingBridge(): IAccountingBridge {
     return new LegacyAccountingBridgeAdapter(
