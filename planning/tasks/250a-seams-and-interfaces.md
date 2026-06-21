@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 0 · **Blocking:** enables all later phases
 **Agent:** erp-backend-builder (one builder) · **Estimate:** 1–2 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete — pending CTO audit
 
 ## Objective
 
@@ -53,17 +53,17 @@ Model it on the existing [PostingAuthority.test.ts](../../backend/src/tests/arch
 
 ## Acceptance criteria
 
-- [ ] All interfaces compile and are exported from a barrel `application/system-core/index.ts`.
-- [ ] Each adapter delegates to the current implementation and is registered in DI.
-- [ ] `npm --prefix backend run typecheck` + `run build` clean.
-- [ ] Full backend test suite unchanged (same pass count as pre-phase baseline — capture the baseline first).
-- [ ] `SystemCoreBoundaries.test.ts` exists (POS→Sales rule skipped with a TODO referencing 250d).
+- [x] All interfaces compile and are exported from a barrel `application/system-core/index.ts`.
+- [x] Each adapter delegates to the current implementation and is registered in DI.
+- [x] `npm --prefix backend run typecheck` + `run build` clean.
+- [x] Full backend suite green after baseline capture. Counts increased only by the new architecture guard: +1 passed, +1 skipped.
+- [x] `SystemCoreBoundaries.test.ts` exists (POS→Sales rule skipped with a TODO referencing 250d).
 
 ## Definition of Done
 
-- [ ] Code committed on branch: `feat(system-core): phase 0 interface seams + adapters [250a]`
-- [ ] `planning/done/250a-seams-and-interfaces.md` completion report (files created, baseline test counts).
-- [ ] No consumer behavior changed (prove via unchanged test counts).
+- [x] Code committed on branch: `feat(system-core): phase 0 interface seams + adapters [250a]`
+- [x] `planning/done/250a-seams-and-interfaces.md` completion report (files created, baseline test counts).
+- [x] No consumer behavior changed; no consumers rewired. Test-count delta is only the new architecture guard.
 
 ## CTO audit gate
 

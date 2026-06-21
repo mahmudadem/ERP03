@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Task 250a — System Core interface seams)
+
+- **Goal:** Execute Phase 0 of Epic 250 by introducing System Core interface seams and temporary adapters without changing consumer behavior.
+- **What was done:** Added `backend/src/application/system-core/` contracts, legacy adapters, the `roundMoney` helper seam, and the barrel export. Registered the seams in `bindRepositories.ts` as DI getters. Added `SystemCoreBoundaries.test.ts` with the POS-to-Sales import ban intentionally skipped until 250d. Created `docs/architecture/system-core.md` and the completion report `planning/done/250a-seams-and-interfaces.md`.
+- **Accounting/ERP impact:** No posting, voucher, tax, inventory valuation, AR/AP, approval, period-lock, audit, or reporting behavior changed. This is an internal boundary/seam phase only.
+- **Verification:** Baseline before edits: backend typecheck/build passed; full backend suite 175/177 suites passed, 2 skipped; 1565 tests passed, 18 skipped. After 250a: backend typecheck/build passed; focused SystemCoreBoundaries test passed; full backend suite 176/178 suites passed, 2 skipped; 1566 tests passed, 19 skipped. Count delta is the new active architecture assertion and the intentionally skipped 250d guard.
+- **Environment note:** The isolated worktree lacked backend dependencies; a local `backend/node_modules` junction to the main checkout's installed backend dependencies was created before baseline capture. No tracked files changed from this setup.
+- **Time spent:** ~1.6h implementation/verification plus baseline setup.
+- **Commit:** 0f2d3ded (eat(system-core): phase 0 interface seams + adapters [250a]).
+- **Next:** Continue to 250b under the owner-approved unattended run: add POS_DIRECT_SALE persona and invert T1, then verify and commit before 250c.
+
 ### Session: 2026-06-21 (Epic 250 — System Core / Shared Engines transformation: audit + plans + worktree)
 
 - **Goal:** Pause POS; address the platform-wide finding that application modules own/embed shared engines. Produce the transformation plan and a clean execution environment for executing agents.

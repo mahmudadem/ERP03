@@ -131,6 +131,33 @@ import { PrismaAiSettingsRepository } from '../prisma/repositories/ai-assistant/
 import { PrismaAiUsageLogRepository } from '../prisma/repositories/ai-assistant/PrismaAiUsageLogRepository';
 import { SettingsResolver } from '../../application/common/services/SettingsResolver';
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
+import {
+  LegacyAccountingBridgeAdapter,
+  LegacyApprovalEngineAdapter,
+  LegacyAuditEngineAdapter,
+  LegacyCommercialCoreAdapter,
+  LegacyDocumentCoreAdapter,
+  LegacyMoneyCoreAdapter,
+  LegacyNumberingEngineAdapter,
+  LegacyPolicyEngineAdapter,
+  LegacyTaxEngineAdapter,
+} from '../../application/system-core';
+import {
+  IAccountingBridge,
+  IApprovalEngine,
+  IAuditEngine,
+  ICommercialCore,
+  IDocumentCore,
+  IInventoryCore,
+  IMoneyCore,
+  INumberingEngine,
+  IPolicyEngine,
+  ITaxEngine,
+} from '../../application/system-core';
+import { SubledgerVoucherPostingService } from '../../application/accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../application/system/services/RecordChangeService';
+import { RecordStockMovementUseCase } from '../../application/inventory/use-cases/RecordStockMovementUseCase';
+import { SalesInventoryService } from '../../application/inventory/services/SalesInventoryService';
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
   import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
   import { AiRuntimeGuard } from '../../application/ai-assistant/services/AiRuntimeGuard';
@@ -966,6 +993,57 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaTransactionManager(getPrismaClient())
       : new FirestoreTransactionManager(getDb());
+  },
+
+  // SYSTEM CORE — Phase 0 interface seams. These adapters expose shared-engine
+  // contracts while delegating to the current implementations.
+  get documentCore(): IDocumentCore {
+    return new LegacyDocumentCoreAdapter();
+  },
+  get numberingEngine(): INumberingEngine {
+    return new LegacyNumberingEngineAdapter();
+  },
+  get moneyCore(): IMoneyCore {
+    return new LegacyMoneyCoreAdapter();
+  },
+  get taxEngine(): ITaxEngine {
+    return new LegacyTaxEngineAdapter();
+  },
+  get commercialCore(): ICommercialCore {
+    return new LegacyCommercialCoreAdapter();
+  },
+  get policyEngine(): IPolicyEngine {
+    return new LegacyPolicyEngineAdapter(this.policyRegistry);
+  },
+  get approvalEngine(): IApprovalEngine {
+    return new LegacyApprovalEngineAdapter(this.policyRegistry);
+  },
+  get accountingBridge(): IAccountingBridge {
+    return new LegacyAccountingBridgeAdapter(
+      new SubledgerVoucherPostingService(
+        this.voucherRepository,
+        this.ledgerRepository,
+        this.companyCurrencyRepository,
+        this.accountRepository,
+        undefined,
+        this.periodLockService,
+        this.policyRegistry,
+      )
+    );
+  },
+  get auditEngine(): IAuditEngine {
+    return new LegacyAuditEngineAdapter(new RecordChangeService(this.recordChangeLogRepository));
+  },
+  get inventoryCore(): IInventoryCore {
+    return new SalesInventoryService(new RecordStockMovementUseCase({
+      itemRepository: this.itemRepository,
+      warehouseRepository: this.warehouseRepository,
+      stockMovementRepository: this.stockMovementRepository,
+      stockLevelRepository: this.stockLevelRepository,
+      companyRepository: this.companyRepository,
+      inventorySettingsRepository: this.inventorySettingsRepository,
+      transactionManager: this.transactionManager,
+    }));
   },
 
   // POLICY SYSTEM
