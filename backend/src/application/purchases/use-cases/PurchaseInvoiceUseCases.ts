@@ -70,7 +70,7 @@ import {
 } from '../../common/services/PostedDocumentEditGuard';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
-import { calculateTaxLineAmounts } from '../../system-core/tax/TaxEngine';
+import { calculateCommercialLineAmounts } from '../../system-core/commercial/CommercialCore';
 import {
   SubledgerDocumentPoster,
   SubledgerPostingEntry,
@@ -350,7 +350,7 @@ export class CreatePurchaseInvoiceUseCase {
         sourceLine.priceIsInclusive !== undefined
           ? sourceLine.priceIsInclusive === true
           : taxCodeDefaultInclusive;
-      const lineAmounts = calculateTaxLineAmounts({
+      const lineAmounts = calculateCommercialLineAmounts({
         quantity: invoicedQty,
         unitPriceDoc,
         exchangeRate,
@@ -1162,7 +1162,7 @@ export class PostPurchaseInvoiceUseCase {
   private freezeTaxSnapshotSync(line: PurchaseInvoiceLine, rate: number, tax?: TaxCode): void {
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
-    const amounts = calculateTaxLineAmounts({
+    const amounts = calculateCommercialLineAmounts({
       quantity: line.invoicedQty,
       unitPriceDoc: line.unitPriceDoc,
       exchangeRate: rate,

@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250l-1 — Commercial Core pricing/discount)
+
+- **Goal:** Complete the first Commercial Core slice: pricing seam + line/discount calculation ownership without changing SI/PI totals.
+- **What was done:** Added `CommercialCore` with `calcDiscount`, `calcLine`, and `resolvePrice`. Rewired Sales Invoice and Purchase Invoice amount normalization/freeze paths through Commercial Core. POS product search now calls `ICommercialCore.resolvePrice` and falls back to item `salePrice`. Added Commercial Core and POS product search tests plus an architecture guard preventing Commercial Core from importing Sales calculation internals.
+- **Accounting/ERP impact:** Existing SI/PI line discount, inclusive-tax, and purchase posting totals are intended unchanged. Commercial Core computes the discount first, then Tax Engine performs the tax split from that explicit discount amount. No ledger posting, COGS, AR/AP, period-lock, or approval behavior changed.
+- **Scope decision:** Sales/Purchases price-list CRUD/resolution remains module-local for now; SO/PO/SR/PR local discount helpers remain as follow-up cleanup. This slice focuses on posting-sensitive SI/PI line totals and the POS price seam.
+- **Verification:** Focused 250l-1 tests passed (7 suites / 80 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 186 passed / 2 skipped suites; 1,607 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250l-commercial-core.md`, and added/updated `planning/done/250l-commercial-core.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Commit 250l-1, then continue to 250l-2 cost/margin guard.
+
 ### Session: 2026-06-21 (Epic 250k — Accounting Bridge hardening)
 
 - **Goal:** Complete Phase 4 task 250k: make `IAccountingBridge` choose full vs minimal recording by Accounting App activation, and remove the remaining POS direct-post bypass.

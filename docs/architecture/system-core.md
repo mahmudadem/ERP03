@@ -157,8 +157,20 @@ POS sale, return, and shift over/short flows now route through `IAccountingBridg
 
 Scope note: Sales, Purchases, and Inventory still use the established `SubledgerVoucherPostingService` posting workflows in this contained 250k slice. Moving every source-module poster behind `IAccountingBridge` is a larger bridge-migration follow-up and should be sliced by module with golden voucher-output checks.
 
+## Commercial Core
+
+250l-1 starts moving pricing and discount math into `ICommercialCore` without changing posted totals. The new `application/system-core/commercial/CommercialCore.ts` owns:
+
+- `calcDiscount(...)` / `calculateCommercialDiscountAmount(...)` for PERCENT and AMOUNT line discounts with gross clamping.
+- `calcLine(...)` / `calculateCommercialLineAmounts(...)` for commercial line amounts. Commercial Core computes the discount amount, then passes that explicit discount to Tax Engine for tax-exclusive/inclusive splitting.
+- `resolvePrice(...)` as the shared price-resolution seam.
+
+Sales Invoice and Purchase Invoice normalization now call Commercial Core for line amount calculation. Existing Sales/Purchases price-list persistence and lookup use cases are not merged in this first slice; their behavior is unchanged. POS product search now asks `ICommercialCore.resolvePrice(...)` for the displayed cashier price and falls back to the item `salePrice` when no resolver result exists.
+
+Accounting boundary: 250l-1 is intended as an ownership move. Golden SI/PI line-discount and inclusive-tax regressions were run; line subtotal, discount, tax, grand total, and purchase posting outcomes are unchanged.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.
 
-250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction. 250j adds guards that active inventory consumers use `IInventoryCore` rather than Sales/Purchases-named contracts, and that Sales delegates COGS account resolution and bucket accumulation to inventory core. 250k adds the POS accounting bridge guard described above.
+250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction. 250j adds guards that active inventory consumers use `IInventoryCore` rather than Sales/Purchases-named contracts, and that Sales delegates COGS account resolution and bucket accumulation to inventory core. 250k adds the POS accounting bridge guard described above. 250l-1 blocks Commercial Core from importing Sales calculation internals.

@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 4 (long-term, highest risk) · **Blocking:** no
 **Depends on:** [250h](./250h-tax-engine.md), [250e](./250e-approval-engine.md), [250c](./250c-policy-engine-pos-decoupling.md) · **Agent:** erp-backend-builder · **Estimate:** 6–10 days (split into sub-slices)
-**Status:** ⬜ Not started
+**Status:** 🟡 In progress — 250l-1 complete/green, 250l-2 and 250l-3 pending
 
 ## Objective
 
@@ -20,7 +20,7 @@ Re-home pricing, line/discount calculation, invoice-discount allocation, promoti
 
 ## Recommended sub-slices (each its own commit + report)
 
-1. **250l-1 Pricing + line/discount calc** — unify Sales/Purchases price lists + line/discount math behind `ICommercialCore`; wire POS resolvePrice. (Tax allocation already in `ITaxEngine` from 250h.)
+1. **250l-1 Pricing + line/discount calc** — unify Sales/Purchases price lists + line/discount math behind `ICommercialCore`; wire POS resolvePrice. (Tax allocation already in `ITaxEngine` from 250h.) ✅ Complete (2026-06-21): line discount/amount calculation now routes through Commercial Core for SI/PI; POS search calls `resolvePrice`; price-list persistence remains module-local pending a broader migration.
 2. **250l-2 Cost/margin guard** — `validateCostMargin` (below-cost / min-margin), reading inventory cost from `IInventoryCore`; below-cost override → `IApprovalEngine` (`below_cost_sale` subject from 250e).
 3. **250l-3 Promotions (POS-aware)** — wire the evaluator into the sale flow; stacking/conflict model; free-goods line insertion. (Large — may split further per [POS §9 checklist](../../docs/audit/pos-commercial-rules-and-promotions-audit.md).)
 
@@ -32,16 +32,16 @@ Re-home pricing, line/discount calculation, invoice-discount allocation, promoti
 
 ## Acceptance criteria
 
-- [ ] Pricing/discount/cost-margin owned by `ICommercialCore`; Sales/Purchases/POS consume it.
-- [ ] No module re-implements pricing/discount math.
-- [ ] Golden regressions pass; new guard/promotion tests pass.
-- [ ] typecheck + build clean.
+- [ ] Pricing/discount/cost-margin owned by `ICommercialCore`; Sales/Purchases/POS consume it. (250l-1 complete for line discount/amount calculation and POS price seam; cost-margin pending 250l-2.)
+- [ ] No module re-implements pricing/discount math. (Partial: SI/PI line amount path moved; SO/PO/SR/PR local helpers remain follow-up scope.)
+- [ ] Golden regressions pass; new guard/promotion tests pass. (250l-1 focused golden regressions pass.)
+- [x] typecheck + build clean for 250l-1.
 
 ## Definition of Done
 
 - [ ] Per-slice commits: `refactor(system-core): commercial core <slice> [250l-N]`
-- [ ] `planning/done/250l-commercial-core.md` (rolls up slices).
-- [ ] `docs/architecture/system-core.md` commercial section; fold `pricing.md` + `promotions.md` references.
+- [x] `planning/done/250l-commercial-core.md` (rolls up slices).
+- [x] `docs/architecture/system-core.md` commercial section; fold `pricing.md` + `promotions.md` references.
 
 ## CTO audit gate
 

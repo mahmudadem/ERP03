@@ -1,5 +1,5 @@
 import { roundMoney } from '../../../application/system-core/money/roundMoney';
-import { calculateTaxLineAmounts } from '../../../application/system-core/tax/TaxEngine';
+import { calculateCommercialLineAmounts } from '../../../application/system-core/commercial/CommercialCore';
 import { AppliedPromotionInfo } from './AppliedPromotion';
 
 export type SIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
@@ -455,7 +455,7 @@ export class SalesInvoice {
     // total mismatch). Math here must stay in lockstep with
     // application/sales/services/SalesInvoiceCalculationService.calculateSalesInvoiceLineAmounts.
     const priceIsInclusive = line.priceIsInclusive === true;
-    const amounts = calculateTaxLineAmounts({
+    const amounts = calculateCommercialLineAmounts({
       quantity: invoicedQty,
       unitPriceDoc,
       exchangeRate: this.exchangeRate,

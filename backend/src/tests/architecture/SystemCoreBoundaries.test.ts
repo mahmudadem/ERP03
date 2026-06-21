@@ -126,6 +126,19 @@ describe('Architecture guard: system core boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('250l-1: commercial core must not import Sales calculation internals', () => {
+    const files = [
+      path.resolve(SRC, 'application/system-core/contracts/ICommercialCore.ts'),
+      path.resolve(SRC, 'application/system-core/adapters/LegacyCommercialCoreAdapter.ts'),
+      path.resolve(SRC, 'application/system-core/commercial/CommercialCore.ts'),
+    ];
+    const offenders = files
+      .filter((file) => fs.existsSync(file))
+      .filter((file) => fs.readFileSync(file, 'utf8').includes('sales/services/SalesInvoiceCalculationService'))
+      .map((file) => path.relative(SRC, file));
+    expect(offenders).toEqual([]);
+  });
+
   it('250h: POS must consume ITaxEngine instead of carrying a local line-tax calculator', () => {
     const posFiles = [
       path.resolve(SRC, 'application/pos/use-cases/PreviewPosSaleUseCase.ts'),

@@ -1,32 +1,30 @@
 import {
-  calculateSalesInvoiceLineAmounts,
-} from '../../sales/services/SalesInvoiceCalculationService';
-import {
   DiscountCalculationContext,
   ICommercialCore,
+  CommercialLineCalculationContext,
   ResolvePriceContext,
 } from '../contracts/ICommercialCore';
+import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
+import { CommercialCore, CommercialPriceResolver } from '../commercial/CommercialCore';
 
-export type ResolvePriceDelegate = (context: ResolvePriceContext) => Promise<number | null>;
+export type ResolvePriceDelegate = CommercialPriceResolver;
 
 export class LegacyCommercialCoreAdapter implements ICommercialCore {
-  constructor(private readonly resolvePriceDelegate?: ResolvePriceDelegate) {}
+  private readonly core: CommercialCore;
+
+  constructor(resolvePriceDelegate?: ResolvePriceDelegate) {
+    this.core = new CommercialCore(resolvePriceDelegate);
+  }
 
   async resolvePrice(context: ResolvePriceContext): Promise<number | null> {
-    if (this.resolvePriceDelegate) return this.resolvePriceDelegate(context);
-    throw new Error('CommercialCore.resolvePrice has no Phase 0 legacy delegate');
+    return this.core.resolvePrice(context);
   }
 
   calcDiscount(context: DiscountCalculationContext): number {
-    return calculateSalesInvoiceLineAmounts({
-      invoicedQty: context.quantity,
-      unitPriceDoc: context.unitPrice,
-      exchangeRate: 1,
-      taxRate: 0,
-      discountType: context.discountType,
-      discountValue: context.discountValue,
-      discountAmountDoc: context.discountAmount,
-    }).discountAmountDoc;
+    return this.core.calcDiscount(context);
+  }
+
+  calcLine(context: CommercialLineCalculationContext): CalculatedTaxLineAmounts {
+    return this.core.calcLine(context);
   }
 }
-

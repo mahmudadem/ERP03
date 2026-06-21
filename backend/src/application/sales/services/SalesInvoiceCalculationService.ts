@@ -5,8 +5,8 @@ import {
 } from '../../system-core/contracts/ITaxEngine';
 import {
   calculateTaxChargeAmounts,
-  calculateTaxLineAmounts,
 } from '../../system-core/tax/TaxEngine';
+import { calculateCommercialLineAmounts } from '../../system-core/commercial/CommercialCore';
 import {
   SalesDiscountType,
   SalesInvoiceCharge,
@@ -51,7 +51,7 @@ export type CalculatedSalesInvoiceChargeAmounts = CalculatedTaxChargeAmounts;
 export const calculateSalesInvoiceLineAmounts = (
   input: SalesInvoiceLineCalculationInput
 ): CalculatedSalesInvoiceLineAmounts => {
-  return calculateTaxLineAmounts({
+  return calculateCommercialLineAmounts({
     quantity: input.invoicedQty,
     unitPriceDoc: input.unitPriceDoc,
     exchangeRate: input.exchangeRate,

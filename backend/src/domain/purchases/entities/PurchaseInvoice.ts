@@ -1,5 +1,5 @@
 import { roundMoney } from '../../../application/system-core/money/roundMoney';
-import { calculateTaxLineAmounts } from '../../../application/system-core/tax/TaxEngine';
+import { calculateCommercialLineAmounts } from '../../../application/system-core/commercial/CommercialCore';
 export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
@@ -318,7 +318,7 @@ export class PurchaseInvoice {
     const explicitDiscountDoc =
       line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
 
-    const amounts = calculateTaxLineAmounts({
+    const amounts = calculateCommercialLineAmounts({
       quantity: line.invoicedQty,
       unitPriceDoc: line.unitPriceDoc,
       exchangeRate: this.exchangeRate,

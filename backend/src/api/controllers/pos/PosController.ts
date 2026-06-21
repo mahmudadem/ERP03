@@ -378,7 +378,7 @@ export class PosController {
       const companyId = PosController.getCompanyId(req);
       const query = String((req as any).query?.q || '');
       const limit = (req as any).query?.limit ? Number((req as any).query.limit) : 25;
-      const useCase = new SearchPosProductsUseCase(diContainer.itemRepository);
+      const useCase = new SearchPosProductsUseCase(diContainer.itemRepository, diContainer.commercialCore);
       const result = await useCase.execute({ companyId, query, limit });
       (res as any).json({ success: true, data: result });
     } catch (error) {
