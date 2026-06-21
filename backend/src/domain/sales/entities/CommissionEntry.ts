@@ -1,15 +1,5 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
-
-// ---------------------------------------------------------------------------
-// Helper
-// ---------------------------------------------------------------------------
-
-/**
- * Round a monetary value to 2 decimal places using the "round half away from
- * zero" strategy, avoiding floating-point drift.
- */
-const roundMoney = (v: number): number =>
-  Math.round((v + Number.EPSILON) * 100) / 100;
 
 // ---------------------------------------------------------------------------
 // Value types

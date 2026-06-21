@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 export type PurchaseReturnDiscountType = 'PERCENT' | 'AMOUNT';
@@ -73,7 +74,6 @@ export interface PurchaseReturnProps {
 const PR_STATUSES: PRStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 const RETURN_CONTEXTS: ReturnContext[] = ['AFTER_INVOICE', 'BEFORE_INVOICE', 'DIRECT'];
 const PR_DISCOUNT_TYPES: PurchaseReturnDiscountType[] = ['PERCENT', 'AMOUNT'];
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const normalizePRDiscountType = (value: any): PurchaseReturnDiscountType | undefined => {
   if (value === null || value === undefined) return undefined;

@@ -4,7 +4,7 @@ import {
 } from '../../../domain/core/entities/CurrencyPrecisionHelpers';
 import { CashRoundingRule } from '../contracts/IMoneyCore';
 
-export function roundMoney(value: number, currency: string): number {
+export function roundMoney(value: number, currency = 'USD'): number {
   return roundByCurrency(value, currency);
 }
 
@@ -30,4 +30,3 @@ export function roundCash(
 export function toBase(value: number, currency: string, rate: number, baseCurrency = currency): number {
   return calculateBaseAmount(value, rate, baseCurrency);
 }
-

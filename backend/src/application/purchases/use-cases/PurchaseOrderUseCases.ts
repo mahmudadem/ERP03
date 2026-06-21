@@ -1,3 +1,4 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { Party } from '../../../domain/shared/entities/Party';
@@ -11,7 +12,6 @@ import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purc
 import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSettings';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const generateDocumentNumber = (
   settings: PurchaseSettings,

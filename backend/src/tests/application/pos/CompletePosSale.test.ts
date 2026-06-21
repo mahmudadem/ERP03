@@ -3,7 +3,7 @@ import { PosShift } from '../../../domain/pos/entities/PosShift';
 import { PosSettings } from '../../../domain/pos/entities/PosSettings';
 import { PosRegister } from '../../../domain/pos/entities/PosRegister';
 
-const makeSettings = (): PosSettings =>
+const makeSettings = (overrides: Partial<any> = {}): PosSettings =>
   PosSettings.fromJSON({
     companyId: 'cmp_test',
     requireOpenShift: true,
@@ -18,6 +18,7 @@ const makeSettings = (): PosSettings =>
       { code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true },
       { code: 'CARD', settlementAccountId: 'card-acc', requiresReference: true, allowsChange: false, isEnabled: true },
     ],
+    ...overrides,
   });
 
 const makeShift = (overrides: Partial<any> = {}): PosShift =>
@@ -47,7 +48,7 @@ const makeRegister = (): PosRegister =>
     updatedAt: new Date(),
   });
 
-const makePostedSale = (o: { subtotal?: number; taxTotal?: number; grandTotal?: number } = {}) => {
+const makePostedSale = (o: { subtotal?: number; taxTotal?: number; grandTotal?: number; roundedGrandTotal?: number; cashRoundingAdjustmentBase?: number } = {}) => {
   const subtotal = o.subtotal ?? 10;
   const taxTotal = o.taxTotal ?? 0;
   const grandTotal = o.grandTotal ?? subtotal + taxTotal;
@@ -59,6 +60,9 @@ const makePostedSale = (o: { subtotal?: number; taxTotal?: number; grandTotal?: 
     discountTotal: 0,
     taxTotal,
     grandTotal,
+    roundedGrandTotal: o.roundedGrandTotal ?? grandTotal,
+    cashRoundingAdjustmentBase: o.cashRoundingAdjustmentBase ?? 0,
+    currency: 'USD',
     voucherIds: ['v_1'],
     lines: [
       {
@@ -82,6 +86,7 @@ const makePostedSale = (o: { subtotal?: number; taxTotal?: number; grandTotal?: 
 
 interface SetupOpts {
   shift?: Partial<any>;
+  settings?: Partial<any>;
   draftGrand?: number;
   draftTax?: number;
   posted?: any;
@@ -96,7 +101,7 @@ const setup = (opts: SetupOpts = {}) => {
   });
   const posted = opts.posted ?? preview;
   const shiftRepo = { getById: jest.fn().mockResolvedValue(makeShift(opts.shift)) };
-  const settingsRepo = { getSettings: jest.fn().mockResolvedValue(makeSettings()), saveSettings: jest.fn() };
+  const settingsRepo = { getSettings: jest.fn().mockResolvedValue(makeSettings(opts.settings)), saveSettings: jest.fn() };
   const registerRepo = { getById: jest.fn().mockResolvedValue(makeRegister()) };
   const receiptRepo = { create: jest.fn() };
   const paymentRepo = { create: jest.fn() };
@@ -227,5 +232,22 @@ describe('CompletePosSaleUseCase', () => {
     expect(result.receipt.taxTotal).toBe(1);
     expect(result.receipt.grandTotal).toBe(11);
     expect(result.receipt.lines[0].itemName).toBe('Widget');
+  });
+
+  it('applies POS nearest-0.05 cash rounding before posting and records the rounding account', async () => {
+    const { useCase, postPosSaleUC } = setup({
+      settings: { cashRounding: 'nearest_05' },
+      draftGrand: 10.02,
+      posted: makePostedSale({ subtotal: 10.02, grandTotal: 10.02, roundedGrandTotal: 10, cashRoundingAdjustmentBase: -0.02 }),
+    });
+
+    const result = await run(useCase, [{ method: 'CASH', amount: 10 }]);
+
+    const postedInput = postedInputOf(postPosSaleUC);
+    expect(postedInput.payments[0]).toMatchObject({ method: 'CASH', amount: 10 });
+    expect(postedInput.cashRoundingAdjustmentBase).toBe(-0.02);
+    expect(postedInput.cashRoundingAccountId).toBe('short-acc');
+    expect(result.change).toBe(0);
+    expect(result.receipt.grandTotal).toBe(10);
   });
 });

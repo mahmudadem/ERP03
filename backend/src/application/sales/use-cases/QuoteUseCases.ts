@@ -1,3 +1,4 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { Quote, QuoteLine } from '../../../domain/sales/entities/Quote';
 import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
@@ -10,7 +11,6 @@ import {
 import { CreateSalesOrderUseCase, CreateSalesOrderInput, generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { CreateSalesInvoiceUseCase, CreateSalesInvoiceInput } from './SalesInvoiceUseCases';
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 // ---------------------------------------------------------------------------
 // Input interfaces

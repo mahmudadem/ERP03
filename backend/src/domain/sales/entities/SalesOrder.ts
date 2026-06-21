@@ -1,4 +1,5 @@
-﻿export type SOStatus =
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
+export type SOStatus =
   | 'DRAFT'
   | 'CONFIRMED'
   | 'PARTIALLY_DELIVERED'
@@ -90,7 +91,6 @@ const SO_STATUSES: SOStatus[] = [
 ];
 const SO_DISCOUNT_TYPES: SalesOrderDiscountType[] = ['PERCENT', 'AMOUNT'];
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const normalizeSODiscountType = (value: any): SalesOrderDiscountType | undefined => {
   if (value === null || value === undefined) return undefined;

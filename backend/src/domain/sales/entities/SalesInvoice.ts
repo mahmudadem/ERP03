@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 import { AppliedPromotionInfo } from './AppliedPromotion';
 
 export type SIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
@@ -165,7 +166,6 @@ const SI_STATUSES: SIStatus[] = ['DRAFT', 'PENDING_APPROVAL', 'POSTED', 'CANCELL
 const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
 const DISCOUNT_TYPES: SalesDiscountType[] = ['PERCENT', 'AMOUNT'];
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const REF_KEYS = [
   'id',

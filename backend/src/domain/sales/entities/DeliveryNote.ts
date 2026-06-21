@@ -1,4 +1,5 @@
-﻿export type DNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
+export type DNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 
 export interface DeliveryNoteLine {
   lineId: string;
@@ -50,7 +51,6 @@ export interface DeliveryNoteProps {
 }
 
 const DN_STATUSES: DNStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();

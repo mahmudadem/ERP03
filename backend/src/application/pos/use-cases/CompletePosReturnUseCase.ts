@@ -1,3 +1,4 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { PosReturn, PosReturnLine, PosReturnRefundMethod } from '../../../domain/pos/entities/PosReturn';
 import { PosReceipt } from '../../../domain/pos/entities/PosReceipt';
@@ -12,7 +13,6 @@ import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosR
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { PostPosReturnUseCase } from './PostPosReturnUseCase';
 
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export interface PosReturnLineInput {
   itemId: string;
@@ -118,7 +118,7 @@ export class CompletePosReturnUseCase {
 
     const returnLines: PosReturnLine[] = input.lines.map((l) => {
       const snap = receiptLinesByItem.get(l.itemId);
-      const lineTotal = snap ? round2(snap.unitPrice * l.qty - (snap.lineDiscount * (l.qty / Math.max(1, snap.qty)))) : 0;
+      const lineTotal = snap ? roundMoney(snap.unitPrice * l.qty - (snap.lineDiscount * (l.qty / Math.max(1, snap.qty)))) : 0;
       return {
         itemId: l.itemId,
         qty: l.qty,

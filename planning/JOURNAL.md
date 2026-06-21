@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250f — Money Core)
+
+- **Goal:** Complete Phase 2 task 250f: replace audited local `roundMoney` copies with the System Core Money helper and apply POS cash rounding.
+- **What was done:** Removed the audited local `roundMoney` definitions across Sales, Purchases, POS, shared payment history, and seed scripts; kept `VoucherLineEntity.roundMoney(value, decimals)` as the low-level accounting precision primitive behind `CurrencyPrecisionHelpers`. Added a System Core architecture guard against new local `roundMoney` definitions. POS sale completion now rounds the payable total from `PosSettings.cashRounding` before tender validation and passes the rounding delta into POS posting.
+- **Accounting/ERP impact:** POS cash rounding is now posted, not merely stored. Positive rounding differences credit the configured Cash over account; negative differences debit the Cash short account. Missing required accounts block the sale before posting, preventing silent AR/settlement drift. No tax, COGS, inventory costing, approval, period-lock, or tenant-scope behavior changed.
+- **Verification:** Focused Money/POS/architecture tests passed (3 suites / 19 tests). `npm --prefix backend run build` passed. `npm --prefix backend run typecheck` passed after rerunning alone; the first parallel typecheck/build attempt hit a Prisma client rename race in shared `node_modules`.
+- **Docs:** Updated `docs/architecture/system-core.md`, `docs/architecture/pos-independence.md`, `docs/user-guide/pos/setup.md`, `docs/user-guide/pos/selling.md`, and added `planning/done/250f-money-core.md`.
+- **Time spent:** ~1.4h.
+- **Next:** Continue 250g Audit Engine, then hard-stop for CTO audit. Do not enter Phase 3/4.
+
 ### Session: 2026-06-21 (Task 250e - Subject-agnostic approval engine)
 
 - **Goal:** Complete the Phase 1 approval seam after 250d/250d2, then hard-stop for CTO audit.

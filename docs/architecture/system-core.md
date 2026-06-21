@@ -52,6 +52,27 @@ POS uses most-restrictive-wins. A narrower policy can tighten a broader allow, b
 The existing accounting Smart FA/CC logic was not duplicated. It is wrapped by `LedgerCustodyApprovalPlugin`, which supports only `accounting_voucher` and delegates to `ApprovalPolicyService.evaluateSmartGates(...)`. `SubmitVoucherUseCase` now asks the approval engine for the accounting voucher decision, then consumes the same `ApprovalGateResult` metadata as before, preserving voucher status transitions and notification behavior.
 
 Non-voucher subjects currently use the generic engine fallback: a payload with `requiresApproval: true` returns `PENDING`, and the calling module decides which action to block until an approved override exists. Concrete override capture and UI flows remain later Commercial Core/POS work.
+
+## Money Core
+
+250f makes `application/system-core/money/roundMoney.ts` the single backend rounding authority for the audited money paths. It wraps `CurrencyPrecisionHelpers.roundByCurrency` and keeps an omitted-currency fallback of `USD` so existing two-decimal document totals remain behavior-preserving while callers migrate to passing the real currency.
+
+The helper now owns:
+
+- `roundMoney(value, currency = 'USD')`
+- `roundCash(value, currency, rule)`
+- `toBase(value, currency, rate, baseCurrency)`
+
+The audited local `roundMoney` copies in Sales, Purchases, POS, shared payment history, and seed scripts were removed. `VoucherLineEntity.roundMoney(value, decimals)` remains as the low-level accounting precision primitive used by `CurrencyPrecisionHelpers`; it is intentionally allowed by the architecture guard.
+
+POS sale completion now applies `PosSettings.cashRounding` before payment validation. Rounding differences are posted in the POS revenue voucher so AR and settlement stay balanced:
+
+- positive rounding difference credits `cashOverAccountId`;
+- negative rounding difference debits `cashShortAccountId`;
+- if the needed account is missing, the sale is blocked before posting.
+
+This keeps cash rounding auditable without adding a new account setting in the Phase 2 slice.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.

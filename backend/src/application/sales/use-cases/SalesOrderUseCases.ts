@@ -1,3 +1,4 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
@@ -20,7 +21,6 @@ import { CreditCheckResult, CreditCheckService } from '../services/CreditCheckSe
 import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
 import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const generateDocumentNumber = (
   settings: SalesSettings,

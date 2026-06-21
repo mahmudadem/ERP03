@@ -1,10 +1,10 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import {
   SalesDiscountType,
   SalesInvoiceCharge,
   SalesInvoiceLine,
 } from '../../../domain/sales/entities/SalesInvoice';
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export interface SalesInvoiceLineCalculationInput {
   invoicedQty: number;

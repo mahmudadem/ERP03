@@ -1,3 +1,4 @@
+import { roundCash, roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
 import { PosReceipt, PosReceiptLineSnapshot } from '../../../domain/pos/entities/PosReceipt';
@@ -12,8 +13,8 @@ import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/I
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
 import { PostPosSaleUseCase } from './PostPosSaleUseCase';
+import { PosCashRounding } from '../../../domain/pos/entities/PosSettings';
 
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export interface PosCartLine {
   itemId: string;
@@ -169,29 +170,41 @@ export class CompletePosSaleUseCase {
       dryRun: true,
     });
 
-    const grandTotal = round2(preview.grandTotal);
-    const cashTendered = round2(
-      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0)
+    const cashRoundingRule = posCashRoundingRule(settings.cashRounding);
+    const grandTotal = roundMoney(preview.grandTotal, preview.currency);
+    const roundedGrandTotal = roundCash(grandTotal, preview.currency, cashRoundingRule);
+    const cashRoundingAdjustment = roundMoney(roundedGrandTotal - grandTotal, preview.currency);
+    if (cashRoundingAdjustment > 0 && !settings.cashOverAccountId) {
+      throw new Error('POS cash rounding gain requires a configured Cash Over account.');
+    }
+    if (cashRoundingAdjustment < 0 && !settings.cashShortAccountId) {
+      throw new Error('POS cash rounding loss requires a configured Cash Short account.');
+    }
+    const cashTendered = roundMoney(
+      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0),
+      preview.currency
     );
-    const cashChange = round2(Math.max(0, cashTendered - grandTotal));
-    const appliedTotal = round2(
-      input.payments.reduce((s, p) => s + p.amount, 0) - cashChange
+    const cashChange = roundMoney(Math.max(0, cashTendered - roundedGrandTotal), preview.currency);
+    const appliedTotal = roundMoney(
+      input.payments.reduce((s, p) => s + p.amount, 0) - cashChange,
+      preview.currency
     );
-    if (Math.abs(appliedTotal - grandTotal) > 0.005) {
+    if (Math.abs(appliedTotal - roundedGrandTotal) > 0.005) {
       throw new Error(
         `Payment total (${appliedTotal.toFixed(2)}) must equal the POS sale grand total ` +
-        `incl. tax (${grandTotal.toFixed(2)}). Cash change of ${cashChange.toFixed(2)} is allowed.`
+        `incl. tax (${roundedGrandTotal.toFixed(2)}). Cash change of ${cashChange.toFixed(2)} is allowed.`
       );
     }
 
     const appliedPayments = input.payments.map((p) => ({
       method: p.method,
-      amount: p.method === 'CASH' ? round2(p.amount - cashChange) : round2(p.amount),
+      amount: p.method === 'CASH' ? roundMoney(p.amount - cashChange, preview.currency) : roundMoney(p.amount, preview.currency),
       reference: p.reference,
     }));
 
-    const cashApplied = round2(
-      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0) - cashChange
+    const cashApplied = roundMoney(
+      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0) - cashChange,
+      preview.currency
     );
 
     const { postedSale, receipt } = await this.transactionManager.runTransaction(async (tx) => {
@@ -212,6 +225,8 @@ export class CompletePosSaleUseCase {
         })),
         payments: appliedPayments,
         paymentMethods: settings.paymentMethods,
+        cashRoundingAdjustmentBase: cashRoundingAdjustment,
+        cashRoundingAccountId: cashRoundingAdjustment > 0 ? settings.cashOverAccountId : settings.cashShortAccountId,
         createdBy: input.actor.userId,
         transaction: tx,
       });
@@ -223,9 +238,9 @@ export class CompletePosSaleUseCase {
         qty: l.qty,
         uom: l.uom,
         unitPrice: l.unitPrice,
-        lineDiscount: round2(l.lineDiscount ?? 0),
+        lineDiscount: roundMoney(l.lineDiscount ?? 0),
         taxCodeId: l.taxCodeId,
-        lineTotal: round2(l.lineTotal),
+        lineTotal: roundMoney(l.lineTotal),
         salesInvoiceLineId: l.lineId, // legacy field name; 250d2 removes Sales return dependency.
         revenueAccountId: l.revenueAccountId,
         taxAccountId: l.taxAccountId,
@@ -234,7 +249,7 @@ export class CompletePosSaleUseCase {
         unitCostBase: l.unitCostBase,
         lineCostBase: l.lineCostBase,
       }));
-      const discountTotal = round2(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
+      const discountTotal = roundMoney(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 
       const receipt = new PosReceipt({
         id: `rcp_${randomUUID()}`,
@@ -246,10 +261,10 @@ export class CompletePosSaleUseCase {
         customerId,
         customerName: sale.customerName,
         lines: receiptLines,
-        subtotal: round2(sale.subtotal),
+        subtotal: roundMoney(sale.subtotal),
         discountTotal,
-        taxTotal: round2(sale.taxTotal),
-        grandTotal: round2(sale.grandTotal),
+        taxTotal: roundMoney(sale.taxTotal),
+        grandTotal: roundMoney(sale.roundedGrandTotal),
         salesInvoiceId: sale.documentId,
         salesInvoiceNumber: sale.documentNumber,
         createdBy: input.actor.userId,
@@ -262,7 +277,7 @@ export class CompletePosSaleUseCase {
           companyId: input.companyId,
           receiptId: receipt.id,
           method: p.method,
-          amount: round2(p.amount),
+          amount: roundMoney(p.amount),
           changeGiven: p.method === 'CASH' ? cashChange : 0,
           reference: p.reference,
           createdAt: receipt.createdAt,
@@ -303,4 +318,10 @@ export class CompletePosSaleUseCase {
       change: cashChange,
     };
   }
+}
+
+function posCashRoundingRule(rounding: PosCashRounding): { increment?: number; mode?: 'NEAREST' } | null {
+  if (rounding === 'nearest_05') return { increment: 0.05, mode: 'NEAREST' };
+  if (rounding === 'nearest_1') return { increment: 1, mode: 'NEAREST' };
+  return null;
 }

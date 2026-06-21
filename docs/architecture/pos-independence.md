@@ -30,6 +30,13 @@ The sale carries `documentPersona: POS_DIRECT_SALE` in stock movement metadata a
 - `sourceType: POS_SALE`
 - `documentPersona: POS_DIRECT_SALE`
 
+250f adds cash rounding to the sale boundary. `CompletePosSaleUseCase` dry-runs the POS sale total, rounds the payable cash total according to `PosSettings.cashRounding`, validates tender against that rounded total, and passes the rounding delta into `PostPosSaleUseCase`. `PostPosSaleUseCase` balances the revenue voucher by posting the difference to POS over/short accounts:
+
+- rounded total above line/tax total: credit `cashOverAccountId`;
+- rounded total below line/tax total: debit `cashShortAccountId`.
+
+The sale blocks if cash rounding is enabled and the required gain/loss account is missing.
+
 ## Accounting Impact
 
 The 250d sale path preserves the same financial shape expected from POS direct sale:

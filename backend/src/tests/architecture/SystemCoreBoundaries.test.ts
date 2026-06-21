@@ -59,6 +59,23 @@ describe('Architecture guard: system core boundaries', () => {
       expect(barrel).toContain(`contracts/${contract}`);
     }
   });
+
+  it('250f: audited money call sites must not define local roundMoney helpers', () => {
+    const allowed = new Set([
+      path.normalize('application/system-core/money/roundMoney.ts'),
+      path.normalize('domain/accounting/entities/VoucherLineEntity.ts'),
+    ]);
+    const offenders: string[] = [];
+    for (const file of collectTsFiles(SRC)) {
+      const rel = path.relative(SRC, file);
+      if (allowed.has(path.normalize(rel))) continue;
+      const content = fs.readFileSync(file, 'utf8');
+      if (/\b(?:const|function)\s+roundMoney\b|\bexport\s+(?:const|function)\s+roundMoney\b/.test(content)) {
+        offenders.push(rel);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

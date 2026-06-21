@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 2 (during V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 1–2 days
-**Status:** ⬜ Not started
+**Status:** ✅ Done 2026-06-21 — see [250f completion report](../done/250f-money-core.md)
 
 ## Objective
 
@@ -30,14 +30,14 @@ Replace the ~17 copy-pasted `roundMoney` definitions with **one precision-aware 
 
 ## Acceptance criteria
 
-- [ ] Zero remaining local `roundMoney` definitions (grep clean except the single core helper + `VoucherLineEntity` if intentionally kept).
-- [ ] POS cash rounding applied and tested.
-- [ ] typecheck + build clean; suite green (2-decimal totals unchanged).
+- [x] Zero remaining local `roundMoney` definitions (grep clean except the single core helper + `VoucherLineEntity` if intentionally kept).
+- [x] POS cash rounding applied and tested.
+- [x] typecheck + build clean; suite green (2-decimal totals unchanged).
 
 ## Definition of Done
 
-- [ ] Commit: `refactor(system-core): single money/rounding core; apply POS cash rounding [250f]`
-- [ ] `planning/done/250f-money-core.md` report.
+- [x] Commit: `refactor(system-core): single money/rounding core; apply POS cash rounding [250f]`
+- [x] `planning/done/250f-money-core.md` report.
 
 ## CTO audit gate
 

@@ -1,3 +1,4 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { VoucherType, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { Item } from '../../../domain/inventory/entities/Item';
@@ -10,8 +11,6 @@ import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accou
 import { IAccountingBridge, IInventoryCore } from '../../system-core';
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
-
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -38,6 +37,8 @@ export interface PostPosSaleInput {
   lines: PostPosSaleLineInput[];
   payments: PostPosSalePaymentInput[];
   paymentMethods: PosPaymentMethodConfig[];
+  cashRoundingAdjustmentBase?: number;
+  cashRoundingAccountId?: string;
   createdBy: string;
   transaction?: unknown;
   dryRun?: boolean;
@@ -72,6 +73,9 @@ export interface PostPosSaleResult {
   discountTotal: number;
   taxTotal: number;
   grandTotal: number;
+  roundedGrandTotal: number;
+  cashRoundingAdjustmentBase: number;
+  currency: string;
   lines: PostedPosSaleLine[];
   voucherIds: string[];
 }
@@ -127,6 +131,7 @@ export class PostPosSaleUseCase {
         priceIsInclusive: tax.priceIsInclusive,
         discountType: sourceLine.discountType,
         discountValue: sourceLine.discountValue,
+        currency: baseCurrency,
       });
 
       const lineId = `pos_line_${randomUUID()}`;
@@ -149,15 +154,15 @@ export class PostPosSaleUseCase {
           metadata: { sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' },
         });
         stockMovementId = movement.id;
-        unitCostBase = round2(movement.unitCostBase || 0);
-        lineCostBase = round2(movement.totalCostBase || unitCostBase * sourceLine.qty);
+        unitCostBase = roundMoney(movement.unitCostBase || 0, baseCurrency);
+        lineCostBase = roundMoney(movement.totalCostBase || unitCostBase * sourceLine.qty, baseCurrency);
 
         const cogsAccounts = this.resolveCogsAccounts(item, categoryMap, invSettings);
         if (lineCostBase > 0 && cogsAccounts) {
           cogsAccountId = cogsAccounts.cogsAccountId;
           inventoryAccountId = cogsAccounts.inventoryAccountId;
-          addToBucket(cogsDebits, cogsAccounts.cogsAccountId, lineCostBase);
-          addToBucket(inventoryCredits, cogsAccounts.inventoryAccountId, lineCostBase);
+          addToBucket(cogsDebits, cogsAccounts.cogsAccountId, lineCostBase, baseCurrency);
+          addToBucket(inventoryCredits, cogsAccounts.inventoryAccountId, lineCostBase, baseCurrency);
         }
       }
 
@@ -165,7 +170,7 @@ export class PostPosSaleUseCase {
       if (!revenueAccountId) {
         throw new Error(`No revenue account configured for item ${item.code}`);
       }
-      addToBucket(revenueCredits, revenueAccountId, amounts.revenueBase);
+      addToBucket(revenueCredits, revenueAccountId, amounts.revenueBase, baseCurrency);
       if (amounts.discountBase > 0) {
         // POS 250d keeps line-discount accounting conservative: net revenue is
         // posted, matching POS receipt totals without adding a Sales-settings dependency.
@@ -174,7 +179,7 @@ export class PostPosSaleUseCase {
         if (!tax.salesTaxAccountId) {
           throw new Error(`Tax code ${tax.code || tax.id} has no Sales Tax Account configured.`);
         }
-        addToBucket(taxCredits, tax.salesTaxAccountId, amounts.taxBase);
+        addToBucket(taxCredits, tax.salesTaxAccountId, amounts.taxBase, baseCurrency);
       }
 
       postedLines.push({
@@ -201,10 +206,12 @@ export class PostPosSaleUseCase {
       void idx;
     }
 
-    const subtotal = round2(postedLines.reduce((s, l) => s + l.lineTotal, 0));
-    const discountTotal = round2(postedLines.reduce((s, l) => s + l.lineDiscount, 0));
-    const taxTotal = round2(postedLines.reduce((s, l) => s + l.taxAmount, 0));
-    const grandTotal = round2(subtotal + taxTotal);
+    const subtotal = roundMoney(postedLines.reduce((s, l) => s + l.lineTotal, 0), baseCurrency);
+    const discountTotal = roundMoney(postedLines.reduce((s, l) => s + l.lineDiscount, 0), baseCurrency);
+    const taxTotal = roundMoney(postedLines.reduce((s, l) => s + l.taxAmount, 0), baseCurrency);
+    const grandTotal = roundMoney(subtotal + taxTotal, baseCurrency);
+    const cashRoundingAdjustmentBase = roundMoney(input.cashRoundingAdjustmentBase || 0, baseCurrency);
+    const roundedGrandTotal = roundMoney(grandTotal + cashRoundingAdjustmentBase, baseCurrency);
     const voucherIds: string[] = [];
 
     if (input.dryRun) {
@@ -216,10 +223,37 @@ export class PostPosSaleUseCase {
         discountTotal,
         taxTotal,
         grandTotal,
+        roundedGrandTotal: grandTotal,
+        cashRoundingAdjustmentBase: 0,
+        currency: baseCurrency,
         lines: postedLines,
         voucherIds,
       };
     }
+
+    const cashRoundingAccountId = input.cashRoundingAccountId?.trim();
+    if (cashRoundingAdjustmentBase !== 0 && !cashRoundingAccountId) {
+      throw new Error('POS cash rounding requires a configured rounding gain/loss account.');
+    }
+
+    const roundingVoucherLines =
+      cashRoundingAdjustmentBase > 0
+        ? [{
+            accountId: cashRoundingAccountId,
+            side: 'Credit' as const,
+            baseAmount: cashRoundingAdjustmentBase,
+            docAmount: cashRoundingAdjustmentBase,
+            notes: `POS cash rounding gain ${input.documentNumber}`,
+          }]
+        : cashRoundingAdjustmentBase < 0
+          ? [{
+              accountId: cashRoundingAccountId,
+              side: 'Debit' as const,
+              baseAmount: Math.abs(cashRoundingAdjustmentBase),
+              docAmount: Math.abs(cashRoundingAdjustmentBase),
+              notes: `POS cash rounding loss ${input.documentNumber}`,
+            }]
+          : [];
 
     const revenueVoucher = await this.accountingBridge.recordFinancialEvent({
       kind: 'POS_SALE_REVENUE',
@@ -233,9 +267,10 @@ export class PostPosSaleUseCase {
         currency: baseCurrency,
         exchangeRate: 1,
         lines: [
-          { accountId: arAccountId, side: 'Debit', baseAmount: grandTotal, docAmount: grandTotal, notes: `AR - ${customer.displayName} - ${input.documentNumber}` },
-          ...mapBucket(revenueCredits, 'Credit'),
-          ...mapBucket(taxCredits, 'Credit'),
+          { accountId: arAccountId, side: 'Debit', baseAmount: roundedGrandTotal, docAmount: roundedGrandTotal, notes: `AR - ${customer.displayName} - ${input.documentNumber}` },
+          ...mapBucket(revenueCredits, 'Credit', baseCurrency),
+          ...mapBucket(taxCredits, 'Credit', baseCurrency),
+          ...roundingVoucherLines,
         ],
         metadata: {
           sourceModule: 'pos',
@@ -265,7 +300,7 @@ export class PostPosSaleUseCase {
           description: `POS Sale ${input.documentNumber} COGS`,
           currency: baseCurrency,
           exchangeRate: 1,
-          lines: [...mapBucket(cogsDebits, 'Debit'), ...mapBucket(inventoryCredits, 'Credit')],
+          lines: [...mapBucket(cogsDebits, 'Debit', baseCurrency), ...mapBucket(inventoryCredits, 'Credit', baseCurrency)],
           metadata: {
             sourceModule: 'pos',
             sourceType: 'POS_SALE',
@@ -285,7 +320,7 @@ export class PostPosSaleUseCase {
 
     for (const payment of input.payments) {
       const accountId = input.paymentMethods.find((m) => m.code === payment.method)?.settlementAccountId;
-      const amount = round2(payment.amount);
+      const amount = roundMoney(payment.amount);
       if (amount <= 0) continue;
       const receiptVoucher = await this.accountingBridge.recordFinancialEvent({
         kind: 'POS_SALE_SETTLEMENT',
@@ -327,6 +362,9 @@ export class PostPosSaleUseCase {
       discountTotal,
       taxTotal,
       grandTotal,
+      roundedGrandTotal,
+      cashRoundingAdjustmentBase,
+      currency: baseCurrency,
       lines: postedLines,
       voucherIds,
     };
@@ -367,16 +405,16 @@ export class PostPosSaleUseCase {
   }
 }
 
-function addToBucket(bucket: Map<string, number>, accountId: string, amount: number): void {
-  bucket.set(accountId, round2((bucket.get(accountId) || 0) + amount));
+function addToBucket(bucket: Map<string, number>, accountId: string, amount: number, currency = 'USD'): void {
+  bucket.set(accountId, roundMoney((bucket.get(accountId) || 0) + amount, currency));
 }
 
-function mapBucket(bucket: Map<string, number>, side: 'Debit' | 'Credit'): Array<Record<string, any>> {
+function mapBucket(bucket: Map<string, number>, side: 'Debit' | 'Credit', currency = 'USD'): Array<Record<string, any>> {
   return Array.from(bucket.entries()).map(([accountId, amount]) => ({
     accountId,
     side,
-    baseAmount: round2(amount),
-    docAmount: round2(amount),
+    baseAmount: roundMoney(amount, currency),
+    docAmount: roundMoney(amount, currency),
   }));
 }
 
@@ -387,25 +425,27 @@ function calculateLineAmounts(input: {
   priceIsInclusive: boolean;
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
+  currency?: string;
 }): { revenueBase: number; lineTotalBase: number; discountBase: number; taxBase: number } {
-  const gross = round2(input.qty * input.unitPrice);
+  const currency = input.currency || 'USD';
+  const gross = roundMoney(input.qty * input.unitPrice, currency);
   const discount = input.discountType === 'PERCENT'
-    ? round2(gross * ((input.discountValue || 0) / 100))
-    : round2(input.discountValue || 0);
-  const afterDiscount = round2(gross - discount);
+    ? roundMoney(gross * ((input.discountValue || 0) / 100), currency)
+    : roundMoney(input.discountValue || 0, currency);
+  const afterDiscount = roundMoney(gross - discount, currency);
   if (input.priceIsInclusive && input.taxRate > 0) {
-    const lineTotalBase = round2(afterDiscount / (1 + input.taxRate));
+    const lineTotalBase = roundMoney(afterDiscount / (1 + input.taxRate), currency);
     return {
       revenueBase: lineTotalBase,
       lineTotalBase,
-      discountBase: round2(discount / (1 + input.taxRate)),
-      taxBase: round2(afterDiscount - lineTotalBase),
+      discountBase: roundMoney(discount / (1 + input.taxRate), currency),
+      taxBase: roundMoney(afterDiscount - lineTotalBase, currency),
     };
   }
   return {
     revenueBase: afterDiscount,
     lineTotalBase: afterDiscount,
     discountBase: discount,
-    taxBase: round2(afterDiscount * input.taxRate),
+    taxBase: roundMoney(afterDiscount * input.taxRate, currency),
   };
 }

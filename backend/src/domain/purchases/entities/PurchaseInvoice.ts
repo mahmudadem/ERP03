@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
@@ -155,7 +156,6 @@ const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
 const PURCHASE_DISCOUNT_TYPES: PurchaseDiscountType[] = ['PERCENT', 'AMOUNT'];
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const normalizePurchaseDiscountType = (value: any): PurchaseDiscountType | undefined => {
   if (value === null || value === undefined) return undefined;
