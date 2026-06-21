@@ -26,10 +26,11 @@ const makeReceipt = (): PosReceipt =>
   });
 
 // Mock SalesReturn — we don't need the full domain object for the use case tests;
-// the use case just reads `id` and `returnNumber` off it.
+// the use case reads `id`, `returnNumber`, and `grandTotalBase` (authoritative tax-inclusive refund) off it.
 const makeSalesReturn = (): any => ({
   id: 'sr_1',
   returnNumber: 'SR-0001',
+  grandTotalBase: 11.5, // 10 net + 15% tax — the customer is refunded what they paid
 });
 
 describe('CompletePosReturnUseCase', () => {
@@ -151,7 +152,7 @@ describe('CompletePosReturnUseCase', () => {
       actor: { userId: 'cashier_1' },
     });
     expect(result.posReturn.shiftId).toBe('shift_new');
-    expect(result.refundTotal).toBe(10);
+    expect(result.refundTotal).toBe(11.5); // tax-inclusive refund from the posted Sales Return
     expect(cashMovementRepo.create).toHaveBeenCalled();
   });
 

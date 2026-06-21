@@ -30,6 +30,8 @@ export interface CompletePosReturnInput {
   shiftId?: string;
   lines: PosReturnLineInput[];
   refundMethod: PosReturnRefundMethod;
+  /** Optional reason for the return; defaults to a generic POS reason (Sales requires one). */
+  reason?: string;
   actor: { userId: string; userEmail?: string };
 }
 
@@ -137,6 +139,7 @@ export class CompletePosReturnUseCase {
         returnDate: new Date().toISOString().slice(0, 10),
         currency: 'USD',
         exchangeRate: 1,
+        reason: input.reason || 'POS return',
         createdBy: input.actor.userId,
         lines: salesReturnLines,
       } as any,
@@ -152,13 +155,10 @@ export class CompletePosReturnUseCase {
       { userId: input.actor.userId, userEmail: input.actor.userEmail }
     );
 
-    // Compute refund total (sum of returned lines × unit price − line discount).
-    const refundTotal = round2(
-      input.lines.reduce((s, l) => {
-        const snap = receiptLinesByItem.get(l.itemId);
-        return s + (snap ? snap.unitPrice * l.qty - (snap.lineDiscount * (l.qty / Math.max(1, snap.qty))) : 0);
-      }, 0)
-    );
+    // Refund the customer what they actually paid back: the posted Sales Return's
+    // authoritative tax-INCLUSIVE total. (Computing it from unitPrice×qty here would omit
+    // tax, under-refund the customer, and leave the drawer/GL unreconciled.)
+    const refundTotal = round2(postedReturn.grandTotalBase);
 
     const returnLines: PosReturnLine[] = input.lines.map((l) => {
       const snap = receiptLinesByItem.get(l.itemId);

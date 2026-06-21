@@ -154,6 +154,10 @@ export class CompletePosSaleUseCase {
       customerId,
       invoiceDate: new Date().toISOString().slice(0, 10),
       source: 'pos' as const,
+      // voucherType MUST be the canonical 'sales_invoice'; formType carries the POS persona/marker.
+      // (CreateSalesInvoiceUseCase derives voucherType from formType when it is omitted, and would
+      //  otherwise reject 'pos_sale' as an invalid voucher type.)
+      voucherType: 'sales_invoice' as const,
       formType: 'pos_sale' as const,
       persona: 'direct' as const,
       createdBy: input.actor.userId,
@@ -196,6 +200,11 @@ export class CompletePosSaleUseCase {
 
     // Step 3 — build the settlement from the authoritative total. CASH_FULL only for a
     // single tender that exactly equals the total with no change; MULTI otherwise.
+    // The POS-configured account for a method (PosSettings.paymentMethods) is authoritative for
+    // the GL settlement; if blank, Sales falls back to SalesSettings.paymentMethodConfigs.
+    const accountFor = (method: PosPaymentMethod): string | undefined =>
+      settings.getPaymentMethod(method)?.settlementAccountId?.trim() || undefined;
+
     const singleTenderExact =
       input.payments.length === 1 && appliedTotal === grandTotal && cashChange === 0;
     const settlementInput: SettlementInput = singleTenderExact
@@ -204,6 +213,7 @@ export class CompletePosSaleUseCase {
           settlements: [
             {
               paymentMethod: POS_METHOD_TO_SI_METHOD[input.payments[0].method],
+              settlementAccountId: accountFor(input.payments[0].method),
               amountBase: grandTotal,
               reference: input.payments[0].reference,
             },
@@ -213,6 +223,7 @@ export class CompletePosSaleUseCase {
           settlementMode: 'MULTI',
           settlements: input.payments.map((p) => ({
             paymentMethod: POS_METHOD_TO_SI_METHOD[p.method],
+            settlementAccountId: accountFor(p.method),
             amountBase: p.method === 'CASH' ? round2(p.amount - cashChange) : round2(p.amount),
             reference: p.reference,
           })),
@@ -245,6 +256,7 @@ export class CompletePosSaleUseCase {
       lineDiscount: round2(l.discountAmountBase ?? 0),
       taxCodeId: l.taxCodeId,
       lineTotal: round2(l.lineTotalBase),
+      salesInvoiceLineId: l.lineId, // lets POS returns reference the SI lines (P3)
     }));
     const discountTotal = round2(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 

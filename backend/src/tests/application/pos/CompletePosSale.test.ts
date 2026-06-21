@@ -186,6 +186,7 @@ describe('CompletePosSaleUseCase', () => {
     const [input] = createUC.execute.mock.calls[0];
     expect(input.customerId).toBe('walk-in-cust');
     expect(input.source).toBe('pos');
+    expect(input.voucherType).toBe('sales_invoice');
     expect(input.formType).toBe('pos_sale');
     expect(input.persona).toBe('direct');
   });
