@@ -44,13 +44,39 @@ export class GetPosBootstrapUseCase {
     }
     const result: PosBootstrapResult = { settings };
 
+    // Resolve the active register. The cashier screen calls bootstrap WITHOUT a
+    // registerId, so we must pick a sensible default: a lone active register
+    // (or a lone register of any status). Without this, register/openShift stay
+    // undefined and the terminal wrongly reports "No open shift for this register"
+    // even when one is open.
+    let register: PosRegister | undefined;
     if (input.registerId) {
-      result.register = (await this.registerRepo.getById(input.companyId, input.registerId)) || undefined;
+      register = (await this.registerRepo.getById(input.companyId, input.registerId)) || undefined;
+    } else {
+      const registers = await this.registerRepo.list(input.companyId);
+      const active = registers.filter((r) => r.status === 'ACTIVE');
+      register =
+        active.length === 1 ? active[0] : registers.length === 1 ? registers[0] : undefined;
     }
-    if (input.registerId) {
-      result.openShift =
-        (await this.shiftRepo.getOpenShiftForRegister(input.companyId, input.registerId)) || undefined;
+
+    // Resolve the open shift: prefer the register's open shift; otherwise fall
+    // back to the cashier's open shift (and hydrate its register if we have none).
+    let openShift: PosShift | undefined;
+    if (register) {
+      openShift =
+        (await this.shiftRepo.getOpenShiftForRegister(input.companyId, register.id)) || undefined;
     }
+    if (!openShift && input.cashierUserId) {
+      openShift =
+        (await this.shiftRepo.getOpenShiftForCashier(input.companyId, input.cashierUserId)) ||
+        undefined;
+      if (openShift && !register) {
+        register = (await this.registerRepo.getById(input.companyId, openShift.registerId)) || undefined;
+      }
+    }
+
+    result.register = register;
+    result.openShift = openShift;
     void this.itemRepo;
     void this.taxCodeRepo;
     void this.partyRepo;
