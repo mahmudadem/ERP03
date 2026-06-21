@@ -2,6 +2,24 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250 — System Core / Shared Engines transformation: audit + plans + worktree)
+
+- **Goal:** Pause POS; address the platform-wide finding that application modules own/embed shared engines. Produce the transformation plan and a clean execution environment for executing agents.
+- **What was done (planning + docs only — no code, no migrations, no file moves):**
+  - Authored the deep [Platform Architecture Audit — Engine vs App](../docs/audit/platform-architecture-engine-vs-app-audit.md) (code-verified, §A–N): only Accounting posting + Inventory are true shared engines; Approval is accounting-voucher-shaped (not a workflow engine); Tax codes shared but tax *calc* embedded in Sales + duplicated in Purchases; Document/Numbering/Money/Commercial/unified-Policy embedded or missing.
+  - Authored the [System Core / Shared Engines Master Plan](../docs/architecture/system-core-shared-engines-master-plan.md) (target architecture decisions, §1–7).
+  - Created branch `feat/system-core-transformation` + worktree `D:\DEV2026\ERP03-system-core` from clean `main` HEAD (957d8553) — deliberately **excludes** the uncommitted POS QA WIP on `main` so the refactor starts clean. Copied the reference audits + master plan into the branch.
+  - Wrote the epic + 12 phase plan files: [250 epic](./tasks/250-system-core-transformation-epic.md) and 250a–250l. Each is self-contained (objective, contract, exact files, steps, acceptance criteria, named tests, Definition of Done, CTO audit gate) so an executing agent can act cold.
+- **Decisions:**
+  - **Owner override of the 2026-06-13 feature freeze** — owner explicitly authorized this transformation and paused POS; logged as a sanctioned exception (same pattern as prior freeze exceptions).
+  - Branch from clean HEAD (not dirty POS WIP) — refactor must not build on uncommitted work.
+  - Execution model: agents implement, CTO audits each phase against acceptance criteria + the 10 architecture tests (audit §N).
+  - Phase 1 POS-blocking tasks sequenced **250b→c→d→e** (overlapping persona/POS/posting code; no parallel builders there).
+- **Accounting/ERP impact:** none yet — documentation + branch scaffolding only.
+- **Verification:** n/a (no code). Plan files + planning-doc updates committed on the transformation branch.
+- **Time spent:** ~1 session (audit + master plan + 13 plan files + planning docs).
+- **Next:** owner approves the Phase 0 (250a) plan; then assign one backend builder to introduce the interface seams + adapters with zero behavior change.
+
 ### Session: 2026-06-21 (Task 246B QA fix — Gross Profit item labels)
 
 - **Goal:** Fix owner QA finding where Gross Profit by Item displayed item UUIDs as the primary item label.

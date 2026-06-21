@@ -1,5 +1,20 @@
 # 🎯 Current Focus
 
+## System Core / Shared Engines Transformation — Epic 250 (2026-06-21)
+
+**Status:** 🟢 Active — planning complete, execution pending. **Branch:** `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).
+
+- **Why:** POS paused. Three audits proved a platform-wide problem — application modules own/embed shared engines. We are separating **Engines (System Core)** from **Apps (orchestrators)** from **UI surfaces**, and unblocking POS.
+- **Owner override of the feature freeze:** the 2026-06-13 freeze forbids refactors. The owner (Mahmud) has explicitly authorized this transformation and paused POS for it — this epic proceeds as an owner-sanctioned exception, same pattern as prior freeze exceptions logged in JOURNAL.
+- **Plan:** [planning/tasks/250-system-core-transformation-epic.md](./tasks/250-system-core-transformation-epic.md). Phase files 250a–250l.
+- **Reference:** [Platform Architecture Audit](../docs/audit/platform-architecture-engine-vs-app-audit.md) (§A–N) · [System Core Master Plan](../docs/architecture/system-core-shared-engines-master-plan.md).
+- **Execution model:** executing agents implement one phase task at a time (one builder per file area); CTO audits each against the task's acceptance criteria + the 10 architecture tests (audit §N) before marking the phase done.
+- **Phase order:** 0 seams (250a) → 1 POS-blocking **250b→c→d→e in sequence** → 2 money/audit (250f/g) → 3 tax/numbering/inventory (250h/i/j) → 4 bridge/commercial (250k/l).
+- **Where I left off:** worktree + branch created from clean `main` HEAD (957d8553, excludes uncommitted POS QA WIP); audits + master plan copied into branch; all 13 plan files written. **Next: owner approves Phase 0 plan, then assign one backend builder to 250a.**
+- **Estimate:** ~3–5 weeks of execution + CTO audit between phases.
+
+---
+
 ## Repo status — everything merged, branches pruned (2026-06-21)
 
 - ✅ **All feature work through Task 247 is merged into `origin/main` and local `main` (in sync at `e8ea3a34`, 0 ahead / 0 behind).** The "NOT merged to main" notes further down this file are historical and no longer reflect reality. Verified merged (some via squash, which hides them from `git merge-base --is-ancestor`): 242 strict pricing, 243-A/B/C+D pricing, 245 UX sweep, 246/246B Gross Profit, 247 POS.
