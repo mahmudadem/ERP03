@@ -30,6 +30,7 @@ import {
   OpenPosShiftUseCase,
 } from '../../../application/pos/use-cases/PosShiftUseCases';
 import { CompletePosSaleUseCase } from '../../../application/pos/use-cases/CompletePosSaleUseCase';
+import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
 import {
   GetPosBootstrapUseCase,
   SearchPosProductsUseCase,
@@ -37,12 +38,6 @@ import {
 import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/PreviewPosSaleUseCase';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
-import {
-  CreateSalesInvoiceUseCase,
-  PostSalesInvoiceUseCase,
-} from '../../../application/sales/use-cases/SalesInvoiceUseCases';
-import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
-import { SalesInventoryService } from '../../../application/inventory/services/SalesInventoryService';
 import {
   CreateSalesReturnUseCase,
   PostSalesReturnUseCase,
@@ -56,7 +51,6 @@ import {
   GetPosZReportUseCase,
   GetReceiptHistoryUseCase,
 } from '../../../application/pos/use-cases/PosReportingUseCases';
-import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
 import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
 import {
   validateUpdatePosSettingsInput,
@@ -356,67 +350,6 @@ export class PosController {
 
   // ===== Sale / Receipts =====
 
-  private static buildSalesInventoryService(): SalesInventoryService {
-    const movementUseCase = new RecordStockMovementUseCase({
-      itemRepository: diContainer.itemRepository,
-      warehouseRepository: diContainer.warehouseRepository,
-      stockMovementRepository: diContainer.stockMovementRepository,
-      stockLevelRepository: diContainer.stockLevelRepository,
-      companyRepository: diContainer.companyRepository,
-      inventorySettingsRepository: diContainer.inventorySettingsRepository,
-      transactionManager: diContainer.transactionManager,
-    });
-    return new SalesInventoryService(movementUseCase);
-  }
-
-  private static buildCreateSalesInvoiceUseCase(recordChangeService?: RecordChangeService): CreateSalesInvoiceUseCase {
-    return new CreateSalesInvoiceUseCase(
-      diContainer.salesSettingsRepository,
-      diContainer.salesInvoiceRepository,
-      diContainer.salesOrderRepository,
-      diContainer.partyRepository,
-      diContainer.itemRepository,
-      diContainer.itemCategoryRepository,
-      diContainer.taxCodeRepository,
-      diContainer.companyCurrencyRepository,
-      diContainer.promotionRuleRepository,
-      new CreditCheckService(diContainer.salesInvoiceRepository),
-      diContainer.creditOverrideRepository,
-      recordChangeService,
-    );
-  }
-
-  private static buildPostSalesInvoiceUseCase(recordChangeService?: RecordChangeService): PostSalesInvoiceUseCase {
-    return new PostSalesInvoiceUseCase(
-      diContainer.salesSettingsRepository,
-      diContainer.inventorySettingsRepository,
-      diContainer.salesInvoiceRepository,
-      diContainer.salesOrderRepository,
-      diContainer.deliveryNoteRepository,
-      diContainer.partyRepository,
-      diContainer.taxCodeRepository,
-      diContainer.itemRepository,
-      diContainer.itemCategoryRepository,
-      diContainer.warehouseRepository,
-      diContainer.uomConversionRepository,
-      diContainer.companyCurrencyRepository,
-      // Real inventory service — required so stock-item POS sales create the inventory OUT movement.
-      PosController.buildSalesInventoryService(),
-      diContainer.companyModuleRepository,
-      PosController.buildAccountingPostingService(),
-      diContainer.accountRepository,
-      diContainer.transactionManager,
-      diContainer.paymentHistoryRepository,
-      diContainer.voucherRepository,
-      diContainer.voucherSequenceRepository,
-      diContainer.ledgerRepository,
-      diContainer.postingLogRepository,
-      recordChangeService,
-      diContainer.partyItemPriceRepository,
-      diContainer.recordSalesProfitLineFactsUseCase
-    );
-  }
-
   static async getBootstrap(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
@@ -478,7 +411,6 @@ export class PosController {
       const companyId = PosController.getCompanyId(req);
       const userId = PosController.getUserId(req);
       const userEmail = PosController.getUserEmail(req);
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CompletePosSaleUseCase(
         diContainer.posShiftRepository,
         diContainer.posSettingsRepository,
@@ -487,9 +419,16 @@ export class PosController {
         diContainer.posPaymentRepository,
         diContainer.posCashMovementRepository,
         diContainer.transactionManager,
-        PosController.buildCreateSalesInvoiceUseCase(recordChangeService),
-        PosController.buildPostSalesInvoiceUseCase(recordChangeService),
-        diContainer.salesInvoiceRepository,
+        new PostPosSaleUseCase(
+          diContainer.itemRepository,
+          diContainer.itemCategoryRepository,
+          diContainer.inventorySettingsRepository,
+          diContainer.partyRepository,
+          diContainer.taxCodeRepository,
+          diContainer.companyCurrencyRepository,
+          diContainer.inventoryCore,
+          diContainer.accountingBridge
+        ),
         diContainer.policyEngine
       );
       const result = await useCase.execute({

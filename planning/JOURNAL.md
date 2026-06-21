@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Task 250d - POS sale posting entry point)
+
+- **Goal:** Resume Epic 250 after the CTO blocker ruling and implement only 250d: POS sale posting via System Core seams, without touching POS returns.
+- **What was done:** Added POS-owned `PostPosSaleUseCase`; rewired `CompletePosSaleUseCase` and the POS controller so sale completion no longer constructs `CreateSalesInvoiceUseCase` / `PostSalesInvoiceUseCase` or imports Sales invoice domain entities. The sale path now dry-runs totals for payment validation, posts stock OUT through `IInventoryCore`, records revenue/tax, COGS, and settlement vouchers through `IAccountingBridge`, and persists receipt/payment/cash movement/sequence in the same transaction. Added the active sale-path architecture guard while leaving the folder-wide POS-to-Sales ban skipped with TODO to 250d2.
+- **Accounting/ERP impact:** POS sale posting remains a real financial posting: revenue/tax, COGS/inventory, and settlement entries are still produced, with cash change netted before settlement. Metadata now identifies the source as POS and carries `documentPersona: POS_DIRECT_SALE`. POS returns are unchanged and remain the explicit 250d2 scope.
+- **Verification:** Focused 250d tests passed: `CompletePosSale.test.ts`, `PostPosSale.test.ts`, and `SystemCoreBoundaries.test.ts` (3 suites / 15 tests, 1 skipped 250d2 guard). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Added `docs/architecture/pos-independence.md`, updated `docs/architecture/system-core.md`, and added `planning/done/250d-pos-posting-entry-point.md`.
+- **Time spent:** ~1.6h.
+- **Next:** Commit 250d, then continue to 250d2 to decouple POS returns and enable the folder-wide POS-to-Sales architecture ban.
+
 ### Session: 2026-06-21 (Task 250b - Document Core POS_DIRECT_SALE persona)
 
 - **Goal:** Execute Phase 1 task 250b so POS carries a first-class `POS_DIRECT_SALE` document persona through creation and posting metadata without changing posting behavior yet.

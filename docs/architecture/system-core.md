@@ -46,4 +46,4 @@ The minimum policy model is POS-owned:
 POS uses most-restrictive-wins. A narrower policy can tighten a broader allow, but it cannot loosen a broader deny; an explicit approved override is the only escape from a deny. This keeps POS authorization independent from Sales `governanceRules` while preserving existing Sales posting compatibility until 250d removes the POS-to-Sales use-case dependency.
 ## Current Guardrail
 
-`backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. The POS-to-Sales import ban is intentionally skipped until 250d, because the current POS sale path still imports Sales use cases and that coupling is the target of Phase 1.
+`backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d, the POS sale-path ban is active for `CompletePosSaleUseCase` and `PostPosSaleUseCase`; those files must not import Sales application or Sales domain internals. The folder-wide POS-to-Sales import ban remains skipped until 250d2 because POS returns are the next explicit decoupling slice.

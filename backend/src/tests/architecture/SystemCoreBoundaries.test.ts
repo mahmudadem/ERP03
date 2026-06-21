@@ -15,7 +15,7 @@ const collectTsFiles = (dir: string): string[] => {
 };
 
 describe('Architecture guard: system core boundaries', () => {
-  it.skip('250d: POS must not import Sales application or domain internals', () => {
+  it.skip('250d2 TODO: POS folder-wide ban must not import Sales application or domain internals', () => {
     const posDir = path.resolve(SRC, 'application/pos');
     const offenders: string[] = [];
     for (const file of collectTsFiles(posDir)) {
@@ -24,6 +24,21 @@ describe('Architecture guard: system core boundaries', () => {
         offenders.push(path.relative(SRC, file));
       }
     }
+    expect(offenders).toEqual([]);
+  });
+
+  it('250d: POS sale path must not import Sales application or domain internals', () => {
+    const saleFiles = [
+      path.resolve(SRC, 'application/pos/use-cases/CompletePosSaleUseCase.ts'),
+      path.resolve(SRC, 'application/pos/use-cases/PostPosSaleUseCase.ts'),
+    ];
+    const offenders = saleFiles
+      .filter((file) => fs.existsSync(file))
+      .filter((file) => {
+        const content = fs.readFileSync(file, 'utf8');
+        return /from ['"]\.\.\/\.\.\/sales\//.test(content) || /from ['"].*domain\/sales\//.test(content);
+      })
+      .map((file) => path.relative(SRC, file));
     expect(offenders).toEqual([]);
   });
 
@@ -45,4 +60,3 @@ describe('Architecture guard: system core boundaries', () => {
     }
   });
 });
-
