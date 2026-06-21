@@ -53,6 +53,34 @@ The existing accounting Smart FA/CC logic was not duplicated. It is wrapped by `
 
 Non-voucher subjects currently use the generic engine fallback: a payload with `requiresApproval: true` returns `PENDING`, and the calling module decides which action to block until an approved override exists. Concrete override capture and UI flows remain later Commercial Core/POS work.
 
+## Audit Engine
+
+250g routes application-module audit emission through `IAuditEngine`. The legacy implementation remains `RecordChangeService` behind `LegacyAuditEngineAdapter`, but Sales, Purchases, POS, and controllers no longer construct or import that service directly.
+
+The canonical call shape is:
+
+```ts
+auditEngine.record({
+  companyId,
+  entity: { type, id, number },
+  action: 'CREATE' | 'UPDATE' | 'POST' | 'PERIOD_LOCK_OVERRIDE',
+  actor: { userId, userEmail },
+  before,
+  after,
+  reason,
+  approval,
+});
+```
+
+Sales and Purchases use `auditEngineLegacyHelpers.ts` to preserve their existing create/update/post/period-lock payloads while moving the transport to the System Core engine. POS now emits audit records for:
+
+- completed POS receipts;
+- completed POS returns;
+- POS settings updates;
+- POS register create/update.
+
+`SystemCoreBoundaries.test.ts` guards against application modules and controllers importing `RecordChangeService` directly.
+
 ## Money Core
 
 250f makes `application/system-core/money/roundMoney.ts` the single backend rounding authority for the audited money paths. It wraps `CurrencyPrecisionHelpers.roundByCurrency` and keeps an omitted-currency fallback of `USD` so existing two-decimal document totals remain behavior-preserving while callers migrate to passing the real currency.

@@ -64,3 +64,5 @@ The return path uses optional posting metadata captured on POS receipt line snap
 ## Architecture Guard
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now enables the folder-wide guard: files under `backend/src/application/pos/` must not import Sales application internals or Sales domain internals. There is no 250d2 skip left in that guard.
+
+250g adds the POS audit guardrail: POS use cases emit receipt, return, settings, and register changes through `IAuditEngine`. The adapter still writes to the existing record-change log repository, but POS does not depend on `RecordChangeService` directly.

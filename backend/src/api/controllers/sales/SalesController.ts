@@ -61,7 +61,7 @@ import { SubledgerVoucherPostingService } from '../../../application/accounting/
 import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
 import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import { PeriodLockOverride } from '../../../domain/accounting/entities/PeriodLockOverride';
-import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
+import { IAuditEngine } from '../../../application/system-core/contracts/IAuditEngine';
 import { BackfillPartyAccountsUseCase } from '../../../application/shared/use-cases/BackfillPartyAccountsUseCase';
 import {
   validateCreateDeliveryNoteInput,
@@ -239,7 +239,7 @@ export class SalesController {
     );
   }
 
-  private static buildPostSalesInvoiceUseCase(recordChangeService?: RecordChangeService): PostSalesInvoiceUseCase {
+  private static buildPostSalesInvoiceUseCase(IAuditEngine?: IAuditEngine): PostSalesInvoiceUseCase {
     const inventoryService = SalesController.buildSalesInventoryService();
     const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
@@ -266,7 +266,7 @@ export class SalesController {
       diContainer.voucherSequenceRepository,
       diContainer.ledgerRepository,
       diContainer.postingLogRepository,
-      recordChangeService,
+      IAuditEngine,
       diContainer.partyItemPriceRepository,
       diContainer.recordSalesProfitLineFactsUseCase
     );
@@ -417,7 +417,7 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new CreateSalesOrderUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesOrderRepository,
@@ -426,7 +426,7 @@ export class SalesController {
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
         diContainer.promotionRuleRepository,
-        recordChangeService,
+        IAuditEngine,
       );
 
       const so = await useCase.execute({
@@ -512,14 +512,14 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
 
       const useCase = new UpdateSalesOrderUseCase(
         diContainer.salesOrderRepository,
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        recordChangeService
+        IAuditEngine
       );
 
       const so = await useCase.execute({
@@ -611,14 +611,14 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new CreateDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
         diContainer.deliveryNoteRepository,
         diContainer.salesOrderRepository,
         diContainer.partyRepository,
         diContainer.itemRepository,
-        recordChangeService
+        IAuditEngine
       );
 
       const dn = await useCase.execute({
@@ -681,12 +681,12 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
 
       const useCase = new UpdateDeliveryNoteUseCase(
         diContainer.deliveryNoteRepository,
         diContainer.partyRepository,
-        recordChangeService
+        IAuditEngine
       );
 
       const dn = await useCase.execute({
@@ -718,7 +718,7 @@ export class SalesController {
         ? { reason: periodLockOverrideReason, overriddenBy: userId }
         : undefined;
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new PostDeliveryNoteUseCase(
         diContainer.salesSettingsRepository,
         diContainer.inventorySettingsRepository,
@@ -734,7 +734,7 @@ export class SalesController {
         accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
-        recordChangeService
+        IAuditEngine
       );
 
       if (periodLockOverride) {
@@ -779,7 +779,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new CreateSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesInvoiceRepository,
@@ -792,7 +792,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.promotionRuleRepository,
         new CreditCheckService(diContainer.salesInvoiceRepository),
         diContainer.creditOverrideRepository,
-        recordChangeService,
+        IAuditEngine,
       );
 
       if ((req as any).body?.creditOverrideReason) {
@@ -823,7 +823,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
 
       const userEmail = SalesController.getUserEmail(req);
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const createUseCase = new CreateSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesInvoiceRepository,
@@ -836,10 +836,10 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.promotionRuleRepository,
         new CreditCheckService(diContainer.salesInvoiceRepository),
         diContainer.creditOverrideRepository,
-        recordChangeService,
+        IAuditEngine,
       );
 
-      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(IAuditEngine);
 
       const useCase = new CreateAndPostSalesInvoiceUseCase(
         createUseCase,
@@ -919,14 +919,14 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
 
       const userEmail = SalesController.getUserEmail(req);
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const updateUseCase = new UpdateSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
         diContainer.partyRepository,
-        recordChangeService
+        IAuditEngine
       );
 
-      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(IAuditEngine);
 
       const useCase = new UpdateAndPostSalesInvoiceUseCase(
         updateUseCase,
@@ -1039,12 +1039,12 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
 
       const useCase = new UpdateSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
         diContainer.partyRepository,
-        recordChangeService,
+        IAuditEngine,
         diContainer.itemRepository
       );
 
@@ -1092,7 +1092,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const inventoryService = SalesController.buildSalesInventoryService();
       const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new PostSalesInvoiceUseCase(
         diContainer.salesSettingsRepository,
         diContainer.inventorySettingsRepository,
@@ -1116,7 +1116,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
         diContainer.postingLogRepository,
-        recordChangeService,
+        IAuditEngine,
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase
       );
@@ -1184,8 +1184,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
-      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(recordChangeService);
+      const IAuditEngine = diContainer.auditEngine;
+      const postUseCase = SalesController.buildPostSalesInvoiceUseCase(IAuditEngine);
       const approveUseCase = new ApproveSalesInvoiceUseCase(
         diContainer.salesInvoiceRepository,
         postUseCase
@@ -1237,13 +1237,13 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new CreateSalesReturnUseCase(
         diContainer.salesSettingsRepository,
         diContainer.salesReturnRepository,
         diContainer.salesInvoiceRepository,
         diContainer.deliveryNoteRepository,
-        recordChangeService,
+        IAuditEngine,
         diContainer.companyCurrencyRepository
       );
 
@@ -1308,9 +1308,9 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
 
-      const useCase = new UpdateSalesReturnUseCase(diContainer.salesReturnRepository, recordChangeService);
+      const useCase = new UpdateSalesReturnUseCase(diContainer.salesReturnRepository, IAuditEngine);
 
       const salesReturn = await useCase.execute({
         ...((req as any).body || {}),
@@ -1341,7 +1341,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         ? { reason: periodLockOverrideReason, overriddenBy: userId }
         : undefined;
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
       const useCase = new PostSalesReturnUseCase(
         diContainer.salesSettingsRepository,
         diContainer.inventorySettingsRepository,
@@ -1360,7 +1360,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
-        recordChangeService,
+        IAuditEngine,
         diContainer.postingLogRepository,
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase

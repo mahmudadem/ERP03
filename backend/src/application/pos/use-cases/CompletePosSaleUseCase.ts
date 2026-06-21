@@ -14,6 +14,7 @@ import { ITransactionManager } from '../../../repository/interfaces/shared/ITran
 import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
 import { PostPosSaleUseCase } from './PostPosSaleUseCase';
 import { PosCashRounding } from '../../../domain/pos/entities/PosSettings';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
 
 export interface PosCartLine {
@@ -75,7 +76,8 @@ export class CompletePosSaleUseCase {
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly transactionManager: ITransactionManager,
     private readonly postPosSaleUseCase: PostPosSaleUseCase,
-    private readonly policyEngine: IPolicyEngine
+    private readonly policyEngine: IPolicyEngine,
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: CompletePosSaleInput): Promise<CompletePosSaleResult> {
@@ -310,6 +312,22 @@ export class CompletePosSaleUseCase {
 
       return { postedSale: sale, receipt };
     });
+
+    if (this.auditEngine) {
+      await this.auditEngine.record({
+        companyId: input.companyId,
+        entity: { type: 'POS_RECEIPT', id: receipt.id, number: receipt.receiptNumber },
+        action: 'CREATE',
+        actor: { userId: input.actor.userId, userEmail: input.actor.userEmail },
+        after: {
+          ...receipt.toJSON(),
+          postedDocumentId: postedSale.documentId,
+          postedDocumentNumber: postedSale.documentNumber,
+          voucherIds: postedSale.voucherIds,
+          cashRoundingAdjustmentBase: postedSale.cashRoundingAdjustmentBase,
+        },
+      });
+    }
 
     return {
       receipt,

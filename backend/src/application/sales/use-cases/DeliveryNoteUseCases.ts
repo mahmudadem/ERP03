@@ -21,7 +21,8 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -85,7 +86,7 @@ export class CreateDeliveryNoteUseCase {
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: CreateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
@@ -187,8 +188,8 @@ export class CreateDeliveryNoteUseCase {
     await this.deliveryNoteRepo.create(dn);
     await this.settingsRepo.saveSettings(settings);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: dn.companyId,
         entityType: 'DELIVERY_NOTE',
         entityId: dn.id,
@@ -240,7 +241,7 @@ export class PostDeliveryNoteUseCase {
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<DeliveryNote> {
@@ -614,9 +615,9 @@ export class PostDeliveryNoteUseCase {
     const posted = await this.deliveryNoteRepo.getById(companyId, id);
     if (!posted) throw new Error(`Delivery note not found after posting: ${id}`);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const entityNumber = `DN-${posted.dnNumber}`;
-      await this.recordChangeService.recordPost({
+      await recordAuditPost(this.auditEngine, {
         companyId,
         entityType: 'DELIVERY_NOTE',
         entityId: posted.id,
@@ -625,7 +626,7 @@ export class PostDeliveryNoteUseCase {
         userEmail: actor.userEmail,
       });
       if (periodLockOverride) {
-        await this.recordChangeService.recordPeriodLockOverride({
+        await recordAuditPeriodLockOverride(this.auditEngine, {
           companyId,
           entityType: 'DELIVERY_NOTE',
           entityId: posted.id,
@@ -697,7 +698,7 @@ export class UpdateDeliveryNoteUseCase {
   constructor(
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
@@ -755,9 +756,9 @@ export class UpdateDeliveryNoteUseCase {
     const updated = new DeliveryNote(current.toJSON() as any);
     await this.deliveryNoteRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'DELIVERY_NOTE',
         entityId: updated.id,

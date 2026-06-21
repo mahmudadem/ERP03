@@ -12,6 +12,7 @@ import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/I
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { PostPosReturnUseCase } from './PostPosReturnUseCase';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
 
 export interface PosReturnLineInput {
@@ -57,7 +58,8 @@ export class CompletePosReturnUseCase {
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly registerRepo: IPosRegisterRepository,
     private readonly transactionManager: ITransactionManager,
-    private readonly postPosReturnUseCase: PostPosReturnUseCase
+    private readonly postPosReturnUseCase: PostPosReturnUseCase,
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: CompletePosReturnInput): Promise<CompletePosReturnResult> {
@@ -182,7 +184,24 @@ export class CompletePosReturnUseCase {
       return { posReturn, postedReturn };
     });
 
-    void PosReceipt; void PosShift; void input.reason; void input.actor.userEmail;
+    if (this.auditEngine) {
+      await this.auditEngine.record({
+        companyId: input.companyId,
+        entity: { type: 'POS_RETURN', id: posReturn.id, number: posReturn.returnNumber },
+        action: 'CREATE',
+        actor: { userId: input.actor.userId, userEmail: input.actor.userEmail },
+        reason: input.reason,
+        after: {
+          ...posReturn.toJSON(),
+          originalReceiptNumber: originalReceipt.receiptNumber,
+          postedReturnId: postedReturn.returnId,
+          postedReturnNumber: postedReturn.returnNumber,
+          voucherIds: postedReturn.voucherIds,
+        },
+      });
+    }
+
+    void PosReceipt; void PosShift;
 
     return {
       posReturn,

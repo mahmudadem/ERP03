@@ -35,7 +35,7 @@ import {
   UpdatePurchaseReturnUseCase,
   UnpostPurchaseReturnUseCase,
 } from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
-import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
+import { IAuditEngine } from '../../../application/system-core/contracts/IAuditEngine';
 import { IPurchasesInventoryService } from '../../../application/inventory/contracts/InventoryIntegrationContracts';
 import {
   GetPurchaseSettingsUseCase,
@@ -653,12 +653,12 @@ export class PurchaseController {
       const userId = PurchaseController.getUserId(req);
       const userEmail = PurchaseController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
 
       const useCase = new UpdatePurchaseInvoiceUseCase(
         diContainer.purchaseInvoiceRepository,
         diContainer.partyRepository,
-        recordChangeService
+        IAuditEngine
       );
 
       const pi = await useCase.execute({

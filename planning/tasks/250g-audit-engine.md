@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 2 (during V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 1–2 days
-**Status:** ⬜ Not started
+**Status:** ✅ Done 2026-06-21 — see [250g completion report](../done/250g-audit-engine.md)
 
 ## Objective
 
@@ -30,14 +30,14 @@ Standardize audit emission behind one `IAuditEngine`, and **wire POS** (receipts
 
 ## Acceptance criteria
 
-- [ ] POS emits audit records for receipts, returns, settings.
-- [ ] All audit emission goes through `IAuditEngine`.
-- [ ] typecheck + build clean; suite green.
+- [x] POS emits audit records for receipts, returns, settings.
+- [x] All audit emission goes through `IAuditEngine`.
+- [x] typecheck + build clean; suite green.
 
 ## Definition of Done
 
-- [ ] Commit: `feat(system-core): audit engine consolidation + POS audit hooks [250g]`
-- [ ] `planning/done/250g-audit-engine.md` report.
+- [x] Commit: `feat(system-core): audit engine consolidation + POS audit hooks [250g]`
+- [x] `planning/done/250g-audit-engine.md` report.
 
 ## CTO audit gate
 

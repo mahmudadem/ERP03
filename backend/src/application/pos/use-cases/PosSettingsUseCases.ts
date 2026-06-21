@@ -8,6 +8,7 @@ import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosS
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { IPosPolicyRepository } from '../../../repository/interfaces/pos/IPosPolicyRepository';
 import { POSPolicy } from '../../../domain/pos/entities/POSPolicy';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
 export interface UpdatePosSettingsInput {
   companyId: string;
@@ -20,6 +21,7 @@ export interface UpdatePosSettingsInput {
   cashRounding?: PosCashRounding;
   allowPosDirectSales?: boolean;
   paymentMethods?: PosPaymentMethodConfig[];
+  actor?: { userId: string; userEmail?: string };
 }
 
 
@@ -58,7 +60,8 @@ export class UpdatePosSettingsUseCase {
   constructor(
     private readonly posSettingsRepo: IPosSettingsRepository,
     private readonly accountRepo: IAccountRepository,
-    private readonly posPolicyRepo: IPosPolicyRepository
+    private readonly posPolicyRepo: IPosPolicyRepository,
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdatePosSettingsInput): Promise<PosSettings> {
@@ -103,6 +106,17 @@ export class UpdatePosSettingsUseCase {
     const policy = (await this.posPolicyRepo.getPolicy(input.companyId)) || POSPolicy.createDefault(input.companyId);
     policy.allowPosDirectSales = next.allowPosDirectSales;
     await this.posPolicyRepo.savePolicy(policy);
+
+    if (this.auditEngine && input.actor) {
+      await this.auditEngine.record({
+        companyId: input.companyId,
+        entity: { type: 'POS_SETTINGS', id: input.companyId, number: next.receiptPrefix },
+        action: current ? 'UPDATE' : 'CREATE',
+        actor: input.actor,
+        before: current?.toJSON(),
+        after: next.toJSON(),
+      });
+    }
     return next;
   }
 

@@ -111,6 +111,7 @@ const setup = (opts: SetupOpts = {}) => {
     execute: jest.fn((input: any) => Promise.resolve(input.dryRun ? preview : posted)),
   };
   const policyEngine = { resolve: jest.fn().mockResolvedValue({ allowed: true, requiresApproval: false, resolvedBy: ['test'] }) };
+  const auditEngine = { record: jest.fn().mockResolvedValue(undefined) };
   const useCase = new CompletePosSaleUseCase(
     shiftRepo as any,
     settingsRepo as any,
@@ -120,9 +121,10 @@ const setup = (opts: SetupOpts = {}) => {
     cashMovementRepo as any,
     tx as any,
     postPosSaleUC as any,
-    policyEngine as any
+    policyEngine as any,
+    auditEngine as any
   );
-  return { useCase, postPosSaleUC, receiptRepo, paymentRepo, cashMovementRepo, preview, posted, policyEngine };
+  return { useCase, postPosSaleUC, receiptRepo, paymentRepo, cashMovementRepo, preview, posted, policyEngine, auditEngine };
 };
 
 const run = (useCase: CompletePosSaleUseCase, payments: any[], extra: Partial<any> = {}) =>
@@ -249,5 +251,22 @@ describe('CompletePosSaleUseCase', () => {
     expect(postedInput.cashRoundingAccountId).toBe('short-acc');
     expect(result.change).toBe(0);
     expect(result.receipt.grandTotal).toBe(10);
+  });
+
+  it('records POS receipt creation through the audit engine after a completed sale', async () => {
+    const { useCase, auditEngine } = setup({ draftGrand: 10 });
+    await run(useCase, [{ method: 'CASH', amount: 10 }]);
+
+    expect(auditEngine.record).toHaveBeenCalledWith(expect.objectContaining({
+      companyId: 'cmp_test',
+      entity: expect.objectContaining({ type: 'POS_RECEIPT', number: 'R-000001' }),
+      action: 'CREATE',
+      actor: expect.objectContaining({ userId: 'cashier_1' }),
+      after: expect.objectContaining({
+        receiptNumber: 'R-000001',
+        postedDocumentId: 'pos_sale_1',
+        voucherIds: ['v_1'],
+      }),
+    }));
   });
 });

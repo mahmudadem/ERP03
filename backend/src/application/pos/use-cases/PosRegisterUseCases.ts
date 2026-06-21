@@ -1,6 +1,7 @@
 import { randomUUID } from 'crypto';
 import { PosRegister } from '../../../domain/pos/entities/PosRegister';
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
 export interface UpsertPosRegisterInput {
   id?: string;
@@ -11,10 +12,11 @@ export interface UpsertPosRegisterInput {
   warehouseId: string;
   cashDrawerAccountId: string;
   status?: 'ACTIVE' | 'INACTIVE';
+  actor?: { userId: string; userEmail?: string };
 }
 
 export class CreatePosRegisterUseCase {
-  constructor(private readonly repo: IPosRegisterRepository) {}
+  constructor(private readonly repo: IPosRegisterRepository, private readonly auditEngine?: IAuditEngine) {}
 
   async execute(input: UpsertPosRegisterInput): Promise<PosRegister> {
     const now = new Date();
@@ -31,16 +33,26 @@ export class CreatePosRegisterUseCase {
       updatedAt: now,
     });
     await this.repo.create(register);
+    if (this.auditEngine && input.actor) {
+      await this.auditEngine.record({
+        companyId: input.companyId,
+        entity: { type: 'POS_REGISTER', id: register.id, number: register.code },
+        action: 'CREATE',
+        actor: input.actor,
+        after: register.toJSON(),
+      });
+    }
     return register;
   }
 }
 
 export class UpdatePosRegisterUseCase {
-  constructor(private readonly repo: IPosRegisterRepository) {}
+  constructor(private readonly repo: IPosRegisterRepository, private readonly auditEngine?: IAuditEngine) {}
 
   async execute(companyId: string, id: string, patch: Partial<UpsertPosRegisterInput>): Promise<PosRegister> {
     const existing = await this.repo.getById(companyId, id);
     if (!existing) throw new Error(`POS register not found: ${id}`);
+    const before = existing.toJSON();
     if (patch.code !== undefined) existing.code = patch.code;
     if (patch.name !== undefined) existing.name = patch.name;
     if (patch.branchId !== undefined) existing.branchId = patch.branchId?.trim() || undefined;
@@ -49,6 +61,16 @@ export class UpdatePosRegisterUseCase {
     if (patch.status !== undefined) existing.status = patch.status;
     existing.updatedAt = new Date();
     await this.repo.update(existing);
+    if (this.auditEngine && patch.actor) {
+      await this.auditEngine.record({
+        companyId,
+        entity: { type: 'POS_REGISTER', id: existing.id, number: existing.code },
+        action: 'UPDATE',
+        actor: patch.actor,
+        before,
+        after: existing.toJSON(),
+      });
+    }
     return existing;
   }
 }

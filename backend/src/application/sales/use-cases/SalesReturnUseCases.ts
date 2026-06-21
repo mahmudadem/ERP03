@@ -49,7 +49,8 @@ import {
 import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -195,7 +196,7 @@ export class CreateSalesReturnUseCase {
     private readonly salesReturnRepo: ISalesReturnRepository,
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly companyCurrencyRepo?: ICompanyCurrencyRepository
   ) {}
 
@@ -322,8 +323,8 @@ export class CreateSalesReturnUseCase {
     await this.salesReturnRepo.create(salesReturn);
     await this.settingsRepo.saveSettings(settings);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: salesReturn.companyId,
         entityType: 'SALES_RETURN',
         entityId: salesReturn.id,
@@ -497,7 +498,7 @@ export class PostSalesReturnUseCase {
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
@@ -1231,9 +1232,9 @@ export class PostSalesReturnUseCase {
     const posted = await this.salesReturnRepo.getById(companyId, id);
     if (!posted) throw new Error(`Sales return not found after posting: ${id}`);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const entityNumber = `SR-${posted.returnNumber}`;
-      await this.recordChangeService.recordPost({
+      await recordAuditPost(this.auditEngine, {
         companyId,
         entityType: 'SALES_RETURN',
         entityId: posted.id,
@@ -1242,7 +1243,7 @@ export class PostSalesReturnUseCase {
         userEmail: actor.userEmail,
       });
       if (periodLockOverride) {
-        await this.recordChangeService.recordPeriodLockOverride({
+        await recordAuditPeriodLockOverride(this.auditEngine, {
           companyId,
           entityType: 'SALES_RETURN',
           entityId: posted.id,
@@ -1435,7 +1436,7 @@ export interface UpdateSalesReturnInput {
 export class UpdateSalesReturnUseCase {
   constructor(
     private readonly salesReturnRepo: ISalesReturnRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
@@ -1503,9 +1504,9 @@ export class UpdateSalesReturnUseCase {
     const updated = new SalesReturn(current.toJSON() as any);
     await this.salesReturnRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'SALES_RETURN',
         entityId: updated.id,

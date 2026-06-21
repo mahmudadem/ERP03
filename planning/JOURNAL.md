@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250g — Audit Engine)
+
+- **Goal:** Complete Phase 2 task 250g: route audit emission through `IAuditEngine` and wire missing POS audit records.
+- **What was done:** Added `auditEngineLegacyHelpers.ts` so existing Sales/Purchases create/update/post/period-lock audit payloads go through `IAuditEngine.record(...)`. Rewired Sales/Purchases use cases and controllers to use `diContainer.auditEngine` instead of constructing `RecordChangeService`. Added POS audit records for completed receipts, completed returns, POS settings updates, and POS register create/update. Added an architecture guard blocking direct `RecordChangeService` imports in Sales, Purchases, POS, and API controllers.
+- **Accounting/ERP impact:** Auditability/control improvement only. No voucher amount, tax, COGS, inventory movement, AR/AP, period-lock, approval, cash rounding, or tenant-scope behavior changed.
+- **Verification:** POS + architecture audit tests passed (4 suites / 30 tests). Additional Sales/Purchases regression tests passed (3 suites / 27 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Updated `docs/architecture/system-core.md`, `docs/architecture/pos-independence.md`, and added `planning/done/250g-audit-engine.md`.
+- **Time spent:** ~1.2h.
+- **Next:** Hard-stop for CTO audit. Do not start 250h/250i/250j or Phase 4 until explicitly resumed.
+
 ### Session: 2026-06-21 (Epic 250f — Money Core)
 
 - **Goal:** Complete Phase 2 task 250f: replace audited local `roundMoney` copies with the System Core Money helper and apply POS cash rounding.

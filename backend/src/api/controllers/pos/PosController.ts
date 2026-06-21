@@ -102,9 +102,14 @@ export class PosController {
       const useCase = new UpdatePosSettingsUseCase(
         diContainer.posSettingsRepository,
         diContainer.accountRepository,
-        diContainer.posPolicyRepository
+        diContainer.posPolicyRepository,
+        diContainer.auditEngine
       );
-      const settings = await useCase.execute({ ...(req as any).body, companyId });
+      const settings = await useCase.execute({
+        ...(req as any).body,
+        companyId,
+        actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
+      });
       (res as any).json({ success: true, data: PosDTOMapper.toSettingsDTO(settings) });
     } catch (error) {
       next(error);
@@ -147,8 +152,12 @@ export class PosController {
     try {
       validateUpsertPosRegisterInput((req as any).body);
       const companyId = PosController.getCompanyId(req);
-      const useCase = new CreatePosRegisterUseCase(diContainer.posRegisterRepository);
-      const register = await useCase.execute({ ...(req as any).body, companyId });
+      const useCase = new CreatePosRegisterUseCase(diContainer.posRegisterRepository, diContainer.auditEngine);
+      const register = await useCase.execute({
+        ...(req as any).body,
+        companyId,
+        actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
+      });
       (res as any).status(201).json({ success: true, data: PosDTOMapper.toRegisterDTO(register) });
     } catch (error) {
       next(error);
@@ -160,8 +169,11 @@ export class PosController {
       validateUpsertPosRegisterInput((req as any).body);
       const companyId = PosController.getCompanyId(req);
       const id = String((req as any).params.id);
-      const useCase = new UpdatePosRegisterUseCase(diContainer.posRegisterRepository);
-      const register = await useCase.execute(companyId, id, (req as any).body || {});
+      const useCase = new UpdatePosRegisterUseCase(diContainer.posRegisterRepository, diContainer.auditEngine);
+      const register = await useCase.execute(companyId, id, {
+        ...((req as any).body || {}),
+        actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
+      });
       (res as any).json({ success: true, data: PosDTOMapper.toRegisterDTO(register) });
     } catch (error) {
       next(error);
@@ -425,7 +437,8 @@ export class PosController {
           diContainer.inventoryCore,
           diContainer.accountingBridge
         ),
-        diContainer.policyEngine
+        diContainer.policyEngine,
+        diContainer.auditEngine
       );
       const result = await useCase.execute({
         companyId,
@@ -520,7 +533,8 @@ export class PosController {
           diContainer.companyCurrencyRepository,
           diContainer.inventoryCore,
           diContainer.accountingBridge
-        )
+        ),
+        diContainer.auditEngine
       );
       const result = await useCase.execute({
         companyId,

@@ -76,6 +76,25 @@ describe('Architecture guard: system core boundaries', () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  it('250g: application modules and controllers must route audit through IAuditEngine', () => {
+    const roots = [
+      path.resolve(SRC, 'application/sales'),
+      path.resolve(SRC, 'application/purchases'),
+      path.resolve(SRC, 'application/pos'),
+      path.resolve(SRC, 'api/controllers'),
+    ];
+    const offenders: string[] = [];
+    for (const root of roots) {
+      for (const file of collectTsFiles(root)) {
+        const content = fs.readFileSync(file, 'utf8');
+        if (content.includes('RecordChangeService')) {
+          offenders.push(path.relative(SRC, file));
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

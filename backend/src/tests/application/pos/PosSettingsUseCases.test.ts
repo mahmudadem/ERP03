@@ -163,5 +163,39 @@ describe('PosSettingsUseCases', () => {
       expect(updated.cashOverAccountId).toBe('over1');
       expect(updated.paymentMethods.find((m) => m.code === 'CARD')?.settlementAccountId).toBe('card-clear');
     });
+
+    it('records POS settings changes through the audit engine', async () => {
+      const settings = baseSettings();
+      const posSettingsRepo = {
+        getSettings: jest.fn().mockResolvedValue(settings),
+        saveSettings: jest.fn().mockResolvedValue(undefined),
+      };
+      const accountRepo = {
+        getById: jest.fn().mockImplementation(async (_co: string, id: string) => baseAccount(id)),
+      };
+      const posPolicyRepo = makePosPolicyRepo();
+      const auditEngine = { record: jest.fn().mockResolvedValue(undefined) };
+      const useCase = new UpdatePosSettingsUseCase(
+        posSettingsRepo as any,
+        accountRepo as any,
+        posPolicyRepo as any,
+        auditEngine as any
+      );
+
+      await useCase.execute({
+        companyId: 'cmp_test',
+        cashOverAccountId: 'over1',
+        actor: { userId: 'admin_1', userEmail: 'admin@example.com' },
+      });
+
+      expect(auditEngine.record).toHaveBeenCalledWith(expect.objectContaining({
+        companyId: 'cmp_test',
+        entity: expect.objectContaining({ type: 'POS_SETTINGS', id: 'cmp_test' }),
+        action: 'UPDATE',
+        actor: expect.objectContaining({ userId: 'admin_1', userEmail: 'admin@example.com' }),
+        before: expect.objectContaining({ companyId: 'cmp_test' }),
+        after: expect.objectContaining({ cashOverAccountId: 'over1' }),
+      }));
+    });
   });
 });

@@ -10,7 +10,8 @@ import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
@@ -152,7 +153,7 @@ export class CreateSalesOrderUseCase {
     private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly promotionRuleRepo?: IPromotionRuleRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
   ) {}
 
   async execute(input: CreateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
@@ -329,8 +330,8 @@ export class CreateSalesOrderUseCase {
     await this.salesOrderRepo.create(so);
     await this.settingsRepo.saveSettings(settings);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: so.companyId,
         entityType: 'SALES_ORDER',
         entityId: so.id,
@@ -426,7 +427,7 @@ export class UpdateSalesOrderUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
@@ -499,9 +500,9 @@ export class UpdateSalesOrderUseCase {
 
     await this.salesOrderRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'SALES_ORDER',
         entityId: updated.id,

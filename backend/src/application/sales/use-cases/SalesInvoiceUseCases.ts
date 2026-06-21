@@ -69,7 +69,8 @@ import { PostingLog, LineDecision } from '../../../domain/accounting/entities/Po
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
@@ -358,7 +359,7 @@ export class CreateSalesInvoiceUseCase {
     private readonly promotionRuleRepo?: IPromotionRuleRepository,
     private readonly creditCheckService?: CreditCheckService,
     private readonly creditOverrideRepo?: ICreditOverrideRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
   ) {}
 
   async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<CreateSalesInvoiceResult> {
@@ -840,8 +841,8 @@ export class CreateSalesInvoiceUseCase {
     await this.salesInvoiceRepo.create(si, transaction);
     await this.settingsRepo.saveSettings(settings, transaction);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: si.companyId,
         entityType: 'SALES_INVOICE',
         entityId: si.id,
@@ -971,7 +972,7 @@ export class PostSalesInvoiceUseCase {
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly postingLogRepo?: IPostingLogRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {
@@ -1777,9 +1778,9 @@ export class PostSalesInvoiceUseCase {
 
     const posted = (await this.salesInvoiceRepo.getById(companyId, id))!;
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const entityNumber = posted.invoiceNumber ? `SI-${posted.invoiceNumber}` : undefined;
-      await this.recordChangeService.recordPost({
+      await recordAuditPost(this.auditEngine, {
         companyId,
         entityType: 'SALES_INVOICE',
         entityId: posted.id,
@@ -1788,7 +1789,7 @@ export class PostSalesInvoiceUseCase {
         userEmail: actor.userEmail,
       });
       if (periodLockOverride) {
-        await this.recordChangeService.recordPeriodLockOverride({
+        await recordAuditPeriodLockOverride(this.auditEngine, {
           companyId,
           entityType: 'SALES_INVOICE',
           entityId: posted.id,
@@ -2319,7 +2320,7 @@ export class UpdateSalesInvoiceUseCase {
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly itemRepo?: IItemRepository
   ) {}
 
@@ -2465,9 +2466,9 @@ export class UpdateSalesInvoiceUseCase {
     const updated = new SalesInvoice(current.toJSON() as any);
     await this.salesInvoiceRepo.update(updated, transaction);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'SALES_INVOICE',
         entityId: updated.id,

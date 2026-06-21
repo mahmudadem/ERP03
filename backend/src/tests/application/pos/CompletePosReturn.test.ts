@@ -78,6 +78,7 @@ const setup = (overrides: { shift?: PosShift; postedReturn?: any } = {}) => {
       voucherIds: ['v_1'],
     }),
   };
+  const auditEngine = { record: jest.fn().mockResolvedValue(undefined) };
   const useCase = new CompletePosReturnUseCase(
     receiptRepo as any,
     returnRepo as any,
@@ -86,9 +87,10 @@ const setup = (overrides: { shift?: PosShift; postedReturn?: any } = {}) => {
     cashMovementRepo as any,
     registerRepo as any,
     tx as any,
-    postPosReturn as any
+    postPosReturn as any,
+    auditEngine as any
   );
-  return { useCase, receipt, postPosReturn, returnRepo, cashMovementRepo };
+  return { useCase, receipt, postPosReturn, returnRepo, cashMovementRepo, auditEngine };
 };
 
 describe('CompletePosReturnUseCase', () => {
@@ -154,5 +156,31 @@ describe('CompletePosReturnUseCase', () => {
       actor: { userId: 'cashier_1' },
     });
     expect(cashMovementRepo.create).not.toHaveBeenCalled();
+  });
+
+  it('records POS return creation through the audit engine after a completed return', async () => {
+    const { useCase, auditEngine } = setup();
+    await useCase.execute({
+      companyId: 'cmp_test',
+      originalReceiptId: 'rcp_1',
+      registerId: 'reg_1',
+      lines: [{ itemId: 'item_a', qty: 1 }],
+      refundMethod: 'CASH',
+      reason: 'Customer return',
+      actor: { userId: 'cashier_1', userEmail: 'cashier@example.com' },
+    });
+
+    expect(auditEngine.record).toHaveBeenCalledWith(expect.objectContaining({
+      companyId: 'cmp_test',
+      entity: expect.objectContaining({ type: 'POS_RETURN', id: 'ret_1', number: 'RET-000001' }),
+      action: 'CREATE',
+      reason: 'Customer return',
+      actor: expect.objectContaining({ userId: 'cashier_1', userEmail: 'cashier@example.com' }),
+      after: expect.objectContaining({
+        originalReceiptNumber: 'R-000001',
+        postedReturnId: 'ret_1',
+        voucherIds: ['v_1'],
+      }),
+    }));
   });
 });

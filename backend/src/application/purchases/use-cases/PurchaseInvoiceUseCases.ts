@@ -67,7 +67,8 @@ import {
   scalarChanged,
   lineSignaturesEqual,
 } from '../../common/services/PostedDocumentEditGuard';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   SubledgerDocumentPoster,
   SubledgerPostingEntry,
@@ -1465,7 +1466,7 @@ export class UpdatePurchaseInvoiceUseCase {
   constructor(
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(
@@ -1575,9 +1576,9 @@ export class UpdatePurchaseInvoiceUseCase {
     const updated = new PurchaseInvoice(current.toJSON() as any);
     await this.purchaseInvoiceRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'PURCHASE_INVOICE',
         entityId: updated.id,
