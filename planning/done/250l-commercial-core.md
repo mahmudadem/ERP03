@@ -1,8 +1,8 @@
 # 250l — Commercial Core Completion Report
 
 **Date:** 2026-06-21  
-**Status:** In progress by slices  
-**Actual time:** 250l-1 ~1.0h; 250l-2 ~1.0h
+**Status:** Complete by slices  
+**Actual time:** 250l-1 ~1.0h; 250l-2 ~1.0h; 250l-3 ~1.0h
 
 ## Slice 250l-1 — Pricing + Line/Discount Calculation
 
@@ -76,4 +76,34 @@ POS can now prevent a cashier from completing a sale below cost unless an approv
 
 - Add the manager approval capture/UI flow for `approvedCostMarginOverride`.
 - Apply margin checks to non-POS Sales flows after defining the Sales approval UX.
-- 250l-3: promotions with stacking/conflict model.
+
+## Slice 250l-3 — Promotions
+
+### Technical Developer View
+
+Expanded `ICommercialCore` with `applyPromotions(...)` and a neutral promotion rule/line/result contract. `CommercialCore` now owns the evaluator that was previously Sales-only:
+
+- rules evaluate by priority;
+- one threshold discount per line;
+- one buy-X-get-Y free-good result per line;
+- manual discounts win over automatic threshold discounts;
+- free goods are explicit zero-price lines.
+
+`PromotionApplicationService` remains for Sales compatibility but now delegates to `applyCommercialPromotions(...)`. POS posting loads rules through a structural reader, applies promotions before line tax/posting, and carries promotion markers onto posted POS lines and receipt snapshots.
+
+### End-User View
+
+POS can now apply configured commercial promotions during sale completion. A qualifying threshold promotion reduces the receipt total before payment validation. A buy-X-get-Y rule adds the free item as a zero-price receipt line.
+
+### Verification
+
+- Focused 250l-3 tests passed: 6 suites / 69 tests.
+- `npm --prefix backend run typecheck` passed.
+- `npm --prefix backend run build` passed.
+- Full backend suite passed: 186 passed / 2 skipped suites; 1,616 passed / 18 skipped tests.
+
+### Known Follow-Ups
+
+- Add cashier/manager UI affordances for accepting or rejecting suggested promotions.
+- Decide whether POS promotion application should be configurable per terminal/register.
+- Move broader Sales document promotion application code paths to the neutral core result writer where useful; current Sales behavior is preserved through the wrapper.

@@ -263,6 +263,8 @@ export class CompletePosSaleUseCase {
         inventoryAccountId: l.inventoryAccountId,
         unitCostBase: l.unitCostBase,
         lineCostBase: l.lineCostBase,
+        appliedPromotionId: l.appliedPromotionId,
+        appliedPromotionName: l.appliedPromotionName,
       }));
       const discountTotal = roundMoney(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 

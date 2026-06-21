@@ -423,7 +423,8 @@ export class PosController {
           diContainer.inventoryCore,
           diContainer.accountingBridge,
           diContainer.taxEngine,
-          diContainer.commercialCore
+          diContainer.commercialCore,
+          diContainer.promotionRuleRepository
         ),
         diContainer.policyEngine,
         diContainer.numberingEngine,

@@ -1,4 +1,6 @@
 import {
+  ApplyPromotionsContext,
+  CommercialPromotionApplicationResult,
   DiscountCalculationContext,
   ICommercialCore,
   CommercialLineCalculationContext,
@@ -37,5 +39,9 @@ export class LegacyCommercialCoreAdapter implements ICommercialCore {
 
   validateCostMargin(context: CostMarginValidationContext): Promise<CostMarginValidationResult> {
     return this.core.validateCostMargin(context);
+  }
+
+  applyPromotions(context: ApplyPromotionsContext): CommercialPromotionApplicationResult {
+    return this.core.applyPromotions(context);
   }
 }

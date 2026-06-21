@@ -1,6 +1,9 @@
 import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
 import {
+  ApplyPromotionsContext,
   CommercialLineCalculationContext,
+  CommercialPromotionApplicationResult,
+  CommercialPromotionRule,
   CostMarginValidationContext,
   CostMarginValidationResult,
   DiscountCalculationContext,
@@ -59,6 +62,72 @@ export const calculateCommercialLineAmounts = (
   });
 };
 
+const isPromotionActiveOn = (rule: CommercialPromotionRule, date: string): boolean => {
+  if (rule.status !== 'ACTIVE') return false;
+  if (rule.validFrom && date < rule.validFrom) return false;
+  if (rule.validTo && date > rule.validTo) return false;
+  return true;
+};
+
+const promotionAppliesToItem = (rule: CommercialPromotionRule, itemId: string, categoryId?: string): boolean => {
+  if (rule.scope === 'ALL') return true;
+  if (rule.scope === 'ITEMS') return (rule.itemIds || []).includes(itemId);
+  if (rule.scope === 'CATEGORIES') return categoryId != null && (rule.categoryIds || []).includes(categoryId);
+  return false;
+};
+
+export const applyCommercialPromotions = (
+  context: ApplyPromotionsContext
+): CommercialPromotionApplicationResult => {
+  const freeGoods: CommercialPromotionApplicationResult['freeGoods'] = [];
+  const lineDiscounts: CommercialPromotionApplicationResult['lineDiscounts'] = [];
+  const activeRules = [...context.rules]
+    .sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0))
+    .filter((rule) => isPromotionActiveOn(rule, context.asOfDate));
+
+  for (const line of context.lines) {
+    let bxgyApplied = false;
+    let discountApplied = false;
+
+    for (const rule of activeRules) {
+      if (!promotionAppliesToItem(rule, line.itemId, line.categoryId)) continue;
+
+      if (rule.type === 'BUY_X_GET_Y' && !bxgyApplied && rule.buyXGetY) {
+        if (line.qty >= rule.buyXGetY.buyQty) {
+          freeGoods.push({
+            sourceLineId: line.lineId,
+            ruleId: rule.id,
+            ruleName: rule.name,
+            itemId: rule.buyXGetY.getItemId ?? line.itemId,
+            qty: Math.floor(line.qty / rule.buyXGetY.buyQty) * rule.buyXGetY.getQty,
+          });
+          bxgyApplied = true;
+        }
+      }
+
+      if (rule.type === 'THRESHOLD_DISCOUNT' && !discountApplied && rule.thresholdDiscount) {
+        if (line.hasManualDiscount) continue;
+        const thresholdMet = rule.thresholdDiscount.thresholdBasis === 'QTY'
+          ? line.qty >= rule.thresholdDiscount.thresholdValue
+          : line.lineAmountDoc >= rule.thresholdDiscount.thresholdValue;
+        if (thresholdMet) {
+          lineDiscounts.push({
+            lineId: line.lineId,
+            ruleId: rule.id,
+            ruleName: rule.name,
+            discountPct: rule.thresholdDiscount.discountPct,
+          });
+          discountApplied = true;
+        }
+      }
+
+      if (bxgyApplied && discountApplied) break;
+    }
+  }
+
+  return { freeGoods, lineDiscounts };
+};
+
 export class CommercialCore implements ICommercialCore {
   constructor(
     private readonly resolvePriceDelegate?: CommercialPriceResolver,
@@ -77,6 +146,10 @@ export class CommercialCore implements ICommercialCore {
 
   calcLine(context: CommercialLineCalculationContext): CalculatedTaxLineAmounts {
     return calculateCommercialLineAmounts(context);
+  }
+
+  applyPromotions(context: ApplyPromotionsContext): CommercialPromotionApplicationResult {
+    return applyCommercialPromotions(context);
   }
 
   async validateCostMargin(context: CostMarginValidationContext): Promise<CostMarginValidationResult> {

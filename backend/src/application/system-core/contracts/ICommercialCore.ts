@@ -54,9 +54,73 @@ export interface CostMarginValidationResult {
   approval?: ApprovalEngineResult;
 }
 
+export type CommercialPromotionType = 'BUY_X_GET_Y' | 'THRESHOLD_DISCOUNT';
+export type CommercialPromotionScope = 'ALL' | 'ITEMS' | 'CATEGORIES';
+
+export interface CommercialPromotionRule {
+  id: string;
+  name: string;
+  type: CommercialPromotionType;
+  status: 'ACTIVE' | 'INACTIVE';
+  priority?: number;
+  validFrom?: string;
+  validTo?: string;
+  scope: CommercialPromotionScope;
+  itemIds?: string[];
+  categoryIds?: string[];
+  buyXGetY?: {
+    buyQty: number;
+    getQty: number;
+    getItemId?: string;
+  };
+  thresholdDiscount?: {
+    thresholdBasis: 'QTY' | 'AMOUNT';
+    thresholdValue: number;
+    discountPct: number;
+  };
+}
+
+export interface CommercialPromotionLine {
+  lineId: string;
+  itemId: string;
+  categoryId?: string;
+  qty: number;
+  unitPriceDoc: number;
+  lineAmountDoc: number;
+  hasManualDiscount: boolean;
+}
+
+export interface ApplyPromotionsContext {
+  lines: CommercialPromotionLine[];
+  rules: CommercialPromotionRule[];
+  asOfDate: string;
+  source?: 'sales' | 'pos' | 'purchases' | string;
+}
+
+export interface CommercialFreeGoodsSuggestion {
+  sourceLineId: string;
+  ruleId: string;
+  ruleName: string;
+  itemId: string;
+  qty: number;
+}
+
+export interface CommercialLineDiscountSuggestion {
+  lineId: string;
+  ruleId: string;
+  ruleName: string;
+  discountPct: number;
+}
+
+export interface CommercialPromotionApplicationResult {
+  freeGoods: CommercialFreeGoodsSuggestion[];
+  lineDiscounts: CommercialLineDiscountSuggestion[];
+}
+
 export interface ICommercialCore {
   resolvePrice(context: ResolvePriceContext): Promise<number | null>;
   calcDiscount(context: DiscountCalculationContext): number;
   calcLine(context: CommercialLineCalculationContext): CalculatedTaxLineAmounts;
   validateCostMargin(context: CostMarginValidationContext): Promise<CostMarginValidationResult>;
+  applyPromotions(context: ApplyPromotionsContext): CommercialPromotionApplicationResult;
 }

@@ -128,4 +128,86 @@ describe('Commercial Core', () => {
     expect(result).toMatchObject({ allowed: true, requiresApproval: false, reason: 'BELOW_COST' });
     expect(approvalEngine.evaluate).not.toHaveBeenCalled();
   });
+
+  it('250l-3 applies one discount and one free-good promotion per line by priority', () => {
+    const core = new CommercialCore();
+
+    const result = core.applyPromotions({
+      asOfDate: '2026-06-21',
+      source: 'pos',
+      lines: [{
+        lineId: 'line_1',
+        itemId: 'item_1',
+        categoryId: 'cat_1',
+        qty: 6,
+        unitPriceDoc: 10,
+        lineAmountDoc: 60,
+        hasManualDiscount: false,
+      }],
+      rules: [
+        {
+          id: 'disc_low',
+          name: 'Lower priority discount',
+          type: 'THRESHOLD_DISCOUNT',
+          status: 'ACTIVE',
+          priority: 10,
+          scope: 'ALL',
+          thresholdDiscount: { thresholdBasis: 'QTY', thresholdValue: 1, discountPct: 50 },
+        },
+        {
+          id: 'disc_high',
+          name: 'Higher priority discount',
+          type: 'THRESHOLD_DISCOUNT',
+          status: 'ACTIVE',
+          priority: 1,
+          scope: 'ALL',
+          thresholdDiscount: { thresholdBasis: 'QTY', thresholdValue: 1, discountPct: 10 },
+        },
+        {
+          id: 'bxgy_1',
+          name: 'Buy 3 Get 1',
+          type: 'BUY_X_GET_Y',
+          status: 'ACTIVE',
+          priority: 1,
+          scope: 'CATEGORIES',
+          categoryIds: ['cat_1'],
+          buyXGetY: { buyQty: 3, getQty: 1 },
+        },
+      ],
+    });
+
+    expect(result.lineDiscounts).toEqual([
+      expect.objectContaining({ ruleId: 'disc_high', discountPct: 10 }),
+    ]);
+    expect(result.freeGoods).toEqual([
+      expect.objectContaining({ ruleId: 'bxgy_1', itemId: 'item_1', qty: 2 }),
+    ]);
+  });
+
+  it('250l-3 leaves manually discounted lines out of automatic threshold discounts', () => {
+    const core = new CommercialCore();
+
+    const result = core.applyPromotions({
+      asOfDate: '2026-06-21',
+      lines: [{
+        lineId: 'line_1',
+        itemId: 'item_1',
+        qty: 10,
+        unitPriceDoc: 10,
+        lineAmountDoc: 100,
+        hasManualDiscount: true,
+      }],
+      rules: [{
+        id: 'disc_1',
+        name: 'Auto discount',
+        type: 'THRESHOLD_DISCOUNT',
+        status: 'ACTIVE',
+        priority: 1,
+        scope: 'ALL',
+        thresholdDiscount: { thresholdBasis: 'QTY', thresholdValue: 1, discountPct: 10 },
+      }],
+    });
+
+    expect(result.lineDiscounts).toHaveLength(0);
+  });
 });

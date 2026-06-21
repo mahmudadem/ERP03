@@ -11,6 +11,7 @@ import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accou
 import { IAccountingBridge, ICommercialCore, IInventoryCore, ITaxEngine } from '../../system-core';
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
+import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -21,6 +22,12 @@ export interface PostPosSaleLineInput {
   taxCodeId?: string;
   warehouseId: string;
   approvedCostMarginOverride?: boolean;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
+}
+
+interface PromotionRuleReader {
+  list(companyId: string): Promise<CommercialPromotionRule[]>;
 }
 
 export interface PostPosSalePaymentInput {
@@ -64,6 +71,8 @@ export interface PostedPosSaleLine {
   taxAccountId?: string;
   cogsAccountId?: string;
   inventoryAccountId?: string;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
 }
 
 export interface PostPosSaleResult {
@@ -92,7 +101,8 @@ export class PostPosSaleUseCase {
     private readonly inventoryCore: IInventoryCore,
     private readonly accountingBridge: IAccountingBridge,
     private readonly taxEngine: ITaxEngine,
-    private readonly commercialCore?: ICommercialCore
+    private readonly commercialCore?: ICommercialCore,
+    private readonly promotionRuleReader?: PromotionRuleReader
   ) {}
 
   async execute(input: PostPosSaleInput): Promise<PostPosSaleResult> {
@@ -114,17 +124,25 @@ export class PostPosSaleUseCase {
     const categories = await this.itemCategoryRepo.getCompanyCategories(input.companyId);
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
     const documentId = input.documentId || `pos_sale_${randomUUID()}`;
+    const itemMap = new Map<string, Item>();
+    for (const line of input.lines) {
+      if (itemMap.has(line.itemId)) continue;
+      const item = await this.itemRepo.getItem(line.itemId);
+      if (!item || item.companyId !== input.companyId) {
+        throw new Error(`Item not found: ${line.itemId}`);
+      }
+      itemMap.set(item.id, item);
+    }
+    const saleLines = await this.applyPromotions(input, itemMap);
     const postedLines: PostedPosSaleLine[] = [];
     const revenueCredits = new Map<string, number>();
     const taxCredits = new Map<string, number>();
     const cogsDebits = new Map<string, number>();
     const inventoryCredits = new Map<string, number>();
 
-    for (const [idx, sourceLine] of input.lines.entries()) {
-      const item = await this.itemRepo.getItem(sourceLine.itemId);
-      if (!item || item.companyId !== input.companyId) {
-        throw new Error(`Item not found: ${sourceLine.itemId}`);
-      }
+    for (const [idx, sourceLine] of saleLines.entries()) {
+      const item = itemMap.get(sourceLine.itemId);
+      if (!item) throw new Error(`Item not found: ${sourceLine.itemId}`);
 
       const tax = await this.resolveTax(input.companyId, sourceLine.taxCodeId || item.defaultSalesTaxCodeId);
       const taxAmounts = this.taxEngine.calcLine({
@@ -174,7 +192,7 @@ export class PostPosSaleUseCase {
         }
       }
 
-      if (this.commercialCore && unitCostBase > 0) {
+      if (this.commercialCore && unitCostBase > 0 && !(sourceLine.unitPrice === 0 && sourceLine.appliedPromotionId)) {
         const unitNetPriceBase = roundMoney(taxAmounts.lineTotalBase / sourceLine.qty, baseCurrency);
         const margin = await this.commercialCore.validateCostMargin({
           companyId: input.companyId,
@@ -226,6 +244,8 @@ export class PostPosSaleUseCase {
         taxAccountId: taxAmounts.taxAmountBase > 0 ? tax.salesTaxAccountId : undefined,
         cogsAccountId,
         inventoryAccountId,
+        appliedPromotionId: sourceLine.appliedPromotionId,
+        appliedPromotionName: sourceLine.appliedPromotionName,
       });
 
       void idx;
@@ -393,6 +413,71 @@ export class PostPosSaleUseCase {
       lines: postedLines,
       voucherIds,
     };
+  }
+
+  private async applyPromotions(
+    input: PostPosSaleInput,
+    itemMap: Map<string, Item>
+  ): Promise<PostPosSaleLineInput[]> {
+    if (!this.commercialCore || !this.promotionRuleReader) return input.lines;
+    if (input.lines.some((line) => line.appliedPromotionId)) return input.lines;
+
+    const rules = await this.promotionRuleReader.list(input.companyId);
+    if (!rules.length) return input.lines;
+
+    const lineIds = input.lines.map(() => `pos_eval_${randomUUID()}`);
+    const result = this.commercialCore.applyPromotions({
+      asOfDate: input.date,
+      source: 'pos',
+      rules,
+      lines: input.lines.map((line, index) => {
+        const item = itemMap.get(line.itemId);
+        return {
+          lineId: lineIds[index],
+          itemId: line.itemId,
+          categoryId: item?.categoryId,
+          qty: line.qty,
+          unitPriceDoc: line.unitPrice,
+          lineAmountDoc: roundMoney(line.qty * line.unitPrice),
+          hasManualDiscount: !!line.discountType || !!line.discountValue,
+        };
+      }),
+    });
+
+    const discountByLine = new Map(result.lineDiscounts.map((discount) => [discount.lineId, discount]));
+    const promotedLines = input.lines.map((line, index) => {
+      const discount = discountByLine.get(lineIds[index]);
+      if (!discount) return line;
+      return {
+        ...line,
+        discountType: 'PERCENT' as const,
+        discountValue: discount.discountPct,
+        appliedPromotionId: discount.ruleId,
+        appliedPromotionName: discount.ruleName,
+      };
+    });
+
+    for (const freeGood of result.freeGoods) {
+      if (!itemMap.has(freeGood.itemId)) {
+        const item = await this.itemRepo.getItem(freeGood.itemId);
+        if (!item || item.companyId !== input.companyId) continue;
+        itemMap.set(item.id, item);
+      }
+      const sourceIndex = lineIds.findIndex((id) => id === freeGood.sourceLineId);
+      const sourceLine = sourceIndex >= 0 ? input.lines[sourceIndex] : input.lines[0];
+      if (!sourceLine) continue;
+      promotedLines.push({
+        itemId: freeGood.itemId,
+        qty: freeGood.qty,
+        unitPrice: 0,
+        taxCodeId: sourceLine.taxCodeId,
+        warehouseId: sourceLine.warehouseId,
+        appliedPromotionId: freeGood.ruleId,
+        appliedPromotionName: freeGood.ruleName,
+      });
+    }
+
+    return promotedLines;
   }
 
   private async resolveTax(companyId: string, taxCodeId?: string): Promise<{

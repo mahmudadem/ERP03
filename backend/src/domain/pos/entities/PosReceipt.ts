@@ -24,6 +24,8 @@ export interface PosReceiptLineSnapshot {
   inventoryAccountId?: string;
   unitCostBase?: number;
   lineCostBase?: number;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
 }
 
 export interface PosReceiptProps {
@@ -145,6 +147,8 @@ export class PosReceipt {
         inventoryAccountId: l.inventoryAccountId,
         unitCostBase: l.unitCostBase === undefined ? undefined : Number(l.unitCostBase),
         lineCostBase: l.lineCostBase === undefined ? undefined : Number(l.lineCostBase),
+        appliedPromotionId: l.appliedPromotionId,
+        appliedPromotionName: l.appliedPromotionName,
       })),
       subtotal: Number(data.subtotal) || 0,
       discountTotal: Number(data.discountTotal) || 0,

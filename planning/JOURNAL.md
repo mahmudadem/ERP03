@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250l-3 — Commercial Core promotions)
+
+- **Goal:** Complete the final Commercial Core slice: POS-aware promotion evaluation with a clear stacking/conflict model and free-goods line insertion.
+- **What was done:** Added `ICommercialCore.applyPromotions(...)` with neutral promotion rule/line/result types. Moved the existing Sales promotion evaluator behind Commercial Core while keeping `PromotionApplicationService` as a compatibility wrapper. POS sale posting now applies Commercial Core promotions before tax/posting, supports threshold discount totals, inserts buy-X-get-Y free-goods lines at zero price, and carries promotion markers to receipt line snapshots.
+- **Accounting/ERP impact:** Promotion discounts change POS sale totals only when configured promotion rules apply. Free goods are zero-revenue lines but still move inventory and record COGS for stock items, preserving valuation visibility. Manual line discounts continue to block automatic threshold discounts.
+- **Verification:** Focused 250l-3 tests passed (6 suites / 69 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 186 passed / 2 skipped suites; 1,616 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250l-commercial-core.md`, and `planning/done/250l-commercial-core.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Hard-stop for CTO audit of 250k/250l.
+
 ### Session: 2026-06-21 (Epic 250l-2 — Commercial Core cost-margin guard)
 
 - **Goal:** Complete the second Commercial Core slice: cost/margin validation with below-cost approval semantics.

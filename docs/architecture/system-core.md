@@ -178,6 +178,15 @@ Accounting boundary: 250l-1 is intended as an ownership move. Golden SI/PI line-
 
 POS sale posting now invokes `validateCostMargin(...)` after Inventory Core resolves actual unit cost for a stock OUT. Pending approval blocks the POS sale before vouchers are emitted; an approved override lets posting continue. Normal sale totals and voucher math are unchanged.
 
+250l-3 moves promotion evaluation behind `ICommercialCore.applyPromotions(...)`. The neutral core model supports the existing rule mechanics without importing Sales internals:
+
+- Rules evaluate by ascending priority.
+- Each line can receive at most one threshold discount and one buy-X-get-Y free-good result.
+- Manual line discounts block automatic threshold discounts.
+- Buy-X-get-Y free goods become explicit zero-price lines; inventory movement and COGS still run for stock items.
+
+`PromotionApplicationService` remains as a Sales compatibility wrapper over the core evaluator. POS posting now asks Commercial Core for promotions before tax and posting math, so dry-run/payment validation and actual posting see the same promoted cart. POS receives rules through a structural reader supplied by DI; POS code does not import Sales use-cases or Sales domain entities.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.

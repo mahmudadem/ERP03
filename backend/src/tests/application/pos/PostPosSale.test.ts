@@ -1,14 +1,15 @@
 import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
+import { CommercialCore } from '../../../application/system-core/commercial/CommercialCore';
 import { TaxEngine } from '../../../application/system-core/tax/TaxEngine';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { Party } from '../../../domain/shared/entities/Party';
 
-const makeItem = () =>
+const makeItem = (overrides: Record<string, any> = {}) =>
   Item.fromJSON({
-    id: 'item_1',
+    id: overrides.id || 'item_1',
     companyId: 'cmp_test',
-    code: 'ITEM-1',
-    name: 'Widget',
+    code: overrides.code || 'ITEM-1',
+    name: overrides.name || 'Widget',
     type: 'PRODUCT',
     baseUom: 'ea',
     salesUom: 'ea',
@@ -22,6 +23,7 @@ const makeItem = () =>
     createdBy: 'seed',
     createdAt: new Date(),
     updatedAt: new Date(),
+    ...overrides,
   });
 
 const makeParty = () =>
@@ -39,7 +41,7 @@ const makeParty = () =>
     updatedAt: new Date(),
   });
 
-const setup = (options: { commercialCore?: any; unitCostBase?: number } = {}) => {
+const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitCostBase?: number } = {}) => {
   const itemRepo = { getItem: jest.fn().mockResolvedValue(makeItem()) };
   const itemCategoryRepo = { getCompanyCategories: jest.fn().mockResolvedValue([]) };
   const inventorySettingsRepo = { getSettings: jest.fn().mockResolvedValue({ defaultCOGSAccountId: 'cogs-default', defaultInventoryAssetAccountId: 'inv-default' }) };
@@ -64,7 +66,8 @@ const setup = (options: { commercialCore?: any; unitCostBase?: number } = {}) =>
     inventoryCore as any,
     accountingBridge as any,
     new TaxEngine(),
-    options.commercialCore
+    options.commercialCore,
+    options.promotionRuleReader
   );
   return { useCase, inventoryCore, accountingBridge };
 };
@@ -190,5 +193,86 @@ describe('PostPosSaleUseCase', () => {
       approvedOverride: true,
     }));
     expect(accountingBridge.recordFinancialEvent).toHaveBeenCalled();
+  });
+
+  it('250l-3 applies a POS threshold promotion before posting totals', async () => {
+    const promotionRuleReader = {
+      list: jest.fn().mockResolvedValue([{
+        id: 'promo_10',
+        name: '10% off',
+        type: 'THRESHOLD_DISCOUNT',
+        status: 'ACTIVE',
+        priority: 1,
+        scope: 'ALL',
+        thresholdDiscount: { thresholdBasis: 'QTY', thresholdValue: 2, discountPct: 10 },
+      }]),
+    };
+    const { useCase } = setup({
+      commercialCore: new CommercialCore(),
+      promotionRuleReader,
+    });
+
+    const result = await useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentId: 'pos_sale_1',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 18 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    });
+
+    expect(result.grandTotal).toBe(18);
+    expect(result.discountTotal).toBe(2);
+    expect(result.lines[0]).toMatchObject({
+      lineDiscount: 2,
+      lineTotal: 18,
+      appliedPromotionId: 'promo_10',
+      appliedPromotionName: '10% off',
+    });
+  });
+
+  it('250l-3 inserts POS free-goods promotion lines at zero price', async () => {
+    const promotionRuleReader = {
+      list: jest.fn().mockResolvedValue([{
+        id: 'bxgy_1',
+        name: 'Buy 2 Get 1',
+        type: 'BUY_X_GET_Y',
+        status: 'ACTIVE',
+        priority: 1,
+        scope: 'ALL',
+        buyXGetY: { buyQty: 2, getQty: 1 },
+      }]),
+    };
+    const { useCase, inventoryCore } = setup({
+      commercialCore: new CommercialCore(),
+      promotionRuleReader,
+    });
+
+    const result = await useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentId: 'pos_sale_1',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    });
+
+    expect(result.grandTotal).toBe(20);
+    expect(result.lines).toHaveLength(2);
+    expect(result.lines[1]).toMatchObject({
+      itemId: 'item_1',
+      qty: 1,
+      unitPrice: 0,
+      lineTotal: 0,
+      appliedPromotionId: 'bxgy_1',
+      appliedPromotionName: 'Buy 2 Get 1',
+    });
+    expect(inventoryCore.processOUT).toHaveBeenCalledTimes(2);
   });
 });
