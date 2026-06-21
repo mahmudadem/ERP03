@@ -40,7 +40,16 @@ This is an **owner-authorized exception to the 2026-06-13 feature freeze** (reco
 4. Write the completion report `planning/done/250x-*.md` (technical + end-user sections per AGENTS.md §8).
 5. Commit on the branch: `feat(system-core): <summary> [250x]`.
 6. Update `ACTIVE.md` (mark the phase done, point at the next) + append `JOURNAL.md`.
-7. **STOP and hand back for CTO audit** before starting the next phase. Do not chain phases without the audit gate.
+7. **STOP and hand back for CTO audit** before starting the next phase — UNLESS the unattended-run authorization below applies.
+
+## Unattended-run authorization (2026-06-21, owner away)
+
+For this run you MAY chain phases **250a → 250b → 250c → 250d → 250e** in one unattended session (still one task at a time, in order, committing per task with its tests green). **Hard-stop at the end of 250e** and hand back for CTO audit. Rules:
+
+- **Do NOT proceed past 250e** (no Phase 2/3/4 unattended). 250e is the milestone: POS unblocked, proven by tests T1–T6/T10.
+- **Any failure = immediate STOP.** If a task's named tests fail, its acceptance criteria can't be met, the build breaks, or you hit a design ambiguity not answered by the task file + audit, STOP at the last green commit and write the blocker into `ACTIVE.md` "Where I left off". Do **not** push forward into a dependent phase on a shaky base, and do **not** invent a design decision — leave it for the CTO.
+- Per-task discipline still applies: green (typecheck + build + named tests) before each commit; no commit on failure; completion report per task.
+- Leave a running summary in `ACTIVE.md` after each task so the CTO can audit the whole 250a–250e batch on return.
 
 ## Definition of Done (per phase = the task file's checklist; per epic = the epic file's checklist)
 
