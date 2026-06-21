@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 3 (after POS V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ✅ Complete (2026-06-21, commit pending)
+**Status:** ✅ Done & CTO-audited green 2026-06-21, commit `6803b21f`
 
 ## Objective
 
