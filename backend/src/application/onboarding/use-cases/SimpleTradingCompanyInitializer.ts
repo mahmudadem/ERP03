@@ -37,7 +37,7 @@ export interface SimpleTradingCompanyPolicySummary {
     costingMethod: 'MOVING_AVG';
     costingBasis: 'WAREHOUSE' | 'GLOBAL';
     allowNegativeStock: false;
-    defaultWarehouseCode: 'MAIN';
+    defaultWarehouseCode: string;
   };
   sales: {
     workflowMode: 'SIMPLE' | 'OPERATIONAL';
@@ -271,6 +271,18 @@ export class SimpleTradingCompanyInitializer {
      * and fiscal-year configuration while still reseeding the COA + module defaults.
      */
     preserveCompanyPolicy?: boolean;
+    /**
+     * Optional onboarding-wizard overrides (Task 245 NOTE-01). When the user
+     * changes a setting in the wizard, that explicit choice is honored here. Any
+     * field left undefined falls back to the mode-derived default so the existing
+     * mode → policy mapping is the unchanged default behaviour.
+     */
+    coaTemplate?: 'periodic_trading' | 'standard';
+    costingBasis?: 'GLOBAL' | 'WAREHOUSE';
+    defaultWarehouseCode?: string;
+    defaultWarehouseName?: string;
+    salesWorkflowMode?: 'SIMPLE' | 'OPERATIONAL';
+    purchaseWorkflowMode?: 'SIMPLE' | 'OPERATIONAL';
   }): Promise<SimpleTradingCompanyPolicySummary> {
     const baseCurrency = String(input.baseCurrency || '').trim().toUpperCase();
     if (!baseCurrency) {
@@ -278,6 +290,17 @@ export class SimpleTradingCompanyInitializer {
     }
     const starterMode = input.accountingMode || 'PERIODIC';
     const policy = STARTER_MODE_POLICIES[starterMode];
+
+    // NOTE-01: honor the user's explicit wizard choices when provided;
+    // otherwise fall back to the mode-derived default.
+    const coaTemplate = input.coaTemplate ?? policy.coaTemplate;
+    const costingBasis = input.costingBasis ?? policy.inventory.costingBasis;
+    const defaultWarehouseCode = (input.defaultWarehouseCode || 'MAIN').toString().trim().toUpperCase() || 'MAIN';
+    const defaultWarehouseName = (input.defaultWarehouseName || 'Main Warehouse').toString().trim() || 'Main Warehouse';
+    const salesWorkflowMode = input.salesWorkflowMode ?? policy.sales.workflowMode;
+    const purchaseWorkflowMode = input.purchaseWorkflowMode ?? policy.purchases.workflowMode;
+    const salesAllowDirect = salesWorkflowMode === 'SIMPLE' ? policy.sales.allowDirectInvoicing : false;
+    const purchaseAllowDirect = purchaseWorkflowMode === 'SIMPLE' ? policy.purchases.allowDirectInvoicing : false;
 
     const accountingUseCase = new InitializeAccountingUseCase(
       this.deps.companyModuleRepo,
@@ -299,7 +322,7 @@ export class SimpleTradingCompanyInitializer {
         fiscalYearStart: '01-01',
         fiscalYearEnd: '12-31',
         baseCurrency,
-        coaTemplate: policy.coaTemplate,
+        coaTemplate,
         selectedVoucherTypes: await this.getDefaultAccountingVoucherTemplateIds(),
         periodScheme: 'MONTHLY',
       },
@@ -321,10 +344,10 @@ export class SimpleTradingCompanyInitializer {
       companyId: input.companyId,
       userId: input.userId,
       accountingMode: policy.inventory.accountingMode,
-      defaultWarehouseName: 'Main Warehouse',
-      defaultWarehouseCode: 'MAIN',
+      defaultWarehouseName,
+      defaultWarehouseCode,
       defaultCostCurrency: baseCurrency,
-      costingBasis: policy.inventory.costingBasis,
+      costingBasis,
       defaultLinePriceSource: 'LAST_PARTY_PRICE',
       allowNegativeStock: false,
       autoGenerateItemCode: true,
@@ -357,9 +380,9 @@ export class SimpleTradingCompanyInitializer {
     await salesUseCase.execute({
       companyId: input.companyId,
       userId: input.userId,
-      workflowMode: policy.sales.workflowMode,
-      allowDirectInvoicing: policy.sales.allowDirectInvoicing,
-      requireSOForStockItems: policy.sales.workflowMode === 'OPERATIONAL',
+      workflowMode: salesWorkflowMode,
+      allowDirectInvoicing: salesAllowDirect,
+      requireSOForStockItems: salesWorkflowMode === 'OPERATIONAL',
       defaultSalesInvoicePersona: policy.sales.defaultSalesInvoicePersona,
       defaultWarehouseId: inventoryResult.defaultWarehouse?.id,
       defaultARAccountId: undefined,
@@ -385,9 +408,9 @@ export class SimpleTradingCompanyInitializer {
     await purchasesUseCase.execute({
       companyId: input.companyId,
       userId: input.userId,
-      workflowMode: policy.purchases.workflowMode,
-      allowDirectInvoicing: policy.purchases.allowDirectInvoicing,
-      requirePOForStockItems: policy.purchases.workflowMode === 'OPERATIONAL',
+      workflowMode: purchaseWorkflowMode,
+      allowDirectInvoicing: purchaseAllowDirect,
+      requirePOForStockItems: purchaseWorkflowMode === 'OPERATIONAL',
       defaultWarehouseId: inventoryResult.defaultWarehouse?.id,
       defaultAPAccountId: accounts.apParent.id,
       apParentAccountId: accounts.apParent.id,
@@ -405,7 +428,7 @@ export class SimpleTradingCompanyInitializer {
       modulesInitialized: ['accounting', 'inventory', 'sales', 'purchase'],
       baseCurrency,
       accounting: {
-        coaTemplate: policy.coaTemplate,
+        coaTemplate,
         fiscalYearStart: '01-01',
         fiscalYearEnd: '12-31',
         approvalRequired: false,
@@ -413,18 +436,18 @@ export class SimpleTradingCompanyInitializer {
       inventory: {
         accountingMode: policy.inventory.accountingMode,
         costingMethod: 'MOVING_AVG',
-        costingBasis: policy.inventory.costingBasis,
+        costingBasis,
         allowNegativeStock: false,
-        defaultWarehouseCode: 'MAIN',
+        defaultWarehouseCode,
       },
       sales: {
-        workflowMode: policy.sales.workflowMode,
-        allowDirectInvoicing: policy.sales.allowDirectInvoicing,
+        workflowMode: salesWorkflowMode,
+        allowDirectInvoicing: salesAllowDirect,
         defaultSalesInvoicePersona: policy.sales.defaultSalesInvoicePersona,
       },
       purchases: {
-        workflowMode: policy.purchases.workflowMode,
-        allowDirectInvoicing: policy.purchases.allowDirectInvoicing,
+        workflowMode: purchaseWorkflowMode,
+        allowDirectInvoicing: purchaseAllowDirect,
       },
       tax: {
         status: 'READY_NOT_ASSUMED',

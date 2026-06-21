@@ -1,5 +1,31 @@
 {
   "appName": "ERP03",
+  "salesGrossProfit": {
+    "titleByDocument": "Gross Profit by Document",
+    "titleByItem": "Gross Profit by Item",
+    "subtitle": "Historical gross profit facts by invoice currency and base currency",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "documentScope": "Document Scope",
+    "scopeSales": "Sales invoices and returns",
+    "scopeSalesInvoices": "Sales invoices only",
+    "scopeSalesReturns": "Sales returns only",
+    "scopeAll": "All tracked document types",
+    "scopePurchaseInvoices": "Purchase invoices only",
+    "scopePurchaseReturns": "Purchase returns only",
+    "limit": "Row Limit",
+    "itemFilter": "Item Filter",
+    "allItems": "All items",
+    "docCurrency": "Document Currency",
+    "anyCurrency": "Any currency",
+    "generate": "Generate Report",
+    "netProfit": "Net Profit Base",
+    "profitIn": "Profit IN Base",
+    "profitOut": "Profit OUT Base",
+    "lines": "Fact Lines",
+    "managementNote": "Management report from historical profit facts. This does not recalculate inventory valuation or COGS.",
+    "noData": "No gross profit facts match these filters."
+  },
   "language": {
     "label": "Dil",
     "english": "İngilizce",
@@ -159,6 +185,7 @@
     "vendorGroups": "Tedarikçi Grupları",
     "openingStock": "Açılış Stoğu",
     "adjustments": "Stok Düzeltmeleri",
+    "revaluations": "Yeniden Değerlemeler",
     "transfers": "Stok Transferleri",
     "stockLevels": "Stok Seviyeleri",
     "movements": "Stok Hareketleri",
@@ -2571,6 +2598,91 @@
         "warehouse": "Depo",
         "unitCostBase": "Birim Maliyet (Baz)"
       }
+    },
+    "revaluations": {
+      "title": "Stok Yeniden Değerlemeleri",
+      "newTitle": "Yeni Stok Yeniden Değerleme",
+      "detailTitle": "Stok Yeniden Değerleme",
+      "subtitle": "Yalnızca maliyet değeri düzeltilir. Miktar değişmez.",
+      "backToList": "Yeniden değerlemelere dön",
+      "newButton": "Yeni Yeniden Değerleme",
+      "saveDraft": "Taslak Kaydet",
+      "post": "Yeniden Değerlemeyi Kaydet",
+      "noDelta": "Yeniden değerlenecek değer farkı yok.",
+      "notFound": "Stok yeniden değerleme bulunamadı.",
+      "postingControl": "Kayıt kontrolü",
+      "postingNotice": "Stok Yeniden Değerleme miktarı değiştirmez. INVOICE_DRIVEN / PERPETUAL modunda kayıt, Stok Yeniden Değerleme hesabına karşı dengeli bir muhasebe fişi oluşturur. PERIODIC modunda alt defter ortalaması güncellenir ancak günlük Stok Varlığı fişi oluşturulmaz.",
+      "details": "Yeniden Değerleme Detayları",
+      "linesTitle": "Yeniden Değerleme Satırları",
+      "addItem": "Kalem Ekle",
+      "searchPlaceholder": "Yeniden değerleme, neden veya notlarda ara...",
+      "empty": "Stok yeniden değerleme bulunamadı",
+      "reasons": {
+        "costCorrection": "Maliyet düzeltmesi",
+        "basisChange": "Maliyet esası değişikliği",
+        "migrationFix": "Aktarım düzeltmesi",
+        "writeOff": "Değer düşümü",
+        "other": "Diğer"
+      },
+      "errors": {
+        "loadFailed": "Stok yeniden değerlemeleri yüklenemedi.",
+        "dateRequired": "Tarih zorunludur.",
+        "lineRequired": "Pozitif eldeki miktarı olan en az bir satır gerekir."
+      },
+      "toasts": {
+        "drafted": "Stok yeniden değerleme taslak olarak kaydedildi.",
+        "posted": "Stok yeniden değerleme kaydedildi."
+      },
+      "columns": {
+        "item": "Kalem",
+        "currentQty": "Mevcut Miktar",
+        "currentAvgCost": "Mevcut Ort. Maliyet",
+        "currentValue": "Mevcut Değer",
+        "newAvgCostBase": "Yeni Ort. Maliyet (Baz)",
+        "newValue": "Yeni Değer",
+        "valueDelta": "Değer Farkı"
+      },
+      "readiness": {
+        "date": "Yeniden değerleme tarihi seçildi",
+        "qty": "Miktarlı en az bir kalem var",
+        "delta": "Yeni maliyet mevcut maliyetten farklı",
+        "account": "Muhasebe kaydı için yeniden değerleme hesabı gerekir"
+      },
+      "fields": {
+        "reason": "Neden",
+        "globalBasis": "Global maliyet esası",
+        "warehouse": "Depo",
+        "date": "Yeniden Değerleme Tarihi",
+        "notes": "Notlar"
+      },
+      "placeholders": {
+        "item": "Kalem seç",
+        "globalWarehouse": "GLOBAL modunda kullanılmaz",
+        "warehouse": "Depo seç"
+      },
+      "rail": {
+        "document": "Belge",
+        "reference": "Referans",
+        "status": "Durum",
+        "reason": "Neden",
+        "date": "Tarih",
+        "voucher": "Fiş",
+        "readiness": "Hazırlık",
+        "totals": "Toplamlar",
+        "lines": "Satırlar",
+        "valueDeltaBase": "Değer Farkı (Baz)"
+      },
+      "list": {
+        "revaluation": "Yeniden Değerleme",
+        "date": "Tarih",
+        "reason": "Neden",
+        "status": "Durum",
+        "valueDeltaBase": "Değer Farkı (Baz)"
+      },
+      "confirm": {
+        "title": "Stok yeniden değerleme kaydedilsin mi?",
+        "message": "Bu işlem yeniden değerlemeyi kaydeder ve alt defter ortalama maliyetini günceller. INVOICE_DRIVEN / PERPETUAL modunda Stok Yeniden Değerleme / Fark hesabına karşı dengeli bir muhasebe fişi oluşturulur. PERIODIC modunda alt defter güncellenir ancak günlük muhasebe fişi oluşturulmaz."
+      }
     }
   },
   "sales": {
@@ -4006,14 +4118,23 @@
   "common": {
     "save": "Kaydet",
     "saving": "Kaydediliyor...",
-    "cancel": "Iptal",
+    "cancel": "İptal",
     "delete": "Sil",
     "edit": "Duzenle",
     "active": "Aktif",
     "inactive": "Pasif",
     "loading": "Yukleniyor...",
     "optional": "İsteğe bağlı",
-    "checking": "Kontrol ediliyor…"
+    "checking": "Kontrol ediliyor…",
+    "all": "Tümü",
+    "back": "Geri",
+    "new": "Yeni",
+    "draft": "Taslak",
+    "posted": "Kaydedildi",
+    "view": "Görüntüle",
+    "post": "Kaydet",
+    "apply": "Uygula",
+    "clearFilters": "Filtreleri Temizle"
   },
   "messaging": {
     "whatsapp": {

@@ -481,3 +481,33 @@ export const validateCreateOpeningStockDocumentInput = (body: any) => {
 export const validateUpdateOpeningStockDocumentInput = (body: any) => {
   validateCreateOpeningStockDocumentInput(body);
 };
+
+const ensureInventoryRevaluationReason = (value: any, fieldName: string) => {
+  ensureRequiredString(value, fieldName);
+  const allowed = ['COST_CORRECTION', 'BASIS_CHANGE', 'MIGRATION_FIX', 'WRITE_OFF', 'OTHER'];
+  if (!allowed.includes(value)) {
+    throw ApiError.badRequest(`${fieldName} must be one of ${allowed.join(', ')}`);
+  }
+};
+
+export const validateCreateInventoryRevaluationInput = (body: any) => {
+  ensureIsoDate(body.date, 'date');
+  ensureInventoryRevaluationReason(body.reason, 'reason');
+
+  if (!Array.isArray(body.lines) || body.lines.length === 0) {
+    throw ApiError.badRequest('lines must be a non-empty array');
+  }
+
+  body.lines.forEach((line: any, index: number) => {
+    ensureRequiredString(line.itemId, `lines[${index}].itemId`);
+    if (line.warehouseId !== undefined && line.warehouseId !== null) {
+      ensureRequiredString(line.warehouseId, `lines[${index}].warehouseId`);
+    }
+    if (typeof line.newAvgCostBase !== 'number' || Number.isNaN(line.newAvgCostBase) || line.newAvgCostBase < 0) {
+      throw ApiError.badRequest(`lines[${index}].newAvgCostBase must be a non-negative number`);
+    }
+    if (typeof line.newAvgCostCCY !== 'number' || Number.isNaN(line.newAvgCostCCY) || line.newAvgCostCCY < 0) {
+      throw ApiError.badRequest(`lines[${index}].newAvgCostCCY must be a non-negative number`);
+    }
+  });
+};

@@ -1,5 +1,31 @@
 {
   "appName": "ERP03",
+  "salesGrossProfit": {
+    "titleByDocument": "Gross Profit by Document",
+    "titleByItem": "Gross Profit by Item",
+    "subtitle": "Historical gross profit facts by invoice currency and base currency",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "documentScope": "Document Scope",
+    "scopeSales": "Sales invoices and returns",
+    "scopeSalesInvoices": "Sales invoices only",
+    "scopeSalesReturns": "Sales returns only",
+    "scopeAll": "All tracked document types",
+    "scopePurchaseInvoices": "Purchase invoices only",
+    "scopePurchaseReturns": "Purchase returns only",
+    "limit": "Row Limit",
+    "itemFilter": "Item Filter",
+    "allItems": "All items",
+    "docCurrency": "Document Currency",
+    "anyCurrency": "Any currency",
+    "generate": "Generate Report",
+    "netProfit": "Net Profit Base",
+    "profitIn": "Profit IN Base",
+    "profitOut": "Profit OUT Base",
+    "lines": "Fact Lines",
+    "managementNote": "Management report from historical profit facts. This does not recalculate inventory valuation or COGS.",
+    "noData": "No gross profit facts match these filters."
+  },
   "language": {
     "label": "Language",
     "english": "English",
@@ -159,6 +185,7 @@
     "vendorGroups": "Vendor Groups",
     "openingStock": "Opening Stock",
     "adjustments": "Adjustments",
+    "revaluations": "Revaluations",
     "transfers": "Transfers",
     "stockLevels": "Stock Levels",
     "movements": "Movements",
@@ -2496,6 +2523,91 @@
         "warehouse": "Warehouse",
         "unitCostBase": "Unit Cost Base"
       }
+    },
+    "revaluations": {
+      "title": "Inventory Revaluations",
+      "newTitle": "New Inventory Revaluation",
+      "detailTitle": "Inventory Revaluation",
+      "subtitle": "Value-only cost correction. Quantity is never changed.",
+      "backToList": "Back to revaluations",
+      "newButton": "New Revaluation",
+      "saveDraft": "Save Draft",
+      "post": "Post Revaluation",
+      "noDelta": "No value delta to revalue.",
+      "notFound": "Inventory revaluation not found.",
+      "postingControl": "Posting control",
+      "postingNotice": "Inventory Revaluation never changes quantity. In INVOICE_DRIVEN / PERPETUAL mode, posting creates a balanced GL voucher against the Inventory Revaluation account. In PERIODIC mode, the sub-ledger average updates but no daily Inventory Asset GL voucher is created.",
+      "details": "Revaluation Details",
+      "linesTitle": "Revaluation Lines",
+      "addItem": "Add Item",
+      "searchPlaceholder": "Search revaluation, reason, notes...",
+      "empty": "No inventory revaluations found",
+      "reasons": {
+        "costCorrection": "Cost correction",
+        "basisChange": "Costing basis change",
+        "migrationFix": "Migration cleanup",
+        "writeOff": "Write-off",
+        "other": "Other"
+      },
+      "errors": {
+        "loadFailed": "Failed to load inventory revaluations.",
+        "dateRequired": "Date is required.",
+        "lineRequired": "At least one line with positive on-hand quantity is required."
+      },
+      "toasts": {
+        "drafted": "Inventory revaluation drafted.",
+        "posted": "Inventory revaluation posted."
+      },
+      "columns": {
+        "item": "Item",
+        "currentQty": "Current Qty",
+        "currentAvgCost": "Current Avg Cost",
+        "currentValue": "Current Value",
+        "newAvgCostBase": "New Avg Cost (Base)",
+        "newValue": "New Value",
+        "valueDelta": "Value Delta"
+      },
+      "readiness": {
+        "date": "Revaluation date set",
+        "qty": "At least one item with qty",
+        "delta": "New cost differs from current",
+        "account": "Revaluation account required when GL posting"
+      },
+      "fields": {
+        "reason": "Reason",
+        "globalBasis": "Global costing basis",
+        "warehouse": "Warehouse",
+        "date": "Revaluation Date",
+        "notes": "Notes"
+      },
+      "placeholders": {
+        "item": "Select item",
+        "globalWarehouse": "Not used in GLOBAL mode",
+        "warehouse": "Select warehouse"
+      },
+      "rail": {
+        "document": "Document",
+        "reference": "Reference",
+        "status": "Status",
+        "reason": "Reason",
+        "date": "Date",
+        "voucher": "Voucher",
+        "readiness": "Readiness",
+        "totals": "Totals",
+        "lines": "Lines",
+        "valueDeltaBase": "Value Delta (Base)"
+      },
+      "list": {
+        "revaluation": "Revaluation",
+        "date": "Date",
+        "reason": "Reason",
+        "status": "Status",
+        "valueDeltaBase": "Value Delta (Base)"
+      },
+      "confirm": {
+        "title": "Post inventory revaluation?",
+        "message": "This posts the revaluation and updates the sub-ledger average cost. In INVOICE_DRIVEN / PERPETUAL mode a balanced GL voucher is created against the Inventory Revaluation / Variance account. In PERIODIC mode the sub-ledger updates but no daily GL voucher is created."
+      }
     }
   },
   "sales": {
@@ -3934,7 +4046,16 @@
     "inactive": "Inactive",
     "loading": "Loading...",
     "optional": "Optional",
-    "checking": "Checking…"
+    "checking": "Checking…",
+    "all": "All",
+    "back": "Back",
+    "new": "New",
+    "draft": "Draft",
+    "posted": "Posted",
+    "view": "View",
+    "post": "Post",
+    "apply": "Apply",
+    "clearFilters": "Clear Filters"
   },
   "messaging": {
     "whatsapp": {

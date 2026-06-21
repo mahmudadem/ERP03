@@ -52,6 +52,7 @@ model Company {
   stockTransfers  StockTransfer[]
   openingStockDocuments OpeningStockDocument[]
   inventoryPeriodSnapshots InventoryPeriodSnapshot[]
+  inventoryRevaluations InventoryRevaluation[]
   purchaseOrders  PurchaseOrder[]
   goodsReceipts   GoodsReceipt[]
   purchaseInvoices PurchaseInvoice[]
@@ -60,8 +61,13 @@ model Company {
   deliveryNotes   DeliveryNote[]
   salesInvoices   SalesInvoice[]
   salesReturns    SalesReturn[]
-  posOrders       PosOrder[]
+  posRegisters    PosRegister[]
+  posSettings     PosSettings[]
   posShifts       PosShift[]
+  posCashMovements PosCashMovement[]
+  posReceipts     PosReceipt[]
+  posPayments     PosPayment[]
+  posReturns      PosReturn[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
   budgets         Budget[]
@@ -91,6 +97,7 @@ model Company {
   aiChatMessages   AiChatMessage[]
   aiProviderConfig AiProviderConfig?
   aiUsageLogs      AiUsageLog[]
+  salesProfitLineFacts SalesProfitLineFact[]
 
   @@index([ownerId])
   @@map("companies")
@@ -110,7 +117,6 @@ model User {
   // Relations
   companies       CompanyUser[]
   preferences     UserPreferences?
-  posShifts       PosShift[]
 
   @@index([activeCompanyId])
   @@map("users")
@@ -612,11 +618,11 @@ model Item {
   salesOrderLines SalesOrderLine[]
   salesInvoiceLines SalesInvoiceLine[]
   salesReturnLines SalesReturnLine[]
-  posOrderItems   PosOrderItem[]
+  partyItemPrices PartyItemPrice[]
   stockAdjustmentLines StockAdjustmentLine[]
   stockTransferLines StockTransferLine[]
   openingStockLines OpeningStockLine[]
-  partyItemPrices PartyItemPrice[]
+  inventoryRevaluationLines InventoryRevaluationLine[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -945,6 +951,53 @@ model InventorySettings {
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@map("inventory_settings")
+}
+
+model InventoryRevaluation {
+  id                    String   @id @default(uuid())
+  companyId             String
+  documentNo            String
+  date                  DateTime
+  reason                String
+  status                String   @default("DRAFT")
+  notes                 String?
+  totalValueDeltaBase   Float    @default(0)
+  totalValueDeltaCCY    Float    @default(0)
+  voucherId             String?
+  createdBy             String
+  createdAt             DateTime @default(now())
+  postedAt              DateTime?
+
+  company Company                       @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  lines   InventoryRevaluationLine[]
+
+  @@unique([companyId, documentNo])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@index([companyId, date])
+  @@map("inventory_revaluations")
+}
+
+model InventoryRevaluationLine {
+  id                  String   @id @default(uuid())
+  revaluationId       String
+  itemId              String
+  warehouseId         String?
+  qtyOnHand           Float
+  currentAvgCostBase  Float
+  currentAvgCostCCY   Float
+  newAvgCostBase      Float
+  newAvgCostCCY       Float
+  valueDeltaBase      Float
+  valueDeltaCCY       Float
+  reason              String?
+
+  revaluation InventoryRevaluation @relation(fields: [revaluationId], references: [id], onDelete: Cascade)
+  item        Item                 @relation(fields: [itemId], references: [id])
+
+  @@index([revaluationId])
+  @@index([itemId])
+  @@map("inventory_revaluation_lines")
 }
 
 // ============================================
@@ -1610,62 +1663,156 @@ model Attendance {
 // POS MODULE
 // ============================================
 
-model PosShift {
-  id             String   @id @default(uuid())
-  companyId      String
-  userId         String
-  openedAt       DateTime
-  openingBalance Float    @default(0)
-  closedAt       DateTime?
-  closingBalance Float?
-  notes          String?
+model PosRegister {
+  id                  String   @id @default(uuid())
+  companyId           String
+  code                String
+  name                String
+  branchId            String?
+  warehouseId         String
+  cashDrawerAccountId String
+  status              String   @default("ACTIVE")
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
 
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  user    User     @relation(fields: [userId], references: [id])
-  orders  PosOrder[]
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([companyId])
+  @@index([companyId, status])
+  @@map("pos_registers")
+}
+
+model PosSettings {
+  id        String   @id @default(uuid())
+  companyId String   @unique
+  settings  Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("pos_settings")
+}
+
+model PosShift {
+  id                 String    @id @default(uuid())
+  companyId          String
+  registerId         String
+  cashierUserId      String
+  status             String    @default("OPEN")
+  openedAt           DateTime
+  openingFloat       Float     @default(0)
+  closedAt           DateTime?
+  expectedCash       Float?
+  countedCash        Float?
+  overShortAmount    Float?
+  overShortVoucherId String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
   @@index([companyId])
-  @@index([companyId, userId])
+  @@index([companyId, registerId])
+  @@index([companyId, cashierUserId])
+  @@index([companyId, status])
+  @@index([companyId, openedAt])
   @@map("pos_shifts")
 }
 
-model PosOrder {
+model PosCashMovement {
   id          String   @id @default(uuid())
   companyId   String
   shiftId     String
-  orderNo     String
-  totalAmount Float    @default(0)
-  status      String   @default("COMPLETED")
-  customerId  String?
-  notes       String?
+  registerId  String
+  type        String
+  amount      Float
+  reason      String?
+  createdBy   String
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  company Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  shift   PosShift @relation(fields: [shiftId], references: [id])
-  items   PosOrderItem[]
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@unique([companyId, orderNo])
-  @@index([companyId])
   @@index([companyId, shiftId])
-  @@map("pos_orders")
+  @@index([companyId, registerId])
+  @@index([companyId, type])
+  @@map("pos_cash_movements")
 }
 
-model PosOrderItem {
-  id       String   @id @default(uuid())
-  orderId  String
-  itemId   String
-  name     String
-  qty      Float
-  price    Float
-  discount Float    @default(0)
-  total    Float    @default(0)
+model PosReceipt {
+  id                  String   @id @default(uuid())
+  companyId           String
+  shiftId             String
+  registerId          String
+  receiptNumber       String
+  status              String   @default("COMPLETED")
+  customerId          String
+  customerName        String?
+  lines               Json
+  subtotal            Float    @default(0)
+  discountTotal       Float    @default(0)
+  taxTotal            Float    @default(0)
+  grandTotal          Float    @default(0)
+  salesInvoiceId      String?
+  salesInvoiceNumber  String?
+  createdBy           String
+  createdAt           DateTime @default(now())
 
-  order PosOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  item  Item     @relation(fields: [itemId], references: [id])
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
-  @@index([orderId])
-  @@map("pos_order_items")
+  @@unique([companyId, receiptNumber])
+  @@index([companyId])
+  @@index([companyId, shiftId])
+  @@index([companyId, registerId])
+  @@index([companyId, customerId])
+  @@index([companyId, salesInvoiceId])
+  @@index([companyId, createdAt])
+  @@map("pos_receipts")
+}
+
+model PosPayment {
+  id           String   @id @default(uuid())
+  companyId    String
+  receiptId    String
+  method       String
+  amount       Float
+  changeGiven  Float    @default(0)
+  reference    String?
+  createdAt    DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, receiptId])
+  @@map("pos_payments")
+}
+
+model PosReturn {
+  id                    String   @id @default(uuid())
+  companyId             String
+  shiftId               String
+  registerId            String
+  returnNumber          String
+  originalReceiptId     String
+  originalReceiptNumber String
+  salesInvoiceId        String
+  lines                 Json
+  refundMethod          String
+  refundTotal           Float    @default(0)
+  salesReturnId         String?
+  salesReturnNumber     String?
+  createdBy             String
+  createdAt             DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, returnNumber])
+  @@index([companyId])
+  @@index([companyId, shiftId])
+  @@index([companyId, originalReceiptId])
+  @@index([companyId, salesInvoiceId])
+  @@index([companyId, createdAt])
+  @@map("pos_returns")
 }
 
 // ============================================
@@ -2220,11 +2367,11 @@ model AiUsageLog {
   companyId         String
   userId            String
   providerType      String   // 'mock' | 'openai_compatible' | 'ollama'
-  model             String   // Provider-specific model identifier
+  model             String
   messageCount      Int      @default(0)  // Number of messages in request context
-  promptTokens      Int?     // Tokens in the prompt (if reported by provider)
-  completionTokens  Int?     // Tokens in the completion (if reported by provider)
-  totalTokens       Int?     // Total tokens used (if reported by provider)
+  promptTokens      Int?
+  completionTokens  Int?
+  totalTokens       Int?
   status            String   @default("success") // 'success' | 'failure'
   errorCode         String?  // Normalized error code (e.g., 'AI_PROVIDER_AUTH_ERROR')
   latencyMs         Int?     // Response latency in milliseconds
@@ -2236,4 +2383,58 @@ model AiUsageLog {
   @@index([companyId, userId])
   @@index([companyId, createdAt])
   @@map("ai_usage_logs")
+}
+
+// ============================================
+// REPORTING — Sales Gross Profit Facts (Task 246)
+// Read model for management reporting. Not a posting model.
+// One row per posted invoice line. type-agnostic (SALES_INVOICE,
+// SALES_RETURN, PURCHASE_INVOICE, PURCHASE_RETURN, future custom).
+// Direction flags let reports show IN-side and OUT-side separately.
+// ============================================
+model SalesProfitLineFact {
+  id                     String   @id
+  companyId              String
+  documentType           String   // 'SALES_INVOICE' | 'SALES_RETURN' | 'PURCHASE_INVOICE' | 'PURCHASE_RETURN'
+  documentId             String
+  documentNumber         String
+  documentLineId         String
+  documentDate           String   // ISO YYYY-MM-DD
+  itemId                 String
+  qtyBase                Float
+  uomId                  String
+
+  docCurrency            String
+  baseCurrency           String
+  exchangeRateDocToBase  Float
+
+  revenueAmountDoc       Float
+  revenueAmountBase      Float
+  revenueDir             String?  // 'IN' | 'OUT' | null (when revenueAmount = 0)
+
+  costAmountDoc          Float
+  costAmountBase         Float
+  costDir                String   // 'IN' | 'OUT'
+
+  profitAmountDoc        Float
+  profitAmountBase       Float
+  profitDir              String   // 'IN' | 'OUT'
+
+  marginPct              Float
+
+  snapshotVersion        Int      @default(1)
+  status                 String   @default("ACTIVE") // 'ACTIVE' | 'SUPERSEDED' | 'REVERSED'
+
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, documentId, documentLineId, snapshotVersion])
+  @@index([companyId, documentDate])
+  @@index([companyId, documentId])
+  @@index([companyId, itemId, documentDate])
+  @@index([companyId, documentType, documentDate])
+  @@index([companyId, status])
+  @@map("sales_profit_line_facts")
 }

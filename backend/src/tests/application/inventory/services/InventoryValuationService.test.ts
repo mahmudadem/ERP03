@@ -1,4 +1,5 @@
 import { InventoryValuationService } from '../../../../application/inventory/services/InventoryValuationService';
+import { InventoryRevaluation } from '../../../../domain/inventory/entities/InventoryRevaluation';
 import { Item } from '../../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../../domain/inventory/entities/StockMovement';
@@ -199,5 +200,77 @@ describe('InventoryValuationService', () => {
         expect.objectContaining({ warehouseId: 'w2', qtyOnHand: 6, avgCostBase: 12, valueBase: 72 }),
       ])
     );
+  });
+
+  it('includes posted inventory revaluations in historical AVERAGE valuation', async () => {
+    const itemRepo = {
+      getCompanyItems: jest.fn().mockResolvedValue([createItem('i1')]),
+    } as any;
+    const stockLevelRepo = {} as any;
+    const stockMovementRepo = {
+      getMovementsByDateRange: jest.fn().mockResolvedValue([
+        createMovement({
+          id: 'm1',
+          date: '2026-01-01',
+          postedAt: new Date('2026-01-01T00:00:00.000Z'),
+          itemId: 'i1',
+          warehouseId: 'w1',
+          direction: 'IN',
+          qty: 10,
+          qtyBefore: 0,
+          qtyAfter: 10,
+          unitCostBase: 5,
+          avgCostBaseAfter: 5,
+        }),
+      ]),
+    } as any;
+    const inventorySettingsRepo = {
+      getSettings: jest.fn().mockResolvedValue({ accountingMode: 'PERPETUAL', costingBasis: 'WAREHOUSE' }),
+    } as any;
+    const revaluationRepo = {
+      getByStatus: jest.fn().mockResolvedValue([
+        new InventoryRevaluation({
+          id: 'rev-1',
+          companyId: 'c1',
+          date: '2026-01-02',
+          reason: 'COST_CORRECTION',
+          lines: [{
+            itemId: 'i1',
+            warehouseId: 'w1',
+            qtyOnHand: 10,
+            currentAvgCostBase: 5,
+            currentAvgCostCCY: 5,
+            newAvgCostBase: 7,
+            newAvgCostCCY: 7,
+            valueDeltaBase: 20,
+            valueDeltaCCY: 20,
+          }],
+          status: 'POSTED',
+          totalValueDeltaBase: 20,
+          totalValueDeltaCCY: 20,
+          createdBy: 'u1',
+          createdAt: new Date('2026-01-02T00:00:00.000Z'),
+          postedAt: new Date('2026-01-02T00:00:00.000Z'),
+        }),
+      ]),
+    } as any;
+
+    const service = new InventoryValuationService(
+      itemRepo,
+      stockLevelRepo,
+      stockMovementRepo,
+      inventorySettingsRepo,
+      revaluationRepo
+    );
+    const result = await service.value('c1', '2026-01-31', 'AVERAGE');
+
+    expect(result.totalValueBase).toBe(70);
+    expect(result.items[0]).toEqual(expect.objectContaining({
+      itemId: 'i1',
+      warehouseId: 'w1',
+      qtyOnHand: 10,
+      avgCostBase: 7,
+      valueBase: 70,
+    }));
   });
 });

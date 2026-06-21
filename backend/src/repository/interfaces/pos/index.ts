@@ -1,3 +1,7 @@
-
+export * from './IPosRegisterRepository';
+export * from './IPosSettingsRepository';
 export * from './IPosShiftRepository';
-export * from './IPosOrderRepository';
+export * from './IPosCashMovementRepository';
+export * from './IPosReceiptRepository';
+export * from './IPosPaymentRepository';
+export * from './IPosReturnRepository';

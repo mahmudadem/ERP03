@@ -35,6 +35,13 @@ interface Input {
   autoInitializeModules?: boolean;
   starterTemplateId?: 'simple-trading-company';
   accountingMode?: SimpleTradingCompanyMode;
+  // NOTE-01: optional onboarding-wizard overrides for the starter policy.
+  coaTemplate?: 'periodic_trading' | 'standard';
+  costingBasis?: 'GLOBAL' | 'WAREHOUSE';
+  defaultWarehouseCode?: string;
+  defaultWarehouseName?: string;
+  salesWorkflowMode?: 'SIMPLE' | 'OPERATIONAL';
+  purchaseWorkflowMode?: 'SIMPLE' | 'OPERATIONAL';
 }
 
 export class CreateCompanyUseCase {

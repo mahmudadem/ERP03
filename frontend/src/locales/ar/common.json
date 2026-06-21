@@ -1,5 +1,31 @@
 {
   "appName": "تخطيط موارد المؤسسات03",
+  "salesGrossProfit": {
+    "titleByDocument": "Gross Profit by Document",
+    "titleByItem": "Gross Profit by Item",
+    "subtitle": "Historical gross profit facts by invoice currency and base currency",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "documentScope": "Document Scope",
+    "scopeSales": "Sales invoices and returns",
+    "scopeSalesInvoices": "Sales invoices only",
+    "scopeSalesReturns": "Sales returns only",
+    "scopeAll": "All tracked document types",
+    "scopePurchaseInvoices": "Purchase invoices only",
+    "scopePurchaseReturns": "Purchase returns only",
+    "limit": "Row Limit",
+    "itemFilter": "Item Filter",
+    "allItems": "All items",
+    "docCurrency": "Document Currency",
+    "anyCurrency": "Any currency",
+    "generate": "Generate Report",
+    "netProfit": "Net Profit Base",
+    "profitIn": "Profit IN Base",
+    "profitOut": "Profit OUT Base",
+    "lines": "Fact Lines",
+    "managementNote": "Management report from historical profit facts. This does not recalculate inventory valuation or COGS.",
+    "noData": "No gross profit facts match these filters."
+  },
   "language": {
     "label": "اللغة",
     "english": "الإنجليزية",
@@ -159,6 +185,7 @@
     "vendorGroups": "مجموعات الموردين",
     "openingStock": "رصيد أول المدة",
     "adjustments": "تسويات المخزون",
+    "revaluations": "إعادة تقييم المخزون",
     "transfers": "تحويلات المخزون",
     "stockLevels": "مستويات المخزون",
     "movements": "حركات المخزون",
@@ -2571,6 +2598,91 @@
         "warehouse": "المستودع",
         "unitCostBase": "تكلفة الوحدة الأساس"
       }
+    },
+    "revaluations": {
+      "title": "إعادة تقييم المخزون",
+      "newTitle": "إعادة تقييم مخزون جديدة",
+      "detailTitle": "إعادة تقييم المخزون",
+      "subtitle": "تصحيح قيمة التكلفة فقط. الكمية لا تتغير.",
+      "backToList": "العودة إلى إعادة التقييم",
+      "newButton": "إعادة تقييم جديدة",
+      "saveDraft": "حفظ كمسودة",
+      "post": "ترحيل إعادة التقييم",
+      "noDelta": "لا يوجد فرق قيمة لإعادة التقييم.",
+      "notFound": "لم يتم العثور على إعادة تقييم المخزون.",
+      "postingControl": "رقابة الترحيل",
+      "postingNotice": "إعادة تقييم المخزون لا تغيّر الكمية. في وضعي INVOICE_DRIVEN / PERPETUAL ينشئ الترحيل قيداً متوازناً مقابل حساب إعادة تقييم المخزون. في وضع PERIODIC يتم تحديث متوسط تكلفة السجل الفرعي دون إنشاء قيد يومي لمخزون الأصول.",
+      "details": "تفاصيل إعادة التقييم",
+      "linesTitle": "بنود إعادة التقييم",
+      "addItem": "إضافة صنف",
+      "searchPlaceholder": "ابحث في إعادة التقييم أو السبب أو الملاحظات...",
+      "empty": "لا توجد عمليات إعادة تقييم مخزون",
+      "reasons": {
+        "costCorrection": "تصحيح تكلفة",
+        "basisChange": "تغيير أساس التكلفة",
+        "migrationFix": "تصحيح ترحيل بيانات",
+        "writeOff": "شطب",
+        "other": "أخرى"
+      },
+      "errors": {
+        "loadFailed": "فشل تحميل عمليات إعادة تقييم المخزون.",
+        "dateRequired": "التاريخ مطلوب.",
+        "lineRequired": "يلزم بند واحد على الأقل بكمية موجبة."
+      },
+      "toasts": {
+        "drafted": "تم حفظ إعادة تقييم المخزون كمسودة.",
+        "posted": "تم ترحيل إعادة تقييم المخزون."
+      },
+      "columns": {
+        "item": "الصنف",
+        "currentQty": "الكمية الحالية",
+        "currentAvgCost": "متوسط التكلفة الحالي",
+        "currentValue": "القيمة الحالية",
+        "newAvgCostBase": "متوسط التكلفة الجديد (الأساس)",
+        "newValue": "القيمة الجديدة",
+        "valueDelta": "فرق القيمة"
+      },
+      "readiness": {
+        "date": "تم تحديد تاريخ إعادة التقييم",
+        "qty": "يوجد صنف واحد على الأقل بكمية",
+        "delta": "التكلفة الجديدة تختلف عن الحالية",
+        "account": "حساب إعادة التقييم مطلوب عند الترحيل المحاسبي"
+      },
+      "fields": {
+        "reason": "السبب",
+        "globalBasis": "أساس تكلفة عام",
+        "warehouse": "المستودع",
+        "date": "تاريخ إعادة التقييم",
+        "notes": "ملاحظات"
+      },
+      "placeholders": {
+        "item": "اختر الصنف",
+        "globalWarehouse": "غير مستخدم في وضع GLOBAL",
+        "warehouse": "اختر المستودع"
+      },
+      "rail": {
+        "document": "المستند",
+        "reference": "المرجع",
+        "status": "الحالة",
+        "reason": "السبب",
+        "date": "التاريخ",
+        "voucher": "القيد",
+        "readiness": "الجاهزية",
+        "totals": "الإجماليات",
+        "lines": "البنود",
+        "valueDeltaBase": "فرق القيمة (الأساس)"
+      },
+      "list": {
+        "revaluation": "إعادة التقييم",
+        "date": "التاريخ",
+        "reason": "السبب",
+        "status": "الحالة",
+        "valueDeltaBase": "فرق القيمة (الأساس)"
+      },
+      "confirm": {
+        "title": "ترحيل إعادة تقييم المخزون؟",
+        "message": "سيتم ترحيل إعادة التقييم وتحديث متوسط تكلفة السجل الفرعي. في وضعي INVOICE_DRIVEN / PERPETUAL يتم إنشاء قيد متوازن مقابل حساب إعادة تقييم المخزون / الفروقات. في وضع PERIODIC يتم تحديث السجل الفرعي دون إنشاء قيد يومي."
+      }
     }
   },
   "sales": {
@@ -4009,7 +4121,16 @@
     "inactive": "غير نشط",
     "loading": "جارٍ التحميل...",
     "optional": "اختياري",
-    "checking": "جارٍ التحقق…"
+    "checking": "جارٍ التحقق…",
+    "all": "الكل",
+    "back": "رجوع",
+    "new": "جديد",
+    "draft": "مسودة",
+    "posted": "مرحّل",
+    "view": "عرض",
+    "post": "ترحيل",
+    "apply": "تطبيق",
+    "clearFilters": "مسح عوامل التصفية"
   },
   "messaging": {
     "whatsapp": {

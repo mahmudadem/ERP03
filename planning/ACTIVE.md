@@ -1,13 +1,121 @@
 # 🎯 Current Focus
 
-## Task 246 complete - error-taxonomy 4xx (Sales + vouchers), rescued from broken agent WIP, PR-ready (2026-06-19)
+## Task 246 complete - error-taxonomy 4xx merged into current main context (2026-06-21)
 
-- ✅ **Task 246** — business-rule rejections now return a structured **400** instead of 500/`INFRA_999` — on branch `feat/246-error-taxonomy`.
-- **Audit finding:** the original agent left this as **uncommitted, unwired scaffolding** + a **fabricated done report** + a **broken smoke script** (referencing codes that don't exist) claiming a large body of work that was never committed. Rescued the real parts, **wired them properly**, deleted the fiction, and rewrote the report/docs to the truth.
-- Real change: added `SALES_INVALID_STATE`/`SALES_ALREADY_POSTED` codes; wired `SalesInvoiceUseCases` (not-found / already-POSTED / non-DRAFT), `SubmitVoucherUseCase`, and `VoucherEntity.submit` to throw `SalesRuleError`/`VoucherRuleError extends PostingError`. Over-payment guard was already 4xx (Task 242).
-- **Decision:** re-posting a POSTED invoice → clean **400 `SALES_ALREADY_POSTED`** (no duplicate voucher), NOT a silent 200 no-op (safer for an accounting system; matches the pre-existing test's intent).
-- Verification: backend build ✅; `ErrorTaxonomyBusinessRuleMapping.test.ts` 4/4 ✅; **sales+accounting+domain-accounting 61 suites / 505 tests ✅**.
-- ⚠️ **Follow-up:** purchases mirror not wired (`PurchaseRuleError` class exists, throw sites unconverted — no QA-confirmed leak there).
+- ✅ **PR #27 conflict resolution:** merged current `origin/main` into `feat/246-error-taxonomy`. The only conflict was this planning file; code merged cleanly.
+- ✅ **Task 246** — business-rule rejections now return structured **400** responses instead of 500/`INFRA_999` for the wired Sales/voucher paths.
+- Real change: added `SALES_INVALID_STATE` / `SALES_ALREADY_POSTED`; wired `SalesInvoiceUseCases`, `SubmitVoucherUseCase`, and `VoucherEntity.submit` to domain rule errors; duplicate-code master-data guards now return `VAL_DUPLICATE_ENTRY` as 400.
+- Accounting/control decision: re-posting a POSTED invoice returns a clean **400 `SALES_ALREADY_POSTED`** and does not silently no-op, preserving duplicate-posting protection.
+- Verification before conflict resolution: backend build; `ErrorTaxonomyBusinessRuleMapping.test.ts` 4/4; sales + accounting + domain-accounting 61 suites / 505 tests.
+- Follow-up remains explicit: purchases mirror has the `PurchaseRuleError` class but throw sites are not broadly converted because no QA-confirmed 500 leak was proven there.
+
+## Task 247 — POS Module (all 5 phases) complete on `feat/247-pos-module` (2026-06-20)
+
+- ✅ **All 5 phases shipped and pushed (NOT merged to main):**
+  - **247a** foundations — registers, settings, governance toggle (commit `c52f6e36`)
+  - **247b** shift lifecycle — open/close/forceClose, cash movements, over/short voucher, X report (commit `441603ea`)
+  - **247c** core sale — `CompletePosSaleUseCase` calls the existing `CreateAndPostSalesInvoiceUseCase` with `persona:'direct', source:'pos', formType:'pos_sale'` (commit `6daaeb0d`)
+  - **247d** returns — `CompletePosReturnUseCase` calls `CreateSalesReturnUseCase` + `PostSalesReturnUseCase` with `AFTER_INVOICE` (commit `04b34693`)
+  - **247e** reports — 6 reports via `<ReportContainer>` (Z, Daily, Payment Methods, Cashier Sales, Over/Short, Receipt History) + Unsettled Costs link + i18n sweep (commit `d99c2b85`)
+- ✅ **Cross-phase quality gates (final run):** backend typecheck/build clean, backend tests 174/176 suites + 1559/1559 tests + 18 skipped, frontend typecheck/build clean (check-reports 29 routes, check-no-confirm, check-sod-approve all pass), i18n en/ar/tr `pos` namespace complete.
+- ✅ **Self-audit** vs epic §7 rubric rolled up in the per-phase completion reports and the final handoff ([planning/done/247-pos-module.md](./done/247-pos-module.md)).
+- ✅ **Architectural decisions honored:**
+  - No Firestore/Prisma in `domain/` or `application/`.
+  - No duplicated sales/tax/COGS/inventory posting in POS code. Only the over/short voucher is a direct GL write and it goes through `SubledgerVoucherPostingService`.
+  - `PersonaNotAllowedError` is surfaced, never caught-and-converted.
+  - `workflowMode` is never mutated. The Allow POS direct sales toggle is the only way to enable POS direct sales; it inserts/removes a form-scoped governance rule.
+- 🟡 **Known limitations (not blockers):** Payment method aggregation report returns placeholder zeros (per-receipt payments are visible); POS-side `recordCreate` for receipts/returns/settings is a follow-up; offline mode is out of V1; `cashRounding` is stored only; `branchId` is a free-text string on the register.
+- 🛑 **NOT merged to main** — owner and CTO audit first.
+
+## Next action (owner + CTO)
+Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./done/247-pos-module.md#consolidated-manual-test-script-owner-runnable) end-to-end on a fresh company with the POS module entitled. Each step is a single API call or a single UI flow. The cash-drawer / over-short paths are the headline to exercise first; the split-payment and CASH-change paths are the second headline.
+## Task 246B complete - Sales Gross Profit report UI ready for owner QA (2026-06-20)
+
+- ✅ **Done on `codex/246-sales-gross-profit-ui`:**
+  - Added two Sales report pages under the mandatory `ReportContainer` shell:
+    - `/sales/reports/gross-profit/by-document`
+    - `/sales/reports/gross-profit/by-item`
+  - Added Sales -> Reports menu entries for **Gross Profit by Document** and **Gross Profit by Item**.
+  - Added `salesReportingApi.getGrossProfitByDocument()` and `getGrossProfitByItem()` client methods.
+  - Filters: date range, document scope, shared item selector, document currency, row limit.
+  - Mixed document-currency groups display `docCurrencyBreakdown[]` instead of a fake summed currency amount.
+  - Updated architecture/user docs and completion report.
+- ✅ **Owner QA fix (2026-06-21):** Gross Profit by Item now resolves the item UUID to the item master label (`code - name`) before returning report rows, while keeping the UUID as the stable backend group key. The item report table no longer prints the UUID under the item label. This is a display/reporting fix only.
+- ✅ **Verification:** `npm --prefix frontend run check:reports` ✅, `npm --prefix frontend run typecheck` ✅, `npm --prefix frontend run build` ✅.
+- ✅ **QA fix verification:** `npm --prefix backend test -- --runInBand src/tests/application/reporting/GrossProfitReportUseCases.test.ts` ✅, `npm --prefix backend run typecheck` ✅, `npm --prefix backend run build` ✅, `npm --prefix frontend run typecheck` ✅.
+- **Accounting/ERP impact:** UI/reporting only. No GL voucher, COGS posting, inventory valuation, tax, AR/AP, FX revaluation, period lock, or approval behavior changed.
+
+## Next action
+
+Open a PR for `codex/246-sales-gross-profit-ui`, then owner QA should test both pages from Sales -> Reports using default filters, sales-invoice-only, sales-return-only, item filter, document-currency filter, and a mixed-currency grouping.
+
+## Task 246 PR review fixes ready - Sales Gross Profit Facts & Reports (backend-first slice) (2026-06-20)
+
+- ✅ **Done on `codex/246-sales-gross-profit-facts` (5 incremental commits + review-fix commit):**
+  - Slice 1: `SalesProfitLineFact` entity + interface + Firestore + Prisma + DI + 17 direction tests.
+  - Slice 2: `RecordSalesProfitLineFactsUseCase` + wired into SI/SR/PI/PR posting inside the existing transaction. 8 tests.
+  - Slice 3: `GetGrossProfitByDocumentUseCase` + `GetGrossProfitByItemUseCase` + `SalesGrossProfitController` + 2 routes (`/reports/gross-profit/by-document`, `/reports/gross-profit/by-item`).
+  - Slice 4/5: architecture/user docs and completion report.
+  - Review-fix slice: Prisma client now generates before backend typecheck/build; Firestore date filters are applied before `limit`; sales reports default to SI/SR only; mixed document-currency rows expose `docCurrencyBreakdown` instead of silently summing currencies.
+- ✅ **Verification after PR review fixes:** `npm --prefix backend run typecheck` ✅, focused reporting tests 33/33 ✅, `npm --prefix backend run build` ✅, full backend suite 168/170 suites passed / 1508 tests passed / 18 skipped ✅.
+- ✅ **Scope/model locked (2026-06-20):**
+  - **Type-agnostic fact storage** — facts for SI, SR, PI, PR. Sales report endpoints default to SI/SR only; PI/PR are explicit-filter only.
+  - **Absolute + direction** — `amount + 'IN'|'OUT'` per metric. Reports show IN/OUT separately.
+  - **No broad dimensions** on fact rows. Only `documentNumber` (display).
+- **Known v1 limitation:** SR/PR entities don't persist net post-discount, post-tax line totals. SR/PR profit facts use gross amounts. Documented as a follow-up.
+- **Freeze note:** Task was marked "post-freeze candidate". Owner explicitly authorized this work despite the 2026-06-13 freeze.
+
+## Prior next action
+
+PR #29 was merged; this follow-up frontend slice is complete. Documented follow-ups remain: SR/PR net line totals, `EntityDimensionAssignment` model for branch/region/salesperson reports, dedicated `'reporting.salesProfit.view'` permission, custom Form Designer document type integration, optional purchase/all-document management report.
+
+## Task 245 UX sweep complete - cherry-picked onto current main, PR-ready (2026-06-19)
+
+- ✅ **Task 245 notes NOTE-01,02,03,04,05,07,12,13** implemented on branch `feat/245-ux-polish-sweep-rebased` (NOTE-06 was already merged separately).
+- **PR #26 conflict resolution:** merged latest `origin/main` after Task 223 / PR #28 landed. The only real conflict was this planning file; Task 245 code files merged cleanly.
+- **Provenance / audit note:** same as 223 — the original branch `codex/245-ux-polish-sweep-2` was forked from `58d476b3` (243-A) before 243-B/243-C+D merged and never rebased. Feature commit **cherry-picked onto current `main`** (zero code conflicts — it does not overlap 243-B/C+D or Task 223 files); 243-B/243-C+D and Task 223 verified present.
+- Note: the 245 done report `planning/done/245-ux-polish-sweep.md` had already (wrongly) ridden onto main inside PR #23; this PR makes that report's claims actually true by landing the code.
+- Spot-checked: NOTE-01 (onboarding COA/costing/warehouse/workflow overrides — backend regression test added), NOTE-12 (Quick Add removed), NOTE-13 (activate/deactivate toggle) all present.
+- Verification before conflict resolution: backend `tsc` build ✅; `SimpleTradingCompanyInitializer.test.ts` 4/4 ✅; frontend typecheck ✅; frontend production build ✅.
+- ⚠️ **Not yet owner-tested** — needs a browser pass over Customers list, Items page, UOM page, and the onboarding wizard.
+
+## Task 223 complete - Inventory Revaluation (value-only cost correction) merged via PR #28 (2026-06-20)
+
+- ✅ **Task 223 only** was implemented on branch `codex/223-inventory-revaluation-fresh` and merged into `main` through PR #28.
+- New document: `Inventory → Forms → Revaluations` reuses the Stock Adjustment scaffold visually but has different business behavior:
+  - Quantity is never changed. The line table has qty/current avg cost/current value as read-only; **only New Avg Cost is editable**.
+  - Reasons: `COST_CORRECTION`, `BASIS_CHANGE`, `MIGRATION_FIX`, `WRITE_OFF`, `OTHER`.
+  - Costing basis awareness: `WAREHOUSE` revalues the named level; `GLOBAL` re-prices every level to the new company average.
+  - Mode-aware posting:
+    - `INVOICE_DRIVEN` / `PERPETUAL`: balanced `JOURNAL_ENTRY` voucher through `SubledgerVoucherPostingService` (Dr/Cr Inventory Asset vs `InventorySettings.defaultInventoryRevaluationAccountId`). Period-lock + approval honored via the same `PostingGateway` as every other inventory-origin write.
+    - `PERIODIC`: sub-ledger average cost updated, **no daily Inventory Asset GL voucher** — report-time `Inventory Valuation` uses the new basis.
+  - Sub-ledger write + GL post + revaluation status update are wrapped in one `transactionManager.runTransaction` so a GL failure rolls the sub-ledger write back.
+  - Hard guards: missing revaluation account blocks posting in live modes (readable error), zero qty blocks posting, posted cannot be re-edited or re-posted (DRAFT-only).
+- Backend additions:
+  - Domain entity `InventoryRevaluation` (DRAFT/POSTED, append-only audit fields, 2-/6-decimal normalization).
+  - `IInventoryRevaluationRepository` + Firestore + Prisma impls.
+  - New Prisma models `InventoryRevaluation` + `InventoryRevaluationLine` with company/status/date indexes, plus the matching inverse relation on `Item`.
+  - Use cases: `CreateInventoryRevaluationUseCase` (re-reads sub-ledger to authoritatively snapshot qty/avg cost), `PostInventoryRevaluationUseCase` (in-transaction write + GL post), `ListInventoryRevaluationsUseCase`, `GetInventoryRevaluationUseCase`.
+- Frontend additions:
+  - `frontend/src/modules/inventory/pages/InventoryRevaluationPage.tsx` — list + scaffold form, uses `DocumentDetailScaffold` + `ClassicLineItemsTable` + `OperationalListLayout` + shared `ItemSelector` / `WarehouseSelector` / `DatePicker` + shared `ConfirmDialog` (warning tone) for post; toasts on every server response.
+  - 3 routes (`/inventory/revaluations`, `/new`, `/:id`), sidebar entry under `Inventory → Forms → Revaluations` (Scale icon, `inventory.stock.adjust` permission), `inventoryApi` methods + DTOs + reason enum, i18n key `revaluations` in en/ar/tr.
+- Audit hardening added before PR:
+  - Revaluation detail reads are tenant-scoped by `(companyId, id)`.
+  - Historical inventory valuation, period as-of valuation, and stock reconciliation replay posted revaluations alongside stock movements.
+  - WAREHOUSE mode updates `Item.costingStats.avgCost` as the weighted item-level average across all warehouses.
+  - GLOBAL mode draft UI can create company-wide lines without requiring a warehouse.
+  - The Revaluations page has full `en/ar/tr` i18n keys, not just sidebar text.
+- Verification:
+  - `npm --prefix backend run typecheck` — clean.
+  - `npm --prefix backend run build` — clean (`npx prisma generate` re-run for the new schema models).
+  - `npm --prefix backend test` — **166 suites passed / 2 suites skipped / 0 failures; 1492 tests passed / 18 skipped / 1510 total**.
+  - `npm --prefix frontend run typecheck` — clean.
+  - `npm --prefix frontend run build` — clean (existing bundle-size / Browserslist / baseline-data warnings only).
+- Docs:
+  - [docs/architecture/inventory-revaluation.md](../docs/architecture/inventory-revaluation.md) — new technical doc.
+  - [docs/user-guide/inventory/inventory-revaluation.md](../docs/user-guide/inventory/inventory-revaluation.md) — new end-user walkthrough.
+  - [planning/done/223-inventory-revaluation.md](./done/223-inventory-revaluation.md) — completion report.
+- **Not yet owner-tested** — needs a browser pass over `/inventory/revaluations` (web + windows modes) to confirm: a) revalue-up posts balanced voucher + sub-ledger avg updates, b) revalue-down reverses GL direction, c) PERIODIC skip works, d) the readiness rail and post confirm dialog look right.
 
 ## Task 243-C+D complete - right-click price override + Form-Designer parity PR-ready (2026-06-19)
 

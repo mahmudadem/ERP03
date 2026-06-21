@@ -31,6 +31,11 @@ const newClientId = (): string => {
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
+const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; label: string }> = [
+  { template: '{parent}-{partyCode}', label: 'Parent-Party  (10401-C001)' },
+  { template: '{parent}.{partyCode}', label: 'Parent.Party  (10401.C001)' },
+  { template: '{parent}-{seq3}', label: 'Parent-Sequence  (10401-001)' },
+];
 
 const SalesSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -39,6 +44,7 @@ const SalesSettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<SalesSettingsDTO | null>(null);
+  const [arFormatCustom, setArFormatCustom] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { getAccountById } = useAccounts();
@@ -616,15 +622,42 @@ const SalesSettingsPage: React.FC = () => {
                     <label className="block text-sm font-medium text-gray-700 mb-1">
                       {t('sales.settings.partyAccountFormat.label', 'AR Sub-account Code Format')}
                     </label>
-                    <input
-                      type="text"
-                      className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
-                      value={settings.partyAccountCodeFormat || PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
-                      onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
-                      placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
-                    />
+                    {(() => {
+                      const raw = (settings.partyAccountCodeFormat ?? '').trim();
+                      const matched = PARTY_ACCOUNT_CODE_PRESETS.find((p) => p.template === raw);
+                      const showCustom = arFormatCustom || (raw.length > 0 && !matched);
+                      const selectValue = showCustom ? 'CUSTOM' : (matched ? matched.template : PARTY_ACCOUNT_CODE_PRESETS[0].template);
+                      return (
+                        <>
+                          <select
+                            className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                            value={selectValue}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === 'CUSTOM') { setArFormatCustom(true); }
+                              else { setArFormatCustom(false); updateSetting('partyAccountCodeFormat', val); }
+                            }}
+                          >
+                            {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
+                              <option key={p.template} value={p.template}>{p.label}</option>
+                            ))}
+                            <option value="CUSTOM">{t('sales.settings.partyAccountFormat.custom', 'Custom pattern…')}</option>
+                          </select>
+                          {showCustom && (
+                            <input
+                              type="text"
+                              autoFocus
+                              className="mt-2 w-full rounded-lg border border-gray-300 px-4 py-2 font-mono text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                              value={settings.partyAccountCodeFormat || ''}
+                              onChange={(e) => updateSetting('partyAccountCodeFormat', e.target.value)}
+                              placeholder={PARTY_ACCOUNT_CODE_FORMAT_FALLBACK}
+                            />
+                          )}
+                        </>
+                      );
+                    })()}
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      {t('sales.settings.partyAccountFormat.help', 'Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.')}
+                      {t('sales.settings.partyAccountFormat.help', 'Applied to every new customer AR sub-account. Tokens: {parent}, {partyCode}, {seq3}.')}
                     </p>
                   </div>
 

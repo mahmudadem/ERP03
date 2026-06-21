@@ -744,7 +744,8 @@ export class PurchaseController {
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
-        diContainer.partyItemPriceRepository
+        diContainer.partyItemPriceRepository,
+        diContainer.recordSalesProfitLineFactsUseCase
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -1248,7 +1249,8 @@ export class PurchaseController {
         PurchaseController.buildAccountingPostingService(),
         diContainer.accountRepository,
         diContainer.transactionManager,
-        diContainer.partyItemPriceRepository
+        diContainer.partyItemPriceRepository,
+        diContainer.recordSalesProfitLineFactsUseCase
       );
 
       const pr = await useCase.execute(companyId, id);

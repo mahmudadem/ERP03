@@ -85,6 +85,7 @@ export const moduleMenuMap: Record<
         children: [
           { label: 'Opening Stock Documents', path: '/inventory/opening-stock', permission: 'inventory.movements.record', icon: 'PackagePlus' },
           { label: 'Adjustments', path: '/inventory/adjustments', permission: 'inventory.stock.adjust', icon: 'SlidersHorizontal' },
+          { label: 'Revaluations', path: '/inventory/revaluations', permission: 'inventory.stock.adjust', icon: 'Scale' },
           { label: 'Transfers', path: '/inventory/transfers', permission: 'inventory.stock.adjust', icon: 'ArrowLeftRight' },
         ],
       },
@@ -136,6 +137,8 @@ export const moduleMenuMap: Record<
           { label: 'AR Aging', path: '/sales/reports/ar-aging', icon: 'Clock3' },
           { label: 'Customer Statement', path: '/sales/reports/customer-statement', icon: 'ScrollText' },
           { label: 'Sales Analytics', path: '/sales/reports/sales-analytics', icon: 'PieChart' },
+          { label: 'Gross Profit by Document', path: '/sales/reports/gross-profit/by-document', icon: 'ReceiptText' },
+          { label: 'Gross Profit by Item', path: '/sales/reports/gross-profit/by-item', icon: 'PackageCheck' },
           { label: 'Aged Backlog', path: '/sales/aged-backlog', icon: 'Clock3' },
         ],
       },
@@ -211,6 +214,23 @@ export const moduleMenuMap: Record<
     icon: 'Monitor',
     items: [
       { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access', icon: 'Calculator' },
+      { label: 'Shift', path: '/pos/shift', permission: 'pos.shift.open', icon: 'Clock' },
+      { label: 'Returns', path: '/pos/returns', permission: 'pos.return.create', icon: 'Undo2' },
+      { label: 'Registers', path: '/pos/registers', permission: 'pos.registers.manage', icon: 'MonitorSmartphone' },
+      {
+        label: 'Reports',
+        icon: 'BarChart3',
+        children: [
+          { label: 'Z Report (by shift)', path: '/pos/reports/z', permission: 'pos.reports.view', icon: 'ReceiptText' },
+          { label: 'Daily Summary', path: '/pos/reports/daily', permission: 'pos.reports.view', icon: 'CalendarDays' },
+          { label: 'Payment Methods', path: '/pos/reports/payments', permission: 'pos.reports.view', icon: 'CreditCard' },
+          { label: 'Cashier Sales', path: '/pos/reports/cashiers', permission: 'pos.reports.view', icon: 'Users' },
+          { label: 'Cash Over/Short', path: '/pos/reports/over-short', permission: 'pos.reports.view', icon: 'Scale' },
+          { label: 'Receipt History', path: '/pos/reports/receipts', permission: 'pos.reports.view', icon: 'History' },
+          { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'pos.reports.view', icon: 'CircleDollarSign' },
+        ],
+      },
+      { label: 'Settings', path: '/pos/settings', permission: 'pos.settings.manage', icon: 'Settings' },
     ],
   },
   manufacturing: {

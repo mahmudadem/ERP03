@@ -4,7 +4,10 @@
   "description": "ERP Enhanced Backend",
   "main": "lib/backend/src/index.js",
   "scripts": {
+    "prisma:generate": "prisma generate",
+    "prebuild": "npm run prisma:generate",
     "build": "tsc",
+    "pretypecheck": "npm run prisma:generate",
     "typecheck": "tsc --noEmit",
     "serve": "firebase emulators:start --import=../emulator-data --only functions",
     "shell": "firebase functions:shell",

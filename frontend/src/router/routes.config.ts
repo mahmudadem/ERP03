@@ -48,6 +48,7 @@ const WarehousesPage = lazy(() => import('../modules/inventory/pages/WarehousesP
 const StockLevelsPage = lazy(() => import('../modules/inventory/pages/StockLevelsPage'));
 const StockMovementsPage = lazy(() => import('../modules/inventory/pages/StockMovementsPage'));
 const StockAdjustmentPage = lazy(() => import('../modules/inventory/pages/StockAdjustmentPage'));
+const InventoryRevaluationPage = lazy(() => import('../modules/inventory/pages/InventoryRevaluationPage'));
 const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningStockPage'));
 const StockTransfersPage = lazy(() => import('../modules/inventory/pages/StockTransfersPage'));
 const LowStockAlertsPage = lazy(() => import('../modules/inventory/pages/LowStockAlertsPage'));
@@ -63,6 +64,16 @@ const EmployeesListPage = lazy(() => import('../modules/hr/pages/EmployeesListPa
 
 // POS
 const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
+const PosSettingsPage = lazy(() => import('../modules/pos/pages/PosSettingsPage'));
+const PosRegistersPage = lazy(() => import('../modules/pos/pages/PosRegistersPage'));
+const PosShiftPage = lazy(() => import('../modules/pos/pages/PosShiftPage'));
+const PosReturnPage = lazy(() => import('../modules/pos/pages/PosReturnPage'));
+const PosZReportPage = lazy(() => import('../modules/pos/pages/PosZReportPage'));
+const PosDailySummaryReportPage = lazy(() => import('../modules/pos/pages/PosDailySummaryReportPage'));
+const PosPaymentMethodReportPage = lazy(() => import('../modules/pos/pages/PosPaymentMethodReportPage'));
+const PosCashierSalesReportPage = lazy(() => import('../modules/pos/pages/PosCashierSalesReportPage'));
+const PosCashOverShortReportPage = lazy(() => import('../modules/pos/pages/PosCashOverShortReportPage'));
+const PosReceiptHistoryReportPage = lazy(() => import('../modules/pos/pages/PosReceiptHistoryReportPage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
@@ -160,6 +171,8 @@ const AgedBacklogPage = lazy(() => import('../modules/sales/pages/AgedBacklogPag
 const ArAgingReportPage = lazy(() => import('../modules/sales/pages/ArAgingReportPage'));
 const CustomerStatementPage = lazy(() => import('../modules/sales/pages/CustomerStatementPage'));
 const SalesAnalyticsPage = lazy(() => import('../modules/sales/pages/SalesAnalyticsPage'));
+const SalesGrossProfitByDocumentPage = lazy(() => import('../modules/sales/pages/SalesGrossProfitByDocumentPage'));
+const SalesGrossProfitByItemPage = lazy(() => import('../modules/sales/pages/SalesGrossProfitByItemPage'));
 const RecurringInvoicesPage = lazy(() => import('../modules/sales/pages/RecurringInvoicesPage'));
 const DynamicDocumentPage = lazy(() => import('../modules/tools/pages/DynamicDocumentPage'));
 const CanvasDevPage = lazy(() => import('../pages/dev/CanvasDevPage').then(m => ({ default: m.CanvasDevPage })));
@@ -244,6 +257,10 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/adjustments/new', label: 'New Adjustment', component: StockAdjustmentPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/adjustments/:id', label: 'Adjustment Detail', component: StockAdjustmentPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/adjustments', label: 'Adjustments', component: StockAdjustmentPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+
+  { path: '/inventory/revaluations/new', label: 'New Inventory Revaluation', component: InventoryRevaluationPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/revaluations/:id', label: 'Inventory Revaluation Detail', component: InventoryRevaluationPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
+  { path: '/inventory/revaluations', label: 'Revaluations', component: InventoryRevaluationPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
@@ -261,6 +278,16 @@ export const routesConfig: AppRoute[] = [
 
   // POS
   { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
+  { path: '/pos/settings', label: 'Settings', component: PosSettingsPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
+  { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },
+  { path: '/pos/shift', label: 'Shift', component: PosShiftPage, section: 'POS', requiredPermission: 'pos.shift.open', requiredModule: 'pos' },
+  { path: '/pos/returns', label: 'Returns', component: PosReturnPage, section: 'POS', requiredPermission: 'pos.return.create', requiredModule: 'pos' },
+  { path: '/pos/reports/z', label: 'Z Report', component: PosZReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/daily', label: 'Daily Summary', component: PosDailySummaryReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/payments', label: 'Payment Methods', component: PosPaymentMethodReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/cashiers', label: 'Cashier Sales', component: PosCashierSalesReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/over-short', label: 'Cash Over/Short', component: PosCashOverShortReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/receipts', label: 'Receipt History', component: PosReceiptHistoryReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
 
 
   // SETTINGS
@@ -369,6 +396,8 @@ export const routesConfig: AppRoute[] = [
   { path: '/sales/reports/ar-aging', label: 'AR Aging', component: ArAgingReportPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/reports/customer-statement', label: 'Customer Statement', component: CustomerStatementPage, section: 'INVENTORY', requiredModule: 'sales' },
   { path: '/sales/reports/sales-analytics', label: 'Sales Analytics', component: SalesAnalyticsPage, section: 'INVENTORY', requiredModule: 'sales' },
+  { path: '/sales/reports/gross-profit/by-document', label: 'Gross Profit by Document', component: SalesGrossProfitByDocumentPage, section: 'INVENTORY', requiredPermission: 'accounting.reports.tradingAccount.view', requiredModule: 'sales' },
+  { path: '/sales/reports/gross-profit/by-item', label: 'Gross Profit by Item', component: SalesGrossProfitByItemPage, section: 'INVENTORY', requiredPermission: 'accounting.reports.tradingAccount.view', requiredModule: 'sales' },
   { path: '/sales/recurring-invoices', label: 'Recurring Invoices', component: RecurringInvoicesPage, section: 'INVENTORY', requiredModule: 'sales' },
 
   // Dynamic Sales Documents (designed in Forms Designer)

@@ -232,6 +232,7 @@ This service is **read-only**. It does not post a closing journal, rewrite histo
 - **Stock Adjustment** — manual IN or OUT for damage/loss/correction/expiry/found. Status: DRAFT → POSTED.
 - **Stock Transfer** — paired TRANSFER_OUT/TRANSFER_IN movements. Status: DRAFT → IN_TRANSIT → COMPLETED.
 - **Opening Stock Document** — initial inventory entry. Optionally posts an Accounting voucher for inventory valuation. Status: DRAFT → POSTED.
+- **Inventory Revaluation** — value-only cost correction. Never changes quantity. Updates the sub-ledger average cost in place, and posts a balanced GL voucher in `INVOICE_DRIVEN` / `PERPETUAL` mode. PERIODIC mode updates the report-time valuation basis only. See [inventory-revaluation.md](./inventory-revaluation.md) for the full contract.
 
 Document posting is immutable; corrections require a separate adjustment.
 

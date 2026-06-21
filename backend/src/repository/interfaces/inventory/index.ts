@@ -11,3 +11,4 @@ export * from './IOpeningStockDocumentRepository';
 export * from './IStockAdjustmentRepository';
 export * from './IStockTransferRepository';
 export * from './IInventoryPeriodSnapshotRepository';
+export * from './IInventoryRevaluationRepository';

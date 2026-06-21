@@ -37,9 +37,11 @@ import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/IS
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesReturnRepository } from '../../../repository/interfaces/sales/ISalesReturnRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
+import { RecordSalesProfitLineFactsUseCase, PostedLineForProfitFact } from '../../reporting/use-cases/RecordSalesProfitLineFactsUseCase';
 import {
   IPartyItemPriceRepository,
   PartyItemPriceUpsertInput,
@@ -497,7 +499,8 @@ export class PostSalesReturnUseCase {
     private readonly transactionManager: ITransactionManager,
     private readonly recordChangeService?: RecordChangeService,
     private readonly postingLogRepo?: IPostingLogRepository,
-    private readonly partyItemPriceRepo?: IPartyItemPriceRepository
+    private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {}
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
@@ -979,7 +982,7 @@ export class PostSalesReturnUseCase {
       return resolved;
     };
 
-    const arAccountId = this.resolveARAccount(customer);
+    const arAccountId = this.resolveARAccount(customer, settings);
     const resolvedARId = await resolveAccountCached(arAccountId);
 
     for (const [, line] of revenueDebitBucket) {
@@ -1186,6 +1189,43 @@ export class PostSalesReturnUseCase {
       salesReturn.postedAt = new Date();
       salesReturn.updatedAt = new Date();
       await this.salesReturnRepo.update(salesReturn, transaction);
+
+      // Task 246: record gross-profit facts inside the posting transaction.
+      // Known limitation v1: SR's `SalesReturnLine` entity does not persist
+      // the post-discount, post-tax net line totals. We use the gross amounts
+      // here (returnQty × unitPrice for revenue, returnQty × unitCost for cost).
+      // A follow-up can add the net line totals to the entity for accuracy.
+      if (this.profitFactRecorder) {
+        const rate = salesReturn.exchangeRate || 1;
+        const lines: PostedLineForProfitFact[] = salesReturn.lines.map((l) => {
+          const grossLineTotalDoc = (l.unitPriceDoc || 0) * l.returnQty;
+          const grossLineTotalBase = (l.unitPriceBase || 0) * l.returnQty;
+          const lineCostBase = l.unitCostBase * l.returnQty;
+          return {
+            lineId: l.lineId,
+            itemId: l.itemId,
+            qtyBase: l.returnQty,
+            uomId: l.uomId || '',
+            revenueAmountDoc: grossLineTotalDoc,
+            revenueAmountBase: grossLineTotalBase,
+            costAmountDoc: rate > 0 ? lineCostBase / rate : lineCostBase,
+            costAmountBase: lineCostBase,
+            exchangeRateDocToBase: rate,
+          };
+        });
+        await this.profitFactRecorder.execute({
+          companyId: salesReturn.companyId,
+          documentType: 'SALES_RETURN',
+          documentId: salesReturn.id,
+          documentNumber: salesReturn.returnNumber,
+          documentDate: salesReturn.returnDate,
+          docCurrency: salesReturn.currency,
+          baseCurrency: (baseCurrency || salesReturn.currency || 'USD').toUpperCase(),
+          snapshotVersion: 1,
+          lines,
+          transaction,
+        });
+      }
     });
 
     const posted = await this.salesReturnRepo.getById(companyId, id);
@@ -1258,11 +1298,16 @@ export class PostSalesReturnUseCase {
     return !!accountingModule?.initialized;
   }
 
-  private resolveARAccount(customer: Party): string {
-    if (!customer.defaultARAccountId) {
-      throw new Error(`Customer ${customer.displayName} has no linked AR account configured.`);
+  private resolveARAccount(customer: Party, settings: SalesSettings): string {
+    // Mirror the Sales Invoice chain (customer per-party AR → company default AR) so a
+    // customer's invoice and its return ALWAYS post to the same AR account; otherwise the
+    // subledger never nets. Falls back to the company default for parties without a sub-account
+    // (e.g. POS walk-ins).
+    const aid = customer.defaultARAccountId || settings.defaultARAccountId;
+    if (!aid) {
+      throw new Error(`Customer ${customer.displayName} has no linked AR account and no company default AR is configured.`);
     }
-    return customer.defaultARAccountId;
+    return aid;
   }
 
   private resolveRefundSettlementAccount(settings: any, perReturnOverride?: string): string {

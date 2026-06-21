@@ -444,4 +444,130 @@ describe('SimpleTradingCompanyInitializer', () => {
     expect(lastAccountingSave.autoPostEnabled).toBe(false);
     expect(lastAccountingSave.allowEditDeletePosted).toBe(false);
   });
+
+  it('honors explicit onboarding-wizard overrides for COA, costing, warehouse, and workflow (Task 245 NOTE-01)', async () => {
+    const accounts = new Map<string, any>();
+    const modules = new Map<string, any>();
+    const inventorySettings: any[] = [];
+    const salesSettings: any[] = [];
+    const purchaseSettings: any[] = [];
+    const warehouses: any[] = [];
+
+    const accountRepo: any = {
+      list: jest.fn(async () => Array.from(accounts.values())),
+      getById: jest.fn(async (_companyId: string, id: string) =>
+        Array.from(accounts.values()).find((account) => account.id === id) || null
+      ),
+      getByCode: jest.fn(async (_companyId: string, code: string) => accounts.get(code.toUpperCase()) || null),
+      getByUserCode: jest.fn(async (_companyId: string, code: string) => accounts.get(code.toUpperCase()) || null),
+      create: jest.fn(async (_companyId: string, data: any) => {
+        const code = String(data.userCode || data.code).toUpperCase();
+        const account = {
+          id: data.id || `acc-${code}`,
+          userCode: code,
+          name: data.name,
+          classification: String(data.classification || data.type).toUpperCase(),
+          accountRole: data.accountRole || 'POSTING',
+          parentId: data.parentId,
+        };
+        accounts.set(code, account);
+        return account;
+      }),
+    };
+
+    const companyModuleRepo: any = {
+      get: jest.fn(async (_companyId: string, moduleCode: string) => modules.get(moduleCode) || null),
+      update: jest.fn(async (_companyId: string, moduleCode: string, data: any) => {
+        modules.set(moduleCode, { moduleCode, ...data });
+      }),
+      create: jest.fn(async (data: any) => {
+        modules.set(data.moduleCode, data);
+      }),
+    };
+
+    const initializer = new SimpleTradingCompanyInitializer({
+      companyRepo: {
+        findById: jest.fn(async () => ({ id: 'cmp-1', baseCurrency: 'SYP' })),
+        update: jest.fn(),
+      } as any,
+      companyModuleRepo,
+      accountRepo,
+      systemMetadataRepo: {
+        getMetadata: jest.fn(async (key: string) => {
+          if (key === 'coa_templates') {
+            return [
+              { id: 'periodic_trading', accounts: periodicAccounts },
+              { id: 'standard', accounts: standardAccounts },
+            ];
+          }
+          if (key === 'currencies') return [{ code: 'SYP', name: 'Syrian Pound', symbol: 'SYP', decimalPlaces: 2 }];
+          return [];
+        }),
+      } as any,
+      companyModuleSettingsRepo: { saveSettings: jest.fn() } as any,
+      companySettingsRepo: { updateSettings: jest.fn() } as any,
+      currencyRepo: { seedCurrencies: jest.fn() } as any,
+      fiscalYearRepo: { findByCompany: jest.fn(async () => []), save: jest.fn() } as any,
+      voucherTypeRepo: {
+        getSystemTemplates: jest.fn(async () => []),
+        getByCompanyId: jest.fn(async () => []),
+        createVoucherType: jest.fn(),
+      } as any,
+      voucherFormRepo: {
+        getAllByCompany: jest.fn(async () => []),
+        create: jest.fn(),
+        update: jest.fn(),
+      } as any,
+      inventorySettingsRepo: {
+        getSettings: jest.fn(async () => null),
+        saveSettings: jest.fn(async (settings: any) => inventorySettings.push(settings)),
+      } as any,
+      warehouseRepo: {
+        getCompanyWarehouses: jest.fn(async () => warehouses),
+        createWarehouse: jest.fn(async (warehouse: any) => warehouses.push(warehouse)),
+      } as any,
+      uomRepo: {
+        getCompanyUoms: jest.fn(async () => []),
+        createUom: jest.fn(),
+      } as any,
+      salesSettingsRepo: {
+        saveSettings: jest.fn(async (settings: any) => salesSettings.push(settings)),
+      } as any,
+      purchaseSettingsRepo: {
+        saveSettings: jest.fn(async (settings: any) => purchaseSettings.push(settings)),
+      } as any,
+    });
+
+    // INVOICE_DRIVEN mode would normally pick standard + GLOBAL + SIMPLE/SIMPLE.
+    // The wizard overrode the costing basis, warehouse, and both workflows.
+    const summary = await initializer.execute({
+      companyId: 'cmp-1',
+      userId: 'user-1',
+      baseCurrency: 'SYP',
+      accountingMode: 'INVOICE_DRIVEN',
+      costingBasis: 'WAREHOUSE',
+      defaultWarehouseCode: 'PRIMARY',
+      defaultWarehouseName: 'Primary Distribution Center',
+      salesWorkflowMode: 'OPERATIONAL',
+      purchaseWorkflowMode: 'OPERATIONAL',
+    });
+
+    expect(summary.accounting.coaTemplate).toBe('standard');
+    expect(summary.inventory.costingBasis).toBe('WAREHOUSE');
+    expect(summary.inventory.defaultWarehouseCode).toBe('PRIMARY');
+    expect(summary.sales.workflowMode).toBe('OPERATIONAL');
+    expect(summary.sales.allowDirectInvoicing).toBe(false);
+    expect(summary.purchases.workflowMode).toBe('OPERATIONAL');
+    expect(summary.purchases.allowDirectInvoicing).toBe(false);
+
+    expect(inventorySettings[0].costingBasis).toBe('WAREHOUSE');
+
+    expect(warehouses).toHaveLength(1);
+    expect(warehouses[0].code).toBe('PRIMARY');
+    expect(warehouses[0].name).toBe('Primary Distribution Center');
+    expect(warehouses[0].isDefault).toBe(true);
+
+    expect(salesSettings[0].workflowMode).toBe('OPERATIONAL');
+    expect(purchaseSettings[0].workflowMode).toBe('OPERATIONAL');
+  });
 });
