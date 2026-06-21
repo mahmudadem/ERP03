@@ -3,6 +3,7 @@ import { NavLink, useLocation } from 'react-router-dom';
 import { clsx } from 'clsx';
 import { ChevronDown, ChevronRight, ChevronLeft } from 'lucide-react';
 import { useUserPreferences } from '../../hooks/useUserPreferences';
+import { useBreakpoint } from '../../hooks/useBreakpoint';
 import { Portal } from '@headlessui/react';
 import { useTranslation } from 'react-i18next';
 import { resolveSidebarIcon } from './sidebarIcons';
@@ -37,6 +38,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
 }) => {
   const location = useLocation();
   const { sidebarMode, appearanceSettings } = useUserPreferences();
+  const isDesktop = useBreakpoint('lg');
   const { t, i18n } = useTranslation();
   const isRtl = i18n.dir() === 'rtl';
   const InlineChevron = isRtl ? ChevronLeft : ChevronRight;
@@ -52,7 +54,7 @@ export const SidebarItem: React.FC<SidebarItemProps> = ({
   const [isExpanded, setIsExpanded] = React.useState(false);
   const [isHovered, setIsHovered] = React.useState(false);
   const hasChildren = children && children.length > 0;
-  const isSubmenusMode = sidebarMode === 'submenus';
+  const isSubmenusMode = sidebarMode === 'submenus' && isDesktop;
   const useApexAccordionLook = !isSubmenusMode;
   
   // Custom active check

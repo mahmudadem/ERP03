@@ -1,5 +1,5 @@
 import { randomUUID } from 'crypto';
-import { PosRegister } from '../../../domain/pos/entities/PosRegister';
+import { PosRegister, PosRegisterSettlementAccounts } from '../../../domain/pos/entities/PosRegister';
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
@@ -11,6 +11,7 @@ export interface UpsertPosRegisterInput {
   branchId?: string;
   warehouseId: string;
   cashDrawerAccountId: string;
+  settlementAccountIds?: PosRegisterSettlementAccounts;
   status?: 'ACTIVE' | 'INACTIVE';
   actor?: { userId: string; userEmail?: string };
 }
@@ -28,6 +29,7 @@ export class CreatePosRegisterUseCase {
       branchId: input.branchId,
       warehouseId: input.warehouseId,
       cashDrawerAccountId: input.cashDrawerAccountId,
+      settlementAccountIds: input.settlementAccountIds,
       status: input.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
       createdAt: now,
       updatedAt: now,
@@ -58,6 +60,7 @@ export class UpdatePosRegisterUseCase {
     if (patch.branchId !== undefined) existing.branchId = patch.branchId?.trim() || undefined;
     if (patch.warehouseId !== undefined) existing.warehouseId = patch.warehouseId;
     if (patch.cashDrawerAccountId !== undefined) existing.cashDrawerAccountId = patch.cashDrawerAccountId;
+    if (patch.settlementAccountIds !== undefined) existing.settlementAccountIds = patch.settlementAccountIds;
     if (patch.status !== undefined) existing.status = patch.status;
     existing.updatedAt = new Date();
     await this.repo.update(existing);

@@ -1672,6 +1672,7 @@ model PosRegister {
   branchId            String?
   warehouseId         String
   cashDrawerAccountId String
+  settlementAccountIds Json?
   status              String   @default("ACTIVE")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

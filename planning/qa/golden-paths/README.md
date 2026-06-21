@@ -1,6 +1,6 @@
 # Golden-Path QA Scripts
 
-> **These five scripts replace the per-feature QA-QUEUE backlog.** (Decision: CTO audit 2026-06-13, Phase 1.)
+> **These scripts replace the per-feature QA-QUEUE backlog.** (Decision: CTO audit 2026-06-13, Phase 1.)
 > Instead of testing ~40 micro-features one by one, run each module's full business flow once.
 > If a golden path passes end-to-end, the features inside it are considered verified.
 
@@ -21,7 +21,8 @@
 | 03 | [Sales](./03-sales.md) | Customer → Quote → SO → DN → SI (discounts, charges, settlement, over-payment) → Return → AR reports |
 | 04 | [Purchases](./04-purchases.md) | Vendor → PO → GRN → PI (charges/discounts) → payment → Return → AP reports |
 | 05 | [Books Check](./05-cross-module-books-check.md) | Trial balance, balance sheet, P&L, GL-impact spot checks across everything posted above |
+| 06 | [POS](./06-pos.md) | Register setup, shift cash control, sales, returns, over/short vouchers, POS reports, cross-module reconciliation |
 
 ## Time budget
 
-Roughly 30–45 minutes per script, ~3 hours for a full pass. Schedule it as one session, not five.
+Roughly 30–45 minutes per core script, ~3 hours for paths 01–05. POS adds ~60–90 minutes because it includes cash-control and cross-module reconciliation. Schedule each full pass as one focused session.

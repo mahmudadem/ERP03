@@ -570,6 +570,12 @@ export const useSidebarConfig = () => {
             path: '/dev/icons-comparison',
             icon: 'Layers',
             badge: 'New'
+          },
+          { 
+            label: translateLabel('Report Demo'), 
+            path: '/dev/report-table-demo',
+            icon: 'FlaskConical',
+            badge: 'New'
           }
         ]
       };

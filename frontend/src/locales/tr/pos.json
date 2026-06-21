@@ -1,5 +1,28 @@
 {
   "title": "Satış Noktası",
+  "setup": {
+    "title": "Satış Noktasını yapılandır",
+    "subtitle": "Modülü etkinleştirmeden önce POS çalışma kurallarını, ödeme kapatma hesaplarını ve nakit kontrol hesaplarını gözden geçirin.",
+    "useDefaults": "Varsayılanları kullan",
+    "defaultsApplied": "POS varsayılanları uygulandı. Hazır olduğunuzda gözden geçirip kurulumu bitirin.",
+    "finish": "Kurulumu bitir",
+    "finishing": "Bitiriliyor...",
+    "readyToast": "POS kurulumu tamamlandı.",
+    "failed": "POS kurulumu tamamlanamadı.",
+    "noCompany": "Etkin şirket seçili değil.",
+    "directSalesWarning": "POS doğrudan satışlarına izin vermek, kasiyer ekranından gerçek kayıtlı Satış Faturaları oluşturmayı etkinleştirir. Ödeme yöntemleri, kasa hesapları ve kasiyer izinleri hazır olana kadar kapalı tutun.",
+    "general": {
+      "title": "Çalışma kuralları"
+    },
+    "validation": {
+      "settlementAccount": "Etkin her ödeme yönteminin bir kapatma hesabı olmalıdır.",
+      "receiptPrefix": "Fiş öneki zorunludur."
+    },
+    "confirm": {
+      "title": "POS kurulumunu bitir?",
+      "body": "Bu POS ayarlarını kaydeder ve bu şirket için POS modülünü başlatılmış olarak işaretler."
+    }
+  },
   "home": {
     "title": "Satış Noktası",
     "subtitle": "Kasiyer ekranı. Geçerli kullanıcının oturum açtığı kasaya açılır.",
@@ -35,6 +58,8 @@
     "needOpenShift": "Bu kasa için açık vardiya yok.",
     "openShiftCta": "Vardiya aç",
     "noResults": "Sonuç yok.",
+    "noSalePrice": "Fiyat yok",
+    "priceRequired": "Bu ürünü POS'ta satmadan önce satış fiyatı belirleyin.",
     "cashierLabel": "Kasiyer",
     "bootstrapError": "POS verileri yüklenemedi.",
     "lastReceipt": "Son fiş",

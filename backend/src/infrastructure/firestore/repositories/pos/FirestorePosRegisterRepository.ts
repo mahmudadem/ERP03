@@ -16,7 +16,7 @@ export class FirestorePosRegisterRepository implements IPosRegisterRepository {
 
   async create(register: PosRegister, transaction?: unknown): Promise<void> {
     const ref = this.collection(register.companyId).doc(register.id);
-    const payload = register.toJSON();
+    const payload = stripUndefinedDeep(register.toJSON());
     const txn = this.asTransaction(transaction);
     if (txn) {
       txn.set(ref, payload);
@@ -27,7 +27,7 @@ export class FirestorePosRegisterRepository implements IPosRegisterRepository {
 
   async update(register: PosRegister, transaction?: unknown): Promise<void> {
     const ref = this.collection(register.companyId).doc(register.id);
-    const payload = { ...register.toJSON(), updatedAt: new Date().toISOString() };
+    const payload = stripUndefinedDeep({ ...register.toJSON(), updatedAt: new Date().toISOString() });
     const txn = this.asTransaction(transaction);
     if (txn) {
       txn.update(ref, payload);
@@ -46,4 +46,18 @@ export class FirestorePosRegisterRepository implements IPosRegisterRepository {
     const snap = await this.collection(companyId).orderBy('code', 'asc').get();
     return snap.docs.map((d) => PosRegister.fromJSON(d.data()));
   }
+}
+
+function stripUndefinedDeep<T>(value: T): T {
+  if (Array.isArray(value)) {
+    return value.map((item) => stripUndefinedDeep(item)) as T;
+  }
+  if (value && typeof value === 'object') {
+    return Object.fromEntries(
+      Object.entries(value as Record<string, unknown>)
+        .filter(([, item]) => item !== undefined)
+        .map(([key, item]) => [key, stripUndefinedDeep(item)])
+    ) as T;
+  }
+  return value;
 }

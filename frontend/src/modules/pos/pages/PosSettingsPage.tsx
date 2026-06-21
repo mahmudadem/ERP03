@@ -11,7 +11,7 @@ import { PartySelector } from '../../../components/shared/selectors/PartySelecto
 import { AccountSelector } from '../../../modules/accounting/components/shared/AccountSelector';
 import { posApi, PosSettingsDTO, PosPaymentMethodDTO, PosPaymentMethodCode } from '../../../api/posApi';
 import { errorHandler } from '../../../services/errorHandler';
-import { Info, Shield, ShieldCheck } from 'lucide-react';
+import { Info, Save, Shield, ShieldCheck } from 'lucide-react';
 
 interface Props { isWindow?: boolean }
 
@@ -29,25 +29,6 @@ const PosSettingsPage: React.FC<Props> = () => {
   const [showAllowDirectConfirm, setShowAllowDirectConfirm] = useState(false);
   const [pendingAllowDirect, setPendingAllowDirect] = useState<boolean | null>(null);
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true);
-        const result = await posApi.getSettings();
-        const data = unwrap<PosSettingsDTO | null>(result);
-        const normalized = normalizeSettings(data);
-        setSettings(normalized);
-        setOriginal(normalized);
-      } catch (err) {
-        console.error('Failed to load POS settings', err);
-        toast.error(t('pos.settings.loadError', { defaultValue: 'Failed to load POS settings.' }));
-      } finally {
-        setLoading(false);
-      }
-    };
-    void load();
-  }, []);
-
   const normalizeSettings = (data: PosSettingsDTO | null): PosSettingsDTO => {
     const base: PosSettingsDTO = data || {
       companyId: '',
@@ -59,20 +40,45 @@ const PosSettingsPage: React.FC<Props> = () => {
       paymentMethods: [],
     };
     const existing = new Map(base.paymentMethods.map((m) => [m.code, m]));
-    base.paymentMethods = ALL_METHOD_CODES.map((code) => {
-      const prev = existing.get(code);
-      return (
-        prev || {
-          code,
-          settlementAccountId: '',
-          requiresReference: code !== 'CASH',
-          allowsChange: code === 'CASH',
-          isEnabled: code === 'CASH',
-        }
-      );
-    });
-    return base;
+    return {
+      ...base,
+      paymentMethods: ALL_METHOD_CODES.map((code) => {
+        const prev = existing.get(code);
+        return (
+          prev || {
+            code,
+            settlementAccountId: '',
+            requiresReference: code !== 'CASH',
+            allowsChange: code === 'CASH',
+            isEnabled: code === 'CASH',
+          }
+        );
+      }),
+    };
   };
+
+  const loadSettings = async (): Promise<PosSettingsDTO> => {
+    const result = await posApi.getSettings();
+    const data = unwrap<PosSettingsDTO | null>(result);
+    return normalizeSettings(data);
+  };
+
+  useEffect(() => {
+    const load = async () => {
+      try {
+        setLoading(true);
+        const normalized = await loadSettings();
+        setSettings(normalized);
+        setOriginal(normalized);
+      } catch (err) {
+        console.error('Failed to load POS settings', err);
+        toast.error(t('pos.settings.loadError', { defaultValue: 'Failed to load POS settings.' }));
+      } finally {
+        setLoading(false);
+      }
+    };
+    void load();
+  }, []);
 
   const update = <K extends keyof PosSettingsDTO>(field: K, value: PosSettingsDTO[K]) => {
     setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
@@ -107,11 +113,11 @@ const PosSettingsPage: React.FC<Props> = () => {
     if (!settings) return;
     try {
       setSaving(true);
-      const result = await posApi.updateSettings(settings);
-      const next = normalizeSettings(unwrap(result));
+      await posApi.updateSettings(settings);
+      const next = await loadSettings();
       setSettings(next);
       setOriginal(next);
-      toast.success(t('pos.settings.saved', { defaultValue: 'POS settings saved.' }));
+      toast.success(t('pos.settings.saved', { defaultValue: 'POS settings saved and reloaded.' }));
     } catch (err: any) {
       console.error('Failed to save POS settings', err);
       const msg = err?.response?.data?.error?.message || err?.message || 'Failed to save POS settings.';
@@ -142,7 +148,21 @@ const PosSettingsPage: React.FC<Props> = () => {
         tabs={tabs}
         activeTab={activeTab}
         onTabChange={setActiveTab}
+        topActions={
+          <button
+            type="button"
+            onClick={onSave}
+            disabled={!hasChanges || saving}
+            className="inline-flex items-center gap-2 rounded bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <Save className="h-4 w-4" />
+            {saving
+              ? t('common.saving', { defaultValue: 'Saving...' })
+              : t('common.save', { defaultValue: 'Save' })}
+          </button>
+        }
         onSave={onSave}
+        onDiscard={() => setSettings(original)}
         saving={saving}
         hasChanges={hasChanges}
       >
@@ -183,7 +203,7 @@ const PosSettingsPage: React.FC<Props> = () => {
                 <PartySelector
                   role="CUSTOMER"
                   value={settings.walkInCustomerId}
-                  onChange={(p) => update('walkInCustomerId', p?.id || undefined)}
+                  onChange={(p) => update('walkInCustomerId', p?.id || '')}
                 />
                 <div className="text-xs text-slate-500 mt-1">
                   {t('pos.settings.walkInCustomerHelp', {
@@ -233,7 +253,6 @@ const PosSettingsPage: React.FC<Props> = () => {
                   <tr className="text-left text-xs text-slate-500 border-b">
                     <th className="py-2 px-2">{t('pos.settings.method.code', { defaultValue: 'Code' })}</th>
                     <th className="py-2 px-2">{t('pos.settings.method.label', { defaultValue: 'Label' })}</th>
-                    <th className="py-2 px-2">{t('pos.settings.method.account', { defaultValue: 'Settlement account' })}</th>
                     <th className="py-2 px-2">{t('pos.settings.method.change', { defaultValue: 'Allows change' })}</th>
                     <th className="py-2 px-2">{t('pos.settings.method.reference', { defaultValue: 'Requires ref' })}</th>
                     <th className="py-2 px-2">{t('pos.settings.method.enabled', { defaultValue: 'Enabled' })}</th>
@@ -249,12 +268,6 @@ const PosSettingsPage: React.FC<Props> = () => {
                           value={m.label || ''}
                           onChange={(e) => updateMethod(m.code, { label: e.target.value })}
                           className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                        />
-                      </td>
-                      <td className="py-2 px-2 min-w-[200px]">
-                        <AccountSelector
-                          value={m.settlementAccountId}
-                          onChange={(a) => updateMethod(m.code, { settlementAccountId: a?.id || '' })}
                         />
                       </td>
                       <td className="py-2 px-2 text-center">
@@ -299,7 +312,11 @@ const PosSettingsPage: React.FC<Props> = () => {
                 </label>
                 <AccountSelector
                   value={settings.cashOverAccountId}
-                  onChange={(a) => update('cashOverAccountId', a?.id || undefined)}
+                  onChange={(a) => update('cashOverAccountId', a?.id || '')}
+                  allowedClassifications={['REVENUE']}
+                  contextLabel={t('pos.settings.cashOverContext', { defaultValue: 'Income' })}
+                  enforceClassification
+                  enforceScope
                 />
                 <div className="text-xs text-slate-500 mt-1">
                   {t('pos.settings.cashOverHelp', { defaultValue: 'Credit account for over-counts at shift close.' })}
@@ -311,7 +328,11 @@ const PosSettingsPage: React.FC<Props> = () => {
                 </label>
                 <AccountSelector
                   value={settings.cashShortAccountId}
-                  onChange={(a) => update('cashShortAccountId', a?.id || undefined)}
+                  onChange={(a) => update('cashShortAccountId', a?.id || '')}
+                  allowedClassifications={['EXPENSE']}
+                  contextLabel={t('pos.settings.cashShortContext', { defaultValue: 'Expense' })}
+                  enforceClassification
+                  enforceScope
                 />
                 <div className="text-xs text-slate-500 mt-1">
                   {t('pos.settings.cashShortHelp', { defaultValue: 'Debit account for short-counts at shift close. Required to close a shift that has a non-zero over/short.' })}

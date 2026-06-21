@@ -1,5 +1,28 @@
 {
   "title": "Point of Sale",
+  "setup": {
+    "title": "Configure Point of Sale",
+    "subtitle": "Review POS operating rules, payment settlement accounts, and cash control accounts before enabling the module.",
+    "useDefaults": "Use defaults",
+    "defaultsApplied": "POS defaults applied. Review and finish setup when ready.",
+    "finish": "Finish setup",
+    "finishing": "Finishing...",
+    "readyToast": "POS setup completed.",
+    "failed": "Failed to complete POS setup.",
+    "noCompany": "No active company is selected.",
+    "directSalesWarning": "Allowing POS direct sales enables real posted Sales Invoices from the cashier screen. Keep it off until payment methods, cash drawer accounts, and cashier permissions are ready.",
+    "general": {
+      "title": "Operating rules"
+    },
+    "validation": {
+      "settlementAccount": "Every enabled payment method must have a settlement account.",
+      "receiptPrefix": "Receipt prefix is required."
+    },
+    "confirm": {
+      "title": "Finish POS setup?",
+      "body": "This will save these POS settings and mark the POS module as initialized for this company."
+    }
+  },
   "home": {
     "title": "Point of Sale",
     "subtitle": "Cashier terminal. Opens to the register the current user is signed in on.",
@@ -35,6 +58,8 @@
     "needOpenShift": "No open shift for this register.",
     "openShiftCta": "Open a shift",
     "noResults": "No matches.",
+    "noSalePrice": "No price",
+    "priceRequired": "Set a sale price for this item before selling it in POS.",
     "cashierLabel": "Cashier",
     "bootstrapError": "Failed to load POS data.",
     "lastReceipt": "Last receipt",

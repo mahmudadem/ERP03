@@ -19,6 +19,7 @@ export interface PosRegisterDTO {
   branchId?: string;
   warehouseId: string;
   cashDrawerAccountId: string;
+  settlementAccountIds?: Partial<Record<'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM', string>>;
   status: 'ACTIVE' | 'INACTIVE';
   createdAt: string;
   updatedAt: string;
@@ -73,6 +74,7 @@ export class PosDTOMapper {
       branchId: register.branchId,
       warehouseId: register.warehouseId,
       cashDrawerAccountId: register.cashDrawerAccountId,
+      settlementAccountIds: register.settlementAccountIds,
       status: register.status,
       createdAt: register.createdAt.toISOString(),
       updatedAt: register.updatedAt.toISOString(),

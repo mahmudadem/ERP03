@@ -24,7 +24,7 @@ const DESKTOP_SIDEBAR_WIDTH = {
 export const AppShell: React.FC = () => {
   const location = useLocation();
   const isApexMockupPath = location.pathname.startsWith('/dev/apex-ledger');
-  const { uiMode, sidebarPinned, sidebarMode, layoutMode } = useUserPreferences();
+  const { uiMode, sidebarPinned, sidebarMode, layoutMode, toggleSidebarPinned } = useUserPreferences();
 
   if (isApexMockupPath) {
     return (
@@ -113,13 +113,13 @@ export const AppShell: React.FC = () => {
   if (isDesktop) {
     if (isFlyoutMode) {
       // Flyout Mode: persistent narrow strip when closed, wider when open
-      const currentWidth = isSidebarOpen ? openWidth : closedWidth;
+      const currentWidth = (isSidebarOpen && sidebarPinned) ? openWidth : closedWidth;
       desktopMarginStyle = isRtl
         ? { marginRight: currentWidth, marginLeft: 0 }
         : { marginLeft: currentWidth, marginRight: 0 };
     } else {
-      // Accordion Mode: shifts content only when open AND pinned (no narrow strip when closed)
-      if (isSidebarOpen && sidebarPinned) {
+      // Accordion Mode: shifts content when open (unpinned also pushes content)
+      if (isSidebarOpen) {
         desktopMarginStyle = isRtl
           ? { marginRight: openWidth, marginLeft: 0 }
           : { marginLeft: openWidth, marginRight: 0 };
@@ -150,10 +150,15 @@ export const AppShell: React.FC = () => {
                   setIsSidebarOpen(false);
                 }
               }}
+              onMouseLeave={() => {
+                if (isDesktop && !sidebarPinned && isSidebarOpen) {
+                  setIsSidebarOpen(false);
+                }
+              }}
             />
 
-            {/* Backdrop — active when sidebar is open and in overlay mode (not pinned accordion on desktop, or mobile) */}
-            {isSidebarOpen && (!isDesktop || (!isFlyoutMode && !sidebarPinned)) && (
+            {/* Backdrop — only for mobile */}
+            {isSidebarOpen && !isDesktop && (
               <div
                 className="fixed inset-0 bg-black/30 z-30"
                 onClick={() => setIsSidebarOpen(false)}

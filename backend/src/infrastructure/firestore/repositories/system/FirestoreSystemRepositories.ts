@@ -128,6 +128,16 @@ export class FirestoreNotificationRepository extends BaseFirestoreRepository<Not
   }
 
   /**
+   * Mark notification as unread by a specific user
+   */
+  async markAsUnreadByUser(notificationId: string, userId: string): Promise<void> {
+    const docRef = this.db.collection(this.collectionName).doc(notificationId);
+    await docRef.update({
+      readBy: FieldValue.arrayRemove(userId)
+    });
+  }
+
+  /**
    * Mark all notifications as read for a specific user
    */
   async markAllAsReadByUser(companyId: string, userId: string): Promise<void> {

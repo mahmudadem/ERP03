@@ -41,6 +41,7 @@ export interface PosRegisterDTO {
   branchId?: string;
   warehouseId: string;
   cashDrawerAccountId: string;
+  settlementAccountIds?: Partial<Record<PosPaymentMethodCode, string>>;
   status: PosRegisterStatus;
   createdAt: string;
   updatedAt: string;
@@ -63,8 +64,15 @@ export interface PosShiftDTO {
   updatedAt: string;
 }
 
-const ok = <T>(p: Promise<{ data: { success: boolean; data: T } | T }>): Promise<T> =>
-  p.then((r: any) => (r?.data?.data !== undefined ? r.data.data : r.data));
+// The global response interceptor (setupErrorInterceptor) already unwraps the
+// `{ success, data }` envelope and resolves to the bare payload, so `r` is
+// usually ALREADY the DTO. The three-level fallback mirrors every other api
+// module (accountingApi, salesApi, …): it peels a residual envelope when the
+// interceptor is bypassed, otherwise falls through to `r`. The previous
+// two-level form (`r.data.data ?? r.data`) dropped to `r.data` (undefined),
+// which made every POS read resolve to undefined.
+const ok = <T>(p: Promise<any>): Promise<T> =>
+  p.then((r: any) => (r?.data?.data ?? r?.data ?? r) as T);
 
 export const posApi = {
   initializePos: async (): Promise<PosSettingsDTO> =>

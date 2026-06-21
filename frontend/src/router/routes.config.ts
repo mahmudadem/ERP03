@@ -64,6 +64,7 @@ const EmployeesListPage = lazy(() => import('../modules/hr/pages/EmployeesListPa
 
 // POS
 const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
+const PosSetupPage = lazy(() => import('../modules/pos/pages/PosSetupPage'));
 const PosSettingsPage = lazy(() => import('../modules/pos/pages/PosSettingsPage'));
 const PosRegistersPage = lazy(() => import('../modules/pos/pages/PosRegistersPage'));
 const PosShiftPage = lazy(() => import('../modules/pos/pages/PosShiftPage'));
@@ -277,6 +278,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/hr/employees', label: 'Employees', component: EmployeesListPage, section: 'HR', requiredPermission: 'hr.employees.view', requiredModule: 'hr' },
 
   // POS
+  { path: '/pos/setup', label: 'POS Setup', component: PosSetupPage, section: 'SETUP', requiredModule: 'pos', requiredPermission: 'pos.settings.manage', hideInMenu: true },
   { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
   { path: '/pos/settings', label: 'Settings', component: PosSettingsPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
   { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },
@@ -444,6 +446,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
   { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
+  { path: '/dev/report-table-demo', label: 'Report Table Demo', component: lazy(() => import('../pages/dev/ReportTableDemoPage')), section: 'TOOLS', hideInMenu: false },
   { path: '/dev/voucher-list', label: 'Voucher List Demo', component: lazy(() => import('../pages/dev/VoucherListDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
   { path: '/dev/smart-vouchers', label: 'Smart Voucher List', component: lazy(() => import('../pages/dev/SmartVoucherListPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
   { path: '/dev/tailwind-play-demo', label: 'Tailwind Play Demo', component: TailwindPlayDemoPage, section: 'TOOLS', hideInMenu: true },

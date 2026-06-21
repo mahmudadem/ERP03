@@ -81,6 +81,21 @@ export class PrismaNotificationRepository implements INotificationRepository {
     });
   }
 
+  async markAsUnreadByUser(notificationId: string, userId: string): Promise<void> {
+    const notification = await this.prisma.notification.findUnique({
+      where: { id: notificationId },
+      select: { readBy: true },
+    });
+    if (!notification) return;
+    
+    await this.prisma.notification.update({
+      where: { id: notificationId },
+      data: {
+        readBy: { set: notification.readBy.filter((id: string) => id !== userId) } as any,
+      },
+    });
+  }
+
   async markAllAsReadByUser(companyId: string, userId: string): Promise<void> {
     const notifications = await this.prisma.notification.findMany({
       where: {
