@@ -36,7 +36,8 @@
 | 0 | [250a](./250a-seams-and-interfaces.md) | Interface seams + adapters (no behavior change) | Enables all |
 | 1 | [250b](./250b-document-core-persona.md) | Document Core + `POS_DIRECT_SALE` persona | **POS-blocking** |
 | 1 | [250c](./250c-policy-engine-pos-decoupling.md) | Policy Engine min + POS policies; remove POS→SalesSettings | **POS-blocking** |
-| 1 | [250d](./250d-pos-posting-entry-point.md) | POS posting via Accounting Bridge, not Sales use-cases | **POS-blocking** |
+| 1 | [250d](./250d-pos-posting-entry-point.md) | POS **sale** posting via Accounting Bridge, not Sales use-cases | **POS-blocking** |
+| 1 | [250d2](./250d2-pos-return-posting-entry-point.md) | POS **return** posting via Accounting Bridge; flip folder-wide POS→Sales ban | **POS-blocking** |
 | 1 | [250e](./250e-approval-engine.md) | Subject-agnostic Approval Engine; accounting FA/CC = plug-in | **POS-blocking seam** |
 | 2 | [250f](./250f-money-core.md) | Money Core (dedup rounding; apply POS cash rounding) | During V1 |
 | 2 | [250g](./250g-audit-engine.md) | Audit Engine consolidation; wire POS | During V1 |
@@ -49,7 +50,7 @@
 ## Execution model (how agents + I work)
 
 - **Executing agents implement; I (CTO) audit.** Each task file is self-contained: objective, contract, exact files, steps, acceptance criteria, tests, Definition of Done. An executing agent should be able to act **cold** from the file alone.
-- **One builder per file area at a time** (AGENTS.md §7). Phase 1 tasks 250b/c/d/e touch overlapping POS + persona code — sequence them **b → c → d → e**, not in parallel, unless the file says otherwise.
+- **One builder per file area at a time** (AGENTS.md §7). Phase 1 tasks touch overlapping POS + persona code — sequence them **b → c → d → d2 → e**, not in parallel, unless the file says otherwise. (250d2 added 2026-06-21 by CTO ruling to decouple POS returns; see [250d](./250d-pos-posting-entry-point.md) ruling note.)
 - **Task Size Cap (AGENTS.md §4):** if a task exceeds 8 files / 3 dirs, the agent splits it and reports the breakdown before coding.
 - **No commit on failure** (AGENTS.md). Each task ends green (typecheck + build + its named tests) before commit.
 - **Per-task commit** on this branch using `feat(system-core): … [250x]`.

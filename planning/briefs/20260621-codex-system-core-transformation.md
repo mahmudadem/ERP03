@@ -44,9 +44,16 @@ This is an **owner-authorized exception to the 2026-06-13 feature freeze** (reco
 
 ## Unattended-run authorization (2026-06-21, owner away)
 
-For this run you MAY chain phases **250a → 250b → 250c → 250d → 250e** in one unattended session (still one task at a time, in order, committing per task with its tests green). **Hard-stop at the end of 250e** and hand back for CTO audit. Rules:
+For this run you MAY chain phases **250a → 250b → 250c → 250d → 250d2 → 250e** in one unattended session (still one task at a time, in order, committing per task with its tests green). **Hard-stop at the end of 250e** and hand back for CTO audit. Rules:
 
 - **Do NOT proceed past 250e** (no Phase 2/3/4 unattended). 250e is the milestone: POS unblocked, proven by tests T1–T6/T10.
+
+### CTO blocker resolution (2026-06-21) — resume at 250d
+
+250a/250b/250c are done and audited green (commit `0299755e`). You correctly stopped at 250d because the folder-wide POS→Sales import ban also catches POS **returns** (`CompletePosReturnUseCase` imports Sales return use-cases). **Ruling:**
+- **250d** stays scoped to the POS **sale** path; its architecture guard is **narrowed to the sale use-cases** (`CompletePosSaleUseCase` + `PostPosSaleUseCase`). Leave the folder-wide ban skipped with a TODO → 250d2. Do **not** touch POS returns in 250d.
+- **250d2** (new task) decouples POS **returns** the same way, then **enables the folder-wide** POS→Sales ban.
+- Read the updated [250d](../tasks/250d-pos-posting-entry-point.md) ruling note + the new [250d2](../tasks/250d2-pos-return-posting-entry-point.md) before resuming. Resume the unattended run at **250d**.
 - **Any failure = immediate STOP.** If a task's named tests fail, its acceptance criteria can't be met, the build breaks, or you hit a design ambiguity not answered by the task file + audit, STOP at the last green commit and write the blocker into `ACTIVE.md` "Where I left off". Do **not** push forward into a dependent phase on a shaky base, and do **not** invent a design decision — leave it for the CTO.
 - Per-task discipline still applies: green (typecheck + build + named tests) before each commit; no commit on failure; completion report per task.
 - Leave a running summary in `ACTIVE.md` after each task so the CTO can audit the whole 250a–250e batch on return.

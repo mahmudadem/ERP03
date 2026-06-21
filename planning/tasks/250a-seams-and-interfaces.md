@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 0 · **Blocking:** enables all later phases
 **Agent:** erp-backend-builder (one builder) · **Estimate:** 1–2 days
-**Status:** ✅ Complete — pending CTO audit
+**Status:** ✅ Complete — CTO-audited green (2026-06-21)
 
 ## Objective
 

@@ -4324,3 +4324,11 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated [docs/architecture/system-core.md](../docs/architecture/system-core.md), [planning/tasks/250c-policy-engine-pos-decoupling.md](./tasks/250c-policy-engine-pos-decoupling.md), [planning/ACTIVE.md](./ACTIVE.md), and added [planning/done/250c-policy-engine-pos-decoupling.md](./done/250c-policy-engine-pos-decoupling.md).
 - **Time spent:** ~1.8h.
 - **Next:** Continue the unattended Phase 1 sequence with 250d, removing the remaining POS direct-sale dependency on Sales use-case imports by routing through Document Core.
+
+### Session: 2026-06-21 (250d analysis stop - POS import-ban scope blocker)
+
+- **Goal:** Continue the unattended System Core sequence into 250d after the green 250c commit.
+- **Result:** Stopped before implementation. The 250d objective/scope describes decoupling POS **direct sale** posting from Sales use cases, but its acceptance gate requires enabling the all-POS Sales import ban in `SystemCoreBoundaries.test.ts`. That architecture guard currently fails on existing POS return code (`CompletePosReturnUseCase` imports Sales return/domain types), which 250d does not explicitly authorize changing.
+- **Action taken:** Reverted the uncommitted exploratory 250d code edits and left the branch at the last green commit (`0299755e`, 250c). Updated `planning/ACTIVE.md` with the blocker and options for CTO decision.
+- **Accounting/ERP impact:** No 250d accounting or posting behavior was changed or committed. 250c remains the last green system state.
+- **Next:** CTO must decide whether to broaden 250d to include POS return decoupling, narrow the 250d guard to direct-sale files only, or add a separate prep task before 250d.

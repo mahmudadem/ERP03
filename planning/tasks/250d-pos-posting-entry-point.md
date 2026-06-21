@@ -4,6 +4,8 @@
 **Depends on:** [250b](./250b-document-core-persona.md), [250c](./250c-policy-engine-pos-decoupling.md) · **Agent:** erp-backend-builder · **Estimate:** 2–4 days
 **Status:** ⬜ Not started
 
+> **CTO ruling (2026-06-21) — blocker resolved.** Codex correctly stopped because the folder-wide POS→Sales import ban also catches `CompletePosReturnUseCase` (POS returns import Sales return use-cases), which is out of this task's scope. **Decision:** 250d stays scoped to the **POS direct-sale** path; its architecture guard is **narrowed to the sale path** (see below). POS **return** decoupling is its own task — [250d2](./250d2-pos-return-posting-entry-point.md). The **folder-wide** POS→Sales ban is flipped on at the end of 250d2, not here.
+
 ## Objective
 
 Make POS **post on its own path** — through the Accounting/Financial Core (via `IAccountingBridge`) and `IInventoryCore` — instead of constructing `CreateSalesInvoiceUseCase` + `PostSalesInvoiceUseCase`. After this, **POS does not depend on the Sales App**, and a tenant with POS-on / Sales-off can complete and post a sale.
@@ -32,7 +34,7 @@ POS must construct **no Sales use-case**. For V1 the bridge may still emit the s
 **Edit:**
 - `backend/src/application/pos/use-cases/CompletePosSaleUseCase.ts` — remove `CreateSalesInvoiceUseCase`/`PostSalesInvoiceUseCase` constructor deps and call sites; post via the new path.
 - `backend/src/infrastructure/di/bindRepositories.ts` — wire POS posting to the bridge + inventory core, drop the Sales use-case wiring for POS.
-- Enable the **POS→Sales import ban** in `SystemCoreBoundaries.test.ts` (from 250a) — it should now pass.
+- **Narrow** the architecture guard in `SystemCoreBoundaries.test.ts` (from 250a) to the **sale path**: assert `CompletePosSaleUseCase` + `PostPosSaleUseCase` import nothing from `application/sales/` or `domain/sales/`. Leave the **folder-wide** `application/pos/` ban skipped with a TODO pointing at [250d2](./250d2-pos-return-posting-entry-point.md) (returns still import Sales until then).
 
 ## Out of scope
 
@@ -44,8 +46,8 @@ POS must construct **no Sales use-case**. For V1 the bridge may still emit the s
 1. Build `AccountingBridge` wrapping the existing posting services; expose `recordFinancialEvent(event)`.
 2. Build `PostPosSaleUseCase` that assembles the financial event + inventory movements from the cart and persona, then calls inventory core + bridge inside one transaction (mirror the atomicity the Sales path has).
 3. Strip Sales use-case deps from `CompletePosSaleUseCase`; route through the new use-case.
-4. Flip on the POS→Sales import-ban architecture test; fix any remaining illegal imports.
-5. Tests T2 + T5.
+4. Narrow the architecture test to the sale path (sale use-cases clean); keep the folder-wide ban skipped with a TODO → 250d2.
+5. Tests T2 + T5 (sale path).
 
 ## Tests
 
@@ -56,8 +58,8 @@ POS must construct **no Sales use-case**. For V1 the bridge may still emit the s
 ## Acceptance criteria
 
 - [ ] `CompletePosSaleUseCase` has no Sales use-case dependency.
-- [ ] `SystemCoreBoundaries.test.ts` POS→Sales ban is enabled and green.
-- [ ] T2, T5, and the golden-ledger regression pass.
+- [ ] `SystemCoreBoundaries.test.ts` **sale-path** POS→Sales ban is enabled and green (folder-wide ban remains skipped w/ TODO → 250d2).
+- [ ] T2 (sale), T5 (sale), and the golden-ledger regression pass.
 - [ ] typecheck + build clean; suite green.
 
 ## Definition of Done
@@ -68,4 +70,4 @@ POS must construct **no Sales use-case**. For V1 the bridge may still emit the s
 
 ## CTO audit gate
 
-This is the keystone POS-blocking task. Reject unless: (a) no Sales use-case is constructed on the POS path, (b) the architecture import-ban test is ON and green, (c) T2 demonstrably posts with Sales disabled, (d) ledger output matches the golden baseline.
+This is the keystone POS-blocking task. Reject unless: (a) no Sales use-case is constructed on the POS **sale** path, (b) the **sale-path** architecture guard is ON and green (folder-wide ban deferred to 250d2 with a TODO), (c) T2 demonstrably posts a **sale** with Sales disabled, (d) ledger output matches the golden baseline. Do not let 250d quietly fix returns — that is 250d2.
