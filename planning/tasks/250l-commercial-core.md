@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 4 (long-term, highest risk) · **Blocking:** no
 **Depends on:** [250h](./250h-tax-engine.md), [250e](./250e-approval-engine.md), [250c](./250c-policy-engine-pos-decoupling.md) · **Agent:** erp-backend-builder · **Estimate:** 6–10 days (split into sub-slices)
-**Status:** 🟢 Complete — 250l-1, 250l-2, and 250l-3 implemented and committed
+**Status:** ✅ CTO-audited 2026-06-21 — 250l-1 `e0334021`, 250l-2 `f2c3c6eb`, 250l-3 `c77c7e36`. **PASS WITH CAVEATS:** 250l-2 clean; 250l-1 partial (SO/PO/SR/PR helpers remain — FUP-2); **⚠️ 250l-3 promotions lack the mandatory stacking/cap model (FUP-1) — re-homing accepted only because POS promotion application is default-dormant; do NOT enable in production until the cap model lands.** See ACTIVE.md Phase 4 verdict.
 
 ## Objective
 

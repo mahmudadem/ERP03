@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 4 (long-term) · **Blocking:** no
 **Depends on:** [250d](./250d-pos-posting-entry-point.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ✅ Complete (2026-06-21)
+**Status:** ✅ Done & CTO-audited green 2026-06-21, commit `0eb5e356` (T7 passes; full-mode payload unchanged). Follow-up FUP-3: route Sales/Purchases/Inventory posters behind the bridge.
 
 ## Objective
 
