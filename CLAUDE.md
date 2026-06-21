@@ -15,7 +15,7 @@ ERP03 is a multi-tenant SaaS ERP MVP. The user is a non-technical product owner 
 
 - **Frontend:** `frontend/` (React + Vite + TypeScript)
 - **Backend:** `backend/` (Node + Express + Firebase + TypeScript)
-- **Branch:** `feat/phase-1a-core-bugs`
+- **Branch:** `main` (trunk; all shipped work merges here)
 
 ## Definition of Done (every feature)
 

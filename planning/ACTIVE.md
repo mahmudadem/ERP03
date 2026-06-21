@@ -1,5 +1,21 @@
 # 🎯 Current Focus
 
+## Repo status — everything merged, branches pruned (2026-06-21)
+
+- ✅ **All feature work through Task 247 is merged into `origin/main` and local `main` (in sync at `e8ea3a34`, 0 ahead / 0 behind).** The "NOT merged to main" notes further down this file are historical and no longer reflect reality. Verified merged (some via squash, which hides them from `git merge-base --is-ancestor`): 242 strict pricing, 243-A/B/C+D pricing, 245 UX sweep, 246/246B Gross Profit, 247 POS.
+- ✅ **Stale remote branches pruned** — deleted 22 confirmed-merged branches from origin, plus the superseded AI-UI branch (archived, see below). **What every remaining branch/tag is, so this is never a mystery again:**
+
+| Ref | What it is | Status / decision |
+|---|---|---|
+| `origin/main` | Trunk. All shipped work. `CLAUDE.md` now names this as the working branch. | Active. |
+| `origin/codex/phase-f-vendor-groups` | **Parked feature WIP.** Net-new purchase-side **Request-for-Quotation (RFQ)** backend scaffold: `PurchaseRFQ` domain entity, `PurchaseRFQUseCases`, Firestore repo, `IPurchaseRFQRepository` (~1,100 lines). No frontend. NOT in main; main only has *Sales* Quotations, which is a different feature. | **Kept.** 3 weeks old, WIP, conflicts only in DI wiring (mechanical). Finish it if Purchase RFQ is on the roadmap, otherwise formally close. |
+| `tag archive/ai-provider-uiux-rebuild-2026-05-16` | The old `claude/rebuild-ai-provider-uiux-I0gh1` branch — a wholesale rewrite of the AI provider/models/certification pages (~2,600 lines). | **Archived as a tag, branch deleted.** It was 5 weeks stale and superseded: main has since edited those same pages independently, so merging would revert newer work. Recoverable via `git checkout <tag>` only if the rebuild's design is ever wanted. |
+- **No code in the build queue.** Remaining items are verification + optional polish:
+  - Owner browser-QA of merged-but-untested features: Task 223 Inventory Revaluation, Task 245 UX sweep, Task 247 POS (run the script in [planning/done/247-pos-module.md](./done/247-pos-module.md)).
+  - Documented optional follow-ups: POS payment-method aggregation (placeholder zeros), POS receipt/return audit `recordCreate` hook, purchases error-taxonomy mirror, SR/PR net post-discount line totals.
+
+---
+
 ## Task 246 complete - error-taxonomy 4xx merged into current main context (2026-06-21)
 
 - ✅ **PR #27 conflict resolution:** merged current `origin/main` into `feat/246-error-taxonomy`. The only conflict was this planning file; code merged cleanly.
