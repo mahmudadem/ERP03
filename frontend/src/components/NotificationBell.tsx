@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback, useMemo } from 'react';
-import { Bell, X, ExternalLink } from 'lucide-react';
+import { Bell, X, ExternalLink, Check, Mail } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { client } from '../api/client';
@@ -130,6 +130,37 @@ export const NotificationBell: React.FC = () => {
     }
   };
 
+  // Mark notification as unread
+  const handleMarkAsUnread = async (notificationId: string) => {
+    try {
+      await client.post(`/tenant/notifications/${notificationId}/unread`);
+      setNotifications(prev => 
+        prev.map(n => 
+          n.id === notificationId 
+            ? { ...n, readBy: (n.readBy || []).filter(id => id !== user?.uid) }
+            : n
+        )
+      );
+      setUnreadCount(prev => prev + 1);
+      window.dispatchEvent(new CustomEvent('notifications:refresh'));
+    } catch (error) {
+      console.error('[NotificationBell] Mark as unread error:', error);
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    try {
+      await client.post('/tenant/notifications/read-all');
+      setNotifications(prev =>
+        prev.map(n => ({ ...n, readBy: [...(n.readBy || []), user?.uid || ''] }))
+      );
+      setUnreadCount(0);
+      window.dispatchEvent(new CustomEvent('notifications:refresh'));
+    } catch (error) {
+      console.error('[NotificationBell] Mark all as read error:', error);
+    }
+  };
+
   // Navigate to action URL
   const handleNotificationClick = (notification: NotificationItem) => {
     if (!notification.readBy?.includes(user?.uid || '')) {
@@ -177,7 +208,7 @@ export const NotificationBell: React.FC = () => {
       {isOpen && (
         <div
           className={clsx(
-            "absolute mt-2 w-96 max-w-[calc(100vw-1rem)] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50",
+            "absolute mt-2 w-[28rem] max-w-[calc(100vw-1rem)] bg-white dark:bg-gray-800 rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 z-50",
             isRtl ? "left-0 origin-top-left" : "right-0 origin-top-right"
           )}
         >
@@ -186,12 +217,23 @@ export const NotificationBell: React.FC = () => {
             <h3 className="font-semibold text-gray-800 dark:text-gray-200">
               {t('notifications.title', { defaultValue: 'Notifications' })}
             </h3>
-            <button
-              onClick={() => setIsOpen(false)}
-              className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
-            >
-              <X className="w-4 h-4 text-gray-500" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleMarkAllAsRead();
+                }}
+                className="text-xs text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 dark:hover:text-indigo-300 font-medium px-2 py-1 rounded hover:bg-indigo-50 dark:hover:bg-indigo-900/30 transition-colors"
+              >
+                {t('notifications.markAllAsRead', { defaultValue: 'Mark all as read' })}
+              </button>
+              <button
+                onClick={() => setIsOpen(false)}
+                className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
           </div>
 
           {/* Notification List */}
@@ -233,9 +275,36 @@ export const NotificationBell: React.FC = () => {
                           {new Date(notification.createdAt).toLocaleString()}
                         </p>
                       </div>
-                      {notification.actionUrl && (
-                        <ExternalLink className="w-4 h-4 text-gray-400 flex-shrink-0" />
-                      )}
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {!isRead ? (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsRead(notification.id);
+                            }}
+                            className="p-1.5 text-blue-600 hover:text-blue-800 hover:bg-blue-100 dark:text-blue-400 dark:hover:text-blue-300 dark:hover:bg-blue-900/50 rounded-md transition-colors tooltip"
+                            title={t('notifications.markAsRead', { defaultValue: 'Mark as read' })}
+                          >
+                            <Check className="w-4 h-4" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsUnread(notification.id);
+                            }}
+                            className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 dark:hover:text-blue-400 dark:hover:bg-blue-900/30 rounded-md transition-colors tooltip"
+                            title={t('notifications.markAsUnread', { defaultValue: 'Mark as unread' })}
+                          >
+                            <Mail className="w-4 h-4" />
+                          </button>
+                        )}
+                        {notification.actionUrl && (
+                          <div className="p-1.5">
+                            <ExternalLink className="w-4 h-4 text-gray-400" />
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );

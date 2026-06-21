@@ -2,6 +2,19 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Post-engine-merge: restore pre-engine WIP — "Bucket B")
+
+- **Context:** Epic 250 (System Core engines) merged to `main` via PR #34. The pre-engine uncommitted working-tree WIP was backed up to branch `wip/pre-engine-pos-qa` (pushed) before updating `main`.
+- **Goal:** Restore the *independent* pre-engine work (Bucket B) that the engine rewrite never touched, onto the new `main`. Leave the superseded POS-backend patches (Bucket A) behind.
+- **What was done (branch `chore/restore-bucket-b`):**
+  - Classified the 59 WIP files: **43 safe-to-restore** (engines never touched them) vs **16 mixed** (kept main's engine version).
+  - Restored the 43: notifications backend, POS DTOs/validators/domain/repos, permission guard, all POS **frontend** screens (terminal, settings, registers, setup), sidebar, NotificationBell, ReportContainer/ReportTable, translations, emulator data, planning/QA docs.
+  - **Reconciled one genuine entanglement:** the WIP's "settlement accounts per POS register" feature spanned a mixed file (`schema.prisma`, kept main's) + restored files (domain/repo/DTO/validator). Brought the feature forward cleanly: added `settlementAccountIds Json?` to `schema.prisma`, threaded `settlementAccountIds` through the engine's `CreatePosRegisterUseCase`/`UpdatePosRegisterUseCase` (was rewritten without it). Domain field is optional so existing flows are unaffected.
+  - Fixed one dev-only type drift: `ReportColumnDefinition` now makes `width`/`priority` optional (the experimental `ReportTable`/demo page; not used by any real page yet).
+- **Verification:** backend typecheck ✅, build ✅, full suite **1616 passed / 0 failed / 18 skipped**; frontend typecheck ✅, production build ✅ (CI gates pass).
+- **Not restored (Bucket A — superseded):** POS sale/settings/bootstrap/register **use-cases** + their tests + audit/master-plan docs + ACTIVE/JOURNAL old versions. These patched code the engine epic rewrote; their *intent* should be re-checked against the engines if any QA fix is still needed (all preserved on `wip/pre-engine-pos-qa`).
+- **Next:** owner browser-QA of POS screens on the new engines; then resume POS feature work / FUP-1..4.
+
 ### Session: 2026-06-21 (Epic 250l-3 — Commercial Core promotions)
 
 - **Goal:** Complete the final Commercial Core slice: POS-aware promotion evaluation with a clear stacking/conflict model and free-goods line insertion.

@@ -32,3 +32,32 @@ export function permissionGuard(requiredPermission: string) {
     next();
   };
 }
+
+export function anyPermissionGuard(requiredPermissions: string[]) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    const context = req.tenantContext;
+
+    if (!context) {
+      return next(ApiError.internal('Tenant context not initialized'));
+    }
+
+    if (context.isOwner) {
+      return next();
+    }
+
+    const hasPermission = requiredPermissions.some((requiredPermission) =>
+      context.permissions.some((perm: string) => {
+        if (perm === '*') return true;
+        if (perm === requiredPermission) return true;
+        if (requiredPermission.startsWith(perm + '.')) return true;
+        return false;
+      })
+    );
+
+    if (!hasPermission) {
+      return next(ApiError.forbidden(`Permission denied: ${requiredPermissions.join(' or ')}`));
+    }
+
+    next();
+  };
+}

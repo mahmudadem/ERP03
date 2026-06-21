@@ -45,6 +45,19 @@ export function validateUpsertPosRegisterInput(body: any): void {
   if (body.status !== undefined && !VALID_REGISTER_STATUS.includes(body.status)) {
     throw new Error(`status must be one of: ${VALID_REGISTER_STATUS.join(', ')}`);
   }
+  if (body.settlementAccountIds !== undefined) {
+    if (!body.settlementAccountIds || typeof body.settlementAccountIds !== 'object' || Array.isArray(body.settlementAccountIds)) {
+      throw new Error('settlementAccountIds must be an object');
+    }
+    for (const [method, accountId] of Object.entries(body.settlementAccountIds)) {
+      if (!VALID_METHOD_CODES.includes(method as any)) {
+        throw new Error(`settlementAccountIds key must be one of: ${VALID_METHOD_CODES.join(', ')}`);
+      }
+      if (accountId !== undefined && accountId !== null && typeof accountId !== 'string') {
+        throw new Error(`settlementAccountIds.${method} must be a string`);
+      }
+    }
+  }
 }
 
 export function validateUpdatePosSettingsInput(body: any): void {
@@ -58,9 +71,7 @@ export function validateUpdatePosSettingsInput(body: any): void {
       if (!VALID_METHOD_CODES.includes(m?.code)) {
         throw new Error(`paymentMethods[].code must be one of: ${VALID_METHOD_CODES.join(', ')}`);
       }
-      if (m.isEnabled === true && (!m.settlementAccountId || !String(m.settlementAccountId).trim())) {
-        throw new Error(`paymentMethods[].settlementAccountId is required when isEnabled is true`);
-      }
+      // Account assignment is register-level. POS Settings only controls method behavior.
     }
   }
   // Unused-but-typed access to keep the linter quiet about unused fields.

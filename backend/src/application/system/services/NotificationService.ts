@@ -191,6 +191,13 @@ export class NotificationService {
   }
 
   /**
+   * Mark notification as unread by user
+   */
+  async markAsUnread(notificationId: string, userId: string): Promise<void> {
+    return this.notificationRepository.markAsUnreadByUser(notificationId, userId);
+  }
+
+  /**
    * Mark all notifications as read by user
    */
   async markAllAsRead(companyId: string, userId: string): Promise<void> {

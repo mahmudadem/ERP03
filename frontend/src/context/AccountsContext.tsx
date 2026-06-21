@@ -41,11 +41,20 @@ interface AccountsProviderProps {
 }
 
 export const AccountsProvider: React.FC<AccountsProviderProps> = ({ children }) => {
-  const { moduleBundles, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
+  const { moduleBundles, resolvedPermissions, isOwner, isSuperAdmin, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
   const hasAccountingModule = (moduleBundles || [])
     .map((moduleId) => String(moduleId || '').trim().toLowerCase())
     .includes('accounting');
-  const canUseAccounting = !accessLoading && permissionsLoaded && hasAccountingModule;
+  const hasAccountingAccess =
+    isOwner ||
+    isSuperAdmin ||
+    resolvedPermissions.includes('*') ||
+    resolvedPermissions.some((permission) =>
+      permission.startsWith('accounting.') ||
+      permission === 'pos.settings.manage' ||
+      permission === 'pos.registers.manage'
+    );
+  const canUseAccounting = !accessLoading && permissionsLoaded && (hasAccountingModule || hasAccountingAccess);
 
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [validAccounts, setValidAccounts] = useState<Account[]>([]);
