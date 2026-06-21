@@ -16,6 +16,7 @@ import {
   SalesProfitLineFact,
 } from '../../../domain/reporting/entities/SalesProfitLineFact';
 import { PermissionChecker } from '../../../application/rbac/PermissionChecker';
+import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 
 class InMemoryProfitFactRepository implements ISalesProfitLineFactRepository {
   public store = new Map<string, SalesProfitLineFact>();
@@ -150,15 +151,33 @@ class StubPermissionChecker {
   }
 }
 
+class StubItemRepository implements Partial<IItemRepository> {
+  private items = new Map<string, any>();
+
+  set(item: { id: string; companyId: string; code: string; name: string }) {
+    this.items.set(item.id, item);
+  }
+
+  async getItem(id: string) {
+    return this.items.get(id) ?? null;
+  }
+}
+
 describe('Gross Profit report use cases (Task 246)', () => {
   let repo: InMemoryProfitFactRepository;
+  let itemRepo: StubItemRepository;
   let byDoc: GetGrossProfitByDocumentUseCase;
   let byItem: GetGrossProfitByItemUseCase;
 
   beforeEach(() => {
     repo = new InMemoryProfitFactRepository();
+    itemRepo = new StubItemRepository();
     byDoc = new GetGrossProfitByDocumentUseCase(repo, new StubPermissionChecker() as unknown as PermissionChecker);
-    byItem = new GetGrossProfitByItemUseCase(repo, new StubPermissionChecker() as unknown as PermissionChecker);
+    byItem = new GetGrossProfitByItemUseCase(
+      repo,
+      itemRepo as unknown as IItemRepository,
+      new StubPermissionChecker() as unknown as PermissionChecker
+    );
   });
 
   const seed = async (facts: Array<Partial<SalesProfitLineFact> & { id: string }>) => {
@@ -344,6 +363,28 @@ describe('Gross Profit report use cases (Task 246)', () => {
       expect(y.profitAmountBaseOut).toBe(20);
       expect(y.profitAmountBaseNet).toBe(-20);
       expect(out.totals.lineCount).toBe(3);
+    });
+
+    it('uses the item code and name as the display label instead of the UUID', async () => {
+      itemRepo.set({
+        id: '2eb7ce8b-bf13-470e-8921-d1761ae70f34',
+        companyId: 'cmp_test',
+        code: 'ITM-001',
+        name: 'Test Inventory Item',
+      });
+      await seed([{
+        id: 'a1',
+        itemId: '2eb7ce8b-bf13-470e-8921-d1761ae70f34',
+        documentId: 'si_1',
+        documentType: 'SALES_INVOICE',
+        profitAmountBase: 50,
+        profitDir: 'IN',
+      }]);
+
+      const out = await byItem.execute({ companyId: 'cmp_test', userId: 'u1' });
+
+      expect(out.rows[0].groupKey).toBe('2eb7ce8b-bf13-470e-8921-d1761ae70f34');
+      expect(out.rows[0].groupLabel).toBe('ITM-001 - Test Inventory Item');
     });
   });
 });

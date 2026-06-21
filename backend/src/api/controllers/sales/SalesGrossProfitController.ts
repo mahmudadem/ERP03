@@ -61,6 +61,7 @@ export class SalesGrossProfitController {
       const userId = (req as any).user.uid;
       const useCase = new GetGrossProfitByItemUseCase(
         diContainer.salesProfitLineFactRepository,
+        diContainer.itemRepository,
         permissionChecker
       );
       const data = await useCase.execute({

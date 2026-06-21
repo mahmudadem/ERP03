@@ -403,7 +403,9 @@ export const GrossProfitReportContent: React.FC<{
                             {visible('group') && (
                               <td className={clsx(cellPad, 'text-xs font-bold text-slate-800 dark:text-slate-100')}>
                                 <span className="block max-w-[320px] truncate">{row.groupLabel || row.groupKey}</span>
-                                <span className="mt-0.5 block font-mono text-[10px] font-medium text-slate-400">{row.groupKey}</span>
+                                {params.mode === 'BY_DOCUMENT' && (
+                                  <span className="mt-0.5 block font-mono text-[10px] font-medium text-slate-400">{row.groupKey}</span>
+                                )}
                               </td>
                             )}
                             {visible('lineCount') && <td className={clsx(cellPad, 'text-right text-xs tabular-nums text-slate-600 dark:text-slate-300')}>{row.lineCount.toLocaleString()}</td>}

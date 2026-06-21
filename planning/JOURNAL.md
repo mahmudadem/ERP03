@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Task 246B QA fix — Gross Profit item labels)
+
+- **Goal:** Fix owner QA finding where Gross Profit by Item displayed item UUIDs as the primary item label.
+- **What was done:** Updated `GetGrossProfitByItemUseCase` to resolve each grouped `itemId` through the existing `IItemRepository` and return `code - name` as `groupLabel`; wired the controller to pass `diContainer.itemRepository`; updated the item report table so it no longer prints the UUID as a secondary line in item mode; added a regression test that keeps the UUID as `groupKey` but returns the item master label for display.
+- **Accounting/ERP impact:** Reporting display only. No profit fact storage, GL voucher, COGS posting, inventory valuation, tax, AR/AP, period-lock, approval, or FX behavior changed.
+- **Verification:** `npm --prefix backend test -- --runInBand src/tests/application/reporting/GrossProfitReportUseCases.test.ts` passed (9/9). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. `npm --prefix frontend run typecheck` passed.
+- **Time spent:** ~0.5h.
+- **Next:** Owner QA should hard refresh the app and rerun Sales -> Reports -> Gross Profit by Item; the Item column should show the item code/name instead of the UUID.
+
 ### Session: 2026-06-20 (Task 247 — POS Module, all 5 phases, unattended build)
 
 - **Goal:** Build the entire Retail POS module (Task 247) end-to-end on the fresh worktree `D:\DEV2026\ERP03-pos` off `origin/main`, with quality gates, self-audit, docs, commits, and push per phase. Owner away; auditor will review the branch.
@@ -19,7 +28,6 @@
 - **Type-C blockers skipped:** none. Every Type-A/B small follow-up was handled at the assertion / single-call-site level; no hard blockers.
 - **Status:** Ready for CTO audit + owner testing. Not merged to main.
 - **Time spent:** ~3.2 hours of concentrated build across all 5 phases.
-
 
 ### Session: 2026-06-20 (Task 246B — Sales Gross Profit report UI)
 

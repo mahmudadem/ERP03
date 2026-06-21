@@ -31,7 +31,9 @@ Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./d
   - Filters: date range, document scope, shared item selector, document currency, row limit.
   - Mixed document-currency groups display `docCurrencyBreakdown[]` instead of a fake summed currency amount.
   - Updated architecture/user docs and completion report.
+- ✅ **Owner QA fix (2026-06-21):** Gross Profit by Item now resolves the item UUID to the item master label (`code - name`) before returning report rows, while keeping the UUID as the stable backend group key. The item report table no longer prints the UUID under the item label. This is a display/reporting fix only.
 - ✅ **Verification:** `npm --prefix frontend run check:reports` ✅, `npm --prefix frontend run typecheck` ✅, `npm --prefix frontend run build` ✅.
+- ✅ **QA fix verification:** `npm --prefix backend test -- --runInBand src/tests/application/reporting/GrossProfitReportUseCases.test.ts` ✅, `npm --prefix backend run typecheck` ✅, `npm --prefix backend run build` ✅, `npm --prefix frontend run typecheck` ✅.
 - **Accounting/ERP impact:** UI/reporting only. No GL voucher, COGS posting, inventory valuation, tax, AR/AP, FX revaluation, period lock, or approval behavior changed.
 
 ## Next action

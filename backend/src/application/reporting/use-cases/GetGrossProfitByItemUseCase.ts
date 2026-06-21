@@ -10,6 +10,7 @@ import {
   ProfitFactAggregationRow,
   ProfitFactFilters,
 } from '../../../repository/interfaces/reporting/ISalesProfitLineFactRepository';
+import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ProfitDocumentType } from '../../../domain/reporting/entities/SalesProfitLineFact';
 
 const DEFAULT_SALES_PROFIT_DOCUMENT_TYPES: ProfitDocumentType[] = [
@@ -48,6 +49,7 @@ export interface GetGrossProfitByItemOutput {
 export class GetGrossProfitByItemUseCase {
   constructor(
     private readonly factRepo: ISalesProfitLineFactRepository,
+    private readonly itemRepo: IItemRepository,
     private readonly permissionChecker: PermissionChecker
   ) {}
 
@@ -68,7 +70,10 @@ export class GetGrossProfitByItemUseCase {
       limit: input.limit ?? 5000,
     };
 
-    const rows = await this.factRepo.aggregateByItem(input.companyId, filters);
+    const rows = await this.withItemLabels(
+      input.companyId,
+      await this.factRepo.aggregateByItem(input.companyId, filters)
+    );
     const totals = rows.reduce(
       (acc, r) => ({
         lineCount: acc.lineCount + r.lineCount,
@@ -99,5 +104,30 @@ export class GetGrossProfitByItemUseCase {
       rows,
       totals,
     };
+  }
+
+  private async withItemLabels(
+    companyId: string,
+    rows: ProfitFactAggregationRow[]
+  ): Promise<ProfitFactAggregationRow[]> {
+    if (rows.length === 0) return rows;
+
+    const items = await Promise.all(
+      rows.map(async (row) => {
+        try {
+          const item = await this.itemRepo.getItem(row.groupKey);
+          return item?.companyId === companyId ? item : null;
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return rows.map((row, index) => {
+      const item = items[index];
+      if (!item) return row;
+      const label = item.code ? `${item.code} - ${item.name}` : item.name;
+      return { ...row, groupLabel: label };
+    });
   }
 }
