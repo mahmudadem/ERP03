@@ -69,6 +69,7 @@ import {
 } from '../../common/services/PostedDocumentEditGuard';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
+import { calculateTaxLineAmounts } from '../../system-core/tax/TaxEngine';
 import {
   SubledgerDocumentPoster,
   SubledgerPostingEntry,
@@ -166,6 +167,7 @@ export interface PurchaseInvoiceLineInput {
    *  AMOUNT is a flat discount in document currency. */
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
+  discountAmountDoc?: number;
   /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
    *  net + tax during construction so totals match the user's input. */
   priceIsInclusive?: boolean;
@@ -328,10 +330,6 @@ export class CreatePurchaseInvoiceUseCase {
 
       const invoicedQty = sourceLine.invoicedQty;
       const unitPriceDoc = sourceLine.unitPriceDoc ?? poLine?.unitPriceDoc ?? 0;
-      const lineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
-      const unitPriceBase = roundMoney(unitPriceDoc * exchangeRate);
-      const lineTotalBase = roundMoney(lineTotalDoc * exchangeRate);
-
       const taxCodeId = await this.resolveTaxCodeId(input.companyId, sourceLine.taxCodeId, item);
       let taxRate = 0;
       let taxCodeDefaultInclusive = false;
@@ -350,6 +348,16 @@ export class CreatePurchaseInvoiceUseCase {
         sourceLine.priceIsInclusive !== undefined
           ? sourceLine.priceIsInclusive === true
           : taxCodeDefaultInclusive;
+      const lineAmounts = calculateTaxLineAmounts({
+        quantity: invoicedQty,
+        unitPriceDoc,
+        exchangeRate,
+        taxRate,
+        priceIsInclusive: effectiveInclusive,
+        discountType: sourceLine.discountType,
+        discountValue: sourceLine.discountValue,
+        discountAmountDoc: sourceLine.discountAmountDoc,
+      });
 
       // Pre-totals here are illustrative; the PurchaseInvoice constructor
       // recomputes via normalizeLine, which is the source of truth for the
@@ -372,15 +380,19 @@ export class CreatePurchaseInvoiceUseCase {
         // discountAmountDoc/grossLineTotalDoc/lineTotalDoc/tax* from these.
         discountType: sourceLine.discountType,
         discountValue: sourceLine.discountValue,
-        lineTotalDoc,
-        unitPriceBase,
-        lineTotalBase,
+        grossLineTotalDoc: lineAmounts.grossLineTotalDoc,
+        discountAmountDoc: lineAmounts.discountAmountDoc,
+        lineTotalDoc: lineAmounts.lineTotalDoc,
+        unitPriceBase: lineAmounts.unitPriceBase,
+        grossLineTotalBase: lineAmounts.grossLineTotalBase,
+        discountAmountBase: lineAmounts.discountAmountBase,
+        lineTotalBase: lineAmounts.lineTotalBase,
         taxCodeId,
         taxCode: undefined,
         taxRate,
         priceIsInclusive: effectiveInclusive,
-        taxAmountDoc: roundMoney(lineTotalDoc * taxRate),
-        taxAmountBase: roundMoney(lineTotalBase * taxRate),
+        taxAmountDoc: lineAmounts.taxAmountDoc,
+        taxAmountBase: lineAmounts.taxAmountBase,
         warehouseId: sourceLine.warehouseId || poLine?.warehouseId || settings.defaultWarehouseId,
         accountId: '',
         stockMovementId: null,
@@ -1146,27 +1158,25 @@ export class PostPurchaseInvoiceUseCase {
   private freezeTaxSnapshotSync(line: PurchaseInvoiceLine, rate: number, tax?: TaxCode): void {
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
-    // Honour priceIsInclusive: when set, unitPriceDoc IS the gross — split it.
-    const inclusive = line.priceIsInclusive === true;
-    const divisor = inclusive ? 1 + line.taxRate : 1;
-    const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    // Apply the line discount BEFORE tax, mirroring SalesInvoice.calculateDiscountAmountDoc.
-    // Without this the posting recomputed lineTotal from GROSS, so the inventory debit
-    // and AP credit ignored the line discount (vendor over-credited by the discount).
-    const lineDiscountDoc = line.discountType === 'PERCENT'
-      ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * ((line.discountValue || 0) / 100))))
-      : line.discountType === 'AMOUNT'
-        ? roundMoney(Math.max(0, Math.min(line.discountValue || 0, grossLineTotalDoc)))
-        : 0;
-    const postDiscountDoc = roundMoney(grossLineTotalDoc - lineDiscountDoc);
-    line.discountAmountDoc = lineDiscountDoc;
-    line.lineTotalDoc = roundMoney(postDiscountDoc / divisor);
-    line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
-    line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
-    line.taxAmountDoc = inclusive
-      ? roundMoney(postDiscountDoc - line.lineTotalDoc)
-      : roundMoney(line.lineTotalDoc * line.taxRate);
-    line.taxAmountBase = roundMoney(line.taxAmountDoc * rate);
+    const amounts = calculateTaxLineAmounts({
+      quantity: line.invoicedQty,
+      unitPriceDoc: line.unitPriceDoc,
+      exchangeRate: rate,
+      taxRate: line.taxRate,
+      priceIsInclusive: line.priceIsInclusive === true,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
+      discountAmountDoc: line.discountAmountDoc,
+    });
+    line.grossLineTotalDoc = amounts.grossLineTotalDoc;
+    line.discountAmountDoc = amounts.discountAmountDoc;
+    line.lineTotalDoc = amounts.lineTotalDoc;
+    line.unitPriceBase = amounts.unitPriceBase;
+    line.grossLineTotalBase = amounts.grossLineTotalBase;
+    line.discountAmountBase = amounts.discountAmountBase;
+    line.lineTotalBase = amounts.lineTotalBase;
+    line.taxAmountDoc = amounts.taxAmountDoc;
+    line.taxAmountBase = amounts.taxAmountBase;
   }
 
   private recalcInvoiceTotals(pi: PurchaseInvoice): void {

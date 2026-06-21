@@ -101,6 +101,23 @@ POS sale completion now applies `PosSettings.cashRounding` before payment valida
 
 This keeps cash rounding auditable without adding a new account setting in the Phase 2 slice.
 
+## Tax Engine
+
+250h moves the shared line/charge tax math into `application/system-core/tax/TaxEngine.ts` behind `ITaxEngine`. The old `SalesInvoiceCalculationService` remains only as a compatibility wrapper so existing Sales call sites keep their API while the implementation is owned by System Core.
+
+The engine now owns:
+
+- `calcLine(...)` for exclusive/inclusive price splitting, line discounts, document/base tax, and currency-aware rounding.
+- `calcCharge(...)` for header/charge tax.
+- `allocateInvoiceDiscount(...)` for proportional invoice-discount allocation by eligible net line total, excluding gift, tax-exempt, and non-discountable lines.
+- `recoverable(...)` for purchase input tax recoverability classification.
+
+Sales Invoice and Purchase Invoice entity normalization both call the shared calculation path. Purchase Invoice creation and posting tax-freeze paths also use `calculateTaxLineAmounts(...)`, and POS preview/sale posting now calls `ITaxEngine` instead of carrying local line-tax formulas. This preserves existing SI/PI/POS totals while enforcing a single calculation source for the audited invoice and POS paths.
+
+Accounting boundary: 250h does not automatically apply invoice-level discount allocation to posted document totals. The allocation API is available and tested, but applying it to live SI/PI totals changes tax and grand totals and must be done as an explicit business/accounting slice.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.
+
+250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators.

@@ -1,5 +1,7 @@
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
+import { ITaxEngine } from '../../system-core';
+import { roundMoney } from '../../system-core/money/roundMoney';
 
 export interface PreviewPosSaleLine {
   itemId: string;
@@ -36,7 +38,8 @@ export interface PreviewPosSaleResult {
 export class PreviewPosSaleUseCase {
   constructor(
     private readonly itemRepo: IItemRepository,
-    private readonly taxCodeRepo: ITaxCodeRepository
+    private readonly taxCodeRepo: ITaxCodeRepository,
+    private readonly taxEngine: ITaxEngine
   ) {}
 
   async execute(input: PreviewPosSaleInput): Promise<PreviewPosSaleResult> {
@@ -60,13 +63,15 @@ export class PreviewPosSaleUseCase {
         }
       }
 
-      const amounts = calculatePosLineAmounts({
-        qty: l.qty,
-        unitPrice: l.unitPrice,
+      const amounts = this.taxEngine.calcLine({
+        quantity: l.qty,
+        unitPriceDoc: l.unitPrice,
+        exchangeRate: 1,
         taxRate,
         priceIsInclusive,
         discountType: l.discountType,
         discountValue: l.discountValue,
+        currency: 'USD',
       });
 
       calcLines.push({
@@ -93,34 +98,12 @@ export class PreviewPosSaleUseCase {
   }
 }
 
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
-
-function calculatePosLineAmounts(input: {
-  qty: number;
-  unitPrice: number;
-  taxRate: number;
-  priceIsInclusive: boolean;
-  discountType?: 'PERCENT' | 'AMOUNT';
-  discountValue?: number;
-}): { lineTotalBase: number; taxAmountBase: number } {
-  const gross = round2(input.qty * input.unitPrice);
-  const discount = input.discountType === 'PERCENT'
-    ? round2(gross * ((input.discountValue || 0) / 100))
-    : round2(input.discountValue || 0);
-  const afterDiscount = round2(gross - discount);
-  if (input.priceIsInclusive && input.taxRate > 0) {
-    const lineTotalBase = round2(afterDiscount / (1 + input.taxRate));
-    return { lineTotalBase, taxAmountBase: round2(afterDiscount - lineTotalBase) };
-  }
-  return { lineTotalBase: afterDiscount, taxAmountBase: round2(afterDiscount * input.taxRate) };
-}
-
 function calculatePosTotals(lines: Array<{ lineTotalBase: number; taxAmountBase: number }>): {
   subtotalBase: number;
   taxTotalBase: number;
   grandTotalBase: number;
 } {
-  const subtotalBase = round2(lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
-  const taxTotalBase = round2(lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
-  return { subtotalBase, taxTotalBase, grandTotalBase: round2(subtotalBase + taxTotalBase) };
+  const subtotalBase = roundMoney(lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+  const taxTotalBase = roundMoney(lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+  return { subtotalBase, taxTotalBase, grandTotalBase: roundMoney(subtotalBase + taxTotalBase) };
 }

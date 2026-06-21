@@ -1,4 +1,5 @@
 import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
+import { TaxEngine } from '../../../application/system-core/tax/TaxEngine';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { Party } from '../../../domain/shared/entities/Party';
 
@@ -61,7 +62,8 @@ const setup = () => {
     taxCodeRepo as any,
     companyCurrencyRepo as any,
     inventoryCore as any,
-    accountingBridge as any
+    accountingBridge as any,
+    new TaxEngine()
   );
   return { useCase, inventoryCore, accountingBridge };
 };

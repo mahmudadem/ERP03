@@ -1,4 +1,5 @@
 import { roundMoney } from '../../../application/system-core/money/roundMoney';
+import { calculateTaxLineAmounts } from '../../../application/system-core/tax/TaxEngine';
 import { AppliedPromotionInfo } from './AppliedPromotion';
 
 export type SIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
@@ -454,23 +455,17 @@ export class SalesInvoice {
     // total mismatch). Math here must stay in lockstep with
     // application/sales/services/SalesInvoiceCalculationService.calculateSalesInvoiceLineAmounts.
     const priceIsInclusive = line.priceIsInclusive === true;
-    const divisor = priceIsInclusive ? 1 + taxRate : 1;
-
-    const grossLineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
-    const discountAmountDoc = calculateDiscountAmountDoc(grossLineTotalDoc, discountType, discountValue, explicitDiscountDoc);
-    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
-    // lineTotalDoc is the NET (ex-tax) amount in both inclusive and exclusive cases.
-    const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
-
-    const unitPriceBase = roundMoney(unitPriceDoc * this.exchangeRate);
-    const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
-    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
-    const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
-    // Inclusive: tax back-calculated. Exclusive: tax = net * rate.
-    const taxAmountDoc = priceIsInclusive
-      ? roundMoney(postDiscountDoc - lineTotalDoc)
-      : roundMoney(lineTotalDoc * taxRate);
-    const taxAmountBase = roundMoney(lineTotalBase * taxRate);
+    const amounts = calculateTaxLineAmounts({
+      quantity: invoicedQty,
+      unitPriceDoc,
+      exchangeRate: this.exchangeRate,
+      taxRate,
+      priceIsInclusive,
+      discountType,
+      discountValue,
+      discountAmountDoc: explicitDiscountDoc,
+      currency: this.currency,
+    });
 
     return {
       lineId,
@@ -485,15 +480,15 @@ export class SalesInvoice {
       uomId: toOptionalStringRef(line.uomId),
       uom,
       unitPriceDoc,
-      grossLineTotalDoc,
+      grossLineTotalDoc: amounts.grossLineTotalDoc,
       discountType,
       discountValue: discountType ? discountValue : undefined,
-      discountAmountDoc,
-      lineTotalDoc,
-      unitPriceBase,
-      grossLineTotalBase,
-      discountAmountBase,
-      lineTotalBase,
+      discountAmountDoc: amounts.discountAmountDoc,
+      lineTotalDoc: amounts.lineTotalDoc,
+      unitPriceBase: amounts.unitPriceBase,
+      grossLineTotalBase: amounts.grossLineTotalBase,
+      discountAmountBase: amounts.discountAmountBase,
+      lineTotalBase: amounts.lineTotalBase,
       taxCodeId: toOptionalStringRef(line.taxCodeId),
       taxCode: toOptionalDisplayText(line.taxCode),
       taxRate,
@@ -501,8 +496,8 @@ export class SalesInvoice {
       // (no override) when not set, matching the existing field semantics — callers should set this
       // explicitly to the effective value when constructing lines.
       priceIsInclusive: line.priceIsInclusive === true ? true : (line.priceIsInclusive === false ? false : undefined),
-      taxAmountDoc,
-      taxAmountBase,
+      taxAmountDoc: amounts.taxAmountDoc,
+      taxAmountBase: amounts.taxAmountBase,
       warehouseId: toOptionalStringRef(line.warehouseId),
       revenueAccountId: toStringRef(line.revenueAccountId),
       cogsAccountId: toOptionalStringRef(line.cogsAccountId),

@@ -1,5 +1,13 @@
 import { roundMoney } from '../../system-core/money/roundMoney';
 import {
+  CalculatedTaxChargeAmounts,
+  CalculatedTaxLineAmounts,
+} from '../../system-core/contracts/ITaxEngine';
+import {
+  calculateTaxChargeAmounts,
+  calculateTaxLineAmounts,
+} from '../../system-core/tax/TaxEngine';
+import {
   SalesDiscountType,
   SalesInvoiceCharge,
   SalesInvoiceLine,
@@ -37,90 +45,28 @@ export interface SalesInvoiceTotals {
   grandTotalBase: number;
 }
 
-export interface CalculatedSalesInvoiceLineAmounts {
-  grossLineTotalDoc: number;
-  discountAmountDoc: number;
-  lineTotalDoc: number;
-  unitPriceBase: number;
-  grossLineTotalBase: number;
-  discountAmountBase: number;
-  lineTotalBase: number;
-  taxAmountDoc: number;
-  taxAmountBase: number;
-}
-
-export interface CalculatedSalesInvoiceChargeAmounts {
-  amountBase: number;
-  taxAmountDoc: number;
-  taxAmountBase: number;
-}
+export type CalculatedSalesInvoiceLineAmounts = CalculatedTaxLineAmounts;
+export type CalculatedSalesInvoiceChargeAmounts = CalculatedTaxChargeAmounts;
 
 export const calculateSalesInvoiceLineAmounts = (
   input: SalesInvoiceLineCalculationInput
 ): CalculatedSalesInvoiceLineAmounts => {
-  const priceIsInclusive = input.priceIsInclusive === true;
-  const divisor = priceIsInclusive ? 1 + input.taxRate : 1;
-
-  // grossLineTotalDoc is the pre-discount line amount in the price's own
-  // frame: inclusive when priceIsInclusive, exclusive otherwise.
-  const grossLineTotalDoc = roundMoney(input.invoicedQty * input.unitPriceDoc);
-  const discountValue = Number.isNaN(Number(input.discountValue)) ? 0 : Number(input.discountValue);
-  const explicitDiscountAmountDoc = input.discountAmountDoc !== undefined ? Number(input.discountAmountDoc) : undefined;
-
-  let discountAmountDoc = 0;
-  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
-    discountAmountDoc = roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
-  } else if (input.discountType === 'PERCENT') {
-    discountAmountDoc = roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
-  } else if (input.discountType === 'AMOUNT') {
-    discountAmountDoc = roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
-  }
-
-  // Post-discount amount still in the price's frame (inc or exc).
-  const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
-
-  // lineTotalDoc is always the net (ex-tax) amount — the subtotal basis.
-  const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
-
-  const unitPriceBase = roundMoney(input.unitPriceDoc * input.exchangeRate);
-  const grossLineTotalBase = roundMoney(grossLineTotalDoc * input.exchangeRate);
-  const discountAmountBase = roundMoney(discountAmountDoc * input.exchangeRate);
-  const lineTotalBase = roundMoney(lineTotalDoc * input.exchangeRate);
-
-  // taxAmountDoc: for exclusive, tax on net; for inclusive, back-calculated.
-  const taxAmountDoc = priceIsInclusive
-    ? roundMoney(postDiscountDoc - lineTotalDoc)
-    : roundMoney(lineTotalDoc * input.taxRate);
-  const taxAmountBase = roundMoney(lineTotalBase * input.taxRate);
-
-  return {
-    grossLineTotalDoc,
-    discountAmountDoc,
-    lineTotalDoc,
-    unitPriceBase,
-    grossLineTotalBase,
-    discountAmountBase,
-    lineTotalBase,
-    taxAmountDoc,
-    taxAmountBase,
-  };
+  return calculateTaxLineAmounts({
+    quantity: input.invoicedQty,
+    unitPriceDoc: input.unitPriceDoc,
+    exchangeRate: input.exchangeRate,
+    taxRate: input.taxRate,
+    priceIsInclusive: input.priceIsInclusive,
+    discountType: input.discountType,
+    discountValue: input.discountValue,
+    discountAmountDoc: input.discountAmountDoc,
+  });
 };
 
 export const calculateSalesInvoiceChargeAmounts = (
   input: SalesInvoiceChargeCalculationInput
 ): CalculatedSalesInvoiceChargeAmounts => {
-  const amountBase = roundMoney(input.amountDoc * input.exchangeRate);
-  const effectiveTaxRate = Number.isNaN(Number(input.taxRate)) ? 0 : Number(input.taxRate);
-  const taxAmountDoc = roundMoney(
-    input.taxAmountDoc !== undefined ? Number(input.taxAmountDoc) : input.amountDoc * effectiveTaxRate
-  );
-  const taxAmountBase = roundMoney(amountBase * effectiveTaxRate);
-
-  return {
-    amountBase,
-    taxAmountDoc,
-    taxAmountBase,
-  };
+  return calculateTaxChargeAmounts(input);
 };
 
 export const calculateSalesInvoiceTotals = (

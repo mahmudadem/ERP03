@@ -9,6 +9,7 @@ export * from './contracts/IAccountingBridge';
 export * from './contracts/IAuditEngine';
 export * from './contracts/IInventoryCore';
 export * from './money/roundMoney';
+export * from './tax/TaxEngine';
 export * from './adapters/LegacyDocumentCoreAdapter';
 export * from './adapters/LegacyNumberingEngineAdapter';
 export * from './adapters/LegacyMoneyCoreAdapter';

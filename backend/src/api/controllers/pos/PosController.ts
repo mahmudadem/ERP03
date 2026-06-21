@@ -403,7 +403,7 @@ export class PosController {
   static async previewSale(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
-      const useCase = new PreviewPosSaleUseCase(diContainer.itemRepository, diContainer.taxCodeRepository);
+      const useCase = new PreviewPosSaleUseCase(diContainer.itemRepository, diContainer.taxCodeRepository, diContainer.taxEngine);
       const result = await useCase.execute({
         companyId,
         lines: (req as any).body?.lines || [],
@@ -435,7 +435,8 @@ export class PosController {
           diContainer.taxCodeRepository,
           diContainer.companyCurrencyRepository,
           diContainer.inventoryCore,
-          diContainer.accountingBridge
+          diContainer.accountingBridge,
+          diContainer.taxEngine
         ),
         diContainer.policyEngine,
         diContainer.auditEngine

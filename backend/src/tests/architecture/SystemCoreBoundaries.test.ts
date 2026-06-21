@@ -95,6 +95,34 @@ describe('Architecture guard: system core boundaries', () => {
     }
     expect(offenders).toEqual([]);
   });
+
+  it('250h: tax engine contract and adapter must not import Sales calculation internals', () => {
+    const files = [
+      path.resolve(SRC, 'application/system-core/contracts/ITaxEngine.ts'),
+      path.resolve(SRC, 'application/system-core/adapters/LegacyTaxEngineAdapter.ts'),
+      path.resolve(SRC, 'application/system-core/tax/TaxEngine.ts'),
+    ];
+    const offenders = files
+      .filter((file) => fs.existsSync(file))
+      .filter((file) => fs.readFileSync(file, 'utf8').includes('sales/services/SalesInvoiceCalculationService'))
+      .map((file) => path.relative(SRC, file));
+    expect(offenders).toEqual([]);
+  });
+
+  it('250h: POS must consume ITaxEngine instead of carrying a local line-tax calculator', () => {
+    const posFiles = [
+      path.resolve(SRC, 'application/pos/use-cases/PreviewPosSaleUseCase.ts'),
+      path.resolve(SRC, 'application/pos/use-cases/PostPosSaleUseCase.ts'),
+    ];
+    const offenders = posFiles
+      .filter((file) => fs.existsSync(file))
+      .filter((file) => {
+        const content = fs.readFileSync(file, 'utf8');
+        return /function\s+calculate.*LineAmounts|afterDiscount\s+\*\s*input\.taxRate|1\s*\+\s*input\.taxRate/.test(content);
+      })
+      .map((file) => path.relative(SRC, file));
+    expect(offenders).toEqual([]);
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

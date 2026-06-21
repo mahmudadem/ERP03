@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 3 (after POS V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ⬜ Not started
+**Status:** ✅ Done (2026-06-21)
 
 ## Objective
 
@@ -33,14 +33,14 @@ Lift tax calculation out of Sales into a real `ITaxEngine` consumed identically 
 
 ## Acceptance criteria
 
-- [ ] Tax math lives in `ITaxEngine`; Sales/Purchases/POS consume it.
-- [ ] Invoice-discount tax allocation + recoverable implemented + tested.
-- [ ] T8 + golden regressions pass; typecheck + build clean.
+- [x] Tax math lives in `ITaxEngine`; Sales/Purchases/POS consume it.
+- [x] Invoice-discount tax allocation + recoverable implemented + tested.
+- [x] T8 + golden regressions pass; typecheck + build clean.
 
 ## Definition of Done
 
-- [ ] Commit: `refactor(system-core): extract tax engine; add discount allocation + recoverable [250h]`
-- [ ] `planning/done/250h-tax-engine.md` report; update `docs/architecture/system-core.md` tax section.
+- [x] Commit: `refactor(system-core): extract tax engine; add discount allocation + recoverable [250h]`
+- [x] `planning/done/250h-tax-engine.md` report; update `docs/architecture/system-core.md` tax section.
 
 ## CTO audit gate
 

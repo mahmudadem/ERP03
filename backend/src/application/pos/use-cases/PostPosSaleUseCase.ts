@@ -8,7 +8,7 @@ import { IInventorySettingsRepository } from '../../../repository/interfaces/inv
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
-import { IAccountingBridge, IInventoryCore } from '../../system-core';
+import { IAccountingBridge, IInventoryCore, ITaxEngine } from '../../system-core';
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
 
@@ -89,7 +89,8 @@ export class PostPosSaleUseCase {
     private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryCore: IInventoryCore,
-    private readonly accountingBridge: IAccountingBridge
+    private readonly accountingBridge: IAccountingBridge,
+    private readonly taxEngine: ITaxEngine
   ) {}
 
   async execute(input: PostPosSaleInput): Promise<PostPosSaleResult> {
@@ -124,15 +125,20 @@ export class PostPosSaleUseCase {
       }
 
       const tax = await this.resolveTax(input.companyId, sourceLine.taxCodeId || item.defaultSalesTaxCodeId);
-      const amounts = calculateLineAmounts({
-        qty: sourceLine.qty,
-        unitPrice: sourceLine.unitPrice,
+      const taxAmounts = this.taxEngine.calcLine({
+        quantity: sourceLine.qty,
+        unitPriceDoc: sourceLine.unitPrice,
+        exchangeRate: 1,
         taxRate: tax.rate,
         priceIsInclusive: tax.priceIsInclusive,
         discountType: sourceLine.discountType,
         discountValue: sourceLine.discountValue,
         currency: baseCurrency,
       });
+      const netDiscountBase = roundMoney(
+        taxAmounts.grossLineTotalBase - taxAmounts.lineTotalBase - taxAmounts.taxAmountBase,
+        baseCurrency,
+      );
 
       const lineId = `pos_line_${randomUUID()}`;
       let stockMovementId: string | undefined;
@@ -170,16 +176,16 @@ export class PostPosSaleUseCase {
       if (!revenueAccountId) {
         throw new Error(`No revenue account configured for item ${item.code}`);
       }
-      addToBucket(revenueCredits, revenueAccountId, amounts.revenueBase, baseCurrency);
-      if (amounts.discountBase > 0) {
+      addToBucket(revenueCredits, revenueAccountId, taxAmounts.lineTotalBase, baseCurrency);
+      if (netDiscountBase > 0) {
         // POS 250d keeps line-discount accounting conservative: net revenue is
         // posted, matching POS receipt totals without adding a Sales-settings dependency.
       }
-      if (amounts.taxBase > 0) {
+      if (taxAmounts.taxAmountBase > 0) {
         if (!tax.salesTaxAccountId) {
           throw new Error(`Tax code ${tax.code || tax.id} has no Sales Tax Account configured.`);
         }
-        addToBucket(taxCredits, tax.salesTaxAccountId, amounts.taxBase, baseCurrency);
+        addToBucket(taxCredits, tax.salesTaxAccountId, taxAmounts.taxAmountBase, baseCurrency);
       }
 
       postedLines.push({
@@ -190,15 +196,15 @@ export class PostPosSaleUseCase {
         qty: sourceLine.qty,
         uom: item.salesUom || item.baseUom,
         unitPrice: sourceLine.unitPrice,
-        lineDiscount: amounts.discountBase,
+        lineDiscount: netDiscountBase,
         taxCodeId: tax.id,
-        lineTotal: amounts.lineTotalBase,
-        taxAmount: amounts.taxBase,
+        lineTotal: taxAmounts.lineTotalBase,
+        taxAmount: taxAmounts.taxAmountBase,
         unitCostBase,
         lineCostBase,
         stockMovementId,
         revenueAccountId,
-        taxAccountId: amounts.taxBase > 0 ? tax.salesTaxAccountId : undefined,
+        taxAccountId: taxAmounts.taxAmountBase > 0 ? tax.salesTaxAccountId : undefined,
         cogsAccountId,
         inventoryAccountId,
       });
@@ -416,36 +422,4 @@ function mapBucket(bucket: Map<string, number>, side: 'Debit' | 'Credit', curren
     baseAmount: roundMoney(amount, currency),
     docAmount: roundMoney(amount, currency),
   }));
-}
-
-function calculateLineAmounts(input: {
-  qty: number;
-  unitPrice: number;
-  taxRate: number;
-  priceIsInclusive: boolean;
-  discountType?: 'PERCENT' | 'AMOUNT';
-  discountValue?: number;
-  currency?: string;
-}): { revenueBase: number; lineTotalBase: number; discountBase: number; taxBase: number } {
-  const currency = input.currency || 'USD';
-  const gross = roundMoney(input.qty * input.unitPrice, currency);
-  const discount = input.discountType === 'PERCENT'
-    ? roundMoney(gross * ((input.discountValue || 0) / 100), currency)
-    : roundMoney(input.discountValue || 0, currency);
-  const afterDiscount = roundMoney(gross - discount, currency);
-  if (input.priceIsInclusive && input.taxRate > 0) {
-    const lineTotalBase = roundMoney(afterDiscount / (1 + input.taxRate), currency);
-    return {
-      revenueBase: lineTotalBase,
-      lineTotalBase,
-      discountBase: roundMoney(discount / (1 + input.taxRate), currency),
-      taxBase: roundMoney(afterDiscount - lineTotalBase, currency),
-    };
-  }
-  return {
-    revenueBase: afterDiscount,
-    lineTotalBase: afterDiscount,
-    discountBase: discount,
-    taxBase: roundMoney(afterDiscount * input.taxRate, currency),
-  };
 }

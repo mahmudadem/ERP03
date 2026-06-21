@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250h — Tax Engine)
+
+- **Goal:** Resume Phase 3 after CTO-audited Phase 2 and complete 250h: extract Tax Engine calculation ownership for Sales, Purchases, and POS.
+- **What was done:** Added `TaxEngine` under System Core and replaced the Sales-coupled `ITaxEngine` contract with neutral tax inputs/outputs. Kept `SalesInvoiceCalculationService` as a compatibility wrapper over the engine. Rewired POS preview/posting, Sales Invoice normalization, Purchase Invoice normalization, and Purchase Invoice create/post tax-freeze paths to use the shared tax calculation. Added `allocateInvoiceDiscount` and `recoverable` APIs plus T8/golden/recoverable/allocation tests and architecture guards.
+- **Accounting/ERP impact:** Existing SI/PI/POS line tax and inclusive-price totals are intended unchanged. Invoice-level discount allocation is implemented and tested as an API, but not silently applied to posted document totals because that would intentionally change tax/grand totals and needs a separate accounting-approved behavior slice. Purchase recoverability is exposed by the engine; posting treatment for non-recoverable input tax remains a later explicit slice.
+- **Verification:** Focused 250h suite passed (5 suites / 50 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 182 passed / 2 skipped suites; 1,592 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250h-tax-engine.md`, and added `planning/done/250h-tax-engine.md`.
+- **Time spent:** ~1.8h.
+- **Next:** Commit 250h, then continue Phase 3 with 250i Numbering Engine. Hard-stop after 250j for CTO audit.
+
 ### Session: 2026-06-21 (Epic 250g — Audit Engine)
 
 - **Goal:** Complete Phase 2 task 250g: route audit emission through `IAuditEngine` and wire missing POS audit records.
