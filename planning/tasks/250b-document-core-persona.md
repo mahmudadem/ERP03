@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 1 · **Blocking:** 🔴 POS-blocking (do first in Phase 1)
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete
 
 ## Objective
 
@@ -56,17 +56,17 @@ type DocumentPersona =
 
 ## Acceptance criteria
 
-- [ ] `POS_DIRECT_SALE` exists as a typed persona and is written by POS.
-- [ ] No code path rewrites `POS_DIRECT_SALE` → `sales_invoice`.
-- [ ] T1 passes in its inverted form; persona-reaches-ledger test passes.
-- [ ] Legacy `'direct'|'linked'|'service'` reads still resolve (back-compat test).
-- [ ] typecheck + build clean; full suite green (except intended T1 inversion).
+- [x] `POS_DIRECT_SALE` exists as a typed persona and is written by POS.
+- [x] No code path rewrites `POS_DIRECT_SALE` to `sales_invoice`; Sales compatibility keeps voucher type separate while preserving `documentPersona`.
+- [x] T1 passes in its inverted form; persona-reaches-ledger test passes.
+- [x] Legacy `'direct'|'linked'|'service'` reads still resolve (back-compat test).
+- [x] typecheck + build clean; focused 250b suites green; full backend suite green: 176/178 suites passed, 2 skipped; 1567 tests passed, 19 skipped.
 
 ## Definition of Done
 
-- [ ] Commit: `feat(system-core): document core persona incl POS_DIRECT_SALE [250b]`
-- [ ] `planning/done/250b-document-core-persona.md` report.
-- [ ] `docs/architecture/system-core.md` persona section drafted (or stubbed for the epic-end consolidation).
+- [x] Commit: `feat(system-core): document core persona incl POS_DIRECT_SALE [250b]`
+- [x] `planning/done/250b-document-core-persona.md` report.
+- [x] `docs/architecture/system-core.md` persona section drafted (or stubbed for the epic-end consolidation).
 
 ## CTO audit gate
 

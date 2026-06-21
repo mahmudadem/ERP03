@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Task 250b - Document Core POS_DIRECT_SALE persona)
+
+- **Goal:** Execute Phase 1 task 250b so POS carries a first-class `POS_DIRECT_SALE` document persona through creation and posting metadata without changing posting behavior yet.
+- **What was done:** Added canonical persona mapping helpers to `DocumentPolicyResolver`; added optional `documentPersona` to `SalesInvoice`; resolved and persisted document persona in `CreateSalesInvoiceUseCase`; copied the persona into revenue, COGS, and settlement voucher metadata in `PostSalesInvoiceUseCase`; updated `CompletePosSaleUseCase` to send `documentPersona: 'POS_DIRECT_SALE'`; inverted the POS persona test and added a Sales posting metadata assertion.
+- **Accounting/ERP impact:** Metadata/control identity only. No voucher balancing, account mapping, tax calculation, inventory movement, COGS amount, AR settlement, period-lock, approval, or payment behavior changed. POS still uses the Sales compatibility entry point until 250d, but POS identity is no longer only `formType: 'pos_sale'`.
+- **Verification:** `npm --prefix backend run typecheck` passed; focused 250b suites passed (3 suites / 66 tests); `npm --prefix backend run build` passed; full backend suite passed: 176/178 suites passed, 2 skipped; 1567 tests passed, 19 skipped.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250b-document-core-persona.md`, and added `planning/done/250b-document-core-persona.md`.
+- **Time spent:** ~1.4h implementation/focused verification plus full-suite gate.
+- **Next:** Commit 250b, then continue to 250c under the unattended sequence.
+
 ### Session: 2026-06-21 (Task 250a — System Core interface seams)
 
 - **Goal:** Execute Phase 0 of Epic 250 by introducing System Core interface seams and temporary adapters without changing consumer behavior.
@@ -10,7 +20,7 @@
 - **Verification:** Baseline before edits: backend typecheck/build passed; full backend suite 175/177 suites passed, 2 skipped; 1565 tests passed, 18 skipped. After 250a: backend typecheck/build passed; focused SystemCoreBoundaries test passed; full backend suite 176/178 suites passed, 2 skipped; 1566 tests passed, 19 skipped. Count delta is the new active architecture assertion and the intentionally skipped 250d guard.
 - **Environment note:** The isolated worktree lacked backend dependencies; a local `backend/node_modules` junction to the main checkout's installed backend dependencies was created before baseline capture. No tracked files changed from this setup.
 - **Time spent:** ~1.6h implementation/verification plus baseline setup.
-- **Commit:** 0f2d3ded (eat(system-core): phase 0 interface seams + adapters [250a]).
+- **Commit:** 0f2d3ded (feat(system-core): phase 0 interface seams + adapters [250a]).
 - **Next:** Continue to 250b under the owner-approved unattended run: add POS_DIRECT_SALE persona and invert T1, then verify and commit before 250c.
 
 ### Session: 2026-06-21 (Epic 250 — System Core / Shared Engines transformation: audit + plans + worktree)

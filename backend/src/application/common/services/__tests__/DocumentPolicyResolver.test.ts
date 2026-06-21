@@ -172,6 +172,17 @@ describe('DocumentPolicyResolver', () => {
       governanceRules,
     });
 
+    it('maps canonical document personas to legacy policy buckets for back compatibility', () => {
+      const settings = makeSettings('OPERATIONAL', [
+        { id: 'r1', scope: 'form', action: 'allow', persona: 'direct', formType: 'pos_sale' },
+      ]);
+
+      expect(DocumentPolicyResolver.toLegacySalesInvoicePersona('POS_DIRECT_SALE')).toBe('direct');
+      expect(DocumentPolicyResolver.toCanonicalDocumentPersona('direct')).toBe('SALES_DIRECT_INVOICE');
+      expect(DocumentPolicyResolver.toCanonicalDocumentPersona('service')).toBe('SERVICE');
+      expect(DocumentPolicyResolver.isSalesInvoicePersonaAllowed(settings, 'POS_DIRECT_SALE', { formType: 'pos_sale' })).toBe(true);
+      expect(DocumentPolicyResolver.isSalesInvoicePersonaAllowed(settings, 'POS_DIRECT_SALE')).toBe(false);
+    });
     it('SIMPLE: direct is allowed by base policy', () => {
       const settings = makeSettings('SIMPLE');
       expect(DocumentPolicyResolver.isSalesInvoicePersonaAllowed(settings, 'direct')).toBe(true);

@@ -61,10 +61,10 @@ const POS_METHOD_TO_SI_METHOD: Record<PosPaymentMethod, 'CASH' | 'CREDIT_CARD' |
  *
  * This use case does NOT build vouchers, write stock movements, or compute
  * tax. It delegates the financial posting to the existing Sales use case
- * `CreateAndPostSalesInvoiceUseCase`, passing `persona:'direct'`,
- * `source:'pos'`, `formType:'pos_sale'`. If the company has not allowed the
- * `direct` persona (the Allow POS direct sales toggle), Sales will throw
- * `PersonaNotAllowedError` and we surface it.
+ * with documentPersona POS_DIRECT_SALE, source pos, and formType pos_sale.
+ * Until 250d replaces the Sales entry point, the Sales compatibility persona
+ * remains direct; the Document Core persona is the durable POS identity carried
+ * into posting metadata.
  *
  * Sequencing:
  *   1. Validate shift OPEN + cashier match (or manager)
@@ -154,12 +154,10 @@ export class CompletePosSaleUseCase {
       customerId,
       invoiceDate: new Date().toISOString().slice(0, 10),
       source: 'pos' as const,
-      // voucherType MUST be the canonical 'sales_invoice'; formType carries the POS persona/marker.
-      // (CreateSalesInvoiceUseCase derives voucherType from formType when it is omitted, and would
-      //  otherwise reject 'pos_sale' as an invalid voucher type.)
       voucherType: 'sales_invoice' as const,
       formType: 'pos_sale' as const,
       persona: 'direct' as const,
+      documentPersona: 'POS_DIRECT_SALE' as const,
       createdBy: input.actor.userId,
       lines: input.lines.map((l) => ({
         itemId: l.itemId,

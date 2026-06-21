@@ -211,6 +211,7 @@ const makeSI = (input: {
   taxCodeId?: string;
   priceIsInclusive?: boolean;
   warehouseId?: string;
+  documentPersona?: string;
   charges?: Array<{
     chargeId?: string;
     kind?: 'CHARGE' | 'DISCOUNT';
@@ -227,6 +228,7 @@ const makeSI = (input: {
     formType: 'sales_invoice_direct',
     voucherType: 'sales_invoice',
     persona: 'direct',
+    documentPersona: input.documentPersona,
     salesOrderId: input.salesOrderId,
     customerId: 'cus-1',
     customerName: 'Customer One',
@@ -630,6 +632,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
       soLineId: 'so-line-1',
       invoicedQty: 3,
       unitPriceDoc: 20,
+      documentPersona: 'POS_DIRECT_SALE',
     });
 
     const inventoryService = makeInventoryService();
@@ -672,6 +675,7 @@ describe('Sales posting use-cases (Phase 2)', () => {
     const voucher = (voucherRepo.save as any).mock.calls[0][0];
     expect(voucher.metadata.sourceModule).toBe('sales');
     expect(voucher.metadata.sourceType).toBe('SALES_INVOICE');
+    expect(voucher.metadata.documentPersona).toBe('POS_DIRECT_SALE');
   });
 
   it('7) PostSI (SIMPLE standalone): creates inventory OUT + Revenue + COGS vouchers', async () => {

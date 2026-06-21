@@ -25,6 +25,13 @@ Phase 0 introduced contracts under `backend/src/application/system-core/contract
 
 Phase 0 adapters may delegate to legacy implementations. They must not move business logic or change consumer behavior. Later phases replace adapter internals or rewire consumers one task at a time.
 
+## Document Persona
+
+Phase 1 starts making document persona a System Core identity instead of a module-local string. `IDocumentCore` exposes the canonical enum `SALES_DIRECT_INVOICE`, `SALES_LINKED_INVOICE`, `POS_DIRECT_SALE`, and `SERVICE` while `DocumentPolicyResolver` keeps legacy `direct`, `linked`, and `service` reads compatible.
+
+For 250b, POS writes `documentPersona: 'POS_DIRECT_SALE'` into the Sales compatibility payload. The legacy Sales posting path still uses `voucherType: 'sales_invoice'` and legacy `persona: 'direct'` until 250d replaces the POS entry point, but the durable POS persona is persisted on `SalesInvoice.documentPersona` and copied into revenue, COGS, and settlement voucher metadata. Reporting/read paths can therefore identify POS direct sales through `metadata.documentPersona` without treating `formType: 'pos_sale'` as the only marker.
+
+Accounting boundary: 250b does not alter posting math, account resolution, tax calculation, inventory movement quantity/cost logic, AR settlement, approval, period-lock, or voucher balancing. It only carries the canonical document persona alongside the existing posting path.
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. The POS-to-Sales import ban is intentionally skipped until 250d, because the current POS sale path still imports Sales use cases and that coupling is the target of Phase 1.

@@ -6,6 +6,7 @@ import {
   lineSignaturesEqual,
 } from '../../common/services/PostedDocumentEditGuard';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
+import { DocumentPersona } from '../../system-core/contracts/IDocumentCore';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
@@ -162,6 +163,7 @@ export interface CreateSalesInvoiceInput {
   formType?: string;
   voucherType?: string;
   persona?: string;
+  documentPersona?: DocumentPersona | string;
   source?: DocumentSource | string;
   salesOrderId?: string;
   salespersonId?: string;
@@ -293,6 +295,17 @@ const hasNativeLinkedSalesSource = (input: CreateSalesInvoiceInput): boolean => 
   return (input.lines || []).some((line) => !!line.soLineId || !!line.dnLineId);
 };
 
+const resolveSalesInvoiceDocumentPersona = (input: CreateSalesInvoiceInput, persona: SalesInvoicePersona): DocumentPersona => {
+  const explicit = String(input.documentPersona || '').trim() as DocumentPersona;
+  if (explicit) return DocumentPolicyResolver.toCanonicalDocumentPersona(explicit as any);
+
+  const inputPersona = String(input.persona || '').trim() as DocumentPersona;
+  if (inputPersona === 'POS_DIRECT_SALE' || inputPersona === 'SALES_DIRECT_INVOICE' || inputPersona === 'SALES_LINKED_INVOICE' || inputPersona === 'SERVICE') {
+    return DocumentPolicyResolver.toCanonicalDocumentPersona(inputPersona as any);
+  }
+
+  return DocumentPolicyResolver.toCanonicalDocumentPersona(persona);
+};
 const resolveSalesInvoicePersona = (input: CreateSalesInvoiceInput): SalesInvoicePersona => {
   if (resolveDocumentSource(input.source) === 'native') {
     return hasNativeLinkedSalesSource(input) ? 'linked' : 'direct';
@@ -302,6 +315,8 @@ const resolveSalesInvoicePersona = (input: CreateSalesInvoiceInput): SalesInvoic
   if (persona === 'direct' || persona === 'linked' || persona === 'service') {
     return persona;
   }
+  if (persona === 'sales_direct_invoice' || persona === 'pos_direct_sale') return 'direct';
+  if (persona === 'sales_linked_invoice') return 'linked';
 
   const formType = normalizeSalesInvoiceToken(input.formType || input.voucherType);
   if (SALES_INVOICE_PERSONA_FORM_TYPES[formType]) {
@@ -349,12 +364,14 @@ export class CreateSalesInvoiceUseCase {
   async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<CreateSalesInvoiceResult> {
     const source = resolveDocumentSource(input.source);
     const persona = resolveSalesInvoicePersona(input);
+    const documentPersona = resolveSalesInvoiceDocumentPersona(input, persona);
     input = {
       ...input,
       source,
       formType: resolveSalesInvoiceFormType(input, persona),
       voucherType: resolveSalesInvoiceVoucherType(input),
       persona,
+      documentPersona,
     };
 
     const settings = await this.settingsRepo.getSettings(input.companyId);
@@ -587,6 +604,7 @@ export class CreateSalesInvoiceUseCase {
       formType: input.formType || 'sales_invoice_direct',
       voucherType: input.voucherType || 'sales_invoice',
       persona: input.persona || 'direct',
+      documentPersona: input.documentPersona,
       source: input.source,
       salesOrderId: so?.id,
       salespersonId: input.salespersonId,
@@ -1550,6 +1568,7 @@ export class PostSalesInvoiceUseCase {
               sourceType: 'SALES_INVOICE',
               sourceId: si.id,
               voucherPart: 'REVENUE',
+              documentPersona: si.documentPersona || DocumentPolicyResolver.toCanonicalDocumentPersona(si.persona as any),
               ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: si.createdBy,
@@ -1589,6 +1608,7 @@ export class PostSalesInvoiceUseCase {
                   sourceType: 'SALES_INVOICE',
                   sourceId: si.id,
                   voucherPart: 'COGS',
+                  documentPersona: si.documentPersona || DocumentPolicyResolver.toCanonicalDocumentPersona(si.persona as any),
                   ...(periodLockOverride ? { periodLockOverride } : {}),
                 },
                 createdBy: si.createdBy,
@@ -2006,7 +2026,12 @@ export class PostSalesInvoiceUseCase {
         totalDebit,
         totalCredit,
         VoucherStatus.APPROVED,
-        { sourceModule: 'sales', sourceInvoiceId: si.id, settlementMode },
+        {
+          sourceModule: 'sales',
+          sourceInvoiceId: si.id,
+          settlementMode,
+          documentPersona: si.documentPersona || DocumentPolicyResolver.toCanonicalDocumentPersona(si.persona as any),
+        },
         si.createdBy,
         now,
         si.createdBy,

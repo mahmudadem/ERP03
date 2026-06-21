@@ -66,6 +66,7 @@ const makeSI = (o: { subtotalBase?: number; taxTotalBase?: number; grandTotalBas
     paymentStatus: 'PAID',
     voucherType: 'SALES_INVOICE',
     persona: 'direct',
+    documentPersona: 'POS_DIRECT_SALE',
     source: 'pos',
     formType: 'pos_sale',
     paidAmountBase: grand,
@@ -180,15 +181,18 @@ describe('CompletePosSaleUseCase', () => {
     expect(createUC.execute).not.toHaveBeenCalled();
   });
 
-  it('builds the SI input with persona/source/formType and the walk-in customer', async () => {
+  it('builds the SI input with POS_DIRECT_SALE as the durable document persona', async () => {
     const { useCase, createUC } = setup();
     await run(useCase, [{ method: 'CASH', amount: 10 }]);
     const [input] = createUC.execute.mock.calls[0];
     expect(input.customerId).toBe('walk-in-cust');
     expect(input.source).toBe('pos');
+    // 250b: Sales compatibility still needs the canonical Sales voucher type until 250d,
+    // but POS must no longer be distinguishable only by formType or legacy direct persona.
     expect(input.voucherType).toBe('sales_invoice');
     expect(input.formType).toBe('pos_sale');
     expect(input.persona).toBe('direct');
+    expect(input.documentPersona).toBe('POS_DIRECT_SALE');
   });
 
   it('completes a single-tender exact sale with CASH_FULL settlement', async () => {

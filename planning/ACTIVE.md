@@ -2,7 +2,7 @@
 
 ## System Core / Shared Engines Transformation — Epic 250 (2026-06-21)
 
-**Status:** 🟢 Active — Phase 0 complete; executing Phase 1 sequence under unattended authorization. **Branch:** `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).
+**Status:** 🟢 Active — Phase 0 and 250b complete; executing Phase 1 sequence under unattended authorization. **Branch:** `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).
 
 - **Why:** POS paused. Three audits proved a platform-wide problem — application modules own/embed shared engines. We are separating **Engines (System Core)** from **Apps (orchestrators)** from **UI surfaces**, and unblocking POS.
 - **Owner override of the feature freeze:** the 2026-06-13 freeze forbids refactors. The owner (Mahmud) has explicitly authorized this transformation and paused POS for it — this epic proceeds as an owner-sanctioned exception, same pattern as prior freeze exceptions logged in JOURNAL.
@@ -10,7 +10,7 @@
 - **Reference:** [Platform Architecture Audit](../docs/audit/platform-architecture-engine-vs-app-audit.md) (§A–N) · [System Core Master Plan](../docs/architecture/system-core-shared-engines-master-plan.md).
 - **Execution model:** **Codex** is the executing agent (not a Claude-spawned subagent). It picks up [planning/briefs/20260621-codex-system-core-transformation.md](./briefs/20260621-codex-system-core-transformation.md), implements one phase task at a time (one builder per file area), and hands back after each phase. CTO (Claude) audits each against the task's acceptance criteria + the 10 architecture tests (audit §N) before marking the phase done.
 - **Phase order:** 0 seams (250a) → 1 POS-blocking **250b→c→d→e in sequence** → 2 money/audit (250f/g) → 3 tax/numbering/inventory (250h/i/j) → 4 bridge/commercial (250k/l).
-- **Where I left off:** 250a complete in the latest 250a commit: System Core contracts/adapters registered in DI, architecture guard added, and backend validation green (typecheck, build, full backend suite 176/178 suites passed; 1566 tests passed, 19 skipped). **Next: execute 250b — Document Core + POS_DIRECT_SALE persona.**
+- **Where I left off:** 250b complete and ready to commit: POS now writes documentPersona: 'POS_DIRECT_SALE', Sales invoice persistence carries it, and revenue/COGS/settlement voucher metadata expose it for read/report layers. Backend typecheck, focused 250b tests, build, and full backend suite are green (176/178 suites passed, 2 skipped; 1567 tests passed, 19 skipped). **Next after commit: execute 250c — Policy Engine + POS direct-sale authorization decoupling.**
 - **Estimate:** ~3–5 weeks of execution + CTO audit between phases.
 
 ---
