@@ -81,7 +81,7 @@ const setup = () => {
   const partyRepo = { getById: jest.fn().mockResolvedValue(makeParty()) };
   const companyCurrencyRepo = { getBaseCurrency: jest.fn().mockResolvedValue('USD') };
   const inventoryCore = { processIN: jest.fn().mockResolvedValue({ id: 'sm_ret_1' }) };
-  const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ id: 'v_1' }) };
+  const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: { id: 'v_1' } }) };
   const useCase = new PostPosReturnUseCase(
     itemRepo as any,
     itemCategoryRepo as any,

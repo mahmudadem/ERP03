@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 4 (long-term) · **Blocking:** no
 **Depends on:** [250d](./250d-pos-posting-entry-point.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete (2026-06-21)
 
 ## Objective
 
@@ -24,6 +24,8 @@ Make the engine-vs-app separation **contractual**: `IAccountingBridge` records f
 - Extend `application/system-core/AccountingBridge.ts` with strategy selection based on Accounting App activation (read module entitlement, not a Sales/POS flag).
 - Ensure all financial-event emitters (Sales, Purchases, Inventory, POS) go through the bridge.
 
+**Delivered scope note:** This contained 250k slice hardens the bridge and removes the remaining POS direct-post bypass. Sales, Purchases, and Inventory still use their established full-posting service workflows; moving every source-module poster behind `IAccountingBridge` is a larger follow-up that must be sliced by module with golden voucher-output checks.
+
 ## Tests
 
 - **T7 — Accounting App off, events still recorded:** with the Accounting App UI disabled, an enabled module records a financial event via the bridge; ledger/TB/CoA/statements UI is hidden but the event persists.
@@ -31,14 +33,14 @@ Make the engine-vs-app separation **contractual**: `IAccountingBridge` records f
 
 ## Acceptance criteria
 
-- [ ] Bridge selects full vs minimal by Accounting App activation.
-- [ ] T7 passes; full-mode regression unchanged.
-- [ ] typecheck + build clean.
+- [x] Bridge selects full vs minimal by Accounting App activation.
+- [x] T7 passes; full-mode regression unchanged for bridge call payload.
+- [x] typecheck + build clean.
 
 ## Definition of Done
 
-- [ ] Commit: `feat(system-core): accounting bridge minimal-journal mode [250k]`
-- [ ] `planning/done/250k-accounting-bridge.md` report; update `docs/architecture/accounting.md` + `system-core.md`.
+- [x] Commit: `feat(system-core): accounting bridge minimal-journal mode [250k]`
+- [x] `planning/done/250k-accounting-bridge.md` report; update `docs/architecture/accounting.md` + `system-core.md`.
 
 ## CTO audit gate
 

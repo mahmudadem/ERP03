@@ -144,8 +144,21 @@ Sales Delivery Note, Sales Invoice, and Sales Return posting now call the invent
 
 Accounting boundary: 250j is intended as a pure ownership move. Golden COGS posting regressions for SI/SR/PI/PR and DN were run; COGS amounts, inventory credits/debits, stock movement quantities, tax, AR/AP, and voucher balancing are unchanged.
 
+## Accounting Bridge
+
+250k hardens `IAccountingBridge` from a POS posting seam into the strategy point for financial-event recording. The bridge now selects a recording mode from the tenant's `accounting` company-module activation:
+
+- `full` when the Accounting App is enabled: delegates to the existing `SubledgerVoucherPostingService.postInTransaction(...)`. Voucher and ledger output are unchanged.
+- `minimal` when the Accounting App is disabled or absent: writes a `PostingLog` minimal-journal record in the same transaction context when available, and does not post a ledger voucher.
+
+The distinction is intentional: module activation controls Accounting UI/management exposure, while the bridge still records the operational financial event. Minimal records are audit-grade event captures, not full ledger postings; enabling Accounting later still requires an explicit migration/replay policy before those events become ledger vouchers.
+
+POS sale, return, and shift over/short flows now route through `IAccountingBridge`. `SystemCoreBoundaries.test.ts` blocks POS application/controllers from importing `SubledgerVoucherPostingService` or calling `postInTransaction(...)` directly.
+
+Scope note: Sales, Purchases, and Inventory still use the established `SubledgerVoucherPostingService` posting workflows in this contained 250k slice. Moving every source-module poster behind `IAccountingBridge` is a larger bridge-migration follow-up and should be sliced by module with golden voucher-output checks.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.
 
-250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction. 250j adds guards that active inventory consumers use `IInventoryCore` rather than Sales/Purchases-named contracts, and that Sales delegates COGS account resolution and bucket accumulation to inventory core.
+250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction. 250j adds guards that active inventory consumers use `IInventoryCore` rather than Sales/Purchases-named contracts, and that Sales delegates COGS account resolution and bucket accumulation to inventory core. 250k adds the POS accounting bridge guard described above.

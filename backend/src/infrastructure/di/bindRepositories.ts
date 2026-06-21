@@ -1036,7 +1036,9 @@ export const diContainer = {
         undefined,
         this.periodLockService,
         this.policyRegistry,
-      )
+      ),
+      this.companyModuleRepository,
+      this.postingLogRepository
     );
   },
   get auditEngine(): IAuditEngine {

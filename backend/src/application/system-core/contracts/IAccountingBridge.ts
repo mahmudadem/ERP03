@@ -10,7 +10,12 @@ export interface FinancialEvent {
   transaction?: unknown;
 }
 
-export interface IAccountingBridge {
-  recordFinancialEvent(event: FinancialEvent): Promise<VoucherEntity | null>;
+export interface FinancialEventRecord {
+  mode: 'full' | 'minimal';
+  voucher: VoucherEntity | null;
+  eventLogId?: string;
 }
 
+export interface IAccountingBridge {
+  recordFinancialEvent(event: FinancialEvent): Promise<FinancialEventRecord>;
+}

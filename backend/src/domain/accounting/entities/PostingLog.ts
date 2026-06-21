@@ -15,7 +15,7 @@
  * will consume this directly.
  */
 
-export type PostingSourceModule = 'sales' | 'purchases' | 'inventory' | 'accounting';
+export type PostingSourceModule = 'sales' | 'purchases' | 'inventory' | 'accounting' | 'pos';
 
 export type PostingSourceType =
   | 'SALES_INVOICE'
@@ -29,7 +29,10 @@ export type PostingSourceType =
   | 'STOCK_ADJUSTMENT'
   | 'STOCK_TRANSFER'
   | 'OPENING_STOCK'
-  | 'MANUAL_VOUCHER';
+  | 'MANUAL_VOUCHER'
+  | 'POS_SALE'
+  | 'POS_RETURN'
+  | 'POS_SHIFT';
 
 export type CogsPostingStatus =
   | 'POSTED'

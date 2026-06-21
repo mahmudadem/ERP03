@@ -32,11 +32,17 @@ export class FirestorePostingLogRepository implements IPostingLogRepository {
     });
   }
 
-  async create(log: PostingLog): Promise<void> {
+  async create(log: PostingLog, transaction?: unknown): Promise<void> {
     try {
       const data = log.toJSON();
       data.postedAt = toTimestamp(log.postedAt);
-      await this.col(log.companyId).doc(log.id).set(data);
+      const docRef = this.col(log.companyId).doc(log.id);
+      const tx = transaction as admin.firestore.Transaction | undefined;
+      if (tx && typeof tx.set === 'function') {
+        tx.set(docRef, data);
+        return;
+      }
+      await docRef.set(data);
     } catch (err: any) {
       console.error('[FirestorePostingLogRepository] underlying error:', {
         message: err?.message,

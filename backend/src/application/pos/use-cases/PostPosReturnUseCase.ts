@@ -171,7 +171,7 @@ export class PostPosReturnUseCase {
         approved: true,
       },
     });
-    if (returnVoucher?.id) voucherIds.push(returnVoucher.id);
+    if (returnVoucher.voucher?.id) voucherIds.push(returnVoucher.voucher.id);
 
     if (inventoryDebits.size && cogsCredits.size) {
       const cogsVoucher = await this.accountingBridge.recordFinancialEvent({
@@ -201,7 +201,7 @@ export class PostPosReturnUseCase {
           approved: true,
         },
       });
-      if (cogsVoucher?.id) voucherIds.push(cogsVoucher.id);
+      if (cogsVoucher.voucher?.id) voucherIds.push(cogsVoucher.voucher.id);
     }
 
     if (input.settlementAccountId && refundTotal > 0) {
@@ -236,7 +236,7 @@ export class PostPosReturnUseCase {
           approved: true,
         },
       });
-      if (refundVoucher?.id) voucherIds.push(refundVoucher.id);
+      if (refundVoucher.voucher?.id) voucherIds.push(refundVoucher.voucher.id);
     }
 
     return { returnId, returnNumber: input.returnNumber, refundTotal, lines: postedLines, voucherIds };

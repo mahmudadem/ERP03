@@ -2,7 +2,7 @@ import { PostingLog } from '../../../domain/accounting/entities/PostingLog';
 
 export interface IPostingLogRepository {
   /** Persist a new PostingLog record. */
-  create(log: PostingLog): Promise<void>;
+  create(log: PostingLog, transaction?: unknown): Promise<void>;
 
   /** Get a single record by id. */
   getById(companyId: string, id: string): Promise<PostingLog | null>;

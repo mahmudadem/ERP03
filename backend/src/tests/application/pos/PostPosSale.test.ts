@@ -53,7 +53,7 @@ const setup = () => {
       totalCostBase: 8,
     }),
   };
-  const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ id: 'v_1' }) };
+  const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: { id: 'v_1' } }) };
   const useCase = new PostPosSaleUseCase(
     itemRepo as any,
     itemCategoryRepo as any,

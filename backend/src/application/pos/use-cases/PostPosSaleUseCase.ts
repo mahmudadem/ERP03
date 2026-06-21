@@ -292,7 +292,7 @@ export class PostPosSaleUseCase {
         approved: true,
       },
     });
-    if (revenueVoucher?.id) voucherIds.push(revenueVoucher.id);
+    if (revenueVoucher.voucher?.id) voucherIds.push(revenueVoucher.voucher.id);
 
     if (cogsDebits.size && inventoryCredits.size) {
       const cogsVoucher = await this.accountingBridge.recordFinancialEvent({
@@ -321,7 +321,7 @@ export class PostPosSaleUseCase {
           approved: true,
         },
       });
-      if (cogsVoucher?.id) voucherIds.push(cogsVoucher.id);
+      if (cogsVoucher.voucher?.id) voucherIds.push(cogsVoucher.voucher.id);
     }
 
     for (const payment of input.payments) {
@@ -357,7 +357,7 @@ export class PostPosSaleUseCase {
           approved: true,
         },
       });
-      if (receiptVoucher?.id) voucherIds.push(receiptVoucher.id);
+      if (receiptVoucher.voucher?.id) voucherIds.push(receiptVoucher.voucher.id);
     }
 
     return {

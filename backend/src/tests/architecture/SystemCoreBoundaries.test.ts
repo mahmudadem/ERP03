@@ -96,6 +96,23 @@ describe('Architecture guard: system core boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('250k: POS financial events must route through IAccountingBridge', () => {
+    const roots = [
+      path.resolve(SRC, 'application/pos'),
+      path.resolve(SRC, 'api/controllers/pos'),
+    ];
+    const offenders: string[] = [];
+    for (const root of roots) {
+      for (const file of collectTsFiles(root)) {
+        const content = fs.readFileSync(file, 'utf8');
+        if (content.includes('SubledgerVoucherPostingService') || content.includes('.postInTransaction(')) {
+          offenders.push(path.relative(SRC, file));
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('250h: tax engine contract and adapter must not import Sales calculation internals', () => {
     const files = [
       path.resolve(SRC, 'application/system-core/contracts/ITaxEngine.ts'),

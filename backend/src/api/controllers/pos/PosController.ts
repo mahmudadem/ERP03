@@ -36,8 +36,6 @@ import {
   SearchPosProductsUseCase,
 } from '../../../application/pos/use-cases/PosBootstrapUseCase';
 import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/PreviewPosSaleUseCase';
-import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
-import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { CompletePosReturnUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
 import { PostPosReturnUseCase } from '../../../application/pos/use-cases/PostPosReturnUseCase';
 import {
@@ -182,18 +180,6 @@ export class PosController {
 
   // ===== Shifts =====
 
-  private static buildAccountingPostingService(): SubledgerVoucherPostingService {
-    return new SubledgerVoucherPostingService(
-      diContainer.voucherRepository,
-      diContainer.ledgerRepository,
-      diContainer.companyCurrencyRepository,
-      diContainer.accountRepository,
-      new VoucherValidationService(),
-      diContainer.periodLockService,
-      diContainer.policyRegistry as any
-    );
-  }
-
   static async openShift(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
@@ -229,7 +215,7 @@ export class PosController {
         diContainer.posRegisterRepository,
         diContainer.posCashMovementRepository,
         diContainer.accountRepository,
-        PosController.buildAccountingPostingService(),
+        diContainer.accountingBridge,
         diContainer.transactionManager
       );
       const result = await useCase.execute({
@@ -263,7 +249,7 @@ export class PosController {
         diContainer.posRegisterRepository,
         diContainer.posCashMovementRepository,
         diContainer.accountRepository,
-        PosController.buildAccountingPostingService(),
+        diContainer.accountingBridge,
         diContainer.transactionManager
       );
       const result = await useCase.execute({

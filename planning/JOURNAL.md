@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250k — Accounting Bridge hardening)
+
+- **Goal:** Complete Phase 4 task 250k: make `IAccountingBridge` choose full vs minimal recording by Accounting App activation, and remove the remaining POS direct-post bypass.
+- **What was done:** Added `FinancialEventRecord` with `full` / `minimal` mode. `LegacyAccountingBridgeAdapter` now reads `companyModule.accounting.isEnabled`: enabled delegates unchanged to `SubledgerVoucherPostingService`; disabled records a minimal `PostingLog` event. POS sale/return voucher-id handling was updated for the new return shape. POS shift close/force-close now records over/short through `IAccountingBridge` instead of constructing/calling the posting service. Added a POS architecture guard against direct `SubledgerVoucherPostingService` / `postInTransaction` usage.
+- **Accounting/ERP impact:** Full-mode posting output is intended unchanged. Accounting-off mode now preserves a durable minimal financial-event record instead of dropping the event, but it does not create ledger vouchers or financial statements. Minimal-event replay into GL remains an explicit future policy decision.
+- **Scope decision:** Sales, Purchases, and Inventory still use the established full posting service in this contained slice; a full bridge migration is logged as a follow-up because it is posting-sensitive and should be sliced by module with golden voucher checks.
+- **Verification:** Focused bridge/POS/architecture tests passed (5 suites / 26 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 184 passed / 2 skipped suites; 1,600 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `docs/architecture/accounting.md`, `planning/tasks/250k-accounting-bridge.md`, and added `planning/done/250k-accounting-bridge.md`.
+- **Time spent:** ~1.1h.
+- **Next:** Commit 250k, then continue to 250l-1 pricing/discount Commercial Core slice.
+
 ### Session: 2026-06-21 (Epic 250j — Inventory Core tidy)
 
 - **Goal:** Complete Phase 3 task 250j: make `IInventoryCore` canonical and move Sales-owned COGS account/bucket helpers into Inventory Core.
