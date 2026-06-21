@@ -1018,10 +1018,17 @@ export const diContainer = {
     return new LegacyTaxEngineAdapter();
   },
   get commercialCore(): ICommercialCore {
-    return new LegacyCommercialCoreAdapter(async (context) => {
-      const item = await this.itemRepository.getItem(context.itemId);
-      return item?.salePrice ?? null;
-    });
+    return new LegacyCommercialCoreAdapter(
+      async (context) => {
+        const item = await this.itemRepository.getItem(context.itemId);
+        return item?.salePrice ?? null;
+      },
+      async (context) => {
+        const item = await this.itemRepository.getItem(context.itemId);
+        return item?.costingStats?.avgCost?.base ?? item?.purchasePrice ?? null;
+      },
+      this.approvalEngine
+    );
   },
   get policyEngine(): IPolicyEngine {
     return new PolicyEngine(this.posPolicyRepository, this.policyRegistry);

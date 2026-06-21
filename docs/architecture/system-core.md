@@ -169,6 +169,15 @@ Sales Invoice and Purchase Invoice normalization now call Commercial Core for li
 
 Accounting boundary: 250l-1 is intended as an ownership move. Golden SI/PI line-discount and inclusive-tax regressions were run; line subtotal, discount, tax, grand total, and purchase posting outcomes are unchanged.
 
+250l-2 adds the cost/margin guard to Commercial Core:
+
+- `validateCostMargin(...)` compares base selling price against base unit cost and optional minimum margin percent.
+- Healthy margins return `allowed: true`.
+- Unknown or zero cost returns `NO_COST` and does not block, avoiding false failures for service/unsettled-cost paths.
+- Below-cost or below-minimum-margin results evaluate the `below_cost_sale` approval subject through `IApprovalEngine` unless the caller passes an approved override.
+
+POS sale posting now invokes `validateCostMargin(...)` after Inventory Core resolves actual unit cost for a stock OUT. Pending approval blocks the POS sale before vouchers are emitted; an approved override lets posting continue. Normal sale totals and voucher math are unchanged.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.

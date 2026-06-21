@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-21  
 **Status:** In progress by slices  
-**Actual time:** 250l-1 ~1.0h
+**Actual time:** 250l-1 ~1.0h; 250l-2 ~1.0h
 
 ## Slice 250l-1 — Pricing + Line/Discount Calculation
 
@@ -43,7 +43,37 @@ POS product search now gets its displayed price through the shared Commercial Co
 
 ### Known Follow-Ups
 
-- 250l-2: cost/margin guard and below-cost approval.
 - 250l-3: promotions with stacking/conflict model.
 - Move SO/PO/SR/PR remaining local discount helpers behind Commercial Core in a later narrow cleanup.
 - Merge Sales/Purchases price-list resolution behind a richer `ICommercialCore.resolvePrice(...)` result contract once current SI/PI totals are audited.
+
+## Slice 250l-2 — Cost/Margin Guard
+
+### Technical Developer View
+
+Expanded `ICommercialCore` with `validateCostMargin(...)`:
+
+- Computes margin from base unit selling price and base unit cost.
+- Allows healthy margins.
+- Treats missing/zero cost as `NO_COST` and does not block, so service/unsettled-cost paths are not falsely rejected.
+- Routes below-cost and below-minimum-margin cases to `IApprovalEngine` with subject type `below_cost_sale`.
+- Honors `approvedOverride` for already-approved manager/approval flows.
+
+Wired POS sale posting to the guard after Inventory Core resolves actual stock OUT cost. If the approval result is pending, POS blocks before revenue/COGS/settlement vouchers are emitted. If the line carries `approvedCostMarginOverride`, posting continues.
+
+### End-User View
+
+POS can now prevent a cashier from completing a sale below cost unless an approved override is present. Normal sales above cost continue as before.
+
+### Verification
+
+- Focused 250l-2 tests passed: 5 suites / 38 tests.
+- `npm --prefix backend run typecheck` passed.
+- `npm --prefix backend run build` passed.
+- Full backend suite passed: 186 passed / 2 skipped suites; 1,612 passed / 18 skipped tests.
+
+### Known Follow-Ups
+
+- Add the manager approval capture/UI flow for `approvedCostMarginOverride`.
+- Apply margin checks to non-POS Sales flows after defining the Sales approval UX.
+- 250l-3: promotions with stacking/conflict model.

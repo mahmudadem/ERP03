@@ -39,7 +39,7 @@ const makeParty = () =>
     updatedAt: new Date(),
   });
 
-const setup = () => {
+const setup = (options: { commercialCore?: any; unitCostBase?: number } = {}) => {
   const itemRepo = { getItem: jest.fn().mockResolvedValue(makeItem()) };
   const itemCategoryRepo = { getCompanyCategories: jest.fn().mockResolvedValue([]) };
   const inventorySettingsRepo = { getSettings: jest.fn().mockResolvedValue({ defaultCOGSAccountId: 'cogs-default', defaultInventoryAssetAccountId: 'inv-default' }) };
@@ -49,8 +49,8 @@ const setup = () => {
   const inventoryCore = {
     processOUT: jest.fn().mockResolvedValue({
       id: 'sm_1',
-      unitCostBase: 4,
-      totalCostBase: 8,
+      unitCostBase: options.unitCostBase ?? 4,
+      totalCostBase: (options.unitCostBase ?? 4) * 2,
     }),
   };
   const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: { id: 'v_1' } }) };
@@ -63,7 +63,8 @@ const setup = () => {
     companyCurrencyRepo as any,
     inventoryCore as any,
     accountingBridge as any,
-    new TaxEngine()
+    new TaxEngine(),
+    options.commercialCore
   );
   return { useCase, inventoryCore, accountingBridge };
 };
@@ -128,5 +129,66 @@ describe('PostPosSaleUseCase', () => {
     expect(inventoryCore.processOUT).not.toHaveBeenCalled();
     expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
     expect(result.grandTotal).toBe(20);
+  });
+
+  it('250l-2 blocks a below-cost POS sale when approval is pending', async () => {
+    const commercialCore = {
+      validateCostMargin: jest.fn().mockResolvedValue({
+        allowed: false,
+        requiresApproval: true,
+        reason: 'BELOW_COST',
+      }),
+    };
+    const { useCase, accountingBridge } = setup({ commercialCore, unitCostBase: 12 });
+
+    await expect(useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentId: 'pos_sale_1',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/below allowed cost\/margin/);
+
+    expect(commercialCore.validateCostMargin).toHaveBeenCalledWith(expect.objectContaining({
+      companyId: 'cmp_test',
+      itemId: 'item_1',
+      unitPriceBase: 10,
+      unitCostBase: 12,
+      source: 'pos',
+    }));
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+  });
+
+  it('250l-2 posts a below-cost POS sale when an approved override is present', async () => {
+    const commercialCore = {
+      validateCostMargin: jest.fn().mockResolvedValue({
+        allowed: true,
+        requiresApproval: false,
+        reason: 'BELOW_COST',
+      }),
+    };
+    const { useCase, accountingBridge } = setup({ commercialCore, unitCostBase: 12 });
+
+    const result = await useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentId: 'pos_sale_1',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1', approvedCostMarginOverride: true }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    });
+
+    expect(result.grandTotal).toBe(20);
+    expect(commercialCore.validateCostMargin).toHaveBeenCalledWith(expect.objectContaining({
+      approvedOverride: true,
+    }));
+    expect(accountingBridge.recordFinancialEvent).toHaveBeenCalled();
   });
 });

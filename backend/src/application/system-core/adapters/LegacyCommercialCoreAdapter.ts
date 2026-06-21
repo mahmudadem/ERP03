@@ -2,18 +2,25 @@ import {
   DiscountCalculationContext,
   ICommercialCore,
   CommercialLineCalculationContext,
+  CostMarginValidationContext,
+  CostMarginValidationResult,
   ResolvePriceContext,
 } from '../contracts/ICommercialCore';
 import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
-import { CommercialCore, CommercialPriceResolver } from '../commercial/CommercialCore';
+import { IApprovalEngine } from '../contracts/IApprovalEngine';
+import { CommercialCore, CommercialCostResolver, CommercialPriceResolver } from '../commercial/CommercialCore';
 
 export type ResolvePriceDelegate = CommercialPriceResolver;
 
 export class LegacyCommercialCoreAdapter implements ICommercialCore {
   private readonly core: CommercialCore;
 
-  constructor(resolvePriceDelegate?: ResolvePriceDelegate) {
-    this.core = new CommercialCore(resolvePriceDelegate);
+  constructor(
+    resolvePriceDelegate?: ResolvePriceDelegate,
+    resolveCostDelegate?: CommercialCostResolver,
+    approvalEngine?: IApprovalEngine
+  ) {
+    this.core = new CommercialCore(resolvePriceDelegate, resolveCostDelegate, approvalEngine);
   }
 
   async resolvePrice(context: ResolvePriceContext): Promise<number | null> {
@@ -26,5 +33,9 @@ export class LegacyCommercialCoreAdapter implements ICommercialCore {
 
   calcLine(context: CommercialLineCalculationContext): CalculatedTaxLineAmounts {
     return this.core.calcLine(context);
+  }
+
+  validateCostMargin(context: CostMarginValidationContext): Promise<CostMarginValidationResult> {
+    return this.core.validateCostMargin(context);
   }
 }

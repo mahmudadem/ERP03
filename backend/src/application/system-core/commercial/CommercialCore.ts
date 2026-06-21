@@ -1,10 +1,13 @@
 import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
 import {
   CommercialLineCalculationContext,
+  CostMarginValidationContext,
+  CostMarginValidationResult,
   DiscountCalculationContext,
   ICommercialCore,
   ResolvePriceContext,
 } from '../contracts/ICommercialCore';
+import { IApprovalEngine } from '../contracts/IApprovalEngine';
 import { roundMoney } from '../money/roundMoney';
 import { calculateTaxLineAmounts } from '../tax/TaxEngine';
 
@@ -14,6 +17,7 @@ const numeric = (value: unknown, fallback = 0): number => {
 };
 
 export type CommercialPriceResolver = (context: ResolvePriceContext) => Promise<number | null>;
+export type CommercialCostResolver = (context: CostMarginValidationContext) => Promise<number | null>;
 
 export const calculateCommercialDiscountAmount = (context: DiscountCalculationContext): number => {
   const currency = context.currency || 'USD';
@@ -56,7 +60,11 @@ export const calculateCommercialLineAmounts = (
 };
 
 export class CommercialCore implements ICommercialCore {
-  constructor(private readonly resolvePriceDelegate?: CommercialPriceResolver) {}
+  constructor(
+    private readonly resolvePriceDelegate?: CommercialPriceResolver,
+    private readonly resolveCostDelegate?: CommercialCostResolver,
+    private readonly approvalEngine?: IApprovalEngine
+  ) {}
 
   async resolvePrice(context: ResolvePriceContext): Promise<number | null> {
     if (!this.resolvePriceDelegate) return null;
@@ -69,5 +77,69 @@ export class CommercialCore implements ICommercialCore {
 
   calcLine(context: CommercialLineCalculationContext): CalculatedTaxLineAmounts {
     return calculateCommercialLineAmounts(context);
+  }
+
+  async validateCostMargin(context: CostMarginValidationContext): Promise<CostMarginValidationResult> {
+    const unitPriceBase = numeric(context.unitPriceBase);
+    const resolvedCost = context.unitCostBase !== undefined
+      ? numeric(context.unitCostBase)
+      : numeric(await this.resolveCostDelegate?.(context), Number.NaN);
+
+    if (!(resolvedCost > 0)) {
+      return { allowed: true, requiresApproval: false, reason: 'NO_COST' };
+    }
+
+    const marginPct = unitPriceBase === 0
+      ? -100
+      : roundMoney(((unitPriceBase - resolvedCost) / unitPriceBase) * 100);
+    const belowCost = unitPriceBase < resolvedCost;
+    const belowMinimum = context.minimumMarginPct !== undefined && marginPct < numeric(context.minimumMarginPct);
+    if (!belowCost && !belowMinimum) {
+      return {
+        allowed: true,
+        requiresApproval: false,
+        reason: 'OK',
+        unitCostBase: resolvedCost,
+        marginPct,
+      };
+    }
+
+    const reason = belowCost ? 'BELOW_COST' : 'BELOW_MIN_MARGIN';
+    if (context.approvedOverride === true) {
+      return {
+        allowed: true,
+        requiresApproval: false,
+        reason,
+        unitCostBase: resolvedCost,
+        marginPct,
+      };
+    }
+
+    const approval = await this.approvalEngine?.evaluate({
+      type: 'below_cost_sale',
+      id: `${context.source || 'commercial'}:${context.itemId}`,
+      payload: {
+        requiresApproval: true,
+        itemId: context.itemId,
+        unitPriceBase,
+        unitCostBase: resolvedCost,
+        marginPct,
+        reason,
+      },
+    }, {
+      companyId: context.companyId,
+      actorUserId: context.actorUserId,
+      source: context.source,
+    });
+
+    const allowed = approval?.decision === 'APPROVED';
+    return {
+      allowed,
+      requiresApproval: !allowed,
+      reason,
+      unitCostBase: resolvedCost,
+      marginPct,
+      approval,
+    };
   }
 }

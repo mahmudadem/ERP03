@@ -25,6 +25,7 @@ export interface PosCartLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  approvedCostMarginOverride?: boolean;
 }
 
 export interface PosCartPayment {
@@ -174,6 +175,7 @@ export class CompletePosSaleUseCase {
         discountType: l.discountType,
         discountValue: l.discountValue,
         taxCodeId: l.taxCodeId,
+        approvedCostMarginOverride: l.approvedCostMarginOverride,
         warehouseId: register.warehouseId,
       })),
       payments: [],
@@ -233,6 +235,7 @@ export class CompletePosSaleUseCase {
           discountType: l.discountType,
           discountValue: l.discountValue,
           taxCodeId: l.taxCodeId,
+          approvedCostMarginOverride: l.approvedCostMarginOverride,
           warehouseId: register.warehouseId,
         })),
         payments: appliedPayments,

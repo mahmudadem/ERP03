@@ -422,7 +422,8 @@ export class PosController {
           diContainer.companyCurrencyRepository,
           diContainer.inventoryCore,
           diContainer.accountingBridge,
-          diContainer.taxEngine
+          diContainer.taxEngine,
+          diContainer.commercialCore
         ),
         diContainer.policyEngine,
         diContainer.numberingEngine,

@@ -8,7 +8,7 @@ import { IInventorySettingsRepository } from '../../../repository/interfaces/inv
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
-import { IAccountingBridge, IInventoryCore, ITaxEngine } from '../../system-core';
+import { IAccountingBridge, ICommercialCore, IInventoryCore, ITaxEngine } from '../../system-core';
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
 
@@ -20,6 +20,7 @@ export interface PostPosSaleLineInput {
   discountValue?: number;
   taxCodeId?: string;
   warehouseId: string;
+  approvedCostMarginOverride?: boolean;
 }
 
 export interface PostPosSalePaymentInput {
@@ -90,7 +91,8 @@ export class PostPosSaleUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryCore: IInventoryCore,
     private readonly accountingBridge: IAccountingBridge,
-    private readonly taxEngine: ITaxEngine
+    private readonly taxEngine: ITaxEngine,
+    private readonly commercialCore?: ICommercialCore
   ) {}
 
   async execute(input: PostPosSaleInput): Promise<PostPosSaleResult> {
@@ -169,6 +171,23 @@ export class PostPosSaleUseCase {
           inventoryAccountId = cogsAccounts.inventoryAccountId;
           addToBucket(cogsDebits, cogsAccounts.cogsAccountId, lineCostBase, baseCurrency);
           addToBucket(inventoryCredits, cogsAccounts.inventoryAccountId, lineCostBase, baseCurrency);
+        }
+      }
+
+      if (this.commercialCore && unitCostBase > 0) {
+        const unitNetPriceBase = roundMoney(taxAmounts.lineTotalBase / sourceLine.qty, baseCurrency);
+        const margin = await this.commercialCore.validateCostMargin({
+          companyId: input.companyId,
+          itemId: item.id,
+          unitPriceBase: unitNetPriceBase,
+          quantity: sourceLine.qty,
+          unitCostBase,
+          actorUserId: input.createdBy,
+          approvedOverride: sourceLine.approvedCostMarginOverride === true,
+          source: 'pos',
+        });
+        if (!margin.allowed) {
+          throw new Error(`POS sale line ${item.code} is below allowed cost/margin and requires approval.`);
         }
       }
 

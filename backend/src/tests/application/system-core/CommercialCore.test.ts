@@ -64,4 +64,68 @@ describe('Commercial Core', () => {
     await expect(core.resolvePrice({ companyId: 'cmp_1', itemId: 'item_1' })).resolves.toBe(42);
     await expect(core.resolvePrice({ companyId: 'cmp_1', itemId: 'item_2' })).resolves.toBeNull();
   });
+
+  it('250l-2 allows healthy margins and returns the computed margin', async () => {
+    const core = new CommercialCore(undefined, async () => 60);
+
+    const result = await core.validateCostMargin({
+      companyId: 'cmp_1',
+      itemId: 'item_1',
+      unitPriceBase: 100,
+      minimumMarginPct: 20,
+    });
+
+    expect(result).toMatchObject({
+      allowed: true,
+      requiresApproval: false,
+      reason: 'OK',
+      unitCostBase: 60,
+      marginPct: 40,
+    });
+  });
+
+  it('250l-2 routes below-cost sales to the approval engine', async () => {
+    const approvalEngine = {
+      evaluate: jest.fn().mockResolvedValue({
+        decision: 'PENDING',
+        requiredApprovers: ['manager_1'],
+        gates: [{ name: 'generic_subject', required: true }],
+      }),
+    };
+    const core = new CommercialCore(undefined, async () => 12, approvalEngine as any);
+
+    const result = await core.validateCostMargin({
+      companyId: 'cmp_1',
+      itemId: 'item_1',
+      unitPriceBase: 10,
+      actorUserId: 'cashier_1',
+      source: 'pos',
+    });
+
+    expect(result.allowed).toBe(false);
+    expect(result.requiresApproval).toBe(true);
+    expect(result.reason).toBe('BELOW_COST');
+    expect(approvalEngine.evaluate).toHaveBeenCalledWith(
+      expect.objectContaining({
+        type: 'below_cost_sale',
+        payload: expect.objectContaining({ requiresApproval: true, unitPriceBase: 10, unitCostBase: 12 }),
+      }),
+      expect.objectContaining({ companyId: 'cmp_1', actorUserId: 'cashier_1', source: 'pos' })
+    );
+  });
+
+  it('250l-2 honors an approved below-cost override', async () => {
+    const approvalEngine = { evaluate: jest.fn() };
+    const core = new CommercialCore(undefined, async () => 12, approvalEngine as any);
+
+    const result = await core.validateCostMargin({
+      companyId: 'cmp_1',
+      itemId: 'item_1',
+      unitPriceBase: 10,
+      approvedOverride: true,
+    });
+
+    expect(result).toMatchObject({ allowed: true, requiresApproval: false, reason: 'BELOW_COST' });
+    expect(approvalEngine.evaluate).not.toHaveBeenCalled();
+  });
 });

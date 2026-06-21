@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250l-2 — Commercial Core cost-margin guard)
+
+- **Goal:** Complete the second Commercial Core slice: cost/margin validation with below-cost approval semantics.
+- **What was done:** Added `ICommercialCore.validateCostMargin(...)` and Commercial Core cost-resolution/approval support. DI supplies item average cost/purchase-price fallback and `IApprovalEngine`. POS sale posting now validates actual unit cost after Inventory Core stock OUT; pending below-cost/min-margin approval blocks before vouchers are recorded, while `approvedCostMarginOverride` allows an approved sale to post.
+- **Accounting/ERP impact:** Normal sale totals and voucher math are unchanged. The new guard prevents known below-cost POS sale posting without approval; it does not block unknown/zero-cost paths to avoid false failures on service/unsettled-cost scenarios.
+- **Verification:** Focused 250l-2 tests passed (5 suites / 38 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 186 passed / 2 skipped suites; 1,612 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250l-commercial-core.md`, and `planning/done/250l-commercial-core.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Commit 250l-2, then continue to 250l-3 promotions.
+
 ### Session: 2026-06-21 (Epic 250l-1 — Commercial Core pricing/discount)
 
 - **Goal:** Complete the first Commercial Core slice: pricing seam + line/discount calculation ownership without changing SI/PI totals.
