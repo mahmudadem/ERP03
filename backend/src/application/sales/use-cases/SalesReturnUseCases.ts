@@ -50,6 +50,7 @@ import { PostingLog, LineDecision } from '../../../domain/accounting/entities/Po
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   convertItemQtyToBaseUomDetailed,
@@ -197,7 +198,8 @@ export class CreateSalesReturnUseCase {
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly auditEngine?: IAuditEngine,
-    private readonly companyCurrencyRepo?: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo?: ICompanyCurrencyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
@@ -275,7 +277,9 @@ export class CreateSalesReturnUseCase {
     const returnNumber = await generateUniqueDocumentNumber(
       settings,
       'SR',
-      async (candidate) => !!(await this.salesReturnRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.salesReturnRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
     const salesReturn = new SalesReturn({
       id: randomUUID(),

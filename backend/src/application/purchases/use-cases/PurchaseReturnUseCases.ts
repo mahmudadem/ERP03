@@ -52,7 +52,8 @@ import {
   buildDocumentPricePoint,
   buildUpdatedItemCostingStats,
 } from '../../inventory/services/ItemCostingStatsService';
-import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { generateDocumentNumberWithEngine } from './PurchaseOrderUseCases';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 
 export interface PurchaseReturnLineInput {
@@ -196,7 +197,8 @@ export class CreatePurchaseReturnUseCase {
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly itemRepo: IItemRepository
+    private readonly itemRepo: IItemRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreatePurchaseReturnInput): Promise<PurchaseReturn> {
@@ -254,10 +256,11 @@ export class CreatePurchaseReturnUseCase {
       vendorName = vendor?.displayName || '';
     }
 
+    const returnNumber = await generateDocumentNumberWithEngine(settings, 'PR', input.companyId, this.numberingEngine);
     const purchaseReturn = new PurchaseReturn({
       id: randomUUID(),
       companyId: input.companyId,
-      returnNumber: generateDocumentNumber(settings, 'PR'),
+      returnNumber,
       purchaseInvoiceId: purchaseInvoice?.id,
       goodsReceiptId: goodsReceipt?.id,
       purchaseOrderId: input.purchaseOrderId || purchaseInvoice?.purchaseOrderId || goodsReceipt?.purchaseOrderId,

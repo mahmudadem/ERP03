@@ -47,7 +47,7 @@ export class SalesOperationalController {
     try {
       const companyId = SalesOperationalController.getCompanyId(req);
       const userId = SalesOperationalController.getUserId(req);
-      const useCase = new CreateQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository);
+      const useCase = new CreateQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository, diContainer.numberingEngine);
       const result = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
@@ -147,7 +147,7 @@ export class SalesOperationalController {
   static async reviseQuote(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SalesOperationalController.getCompanyId(req);
-      const useCase = new ReviseQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository);
+      const useCase = new ReviseQuoteUseCase(diContainer.quoteRepository, diContainer.salesSettingsRepository, diContainer.numberingEngine);
       const result = await useCase.execute(companyId, (req as any).params.id);
       (res as any).json({ success: true, data: result.toJSON() });
     } catch (error) {
@@ -165,7 +165,9 @@ export class SalesOperationalController {
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
         diContainer.companyCurrencyRepository,
-        diContainer.promotionRuleRepository
+        diContainer.promotionRuleRepository,
+        undefined,
+        diContainer.numberingEngine
       );
       const useCase = new ConvertQuoteToSalesOrderUseCase(
         diContainer.quoteRepository,
@@ -192,7 +194,9 @@ export class SalesOperationalController {
         diContainer.companyCurrencyRepository,
         diContainer.promotionRuleRepository,
         new CreditCheckService(diContainer.salesInvoiceRepository),
-        diContainer.creditOverrideRepository
+        diContainer.creditOverrideRepository,
+        undefined,
+        diContainer.numberingEngine
       );
       const useCase = new ConvertQuoteToSalesInvoiceUseCase(
         diContainer.quoteRepository,

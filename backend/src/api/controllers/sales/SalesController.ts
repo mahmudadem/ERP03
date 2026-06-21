@@ -268,7 +268,8 @@ export class SalesController {
       diContainer.postingLogRepository,
       IAuditEngine,
       diContainer.partyItemPriceRepository,
-      diContainer.recordSalesProfitLineFactsUseCase
+      diContainer.recordSalesProfitLineFactsUseCase,
+      diContainer.numberingEngine
     );
   }
 
@@ -427,6 +428,7 @@ export class SalesController {
         diContainer.companyCurrencyRepository,
         diContainer.promotionRuleRepository,
         IAuditEngine,
+        diContainer.numberingEngine,
       );
 
       const so = await useCase.execute({
@@ -618,7 +620,8 @@ export class SalesController {
         diContainer.salesOrderRepository,
         diContainer.partyRepository,
         diContainer.itemRepository,
-        IAuditEngine
+        IAuditEngine,
+        diContainer.numberingEngine
       );
 
       const dn = await useCase.execute({
@@ -793,6 +796,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         new CreditCheckService(diContainer.salesInvoiceRepository),
         diContainer.creditOverrideRepository,
         IAuditEngine,
+        diContainer.numberingEngine,
       );
 
       if ((req as any).body?.creditOverrideReason) {
@@ -837,6 +841,7 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         new CreditCheckService(diContainer.salesInvoiceRepository),
         diContainer.creditOverrideRepository,
         IAuditEngine,
+        diContainer.numberingEngine,
       );
 
       const postUseCase = SalesController.buildPostSalesInvoiceUseCase(IAuditEngine);
@@ -1118,7 +1123,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.postingLogRepository,
         IAuditEngine,
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase
+        diContainer.recordSalesProfitLineFactsUseCase,
+        diContainer.numberingEngine
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -1244,7 +1250,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.salesInvoiceRepository,
         diContainer.deliveryNoteRepository,
         IAuditEngine,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.numberingEngine
       );
 
       const salesReturn = await useCase.execute({

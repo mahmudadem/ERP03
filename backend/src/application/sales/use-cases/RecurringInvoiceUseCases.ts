@@ -4,7 +4,8 @@ import { IRecurringInvoiceTemplateRepository } from '../../../repository/interfa
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
-import { generateDocumentNumber } from './SalesOrderUseCases';
+import { generateUniqueDocumentNumber } from './SalesOrderUseCases';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 
 export interface CreateRecurringInvoiceTemplateInput {
   name: string;
@@ -167,7 +168,8 @@ export class GenerateRecurringInvoicesUseCase {
   constructor(
     private readonly templateRepo: IRecurringInvoiceTemplateRepository,
     private readonly invoiceRepo: ISalesInvoiceRepository,
-    private readonly settingsRepo: ISalesSettingsRepository
+    private readonly settingsRepo: ISalesSettingsRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(companyId: string, userId: string, asOfDate: string): Promise<SalesInvoice[]> {
@@ -178,7 +180,15 @@ export class GenerateRecurringInvoicesUseCase {
     const created: SalesInvoice[] = [];
 
     for (const tmpl of templates) {
-      const invoiceNumber = generateDocumentNumber(settings, 'SI');
+      const invoiceNumber = await generateUniqueDocumentNumber(
+        settings,
+        'SI',
+        async (candidate) => typeof (this.invoiceRepo as any).getByNumber === 'function'
+          ? !!(await (this.invoiceRepo as any).getByNumber(companyId, candidate))
+          : false,
+        this.numberingEngine,
+        companyId,
+      );
 
       const dueDate = this.computeDueDate(tmpl.nextGenerationDate, tmpl.paymentTermsDays);
 

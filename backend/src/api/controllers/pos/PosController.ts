@@ -439,6 +439,7 @@ export class PosController {
           diContainer.taxEngine
         ),
         diContainer.policyEngine,
+        diContainer.numberingEngine,
         diContainer.auditEngine
       );
       const result = await useCase.execute({

@@ -123,6 +123,14 @@ describe('Architecture guard: system core boundaries', () => {
       .map((file) => path.relative(SRC, file));
     expect(offenders).toEqual([]);
   });
+
+  it('250i: POS sale completion must allocate receipt numbers through INumberingEngine', () => {
+    const file = path.resolve(SRC, 'application/pos/use-cases/CompletePosSaleUseCase.ts');
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).toContain('numberingEngine.next');
+    expect(content).not.toMatch(/receiptPrefix\s*\+\s*['"`-]/);
+    expect(content).not.toMatch(/receiptNextSeq\)\.padStart\(6/);
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

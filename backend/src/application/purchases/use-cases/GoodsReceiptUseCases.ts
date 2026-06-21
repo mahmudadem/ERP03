@@ -27,9 +27,10 @@ import {
   buildPurchaseCostPoint,
   buildUpdatedItemCostingStats,
 } from '../../inventory/services/ItemCostingStatsService';
-import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { generateDocumentNumberWithEngine } from './PurchaseOrderUseCases';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 import { roundByCurrency } from '../../../domain/accounting/entities/CurrencyPrecisionHelpers';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 
 export interface GoodsReceiptLineInput {
   lineId?: string;
@@ -95,7 +96,8 @@ export class CreateGoodsReceiptUseCase {
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly itemRepo: IItemRepository
+    private readonly itemRepo: IItemRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateGoodsReceiptInput): Promise<GoodsReceipt> {
@@ -171,10 +173,11 @@ export class CreateGoodsReceiptUseCase {
     }
 
     const now = new Date();
+    const grnNumber = await generateDocumentNumberWithEngine(settings, 'GRN', input.companyId, this.numberingEngine);
     const grn = new GoodsReceipt({
       id: randomUUID(),
       companyId: input.companyId,
-      grnNumber: generateDocumentNumber(settings, 'GRN'),
+      grnNumber,
       purchaseOrderId: po?.id,
       vendorId,
       vendorName,

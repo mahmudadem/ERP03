@@ -11,6 +11,7 @@ import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
@@ -55,13 +56,51 @@ export const generateDocumentNumber = (
   return `${prefix}-${String(seq).padStart(5, '0')}`;
 };
 
+const getSalesNumberingConfig = (settings: SalesSettings, docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT'): { prefix: string; seedNextNumber: number } => {
+  if (docType === 'SO') return { prefix: settings.soNumberPrefix, seedNextNumber: settings.soNumberNextSeq };
+  if (docType === 'DN') return { prefix: settings.dnNumberPrefix, seedNextNumber: settings.dnNumberNextSeq };
+  if (docType === 'SI') return { prefix: settings.siNumberPrefix, seedNextNumber: settings.siNumberNextSeq };
+  if (docType === 'QT') return { prefix: settings.quoteNumberPrefix, seedNextNumber: settings.quoteNumberNextSeq };
+  return { prefix: settings.srNumberPrefix, seedNextNumber: settings.srNumberNextSeq };
+};
+
+const mirrorSalesNumbering = (settings: SalesSettings, docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT', allocatedNumber: string): void => {
+  const next = Math.max(getSalesNumberingConfig(settings, docType).seedNextNumber + 1, trailingNumber(allocatedNumber) + 1);
+  if (docType === 'SO') settings.soNumberNextSeq = next;
+  else if (docType === 'DN') settings.dnNumberNextSeq = next;
+  else if (docType === 'SI') settings.siNumberNextSeq = next;
+  else if (docType === 'QT') settings.quoteNumberNextSeq = next;
+  else settings.srNumberNextSeq = next;
+};
+
+const trailingNumber = (documentNumber: string): number => {
+  const match = documentNumber.match(/(\d+)\D*$/);
+  return match ? Number(match[1]) : 0;
+};
+
 export const generateUniqueDocumentNumber = async (
   settings: SalesSettings,
   docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT',
-  exists: (candidate: string) => Promise<boolean>
+  exists: (candidate: string) => Promise<boolean>,
+  numberingEngine?: INumberingEngine,
+  companyId?: string
 ): Promise<string> => {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const candidate = generateDocumentNumber(settings, docType);
+    let candidate: string;
+    if (numberingEngine && companyId) {
+      const cfg = getSalesNumberingConfig(settings, docType);
+      candidate = await numberingEngine.next({
+        companyId,
+        docType,
+        scope: 'company',
+        prefix: cfg.prefix,
+        counterWidth: 5,
+        seedNextNumber: cfg.seedNextNumber,
+      });
+      mirrorSalesNumbering(settings, docType, candidate);
+    } else {
+      candidate = generateDocumentNumber(settings, docType);
+    }
     if (!(await exists(candidate))) {
       return candidate;
     }
@@ -154,6 +193,7 @@ export class CreateSalesOrderUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly promotionRuleRepo?: IPromotionRuleRepository,
     private readonly auditEngine?: IAuditEngine,
+    private readonly numberingEngine?: INumberingEngine,
   ) {}
 
   async execute(input: CreateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
@@ -181,7 +221,9 @@ export class CreateSalesOrderUseCase {
     const orderNumber = await generateUniqueDocumentNumber(
       settings,
       'SO',
-      async (candidate) => !!(await this.salesOrderRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.salesOrderRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
     const so = new SalesOrder({
       id: randomUUID(),

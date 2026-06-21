@@ -11,6 +11,7 @@ import { IPurchaseOrderRepository } from '../../../repository/interfaces/purchas
 import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purchases/IPurchaseSettingsRepository';
 import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSettings';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 
 
 export const generateDocumentNumber = (
@@ -40,6 +41,43 @@ export const generateDocumentNumber = (
 
   const padded = String(seq).padStart(5, '0');
   return `${prefix}-${padded}`;
+};
+
+const getPurchaseNumberingConfig = (settings: PurchaseSettings, docType: 'PO' | 'GRN' | 'PI' | 'PR'): { prefix: string; seedNextNumber: number } => {
+  if (docType === 'PO') return { prefix: settings.poNumberPrefix, seedNextNumber: settings.poNumberNextSeq };
+  if (docType === 'GRN') return { prefix: settings.grnNumberPrefix, seedNextNumber: settings.grnNumberNextSeq };
+  if (docType === 'PI') return { prefix: settings.piNumberPrefix, seedNextNumber: settings.piNumberNextSeq };
+  return { prefix: settings.prNumberPrefix, seedNextNumber: settings.prNumberNextSeq };
+};
+
+const trailingNumber = (documentNumber: string): number => {
+  const match = documentNumber.match(/(\d+)\D*$/);
+  return match ? Number(match[1]) : 0;
+};
+
+export const generateDocumentNumberWithEngine = async (
+  settings: PurchaseSettings,
+  docType: 'PO' | 'GRN' | 'PI' | 'PR',
+  companyId: string,
+  numberingEngine?: INumberingEngine,
+): Promise<string> => {
+  if (!numberingEngine) return generateDocumentNumber(settings, docType);
+
+  const cfg = getPurchaseNumberingConfig(settings, docType);
+  const candidate = await numberingEngine.next({
+    companyId,
+    docType,
+    scope: 'company',
+    prefix: cfg.prefix,
+    counterWidth: 5,
+    seedNextNumber: cfg.seedNextNumber,
+  });
+  const next = Math.max(cfg.seedNextNumber + 1, trailingNumber(candidate) + 1);
+  if (docType === 'PO') settings.poNumberNextSeq = next;
+  else if (docType === 'GRN') settings.grnNumberNextSeq = next;
+  else if (docType === 'PI') settings.piNumberNextSeq = next;
+  else settings.prNumberNextSeq = next;
+  return candidate;
 };
 
 export interface PurchaseOrderLineInput {
@@ -99,7 +137,8 @@ export class CreatePurchaseOrderUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreatePurchaseOrderInput): Promise<PurchaseOrder> {
@@ -167,7 +206,7 @@ export class CreatePurchaseOrderUseCase {
     const MAX_ATTEMPTS = 100;
 
     for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
-      const candidate = generateDocumentNumber(settings, 'PO');
+      const candidate = await generateDocumentNumberWithEngine(settings, 'PO', companyId, this.numberingEngine);
       const existing = await this.purchaseOrderRepo.getByNumber(companyId, candidate);
       if (!existing) return candidate;
     }

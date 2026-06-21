@@ -111,6 +111,7 @@ const setup = (opts: SetupOpts = {}) => {
     execute: jest.fn((input: any) => Promise.resolve(input.dryRun ? preview : posted)),
   };
   const policyEngine = { resolve: jest.fn().mockResolvedValue({ allowed: true, requiresApproval: false, resolvedBy: ['test'] }) };
+  const numberingEngine = { next: jest.fn().mockResolvedValue('R-000001') };
   const auditEngine = { record: jest.fn().mockResolvedValue(undefined) };
   const useCase = new CompletePosSaleUseCase(
     shiftRepo as any,
@@ -122,9 +123,10 @@ const setup = (opts: SetupOpts = {}) => {
     tx as any,
     postPosSaleUC as any,
     policyEngine as any,
+    numberingEngine as any,
     auditEngine as any
   );
-  return { useCase, postPosSaleUC, receiptRepo, paymentRepo, cashMovementRepo, preview, posted, policyEngine, auditEngine };
+  return { useCase, postPosSaleUC, receiptRepo, paymentRepo, cashMovementRepo, preview, posted, policyEngine, numberingEngine, auditEngine };
 };
 
 const run = (useCase: CompletePosSaleUseCase, payments: any[], extra: Partial<any> = {}) =>
@@ -178,8 +180,17 @@ describe('CompletePosSaleUseCase', () => {
   });
 
   it('uses the POS-owned posting use-case with POS_DIRECT_SALE metadata inputs', async () => {
-    const { useCase, postPosSaleUC } = setup();
+    const { useCase, postPosSaleUC, numberingEngine } = setup();
     await run(useCase, [{ method: 'CASH', amount: 10 }]);
+    expect(numberingEngine.next).toHaveBeenCalledWith({
+      companyId: 'cmp_test',
+      docType: 'POS_RECEIPT',
+      scope: 'terminal',
+      terminalId: 'reg_1',
+      prefix: 'R',
+      counterWidth: 6,
+      seedNextNumber: 1,
+    });
     const postedInput = postedInputOf(postPosSaleUC);
     expect(postedInput.companyId).toBe('cmp_test');
     expect(postedInput.customerId).toBe('walk-in-cust');

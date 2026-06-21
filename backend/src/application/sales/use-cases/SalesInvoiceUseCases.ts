@@ -70,6 +70,7 @@ import { IPostingLogRepository } from '../../../repository/interfaces/accounting
 import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   ItemQtyToBaseUomResult,
@@ -360,6 +361,7 @@ export class CreateSalesInvoiceUseCase {
     private readonly creditCheckService?: CreditCheckService,
     private readonly creditOverrideRepo?: ICreditOverrideRepository,
     private readonly auditEngine?: IAuditEngine,
+    private readonly numberingEngine?: INumberingEngine,
   ) {}
 
   async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<CreateSalesInvoiceResult> {
@@ -593,7 +595,9 @@ export class CreateSalesInvoiceUseCase {
     const invoiceNumber = await generateUniqueDocumentNumber(
       settings,
       'SI',
-      async (candidate) => !!(await this.salesInvoiceRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.salesInvoiceRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
 
     const si = new SalesInvoice({
@@ -974,7 +978,8 @@ export class PostSalesInvoiceUseCase {
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly auditEngine?: IAuditEngine,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
+    private readonly numberingEngine?: INumberingEngine
   ) {
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
@@ -1982,7 +1987,9 @@ export class PostSalesInvoiceUseCase {
       }
       const resolvedSettlementAccountId = await this.resolveAccountId(companyId, effectiveSettlementAccountId);
 
-      const voucherNo = await this.voucherSequenceRepo!.getNextNumber(companyId, 'RV');
+      const voucherNo = this.numberingEngine
+        ? await this.numberingEngine.next({ companyId, docType: 'RV', scope: 'company', prefix: 'RV', counterWidth: 4 })
+        : await this.voucherSequenceRepo!.getNextNumber(companyId, 'RV');
       const voucherId = `vch_${randomUUID()}`;
 
       const docAmount = roundMoney(settlementAmountBase / si.exchangeRate);

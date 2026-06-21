@@ -4,9 +4,13 @@ export interface NumberingRequest {
   scope: string;
   branchId?: string;
   terminalId?: string;
+  prefix?: string;
+  counterWidth?: number;
+  year?: number;
+  format?: string;
+  seedNextNumber?: number;
 }
 
 export interface INumberingEngine {
   next(request: NumberingRequest): Promise<string>;
 }
-

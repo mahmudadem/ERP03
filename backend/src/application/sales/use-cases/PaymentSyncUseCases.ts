@@ -21,6 +21,7 @@ import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney as roundSalesMoney } from './SalesPostingHelpers';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 
 export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
 
@@ -111,8 +112,15 @@ export class PostSalesInvoiceWithSettlementUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly transactionManager: ITransactionManager,
     private readonly accountRepo?: IAccountRepository,
-    private readonly partyRepo?: IPartyRepository
+    private readonly partyRepo?: IPartyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
+
+  private nextVoucherNo(companyId: string, prefix: string): Promise<string> {
+    return this.numberingEngine
+      ? this.numberingEngine.next({ companyId, docType: prefix, scope: 'company', prefix, counterWidth: 4 })
+      : this.voucherSequenceRepo.getNextNumber(companyId, prefix);
+  }
 
   private async resolveAccountId(companyId: string, idOrCode: string): Promise<string> {
     if (!idOrCode) return '';
@@ -253,7 +261,7 @@ export class PostSalesInvoiceWithSettlementUseCase {
         }
         const resolvedSettlementAccountId = await this.resolveAccountId(companyId, effectiveSettlementAccountId);
 
-        const voucherNo = await this.voucherSequenceRepo.getNextNumber(companyId, 'RV');
+        const voucherNo = await this.nextVoucherNo(companyId, 'RV');
         const voucherId = `vch_${randomUUID()}`;
 
         const baseCurrencyUpper = baseCurrency.toUpperCase();
@@ -434,7 +442,8 @@ export class RecordSalesInvoicePaymentUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly transactionManager: ITransactionManager,
     private readonly accountRepo?: IAccountRepository,
-    private readonly partyRepo?: IPartyRepository
+    private readonly partyRepo?: IPartyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(
@@ -453,7 +462,8 @@ export class RecordSalesInvoicePaymentUseCase {
       this.companyCurrencyRepo,
       this.transactionManager,
       this.accountRepo,
-      this.partyRepo
+      this.partyRepo,
+      this.numberingEngine
     );
     return useCase.execute(companyId, userId, siId, input);
   }

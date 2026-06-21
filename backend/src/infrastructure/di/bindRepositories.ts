@@ -139,7 +139,7 @@ import {
   LegacyCommercialCoreAdapter,
   LegacyDocumentCoreAdapter,
   LegacyMoneyCoreAdapter,
-  LegacyNumberingEngineAdapter,
+  NumberingEngine,
   PolicyEngine,
   LegacyTaxEngineAdapter,
 } from '../../application/system-core';
@@ -1009,7 +1009,7 @@ export const diContainer = {
     return new LegacyDocumentCoreAdapter();
   },
   get numberingEngine(): INumberingEngine {
-    return new LegacyNumberingEngineAdapter();
+    return new NumberingEngine(this.voucherSequenceRepository);
   },
   get moneyCore(): IMoneyCore {
     return new LegacyMoneyCoreAdapter();

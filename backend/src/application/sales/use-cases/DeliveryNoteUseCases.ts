@@ -22,6 +22,7 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   convertItemQtyToBaseUomDetailed,
@@ -86,7 +87,8 @@ export class CreateDeliveryNoteUseCase {
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
-    private readonly auditEngine?: IAuditEngine
+    private readonly auditEngine?: IAuditEngine,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
@@ -164,7 +166,9 @@ export class CreateDeliveryNoteUseCase {
     const dnNumber = await generateUniqueDocumentNumber(
       settings,
       'DN',
-      async (candidate) => !!(await this.deliveryNoteRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.deliveryNoteRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
     const dn = new DeliveryNote({
       id: randomUUID(),

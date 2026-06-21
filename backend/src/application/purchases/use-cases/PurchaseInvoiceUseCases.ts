@@ -59,7 +59,8 @@ import {
 } from '../../inventory/services/ItemCostingStatsService';
 import { roundByCurrency } from '../../../domain/accounting/entities/CurrencyPrecisionHelpers';
 import { addDaysToISODate, roundMoney, updatePOStatus } from './PurchasePostingHelpers';
-import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { generateDocumentNumberWithEngine } from './PurchaseOrderUseCases';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { PostingError } from '../../../domain/shared/errors/AppError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import {
@@ -270,7 +271,8 @@ export class CreatePurchaseInvoiceUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreatePurchaseInvoiceInput): Promise<PurchaseInvoice> {
@@ -420,11 +422,12 @@ export class CreatePurchaseInvoiceUseCase {
     const paymentTermsDays = vendor.paymentTermsDays ?? settings.defaultPaymentTermsDays;
     const dueDate = input.dueDate || addDaysToISODate(input.invoiceDate, paymentTermsDays);
     const now = new Date();
+    const invoiceNumber = await generateDocumentNumberWithEngine(settings, 'PI', input.companyId, this.numberingEngine);
 
     const invoice = new PurchaseInvoice({
       id: randomUUID(),
       companyId: input.companyId,
-      invoiceNumber: generateDocumentNumber(settings, 'PI'),
+      invoiceNumber,
       vendorInvoiceNumber: input.vendorInvoiceNumber,
       formType: input.formType || 'purchase_invoice_direct',
       voucherType: input.voucherType || 'purchase_invoice',
@@ -541,7 +544,8 @@ export class PostPurchaseInvoiceUseCase {
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
+    private readonly numberingEngine?: INumberingEngine
   ) {
     this.accountRepo = accountRepo;
   }
@@ -1292,7 +1296,9 @@ export class PostPurchaseInvoiceUseCase {
       const settlementDate = settlement.paymentDate || now.toISOString().split('T')[0];
       const settlementMethod = settlement.paymentMethod || 'CASH';
 
-      const voucherNo = await this.voucherSequenceRepo!.getNextNumber(companyId, 'PV');
+      const voucherNo = this.numberingEngine
+        ? await this.numberingEngine.next({ companyId, docType: 'PV', scope: 'company', prefix: 'PV', counterWidth: 4 })
+        : await this.voucherSequenceRepo!.getNextNumber(companyId, 'PV');
       const voucherId = `vch_${randomUUID()}`;
 
       const docAmount = roundMoney(settlementAmountBase / pi.exchangeRate);

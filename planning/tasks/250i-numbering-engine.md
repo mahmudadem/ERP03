@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 3 (after POS V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete (2026-06-21, commit pending)
 
 ## Objective
 
@@ -29,14 +29,14 @@ Unify the three independent numbering mechanisms behind one `INumberingEngine` w
 
 ## Acceptance criteria
 
-- [ ] One numbering engine serves vouchers, documents, and POS receipts.
-- [ ] Branch/terminal scope supported + tested.
-- [ ] typecheck + build clean; suite green.
+- [x] One numbering engine serves vouchers, documents, and POS receipts.
+- [x] Branch/terminal scope supported + tested.
+- [x] typecheck + build clean; suite green.
 
 ## Definition of Done
 
 - [ ] Commit: `refactor(system-core): unify numbering engine with scope keys [250i]`
-- [ ] `planning/done/250i-numbering-engine.md` report.
+- [x] `planning/done/250i-numbering-engine.md` report.
 
 ## CTO audit gate
 

@@ -116,8 +116,22 @@ Sales Invoice and Purchase Invoice entity normalization both call the shared cal
 
 Accounting boundary: 250h does not automatically apply invoice-level discount allocation to posted document totals. The allocation API is available and tested, but applying it to live SI/PI totals changes tax and grand totals and must be done as an explicit business/accounting slice.
 
+## Numbering Engine
+
+250i makes `application/system-core/numbering/NumberingEngine.ts` the allocator for voucher numbers, Sales/Purchase document numbers, recurring Sales Invoice numbers, and POS receipt numbers. The engine implements `INumberingEngine.next(...)` with explicit scope keys:
+
+- `scope: 'company'` for accounting vouchers and Sales/Purchase documents.
+- `scope: 'branch'` with `branchId` for future branch-local sequences.
+- `scope: 'terminal'` with `terminalId` for POS receipt sequences.
+
+The engine stores sequence state through the existing `IVoucherSequenceRepository` implementations. This is intentionally a repository-generalization step rather than a destructive schema rename: Firestore and Prisma continue using their proven atomic sequence storage while System Core owns the allocation contract. Formats now support arbitrary `{COUNTER:n}` widths so legacy vouchers keep 4 digits, Sales/Purchase documents keep 5 digits, and POS receipts keep 6 digits.
+
+Existing module settings fields such as `siNumberNextSeq`, `poNumberNextSeq`, and `receiptNextSeq` are used as lazy seed values the first time a unified sequence is allocated, then mirrored forward for settings-screen compatibility. This preserves pre-alpha sequence continuity without a production data migration.
+
+Accounting boundary: 250i changes number allocation ownership only. It does not alter voucher posting, tax, COGS, AR/AP, payment status, period locks, approvals, or inventory valuation.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.
 
-250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators.
+250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction.

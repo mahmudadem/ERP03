@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250i — Numbering Engine)
+
+- **Goal:** Complete Phase 3 task 250i: unify voucher, Sales/Purchase document, recurring invoice, and POS receipt numbering behind `INumberingEngine`.
+- **What was done:** Added `NumberingEngine` over the existing atomic sequence repositories with company/branch/terminal scope keys, display prefixes, counter widths, and lazy legacy seed support. Rewired DI, POS receipt allocation, Accounting voucher creation, Sales SO/DN/SI/SR/QT allocation including recurring invoices, Purchase PO/GRN/PI/PR allocation, and RV/PV settlement voucher allocation to prefer `INumberingEngine`. Firestore and Prisma sequence repositories now support arbitrary `{COUNTER:n}` formats.
+- **Accounting/ERP impact:** Number allocation ownership changed, but posting math did not. Voucher balancing, tax, COGS, AR/AP, inventory valuation, payment status, approvals, and period-lock behavior are unchanged. Existing next-number settings seed the unified sequence on first use and are mirrored forward to avoid sequence resets.
+- **Verification:** Focused numbering/POS/boundary tests passed (3 suites / 23 tests). Sales/Purchase numbering regressions passed (3 suites / 12 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 183 passed / 2 skipped suites; 1,595 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250i-numbering-engine.md`, and added `planning/done/250i-numbering-engine.md`.
+- **Time spent:** ~1.6h.
+- **Next:** Commit 250i, then continue Phase 3 with 250j Inventory Core tidy. Hard-stop after 250j for CTO audit.
+
 ### Session: 2026-06-21 (Epic 250h — Tax Engine)
 
 - **Goal:** Resume Phase 3 after CTO-audited Phase 2 and complete 250h: extract Tax Engine calculation ownership for Sales, Purchases, and POS.

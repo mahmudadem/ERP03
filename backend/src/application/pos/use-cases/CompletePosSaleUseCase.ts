@@ -12,6 +12,7 @@ import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPa
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { PostPosSaleUseCase } from './PostPosSaleUseCase';
 import { PosCashRounding } from '../../../domain/pos/entities/PosSettings';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
@@ -62,9 +63,9 @@ export interface CompletePosSaleResult {
  *   1. Validate shift OPEN + cashier match (or manager)
  *   2. Validate cart math (lines non-empty, payments non-empty, applied total = grand total)
  *   3. Validate payment-method config (each enabled method has an account, each `requiresReference` carries one)
- *   4. Compute receipt number and post the sale through POS-owned posting.
+ *   4. Allocate receipt number via System Core numbering and post the sale through POS-owned posting.
  *   5. Persist PosReceipt + PosPayment rows + cash movement atomically.
- *   6. Bump settings.receiptNextSeq.
+ *   6. Mirror settings.receiptNextSeq for legacy settings visibility.
  */
 export class CompletePosSaleUseCase {
   constructor(
@@ -77,6 +78,7 @@ export class CompletePosSaleUseCase {
     private readonly transactionManager: ITransactionManager,
     private readonly postPosSaleUseCase: PostPosSaleUseCase,
     private readonly policyEngine: IPolicyEngine,
+    private readonly numberingEngine: INumberingEngine,
     private readonly auditEngine?: IAuditEngine
   ) {}
 
@@ -149,7 +151,15 @@ export class CompletePosSaleUseCase {
 
     // Preview the total through the POS posting path before opening the write transaction.
     // The same use-case will re-use these inputs for the actual stock/ledger write.
-    const receiptNumber = settings.receiptPrefix + '-' + String(settings.receiptNextSeq).padStart(6, '0');
+    const receiptNumber = await this.numberingEngine.next({
+      companyId: input.companyId,
+      docType: 'POS_RECEIPT',
+      scope: 'terminal',
+      terminalId: input.registerId,
+      prefix: settings.receiptPrefix,
+      counterWidth: 6,
+      seedNextNumber: settings.receiptNextSeq,
+    });
     const saleDate = new Date().toISOString().slice(0, 10);
 
     const preview = await this.postPosSaleUseCase.execute({
@@ -307,7 +317,7 @@ export class CompletePosSaleUseCase {
       if (cashMovement) {
         await this.cashMovementRepo.create(cashMovement, tx);
       }
-      settings.receiptNextSeq += 1;
+      settings.receiptNextSeq = Math.max(settings.receiptNextSeq + 1, nextNumericSequence(receiptNumber) + 1);
       await this.settingsRepo.saveSettings(settings, tx);
 
       return { postedSale: sale, receipt };
@@ -336,6 +346,11 @@ export class CompletePosSaleUseCase {
       change: cashChange,
     };
   }
+}
+
+function nextNumericSequence(documentNumber: string): number {
+  const match = documentNumber.match(/(\d+)\D*$/);
+  return match ? Number(match[1]) : 0;
 }
 
 function posCashRoundingRule(rounding: PosCashRounding): { increment?: number; mode?: 'NEAREST' } | null {
