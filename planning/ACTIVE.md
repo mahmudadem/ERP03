@@ -2,7 +2,9 @@
 
 ## System Core / Shared Engines Transformation — Epic 250 (2026-06-21)
 
-**Status:** 🔶 **Phase 3 in progress (2026-06-21)** — Phase 2 CTO-audited green; 250h Tax Engine implemented and green. Continue 250i → 250j one task at a time, then hard-stop for CTO audit. **Branch:** `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).
+**Status:** 🔶 **Phase 3 in progress (2026-06-21)** — Phase 2 + **250h Tax Engine CTO-audited green** (commit `c4f7ceb5`). Continue 250i → 250j one task at a time, then hard-stop for CTO audit. **Branch:** `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).
+
+> **CTO audit of 250h — PASS (2026-06-21):** tax math now lives in `system-core/tax/TaxEngine.ts`; `SalesInvoiceCalculationService` delegates to it and `PurchaseInvoice` imports `calculateTaxLineAmounts` (no module re-implements tax). The two previously-broken/missing capabilities exist + tested: `allocateInvoiceDiscount` (invoice-discount tax allocation) and `recoverable` (purchase recoverable vs non-recoverable input tax). **Full backend suite: 182/182 suites, 1592 tests, 0 failures, no new skips** (was 1586 at Phase 2 — golden SI/PI tax regressions unchanged → behavior preserved).
 
 - **Why:** POS paused. Three audits proved a platform-wide problem — application modules own/embed shared engines. We are separating **Engines (System Core)** from **Apps (orchestrators)** from **UI surfaces**, and unblocking POS.
 - **Owner override of the feature freeze:** the 2026-06-13 freeze forbids refactors. The owner (Mahmud) has explicitly authorized this transformation and paused POS for it — this epic proceeds as an owner-sanctioned exception, same pattern as prior freeze exceptions logged in JOURNAL.
