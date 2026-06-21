@@ -63,6 +63,7 @@ model Company {
   salesReturns    SalesReturn[]
   posRegisters    PosRegister[]
   posSettings     PosSettings[]
+  posPolicies     PosPolicy[]
   posShifts       PosShift[]
   posCashMovements PosCashMovement[]
   posReceipts     PosReceipt[]
@@ -1695,6 +1696,18 @@ model PosSettings {
   @@map("pos_settings")
 }
 
+
+model PosPolicy {
+  id        String   @id @default(uuid())
+  companyId String   @unique
+  policy    Json
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("pos_policies")
+}
 model PosShift {
   id                 String    @id @default(uuid())
   companyId          String

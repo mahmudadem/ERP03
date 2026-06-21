@@ -4315,3 +4315,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, `planning/ACTIVE.md`, and added [done/244-note09-uom-web-windows-parity.md](./done/244-note09-uom-web-windows-parity.md).
 - **Time spent:** ~0.7h.
 - **Next:** Review/merge the narrow NOTE-09 PR, then handle Task 244 NOTE-08/10/11/14 as separate branches so this parity fix does not broaden into UOM behavior changes.
+### Session: 2026-06-21 (Task 250c - Policy Engine minimum + POS policy decoupling)
+
+- **Goal:** Execute Phase 1 task 250c of the System Core transformation: move POS direct-sale authorization out of Sales Settings and into POS-owned policy behind `IPolicyEngine`.
+- **What was done:** Added `POSPolicy`, `POSTerminalPolicy`, and `CashierRolePolicy` plus POS policy repository interfaces and Firestore/Prisma implementations. Added the `PosPolicy` Prisma model and DI registration. Implemented `PolicyEngine` for POS direct-sale policy with most-restrictive-wins, preserving legacy accounting/sales/purchases policy adapter behavior. Rewired POS Settings so `allowPosDirectSales` writes `POSPolicy` instead of Sales `governanceRules`. Rewired POS sale completion to call `IPolicyEngine.resolve({ scope: 'pos', action: 'directSale' })` before creating the Sales compatibility document.
+- **Accounting/ERP impact:** No ledger posting, voucher balancing, tax, inventory valuation, AR settlement, period-lock, or account mapping behavior changed. The control boundary changed: POS direct-sale authorization is now POS-owned, so POS no longer depends on initialized Sales Settings or a Sales governance rule to permit direct sales.
+- **Verification:** `npm --prefix backend run typecheck` passed. Focused 250c tests passed: 3 suites / 19 tests. `npm --prefix backend run build` passed. Full backend suite passed: 177/179 suites passed, 2 skipped; 1571 tests passed, 19 skipped.
+- **Docs:** Updated [docs/architecture/system-core.md](../docs/architecture/system-core.md), [planning/tasks/250c-policy-engine-pos-decoupling.md](./tasks/250c-policy-engine-pos-decoupling.md), [planning/ACTIVE.md](./ACTIVE.md), and added [planning/done/250c-policy-engine-pos-decoupling.md](./done/250c-policy-engine-pos-decoupling.md).
+- **Time spent:** ~1.8h.
+- **Next:** Continue the unattended Phase 1 sequence with 250d, removing the remaining POS direct-sale dependency on Sales use-case imports by routing through Document Core.

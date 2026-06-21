@@ -131,12 +131,13 @@ const setup = (opts: SetupOpts = {}) => {
   const createUC = { execute: jest.fn().mockResolvedValue({ salesInvoice: draft }) };
   const postUC = { execute: jest.fn().mockResolvedValue(posted) };
   const salesInvoiceRepo = { delete: jest.fn().mockResolvedValue(undefined) };
+  const policyEngine = { resolve: jest.fn().mockResolvedValue({ allowed: true, requiresApproval: false, resolvedBy: ['test'] }) };
   const useCase = new CompletePosSaleUseCase(
     shiftRepo as any, settingsRepo as any, registerRepo as any, receiptRepo as any,
     paymentRepo as any, cashMovementRepo as any, tx as any,
-    createUC as any, postUC as any, salesInvoiceRepo as any
+    createUC as any, postUC as any, salesInvoiceRepo as any, policyEngine as any
   );
-  return { useCase, createUC, postUC, salesInvoiceRepo, receiptRepo, draft, posted };
+  return { useCase, createUC, postUC, salesInvoiceRepo, receiptRepo, draft, posted, policyEngine };
 };
 
 const run = (useCase: CompletePosSaleUseCase, payments: any[], extra: Partial<any> = {}) =>
@@ -181,6 +182,12 @@ describe('CompletePosSaleUseCase', () => {
     expect(createUC.execute).not.toHaveBeenCalled();
   });
 
+  it('rejects before creating the SI when POS policy denies direct sale', async () => {
+    const { useCase, createUC, policyEngine } = setup();
+    policyEngine.resolve.mockResolvedValueOnce({ allowed: false, requiresApproval: false, resolvedBy: ['POSTerminalPolicy.allowDirectSales.deny'] });
+    await expect(run(useCase, [{ method: 'CASH', amount: 10 }])).rejects.toThrow(/POS direct sale is not allowed/);
+    expect(createUC.execute).not.toHaveBeenCalled();
+  });
   it('builds the SI input with POS_DIRECT_SALE as the durable document persona', async () => {
     const { useCase, createUC } = setup();
     await run(useCase, [{ method: 'CASH', amount: 10 }]);

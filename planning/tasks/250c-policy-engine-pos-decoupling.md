@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 1 · **Blocking:** 🔴 POS-blocking
 **Depends on:** [250a](./250a-seams-and-interfaces.md), [250b](./250b-document-core-persona.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete, pending CTO audit
 
 ## Objective
 
@@ -57,15 +57,15 @@ New POS-owned policy entities (minimal V1 — just enough to authorize POS direc
 
 ## Acceptance criteria
 
-- [ ] `UpdatePosSettingsUseCase` no longer references `ISalesSettingsRepository`.
-- [ ] POS authorization resolves via `IPolicyEngine` + `POSPolicy`.
-- [ ] T3, T4, and the no-SalesSettings regression pass.
-- [ ] typecheck + build clean; suite green.
+- [x] `UpdatePosSettingsUseCase` no longer references `ISalesSettingsRepository`.
+- [x] POS authorization resolves via `IPolicyEngine` + `POSPolicy`.
+- [x] T3, T4, and the no-SalesSettings regression pass.
+- [x] typecheck + build clean; suite green.
 
 ## Definition of Done
 
-- [ ] Commit: `feat(system-core): policy engine min + POS policy, drop SalesSettings coupling [250c]`
-- [ ] `planning/done/250c-policy-engine-pos-decoupling.md` report.
+- [x] Commit: `feat(system-core): policy engine min + POS policy, drop SalesSettings coupling [250c]`
+- [x] `planning/done/250c-policy-engine-pos-decoupling.md` report.
 
 ## CTO audit gate
 

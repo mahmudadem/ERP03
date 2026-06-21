@@ -32,6 +32,18 @@ Phase 1 starts making document persona a System Core identity instead of a modul
 For 250b, POS writes `documentPersona: 'POS_DIRECT_SALE'` into the Sales compatibility payload. The legacy Sales posting path still uses `voucherType: 'sales_invoice'` and legacy `persona: 'direct'` until 250d replaces the POS entry point, but the durable POS persona is persisted on `SalesInvoice.documentPersona` and copied into revenue, COGS, and settlement voucher metadata. Reporting/read paths can therefore identify POS direct sales through `metadata.documentPersona` without treating `formType: 'pos_sale'` as the only marker.
 
 Accounting boundary: 250b does not alter posting math, account resolution, tax calculation, inventory movement quantity/cost logic, AR settlement, approval, period-lock, or voucher balancing. It only carries the canonical document persona alongside the existing posting path.
+
+## Policy Engine And POS Policy
+
+250c moves POS direct-sale authorization out of Sales Settings. The company POS toggle now persists to `POSPolicy.allowPosDirectSales` through `IPosPolicyRepository`, and POS sale completion asks `IPolicyEngine.resolve({ scope: 'pos', action: 'directSale', ... })` before building the Sales compatibility document.
+
+The minimum policy model is POS-owned:
+
+- `POSPolicy` is the company-level default.
+- `POSTerminalPolicy` can deny direct sale for a register even when the company default allows it.
+- `CashierRolePolicy` can require approval for direct sale; until the Approval Engine phase wires approved decisions, the policy engine blocks the sale unless `approvedOverride` is present in context.
+
+POS uses most-restrictive-wins. A narrower policy can tighten a broader allow, but it cannot loosen a broader deny; an explicit approved override is the only escape from a deny. This keeps POS authorization independent from Sales `governanceRules` while preserving existing Sales posting compatibility until 250d removes the POS-to-Sales use-case dependency.
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. The POS-to-Sales import ban is intentionally skipped until 250d, because the current POS sale path still imports Sales use cases and that coupling is the target of Phase 1.

@@ -139,7 +139,7 @@ import {
   LegacyDocumentCoreAdapter,
   LegacyMoneyCoreAdapter,
   LegacyNumberingEngineAdapter,
-  LegacyPolicyEngineAdapter,
+  PolicyEngine,
   LegacyTaxEngineAdapter,
 } from '../../application/system-core';
 import {
@@ -326,12 +326,14 @@ import { PrismaWarehouseRepository } from '../prisma/repositories/inventory/Pris
 import { PrismaPosShiftRepository } from '../prisma/repositories/pos/PrismaPosShiftRepository';
 import { PrismaPosRegisterRepository } from '../prisma/repositories/pos/PrismaPosRegisterRepository';
 import { PrismaPosSettingsRepository } from '../prisma/repositories/pos/PrismaPosSettingsRepository';
+import { PrismaPosPolicyRepository } from '../prisma/repositories/pos/PrismaPosPolicyRepository';
 import { PrismaPosCashMovementRepository } from '../prisma/repositories/pos/PrismaPosCashMovementRepository';
 import { PrismaPosReceiptRepository } from '../prisma/repositories/pos/PrismaPosReceiptRepository';
 import { PrismaPosPaymentRepository } from '../prisma/repositories/pos/PrismaPosPaymentRepository';
 import { PrismaPosReturnRepository } from '../prisma/repositories/pos/PrismaPosReturnRepository';
 import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
 import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
+import { FirestorePosPolicyRepository } from '../firestore/repositories/pos/FirestorePosPolicyRepository';
 import { FirestorePosShiftRepository } from '../firestore/repositories/pos/FirestorePosShiftRepository';
 import { FirestorePosCashMovementRepository } from '../firestore/repositories/pos/FirestorePosCashMovementRepository';
 import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
@@ -786,6 +788,11 @@ export const diContainer = {
       ? new PrismaPosSettingsRepository(getPrismaClient())
       : new FirestorePosSettingsRepository(getDb());
   },
+  get posPolicyRepository(): PosRepo.IPosPolicyRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosPolicyRepository(getPrismaClient())
+      : new FirestorePosPolicyRepository(getDb());
+  },
   get posShiftRepository(): PosRepo.IPosShiftRepository {
     return DB_TYPE === 'SQL'
       ? new PrismaPosShiftRepository(getPrismaClient())
@@ -1013,7 +1020,7 @@ export const diContainer = {
     return new LegacyCommercialCoreAdapter();
   },
   get policyEngine(): IPolicyEngine {
-    return new LegacyPolicyEngineAdapter(this.policyRegistry);
+    return new PolicyEngine(this.posPolicyRepository, this.policyRegistry);
   },
   get approvalEngine(): IApprovalEngine {
     return new LegacyApprovalEngineAdapter(this.policyRegistry);

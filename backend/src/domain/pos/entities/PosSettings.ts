@@ -3,15 +3,15 @@
  *
  * Holds operational policy (require open shift, walk-in customer, over/short
  * accounts), receipt-numbering sequence, payment-method → settlement-account
- * mapping, and the `allowPosDirectSales` governance toggle that mirrors the
- * Sales `formType:'pos_sale'` governance rule for the `direct` persona.
+ * mapping, and the `allowPosDirectSales` toggle resolved by the POS/System Core
+ * policy layer.
  */
 
 export type PosPaymentMethodCode = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
 
 export interface PosPaymentMethodConfig {
   code: PosPaymentMethodCode;
-  /** GL settlement account id (mirrors SalesSettings.paymentMethodConfigs). */
+  /** GL settlement account id used by the Sales compatibility posting path. */
   settlementAccountId: string;
   label?: string;
   /** Some methods (card, bank transfer) require a customer reference. */

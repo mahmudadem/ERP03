@@ -19,3 +19,4 @@ export * from './adapters/LegacyApprovalEngineAdapter';
 export * from './adapters/LegacyAccountingBridgeAdapter';
 export * from './adapters/LegacyAuditEngineAdapter';
 
+export * from './PolicyEngine';

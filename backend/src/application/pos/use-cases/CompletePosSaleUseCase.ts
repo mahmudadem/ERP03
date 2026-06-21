@@ -13,6 +13,7 @@ import { ITransactionManager } from '../../../repository/interfaces/shared/ITran
 import { CreateSalesInvoiceUseCase, PostSalesInvoiceUseCase, SettlementInput } from '../../sales/use-cases/SalesInvoiceUseCases';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
+import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -39,7 +40,7 @@ export interface CompletePosSaleInput {
   customerId?: string;
   lines: PosCartLine[];
   payments: PosCartPayment[];
-  actor: { userId: string; userEmail?: string };
+  actor: { userId: string; userEmail?: string; roleId?: string };
 }
 
 export interface CompletePosSaleResult {
@@ -91,7 +92,8 @@ export class CompletePosSaleUseCase {
     private readonly transactionManager: ITransactionManager,
     private readonly createSalesInvoiceUseCase: CreateSalesInvoiceUseCase,
     private readonly postSalesInvoiceUseCase: PostSalesInvoiceUseCase,
-    private readonly salesInvoiceRepo: ISalesInvoiceRepository
+    private readonly salesInvoiceRepo: ISalesInvoiceRepository,
+    private readonly policyEngine: IPolicyEngine
   ) {}
 
   async execute(input: CompletePosSaleInput): Promise<CompletePosSaleResult> {
@@ -130,6 +132,20 @@ export class CompletePosSaleUseCase {
       throw new Error(`POS register not found: ${input.registerId}`);
     }
 
+    const policyDecision = await this.policyEngine.resolve({
+      scope: 'pos',
+      action: 'directSale',
+      companyId: input.companyId,
+      context: {
+        registerId: input.registerId,
+        cashierUserId: input.actor.userId,
+        cashierRoleId: input.actor.roleId,
+        documentPersona: 'POS_DIRECT_SALE',
+      },
+    });
+    if (!policyDecision.allowed) {
+      throw new Error('POS direct sale is not allowed by POS policy.');
+    }
     // Validate payment-method config up front (independent of the total).
     for (const p of input.payments) {
       if (p.amount <= 0) {
@@ -199,7 +215,7 @@ export class CompletePosSaleUseCase {
     // Step 3 — build the settlement from the authoritative total. CASH_FULL only for a
     // single tender that exactly equals the total with no change; MULTI otherwise.
     // The POS-configured account for a method (PosSettings.paymentMethods) is authoritative for
-    // the GL settlement; if blank, Sales falls back to SalesSettings.paymentMethodConfigs.
+    // the GL settlement through the compatibility posting path.
     const accountFor = (method: PosPaymentMethod): string | undefined =>
       settings.getPaymentMethod(method)?.settlementAccountId?.trim() || undefined;
 

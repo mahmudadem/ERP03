@@ -112,7 +112,7 @@ export class PosController {
       const useCase = new UpdatePosSettingsUseCase(
         diContainer.posSettingsRepository,
         diContainer.accountRepository,
-        diContainer.salesSettingsRepository
+        diContainer.posPolicyRepository
       );
       const settings = await useCase.execute({ ...(req as any).body, companyId });
       (res as any).json({ success: true, data: PosDTOMapper.toSettingsDTO(settings) });
@@ -489,7 +489,8 @@ export class PosController {
         diContainer.transactionManager,
         PosController.buildCreateSalesInvoiceUseCase(recordChangeService),
         PosController.buildPostSalesInvoiceUseCase(recordChangeService),
-        diContainer.salesInvoiceRepository
+        diContainer.salesInvoiceRepository,
+        diContainer.policyEngine
       );
       const result = await useCase.execute({
         companyId,
