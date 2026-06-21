@@ -35,7 +35,7 @@ Unify the three independent numbering mechanisms behind one `INumberingEngine` w
 
 ## Definition of Done
 
-- [ ] Commit: `refactor(system-core): unify numbering engine with scope keys [250i]`
+- [x] Commit: `refactor(system-core): unify numbering engine with scope keys [250i]`
 - [x] `planning/done/250i-numbering-engine.md` report.
 
 ## CTO audit gate

@@ -26,7 +26,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -251,12 +251,6 @@ interface VoucherAccumulatedLine {
 interface ResolvedChargeAccount {
   revenueId: string;
   taxId?: string;
-}
-
-interface AccumulatedCOGS {
-  cogsAccountId: string;
-  inventoryAccountId: string;
-  amountBase: number;
 }
 
 const findSOLine = (so: SalesOrder, soLineId?: string, itemId?: string) => {
@@ -966,7 +960,7 @@ export class PostSalesInvoiceUseCase {
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: ISalesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
@@ -981,6 +975,7 @@ export class PostSalesInvoiceUseCase {
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
     private readonly numberingEngine?: INumberingEngine
   ) {
+    this.inventoryService = ensureInventoryCore(this.inventoryService);
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
   }
@@ -1388,7 +1383,12 @@ export class PostSalesInvoiceUseCase {
         const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
         const hasOperationalDelivery = matchedDeliveryLines.length > 0;
         if (DocumentPolicyResolver.shouldInvoiceRecognizeInventory(accountingMode, hasOperationalDelivery)) {
-          const accounts = this.resolveCOGSAccountsSync(companyId, item, categoriesMap, invSettings?.defaultCOGSAccountId, invSettings?.defaultInventoryAssetAccountId);
+          const accounts = this.inventoryService.resolveCOGSAccounts({
+            item,
+            categoriesById: categoriesMap,
+            defaultCOGSAccountId: invSettings?.defaultCOGSAccountId,
+            defaultInventoryAssetAccountId: invSettings?.defaultInventoryAssetAccountId,
+          });
           if (accounts) {
             cogsId = await resolveAccountCached(accounts.cogsAccountId);
             inventoryId = await resolveAccountCached(accounts.inventoryAccountId);
@@ -1482,7 +1482,7 @@ export class PostSalesInvoiceUseCase {
       const discountDebits = new Map<string, VoucherAccumulatedLine>();
       const chargeCredits: VoucherAccumulatedLine[] = [];
       const taxCredits = new Map<string, VoucherAccumulatedLine>();
-      const cogsBucket = new Map<string, AccumulatedCOGS>();
+      const cogsBucket = new Map<string, InventoryCOGSBucketLine>();
 
       for (const line of si.lines) {
         const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
@@ -1513,7 +1513,7 @@ export class PostSalesInvoiceUseCase {
             this.addToBucket(taxCredits, accounts.taxId, line.taxAmountBase, line.taxAmountDoc);
           }
           if (accounts.cogsId && accounts.inventoryId) {
-            this.addToCOGSBucket(cogsBucket, accounts.cogsId, accounts.inventoryId, line.lineCostBase);
+            this.inventoryService.addToCOGSBucket(cogsBucket, accounts.cogsId, accounts.inventoryId, line.lineCostBase);
           }
         }
         if (so) {
@@ -1882,13 +1882,6 @@ export class PostSalesInvoiceUseCase {
     return item.revenueAccountId || (item.categoryId ? cats.get(item.categoryId)?.defaultRevenueAccountId : null) || dRev;
   }
 
-  private resolveCOGSAccountsSync(cid: string, item: Item, cats: Map<string, any>, dCOGS?: string, dInv?: string) {
-    const c = item.categoryId ? cats.get(item.categoryId) : null;
-    const cogsId = item.cogsAccountId || c?.defaultCogsAccountId || dCOGS;
-    const invId = item.inventoryAssetAccountId || c?.defaultInventoryAssetAccountId || dInv;
-    return (cogsId && invId) ? { cogsAccountId: cogsId, inventoryAccountId: invId } : null;
-  }
-
   private resolveARAccount(customer: Party, settings: SalesSettings): string {
     const aid = customer.defaultARAccountId || settings.defaultARAccountId;
     if (!aid) throw new Error(`No AR account resolved for ${customer.displayName}`);
@@ -2120,16 +2113,6 @@ export class PostSalesInvoiceUseCase {
   private resolveSalesDiscountAccount(settings: SalesSettings): string {
     if (settings.defaultSalesExpenseAccountId) return settings.defaultSalesExpenseAccountId;
     throw new Error('Default sales expense account is required when a sales invoice contains discounts.');
-  }
-
-  private addToCOGSBucket(bucket: Map<string, AccumulatedCOGS>, cogsId: string, invId: string, amount: number): void {
-    const key = `${cogsId}|${invId}`;
-    const existing = bucket.get(key);
-    if (existing) {
-      existing.amountBase = roundMoney(existing.amountBase + amount);
-    } else {
-      bucket.set(key, { cogsAccountId: cogsId, inventoryAccountId: invId, amountBase: roundMoney(amount) });
-    }
   }
 
   private async isAccountingEngineReady(companyId: string): Promise<boolean> {

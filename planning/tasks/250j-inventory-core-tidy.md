@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 3 (after POS V1) · **Blocking:** no
 **Depends on:** [250a](./250a-seams-and-interfaces.md) · **Agent:** erp-backend-builder · **Estimate:** 1–2 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete (2026-06-21, commit pending)
 
 ## Objective
 
@@ -31,14 +31,14 @@ Remove the Sales bias from the working inventory engine: rename `ISalesInventory
 
 ## Acceptance criteria
 
-- [ ] `IInventoryCore` is canonical; no Sales-named inventory contract in active use.
-- [ ] COGS accumulation owned by the core; Sales COGS output unchanged (golden).
-- [ ] typecheck + build clean; suite green.
+- [x] `IInventoryCore` is canonical; no Sales-named inventory contract in active use.
+- [x] COGS accumulation owned by the core; Sales COGS output unchanged (golden).
+- [x] typecheck + build clean; suite green.
 
 ## Definition of Done
 
-- [ ] Commit: `refactor(system-core): rename inventory core + move COGS accumulation [250j]`
-- [ ] `planning/done/250j-inventory-core-tidy.md` report.
+- [x] Commit: `refactor(system-core): rename inventory core + move COGS accumulation [250j]`
+- [x] `planning/done/250j-inventory-core-tidy.md` report.
 
 ## CTO audit gate
 

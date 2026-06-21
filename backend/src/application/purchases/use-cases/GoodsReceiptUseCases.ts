@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { GoodsReceipt, GoodsReceiptLine } from '../../../domain/purchases/entities/GoodsReceipt';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
@@ -232,7 +232,7 @@ export class PostGoodsReceiptUseCase {
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
@@ -693,7 +693,7 @@ export class UnpostGoodsReceiptUseCase {
   constructor(
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager

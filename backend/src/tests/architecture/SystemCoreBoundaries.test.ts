@@ -131,6 +131,45 @@ describe('Architecture guard: system core boundaries', () => {
     expect(content).not.toMatch(/receiptPrefix\s*\+\s*['"`-]/);
     expect(content).not.toMatch(/receiptNextSeq\)\.padStart\(6/);
   });
+
+  it('250j: active inventory consumers must use IInventoryCore, not Sales/Purchases-named contracts', () => {
+    const allowed = new Set([
+      path.normalize('application/inventory/contracts/InventoryIntegrationContracts.ts'),
+    ]);
+    const offenders: string[] = [];
+    for (const root of [
+      path.resolve(SRC, 'application/sales'),
+      path.resolve(SRC, 'application/purchases'),
+      path.resolve(SRC, 'application/pos'),
+      path.resolve(SRC, 'application/inventory/services'),
+    ]) {
+      for (const file of collectTsFiles(root)) {
+        const rel = path.normalize(path.relative(SRC, file));
+        if (allowed.has(rel)) continue;
+        const content = fs.readFileSync(file, 'utf8');
+        if (content.includes('ISalesInventoryService') || content.includes('IPurchasesInventoryService')) {
+          offenders.push(path.relative(SRC, file));
+        }
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it('250j: Sales must delegate COGS account resolution and bucket accumulation to inventory core', () => {
+    const salesFiles = [
+      path.resolve(SRC, 'application/sales/use-cases/DeliveryNoteUseCases.ts'),
+      path.resolve(SRC, 'application/sales/use-cases/SalesInvoiceUseCases.ts'),
+      path.resolve(SRC, 'application/sales/use-cases/SalesReturnUseCases.ts'),
+    ];
+    for (const file of salesFiles) {
+      const content = fs.readFileSync(file, 'utf8');
+      expect(content).toContain('inventoryService.resolveCOGSAccounts');
+      expect(content).toContain('inventoryService.addToCOGSBucket');
+      expect(content).not.toContain('resolveCOGSAccountsSync');
+      expect(content).not.toContain('interface AccumulatedCOGS');
+      expect(content).not.toContain('interface COGSBucketLine');
+    }
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

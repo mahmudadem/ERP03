@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250j — Inventory Core tidy)
+
+- **Goal:** Complete Phase 3 task 250j: make `IInventoryCore` canonical and move Sales-owned COGS account/bucket helpers into Inventory Core.
+- **What was done:** Added neutral COGS account resolution and bucket accumulation helpers to the inventory core contract and service implementations. Rewired Sales Delivery Note, Sales Invoice, and Sales Return posting to call `IInventoryCore.resolveCOGSAccounts(...)` and `IInventoryCore.addToCOGSBucket(...)`. Replaced active Sales/Purchases-named inventory contract usage with `IInventoryCore`; deprecated aliases remain only for one phase. Added architecture guards preventing active use of `ISalesInventoryService`/`IPurchasesInventoryService` and local Sales COGS helper reintroduction.
+- **Accounting/ERP impact:** Ownership move only. COGS voucher timing and Sales document metadata remain in Sales posting workflows; COGS account selection and aggregation are now shared inventory-core behavior. No intended change to COGS amounts, stock movement quantities, valuation, tax, AR/AP, voucher balancing, approval, or period-lock behavior.
+- **Verification:** Focused COGS/architecture regressions passed (5 suites / 80 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 183 passed / 2 skipped suites; 1,597 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250j-inventory-core-tidy.md`, and added `planning/done/250j-inventory-core-tidy.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Hard-stop for CTO audit of 250i/250j. Do not start Phase 4 unattended.
+
 ### Session: 2026-06-21 (Epic 250i — Numbering Engine)
 
 - **Goal:** Complete Phase 3 task 250i: unify voucher, Sales/Purchase document, recurring invoice, and POS receipt numbering behind `INumberingEngine`.
@@ -10,7 +20,7 @@
 - **Verification:** Focused numbering/POS/boundary tests passed (3 suites / 23 tests). Sales/Purchase numbering regressions passed (3 suites / 12 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 183 passed / 2 skipped suites; 1,595 passed / 18 skipped tests.
 - **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250i-numbering-engine.md`, and added `planning/done/250i-numbering-engine.md`.
 - **Time spent:** ~1.6h.
-- **Next:** Commit 250i, then continue Phase 3 with 250j Inventory Core tidy. Hard-stop after 250j for CTO audit.
+- **Next:** 250i committed; 250j followed and is the hard-stop point for CTO audit.
 
 ### Session: 2026-06-21 (Epic 250h — Tax Engine)
 

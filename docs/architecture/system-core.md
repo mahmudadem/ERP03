@@ -130,8 +130,22 @@ Existing module settings fields such as `siNumberNextSeq`, `poNumberNextSeq`, an
 
 Accounting boundary: 250i changes number allocation ownership only. It does not alter voucher posting, tax, COGS, AR/AP, payment status, period locks, approvals, or inventory valuation.
 
+## Inventory Core
+
+250j makes `IInventoryCore` the canonical contract for shared inventory posting support. `ISalesInventoryService` and `IPurchasesInventoryService` remain as deprecated type aliases for one phase, but active Sales, Purchases, and POS consumers now type against `IInventoryCore`.
+
+The core still delegates stock movement writes to `RecordStockMovementUseCase`; 250j does not change quantity movement, costing, or valuation formulas. The new responsibility moved into the core is COGS account resolution and COGS bucket accumulation:
+
+- `resolveCOGSAccounts(...)` chooses item-level, category-level, then module-default COGS and inventory asset accounts.
+- `addToCOGSBucket(...)` aggregates base COGS amounts by COGS/inventory account pair.
+- `ensureInventoryCore(...)` upgrades legacy test doubles/thin adapters at constructor boundaries so old mocks do not reintroduce Sales-owned COGS logic.
+
+Sales Delivery Note, Sales Invoice, and Sales Return posting now call the inventory core for this COGS resolution/accumulation instead of owning local `AccumulatedCOGS` / `COGSBucketLine` helpers. Voucher creation remains in the Sales posting workflow because the voucher timing and source metadata are document-specific.
+
+Accounting boundary: 250j is intended as a pure ownership move. Golden COGS posting regressions for SI/SR/PI/PR and DN were run; COGS amounts, inventory credits/debits, stock movement quantities, tax, AR/AP, and voucher balancing are unchanged.
+
 ## Current Guardrail
 
 `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now exists. As of 250d2, the folder-wide POS application guard is active: files under `backend/src/application/pos/` must not import Sales application or Sales domain internals. POS sale and return posting both route through POS-owned use-cases over `IInventoryCore` and `IAccountingBridge`.
 
-250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction.
+250h adds tax guardrails: the `ITaxEngine` contract and legacy adapter must not import Sales calculation internals, and POS sale/preview code must not carry local line-tax calculators. 250i adds a POS receipt guard: sale completion must allocate receipt numbers through `INumberingEngine`, not local `receiptPrefix/receiptNextSeq` string construction. 250j adds guards that active inventory consumers use `IInventoryCore` rather than Sales/Purchases-named contracts, and that Sales delegates COGS account resolution and bucket accumulation to inventory core.

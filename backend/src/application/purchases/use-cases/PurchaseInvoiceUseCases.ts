@@ -17,7 +17,7 @@ import {
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PaymentHistory, PaymentMethod } from '../../../domain/shared/entities/PaymentHistory';
-import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IExchangeRateRepository } from '../../../repository/interfaces/accounting/IExchangeRateRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -534,7 +534,7 @@ export class PostPurchaseInvoiceUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly exchangeRateRepo: IExchangeRateRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
@@ -1638,7 +1638,7 @@ export class UnpostPurchaseInvoiceUseCase {
   constructor(
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager

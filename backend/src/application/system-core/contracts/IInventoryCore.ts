@@ -1,4 +1,5 @@
-import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
-
-export type IInventoryCore = ISalesInventoryService;
-
+export type {
+  IInventoryCore,
+  InventoryCOGSAccounts,
+  InventoryCOGSBucketLine,
+} from '../../inventory/contracts/InventoryIntegrationContracts';

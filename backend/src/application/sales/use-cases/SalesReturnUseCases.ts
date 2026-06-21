@@ -25,7 +25,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { CostPoint, Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -119,11 +119,6 @@ interface VoucherBucketLine {
   docAmount: number;
 }
 
-interface COGSBucketLine {
-  inventoryAccountId: string;
-  cogsAccountId: string;
-  amountBase: number;
-}
 const determineReturnContext = (input: CreateSalesReturnInput): ReturnContext => {
   if (input.salesInvoiceId) return 'AFTER_INVOICE';
   if (input.deliveryNoteId) return 'BEFORE_INVOICE';
@@ -497,7 +492,7 @@ export class PostSalesReturnUseCase {
     private readonly itemCategoryRepo: IItemCategoryRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: ISalesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
@@ -506,7 +501,9 @@ export class PostSalesReturnUseCase {
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
-  ) {}
+  ) {
+    this.inventoryService = ensureInventoryCore(this.inventoryService);
+  }
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
@@ -629,7 +626,7 @@ export class PostSalesReturnUseCase {
 
     const revenueDebitBucket = new Map<string, VoucherBucketLine>();
     const taxDebitBucket = new Map<string, VoucherBucketLine>();
-    const cogsBucket = new Map<string, COGSBucketLine>();
+    const cogsBucket = new Map<string, InventoryCOGSBucketLine>();
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel }>();
     const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
     const partyItemPriceUpdates: PartyItemPriceUpsertInput[] = [];
@@ -923,26 +920,21 @@ export class PostSalesReturnUseCase {
             salesReturn.returnContext
           )
         ) {
-          const category = item.categoryId ? categoriesMap.get(item.categoryId) : null;
-          const cogsAccountId = item.cogsAccountId || category?.defaultCogsAccountId || invSettings?.defaultCOGSAccountId;
-          const inventoryAccountId = item.inventoryAssetAccountId || category?.defaultInventoryAssetAccountId || invSettings?.defaultInventoryAssetAccountId;
+          const accounts = this.inventoryService.resolveCOGSAccounts({
+            item,
+            categoriesById: categoriesMap,
+            defaultCOGSAccountId: invSettings?.defaultCOGSAccountId,
+            defaultInventoryAssetAccountId: invSettings?.defaultInventoryAssetAccountId,
+          });
+          const cogsAccountId = accounts?.cogsAccountId;
+          const inventoryAccountId = accounts?.inventoryAccountId;
           if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
           if (!inventoryAccountId) throw new Error(`No inventory account configured for item ${item.code}`);
 
           if (lineCostBase > 0) {
             line.cogsAccountId = line.cogsAccountId || cogsAccountId;
             line.inventoryAccountId = line.inventoryAccountId || inventoryAccountId;
-            const key = `${inventoryAccountId}|${cogsAccountId}`;
-            const existing = cogsBucket.get(key);
-            if (existing) {
-              existing.amountBase = roundMoney(existing.amountBase + lineCostBase);
-            } else {
-              cogsBucket.set(key, {
-                inventoryAccountId,
-                cogsAccountId,
-                amountBase: lineCostBase,
-              });
-            }
+            this.inventoryService.addToCOGSBucket(cogsBucket, cogsAccountId, inventoryAccountId, lineCostBase);
           }
         }
       }
