@@ -131,6 +131,34 @@ import { PrismaAiSettingsRepository } from '../prisma/repositories/ai-assistant/
 import { PrismaAiUsageLogRepository } from '../prisma/repositories/ai-assistant/PrismaAiUsageLogRepository';
 import { SettingsResolver } from '../../application/common/services/SettingsResolver';
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
+import {
+  LegacyAccountingBridgeAdapter,
+  ApprovalEngine,
+  ApprovalSubjectRegistry,
+  LegacyAuditEngineAdapter,
+  LegacyCommercialCoreAdapter,
+  LegacyDocumentCoreAdapter,
+  LegacyMoneyCoreAdapter,
+  NumberingEngine,
+  PolicyEngine,
+  LegacyTaxEngineAdapter,
+} from '../../application/system-core';
+import {
+  IAccountingBridge,
+  IApprovalEngine,
+  IAuditEngine,
+  ICommercialCore,
+  IDocumentCore,
+  IInventoryCore,
+  IMoneyCore,
+  INumberingEngine,
+  IPolicyEngine,
+  ITaxEngine,
+} from '../../application/system-core';
+import { SubledgerVoucherPostingService } from '../../application/accounting/services/SubledgerVoucherPostingService';
+import { RecordChangeService } from '../../application/system/services/RecordChangeService';
+import { RecordStockMovementUseCase } from '../../application/inventory/use-cases/RecordStockMovementUseCase';
+import { SalesInventoryService } from '../../application/inventory/services/SalesInventoryService';
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
   import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
   import { AiRuntimeGuard } from '../../application/ai-assistant/services/AiRuntimeGuard';
@@ -299,12 +327,14 @@ import { PrismaWarehouseRepository } from '../prisma/repositories/inventory/Pris
 import { PrismaPosShiftRepository } from '../prisma/repositories/pos/PrismaPosShiftRepository';
 import { PrismaPosRegisterRepository } from '../prisma/repositories/pos/PrismaPosRegisterRepository';
 import { PrismaPosSettingsRepository } from '../prisma/repositories/pos/PrismaPosSettingsRepository';
+import { PrismaPosPolicyRepository } from '../prisma/repositories/pos/PrismaPosPolicyRepository';
 import { PrismaPosCashMovementRepository } from '../prisma/repositories/pos/PrismaPosCashMovementRepository';
 import { PrismaPosReceiptRepository } from '../prisma/repositories/pos/PrismaPosReceiptRepository';
 import { PrismaPosPaymentRepository } from '../prisma/repositories/pos/PrismaPosPaymentRepository';
 import { PrismaPosReturnRepository } from '../prisma/repositories/pos/PrismaPosReturnRepository';
 import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
 import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
+import { FirestorePosPolicyRepository } from '../firestore/repositories/pos/FirestorePosPolicyRepository';
 import { FirestorePosShiftRepository } from '../firestore/repositories/pos/FirestorePosShiftRepository';
 import { FirestorePosCashMovementRepository } from '../firestore/repositories/pos/FirestorePosCashMovementRepository';
 import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
@@ -759,6 +789,11 @@ export const diContainer = {
       ? new PrismaPosSettingsRepository(getPrismaClient())
       : new FirestorePosSettingsRepository(getDb());
   },
+  get posPolicyRepository(): PosRepo.IPosPolicyRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosPolicyRepository(getPrismaClient())
+      : new FirestorePosPolicyRepository(getDb());
+  },
   get posShiftRepository(): PosRepo.IPosShiftRepository {
     return DB_TYPE === 'SQL'
       ? new PrismaPosShiftRepository(getPrismaClient())
@@ -966,6 +1001,69 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaTransactionManager(getPrismaClient())
       : new FirestoreTransactionManager(getDb());
+  },
+
+  // SYSTEM CORE — Phase 0 interface seams. These adapters expose shared-engine
+  // contracts while delegating to the current implementations.
+  get documentCore(): IDocumentCore {
+    return new LegacyDocumentCoreAdapter();
+  },
+  get numberingEngine(): INumberingEngine {
+    return new NumberingEngine(this.voucherSequenceRepository);
+  },
+  get moneyCore(): IMoneyCore {
+    return new LegacyMoneyCoreAdapter();
+  },
+  get taxEngine(): ITaxEngine {
+    return new LegacyTaxEngineAdapter();
+  },
+  get commercialCore(): ICommercialCore {
+    return new LegacyCommercialCoreAdapter(
+      async (context) => {
+        const item = await this.itemRepository.getItem(context.itemId);
+        return item?.salePrice ?? null;
+      },
+      async (context) => {
+        const item = await this.itemRepository.getItem(context.itemId);
+        return item?.costingStats?.avgCost?.base ?? item?.purchasePrice ?? null;
+      },
+      this.approvalEngine
+    );
+  },
+  get policyEngine(): IPolicyEngine {
+    return new PolicyEngine(this.posPolicyRepository, this.policyRegistry);
+  },
+  get approvalEngine(): IApprovalEngine {
+    return new ApprovalEngine(new ApprovalSubjectRegistry());
+  },
+  get accountingBridge(): IAccountingBridge {
+    return new LegacyAccountingBridgeAdapter(
+      new SubledgerVoucherPostingService(
+        this.voucherRepository,
+        this.ledgerRepository,
+        this.companyCurrencyRepository,
+        this.accountRepository,
+        undefined,
+        this.periodLockService,
+        this.policyRegistry,
+      ),
+      this.companyModuleRepository,
+      this.postingLogRepository
+    );
+  },
+  get auditEngine(): IAuditEngine {
+    return new LegacyAuditEngineAdapter(new RecordChangeService(this.recordChangeLogRepository));
+  },
+  get inventoryCore(): IInventoryCore {
+    return new SalesInventoryService(new RecordStockMovementUseCase({
+      itemRepository: this.itemRepository,
+      warehouseRepository: this.warehouseRepository,
+      stockMovementRepository: this.stockMovementRepository,
+      stockLevelRepository: this.stockLevelRepository,
+      companyRepository: this.companyRepository,
+      inventorySettingsRepository: this.inventorySettingsRepository,
+      transactionManager: this.transactionManager,
+    }));
   },
 
   // POLICY SYSTEM

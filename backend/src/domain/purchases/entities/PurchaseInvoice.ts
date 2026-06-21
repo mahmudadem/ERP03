@@ -1,3 +1,5 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
+import { calculateCommercialLineAmounts } from '../../../application/system-core/commercial/CommercialCore';
 export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
@@ -155,7 +157,6 @@ const PAYMENT_STATUSES: PaymentStatus[] = ['UNPAID', 'PARTIALLY_PAID', 'PAID'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
 const PURCHASE_DISCOUNT_TYPES: PurchaseDiscountType[] = ['PERCENT', 'AMOUNT'];
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const normalizePurchaseDiscountType = (value: any): PurchaseDiscountType | undefined => {
   if (value === null || value === undefined) return undefined;
@@ -167,24 +168,6 @@ const normalizePurchaseDiscountType = (value: any): PurchaseDiscountType | undef
 
 const normalizePurchaseChargeKind = (value: any): PurchaseChargeKind =>
   (typeof value === 'string' ? value.trim().toUpperCase() : '') === 'DISCOUNT' ? 'DISCOUNT' : 'CHARGE';
-
-const calculatePurchaseDiscountAmountDoc = (
-  grossLineTotalDoc: number,
-  discountType: PurchaseDiscountType | undefined,
-  discountValue: number,
-  explicitDiscountAmountDoc: number | undefined,
-): number => {
-  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
-    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
-  }
-  if (discountType === 'PERCENT') {
-    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
-  }
-  if (discountType === 'AMOUNT') {
-    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
-  }
-  return 0;
-};
 
 const normalizeDocumentSource = (value: any): DocumentSource => {
   const source = typeof value === 'string' ? value.trim().toLowerCase() : '';
@@ -335,24 +318,17 @@ export class PurchaseInvoice {
     const explicitDiscountDoc =
       line.discountAmountDoc !== undefined ? Number(line.discountAmountDoc) : undefined;
 
-    const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    const discountAmountDoc = calculatePurchaseDiscountAmountDoc(
-      grossLineTotalDoc,
+    const amounts = calculateCommercialLineAmounts({
+      quantity: line.invoicedQty,
+      unitPriceDoc: line.unitPriceDoc,
+      exchangeRate: this.exchangeRate,
+      taxRate,
+      priceIsInclusive,
       discountType,
       discountValue,
-      explicitDiscountDoc,
-    );
-    const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
-    const divisor = priceIsInclusive ? 1 + taxRate : 1;
-    const lineTotalDoc = roundMoney(postDiscountDoc / divisor);
-    const unitPriceBase = roundMoney(line.unitPriceDoc * this.exchangeRate);
-    const grossLineTotalBase = roundMoney(grossLineTotalDoc * this.exchangeRate);
-    const discountAmountBase = roundMoney(discountAmountDoc * this.exchangeRate);
-    const lineTotalBase = roundMoney(lineTotalDoc * this.exchangeRate);
-    const taxAmountDoc = priceIsInclusive
-      ? roundMoney(postDiscountDoc - lineTotalDoc)
-      : roundMoney(lineTotalDoc * taxRate);
-    const taxAmountBase = roundMoney(taxAmountDoc * this.exchangeRate);
+      discountAmountDoc: explicitDiscountDoc,
+      currency: this.currency,
+    });
 
     return {
       lineId: line.lineId,
@@ -367,21 +343,21 @@ export class PurchaseInvoice {
       uomId: line.uomId,
       uom: line.uom,
       unitPriceDoc: line.unitPriceDoc,
-      grossLineTotalDoc,
+      grossLineTotalDoc: amounts.grossLineTotalDoc,
       discountType,
       discountValue: discountType ? discountValue : undefined,
-      discountAmountDoc,
-      lineTotalDoc,
-      unitPriceBase,
-      grossLineTotalBase,
-      discountAmountBase,
-      lineTotalBase,
+      discountAmountDoc: amounts.discountAmountDoc,
+      lineTotalDoc: amounts.lineTotalDoc,
+      unitPriceBase: amounts.unitPriceBase,
+      grossLineTotalBase: amounts.grossLineTotalBase,
+      discountAmountBase: amounts.discountAmountBase,
+      lineTotalBase: amounts.lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
       taxRate,
       priceIsInclusive,
-      taxAmountDoc,
-      taxAmountBase,
+      taxAmountDoc: amounts.taxAmountDoc,
+      taxAmountBase: amounts.taxAmountBase,
       warehouseId: line.warehouseId,
       accountId: line.accountId || '',
       stockMovementId: line.stockMovementId ?? null,

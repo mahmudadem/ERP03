@@ -23,17 +23,19 @@ Click **Pay** to open the Tender dialog. Add one or more payment rows:
 
 The dialog shows live: tendered total, change, and the amount that will be applied to the Sales Invoice (= tendered total − change). CASH change is automatically netted off the SI settlement; CARD/BANK/CUSTOM do not give change.
 
-When the applied amount equals the grand total, click **Complete sale**. The system:
+If cash rounding is enabled in POS Settings, the tender dialog uses the rounded cash total. For example, a total of `10.02` rounds to `10.00` when **nearest 0.05** is selected. The rounding difference is posted to the configured cash over/short account so the drawer, receipt, and accounting stay balanced.
 
-1. Posts a real **direct** Sales Invoice (`persona:'direct'`, `source:'pos'`, `formType:'pos_sale'`) with the existing revenue / tax / COGS / inventory OUT / AR / receipt-voucher pipeline.
-2. Persists the POS receipt (linked to the SI) and the payment rows.
+When the applied amount equals the payable total, click **Complete sale**. The system:
+
+1. Posts a POS direct sale with `POS_DIRECT_SALE` identity through the shared inventory and accounting engines.
+2. Persists the POS receipt and the payment rows.
 3. Writes a `SALE_CASH` cash movement on the current shift (net of change).
 4. Bumps the next receipt number.
-5. Returns the receipt number + SI number + change to the cashier screen.
+5. Returns the receipt number + posted document number + change to the cashier screen.
 
 ## Why "Allow POS direct sales" matters
 
-The first time you use the terminal, if the Settings page has not enabled **Allow POS direct sales**, the backend will throw `PersonaNotAllowedError` from the Sales use case. The cashier screen surfaces this as a toast. Go to **POS → Settings**, enable the toggle (it adds a form-scoped governance rule), save, and try again.
+The first time you use the terminal, if the Settings page has not enabled **Allow POS direct sales**, the backend blocks the sale through POS policy. The cashier screen surfaces this as a toast. Go to **POS → Settings**, enable the toggle, save, and try again.
 
 ## Reprint a receipt
 

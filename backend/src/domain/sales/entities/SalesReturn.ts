@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 export type SRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 export type ReturnSettlementMode = 'CREDIT_NOTE' | 'REFUND';
@@ -90,7 +91,6 @@ const RETURN_SETTLEMENT_MODES: ReturnSettlementMode[] = ['CREDIT_NOTE', 'REFUND'
 const RETURN_REASON_CODES: ReturnReasonCode[] = ['DEFECTIVE', 'WRONG_ITEM', 'CHANGED_MIND', 'OTHER'];
 const RESTOCKING_FEE_TYPES: RestockingFeeType[] = ['PERCENT', 'AMOUNT'];
 const SR_DISCOUNT_TYPES: SalesReturnDiscountType[] = ['PERCENT', 'AMOUNT'];
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const normalizeSRDiscountType = (value: any): SalesReturnDiscountType | undefined => {
   if (value === null || value === undefined) return undefined;

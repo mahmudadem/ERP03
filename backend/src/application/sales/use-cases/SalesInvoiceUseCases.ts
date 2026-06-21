@@ -6,6 +6,7 @@ import {
   lineSignaturesEqual,
 } from '../../common/services/PostedDocumentEditGuard';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
+import { DocumentPersona } from '../../system-core/contracts/IDocumentCore';
 import { PostingLockPolicy, VoucherType, VoucherStatus } from '../../../domain/accounting/types/VoucherTypes';
 import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
@@ -25,7 +26,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -68,7 +69,9 @@ import { PostingLog, LineDecision } from '../../../domain/accounting/entities/Po
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
@@ -162,6 +165,7 @@ export interface CreateSalesInvoiceInput {
   formType?: string;
   voucherType?: string;
   persona?: string;
+  documentPersona?: DocumentPersona | string;
   source?: DocumentSource | string;
   salesOrderId?: string;
   salespersonId?: string;
@@ -249,12 +253,6 @@ interface ResolvedChargeAccount {
   taxId?: string;
 }
 
-interface AccumulatedCOGS {
-  cogsAccountId: string;
-  inventoryAccountId: string;
-  amountBase: number;
-}
-
 const findSOLine = (so: SalesOrder, soLineId?: string, itemId?: string) => {
   if (soLineId) {
     return so.lines.find((line) => line.lineId === soLineId) || null;
@@ -293,6 +291,17 @@ const hasNativeLinkedSalesSource = (input: CreateSalesInvoiceInput): boolean => 
   return (input.lines || []).some((line) => !!line.soLineId || !!line.dnLineId);
 };
 
+const resolveSalesInvoiceDocumentPersona = (input: CreateSalesInvoiceInput, persona: SalesInvoicePersona): DocumentPersona => {
+  const explicit = String(input.documentPersona || '').trim() as DocumentPersona;
+  if (explicit) return DocumentPolicyResolver.toCanonicalDocumentPersona(explicit as any);
+
+  const inputPersona = String(input.persona || '').trim() as DocumentPersona;
+  if (inputPersona === 'POS_DIRECT_SALE' || inputPersona === 'SALES_DIRECT_INVOICE' || inputPersona === 'SALES_LINKED_INVOICE' || inputPersona === 'SERVICE') {
+    return DocumentPolicyResolver.toCanonicalDocumentPersona(inputPersona as any);
+  }
+
+  return DocumentPolicyResolver.toCanonicalDocumentPersona(persona);
+};
 const resolveSalesInvoicePersona = (input: CreateSalesInvoiceInput): SalesInvoicePersona => {
   if (resolveDocumentSource(input.source) === 'native') {
     return hasNativeLinkedSalesSource(input) ? 'linked' : 'direct';
@@ -302,6 +311,8 @@ const resolveSalesInvoicePersona = (input: CreateSalesInvoiceInput): SalesInvoic
   if (persona === 'direct' || persona === 'linked' || persona === 'service') {
     return persona;
   }
+  if (persona === 'sales_direct_invoice' || persona === 'pos_direct_sale') return 'direct';
+  if (persona === 'sales_linked_invoice') return 'linked';
 
   const formType = normalizeSalesInvoiceToken(input.formType || input.voucherType);
   if (SALES_INVOICE_PERSONA_FORM_TYPES[formType]) {
@@ -343,18 +354,21 @@ export class CreateSalesInvoiceUseCase {
     private readonly promotionRuleRepo?: IPromotionRuleRepository,
     private readonly creditCheckService?: CreditCheckService,
     private readonly creditOverrideRepo?: ICreditOverrideRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
+    private readonly numberingEngine?: INumberingEngine,
   ) {}
 
   async execute(input: CreateSalesInvoiceInput, transaction?: unknown, actor?: { userId: string; userEmail?: string }): Promise<CreateSalesInvoiceResult> {
     const source = resolveDocumentSource(input.source);
     const persona = resolveSalesInvoicePersona(input);
+    const documentPersona = resolveSalesInvoiceDocumentPersona(input, persona);
     input = {
       ...input,
       source,
       formType: resolveSalesInvoiceFormType(input, persona),
       voucherType: resolveSalesInvoiceVoucherType(input),
       persona,
+      documentPersona,
     };
 
     const settings = await this.settingsRepo.getSettings(input.companyId);
@@ -575,7 +589,9 @@ export class CreateSalesInvoiceUseCase {
     const invoiceNumber = await generateUniqueDocumentNumber(
       settings,
       'SI',
-      async (candidate) => !!(await this.salesInvoiceRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.salesInvoiceRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
 
     const si = new SalesInvoice({
@@ -587,6 +603,7 @@ export class CreateSalesInvoiceUseCase {
       formType: input.formType || 'sales_invoice_direct',
       voucherType: input.voucherType || 'sales_invoice',
       persona: input.persona || 'direct',
+      documentPersona: input.documentPersona,
       source: input.source,
       salesOrderId: so?.id,
       salespersonId: input.salespersonId,
@@ -822,8 +839,8 @@ export class CreateSalesInvoiceUseCase {
     await this.salesInvoiceRepo.create(si, transaction);
     await this.settingsRepo.saveSettings(settings, transaction);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: si.companyId,
         entityType: 'SALES_INVOICE',
         entityId: si.id,
@@ -943,7 +960,7 @@ export class PostSalesInvoiceUseCase {
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: ISalesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
@@ -953,10 +970,12 @@ export class PostSalesInvoiceUseCase {
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly postingLogRepo?: IPostingLogRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
+    private readonly numberingEngine?: INumberingEngine
   ) {
+    this.inventoryService = ensureInventoryCore(this.inventoryService);
     this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
   }
@@ -1364,7 +1383,12 @@ export class PostSalesInvoiceUseCase {
         const matchedDeliveryLines = this.getMatchedDeliveryLines(line, soLine, postedDNs);
         const hasOperationalDelivery = matchedDeliveryLines.length > 0;
         if (DocumentPolicyResolver.shouldInvoiceRecognizeInventory(accountingMode, hasOperationalDelivery)) {
-          const accounts = this.resolveCOGSAccountsSync(companyId, item, categoriesMap, invSettings?.defaultCOGSAccountId, invSettings?.defaultInventoryAssetAccountId);
+          const accounts = this.inventoryService.resolveCOGSAccounts({
+            item,
+            categoriesById: categoriesMap,
+            defaultCOGSAccountId: invSettings?.defaultCOGSAccountId,
+            defaultInventoryAssetAccountId: invSettings?.defaultInventoryAssetAccountId,
+          });
           if (accounts) {
             cogsId = await resolveAccountCached(accounts.cogsAccountId);
             inventoryId = await resolveAccountCached(accounts.inventoryAccountId);
@@ -1458,7 +1482,7 @@ export class PostSalesInvoiceUseCase {
       const discountDebits = new Map<string, VoucherAccumulatedLine>();
       const chargeCredits: VoucherAccumulatedLine[] = [];
       const taxCredits = new Map<string, VoucherAccumulatedLine>();
-      const cogsBucket = new Map<string, AccumulatedCOGS>();
+      const cogsBucket = new Map<string, InventoryCOGSBucketLine>();
 
       for (const line of si.lines) {
         const taxCode = line.taxCodeId ? taxCodesMap.get(line.taxCodeId) : null;
@@ -1489,7 +1513,7 @@ export class PostSalesInvoiceUseCase {
             this.addToBucket(taxCredits, accounts.taxId, line.taxAmountBase, line.taxAmountDoc);
           }
           if (accounts.cogsId && accounts.inventoryId) {
-            this.addToCOGSBucket(cogsBucket, accounts.cogsId, accounts.inventoryId, line.lineCostBase);
+            this.inventoryService.addToCOGSBucket(cogsBucket, accounts.cogsId, accounts.inventoryId, line.lineCostBase);
           }
         }
         if (so) {
@@ -1550,6 +1574,7 @@ export class PostSalesInvoiceUseCase {
               sourceType: 'SALES_INVOICE',
               sourceId: si.id,
               voucherPart: 'REVENUE',
+              documentPersona: si.documentPersona || DocumentPolicyResolver.toCanonicalDocumentPersona(si.persona as any),
               ...(periodLockOverride ? { periodLockOverride } : {}),
             },
             createdBy: si.createdBy,
@@ -1589,6 +1614,7 @@ export class PostSalesInvoiceUseCase {
                   sourceType: 'SALES_INVOICE',
                   sourceId: si.id,
                   voucherPart: 'COGS',
+                  documentPersona: si.documentPersona || DocumentPolicyResolver.toCanonicalDocumentPersona(si.persona as any),
                   ...(periodLockOverride ? { periodLockOverride } : {}),
                 },
                 createdBy: si.createdBy,
@@ -1757,9 +1783,9 @@ export class PostSalesInvoiceUseCase {
 
     const posted = (await this.salesInvoiceRepo.getById(companyId, id))!;
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const entityNumber = posted.invoiceNumber ? `SI-${posted.invoiceNumber}` : undefined;
-      await this.recordChangeService.recordPost({
+      await recordAuditPost(this.auditEngine, {
         companyId,
         entityType: 'SALES_INVOICE',
         entityId: posted.id,
@@ -1768,7 +1794,7 @@ export class PostSalesInvoiceUseCase {
         userEmail: actor.userEmail,
       });
       if (periodLockOverride) {
-        await this.recordChangeService.recordPeriodLockOverride({
+        await recordAuditPeriodLockOverride(this.auditEngine, {
           companyId,
           entityType: 'SALES_INVOICE',
           entityId: posted.id,
@@ -1854,13 +1880,6 @@ export class PostSalesInvoiceUseCase {
 
   private resolveRevenueAccountSync(cid: string, item: Item, cats: Map<string, any>, dRev: string): string {
     return item.revenueAccountId || (item.categoryId ? cats.get(item.categoryId)?.defaultRevenueAccountId : null) || dRev;
-  }
-
-  private resolveCOGSAccountsSync(cid: string, item: Item, cats: Map<string, any>, dCOGS?: string, dInv?: string) {
-    const c = item.categoryId ? cats.get(item.categoryId) : null;
-    const cogsId = item.cogsAccountId || c?.defaultCogsAccountId || dCOGS;
-    const invId = item.inventoryAssetAccountId || c?.defaultInventoryAssetAccountId || dInv;
-    return (cogsId && invId) ? { cogsAccountId: cogsId, inventoryAccountId: invId } : null;
   }
 
   private resolveARAccount(customer: Party, settings: SalesSettings): string {
@@ -1961,7 +1980,9 @@ export class PostSalesInvoiceUseCase {
       }
       const resolvedSettlementAccountId = await this.resolveAccountId(companyId, effectiveSettlementAccountId);
 
-      const voucherNo = await this.voucherSequenceRepo!.getNextNumber(companyId, 'RV');
+      const voucherNo = this.numberingEngine
+        ? await this.numberingEngine.next({ companyId, docType: 'RV', scope: 'company', prefix: 'RV', counterWidth: 4 })
+        : await this.voucherSequenceRepo!.getNextNumber(companyId, 'RV');
       const voucherId = `vch_${randomUUID()}`;
 
       const docAmount = roundMoney(settlementAmountBase / si.exchangeRate);
@@ -2006,7 +2027,12 @@ export class PostSalesInvoiceUseCase {
         totalDebit,
         totalCredit,
         VoucherStatus.APPROVED,
-        { sourceModule: 'sales', sourceInvoiceId: si.id, settlementMode },
+        {
+          sourceModule: 'sales',
+          sourceInvoiceId: si.id,
+          settlementMode,
+          documentPersona: si.documentPersona || DocumentPolicyResolver.toCanonicalDocumentPersona(si.persona as any),
+        },
         si.createdBy,
         now,
         si.createdBy,
@@ -2087,16 +2113,6 @@ export class PostSalesInvoiceUseCase {
   private resolveSalesDiscountAccount(settings: SalesSettings): string {
     if (settings.defaultSalesExpenseAccountId) return settings.defaultSalesExpenseAccountId;
     throw new Error('Default sales expense account is required when a sales invoice contains discounts.');
-  }
-
-  private addToCOGSBucket(bucket: Map<string, AccumulatedCOGS>, cogsId: string, invId: string, amount: number): void {
-    const key = `${cogsId}|${invId}`;
-    const existing = bucket.get(key);
-    if (existing) {
-      existing.amountBase = roundMoney(existing.amountBase + amount);
-    } else {
-      bucket.set(key, { cogsAccountId: cogsId, inventoryAccountId: invId, amountBase: roundMoney(amount) });
-    }
   }
 
   private async isAccountingEngineReady(companyId: string): Promise<boolean> {
@@ -2294,7 +2310,7 @@ export class UpdateSalesInvoiceUseCase {
   constructor(
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly itemRepo?: IItemRepository
   ) {}
 
@@ -2440,9 +2456,9 @@ export class UpdateSalesInvoiceUseCase {
     const updated = new SalesInvoice(current.toJSON() as any);
     await this.salesInvoiceRepo.update(updated, transaction);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'SALES_INVOICE',
         entityId: updated.id,

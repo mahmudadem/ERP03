@@ -5,11 +5,33 @@ import {
 } from '../../../domain/inventory/entities/InventorySettings';
 import { PurchaseSettings, WorkflowMode } from '../../../domain/purchases/entities/PurchaseSettings';
 import { SalesSettings, GovernanceRule } from '../../../domain/sales/entities/SalesSettings';
+import { DocumentPersona, LegacyDocumentPersona } from '../../system-core/contracts/IDocumentCore';
 
 export type SupportedAccountingMode = InventoryAccountingMode;
 export type SupportedWorkflowMode = WorkflowMode;
+export type SalesInvoicePolicyPersona = LegacyDocumentPersona | Extract<
+  DocumentPersona,
+  'SALES_DIRECT_INVOICE' | 'SALES_LINKED_INVOICE' | 'POS_DIRECT_SALE' | 'SERVICE'
+>;
+
+const CANONICAL_TO_LEGACY_SALES_PERSONA: Record<DocumentPersona, LegacyDocumentPersona> = {
+  SALES_DIRECT_INVOICE: 'direct',
+  SALES_LINKED_INVOICE: 'linked',
+  POS_DIRECT_SALE: 'direct',
+  SERVICE: 'service',
+};
 
 export class DocumentPolicyResolver {
+  static toLegacySalesInvoicePersona(persona: SalesInvoicePolicyPersona): LegacyDocumentPersona {
+    return CANONICAL_TO_LEGACY_SALES_PERSONA[persona as DocumentPersona] || persona as LegacyDocumentPersona;
+  }
+
+  static toCanonicalDocumentPersona(persona: SalesInvoicePolicyPersona): DocumentPersona {
+    if (persona === 'direct') return 'SALES_DIRECT_INVOICE';
+    if (persona === 'linked') return 'SALES_LINKED_INVOICE';
+    if (persona === 'service') return 'SERVICE';
+    return persona as DocumentPersona;
+  }
   static legacyInventoryMethodToAccountingMode(
     method: LegacyInventoryAccountingMethod | undefined | null
   ): SupportedAccountingMode {
@@ -175,18 +197,19 @@ export class DocumentPolicyResolver {
    */
   static isSalesInvoicePersonaAllowed(
     settings: Pick<SalesSettings, 'workflowMode' | 'allowDirectInvoicing' | 'governanceRules'>,
-    persona: 'direct' | 'linked' | 'service',
+    persona: SalesInvoicePolicyPersona,
     context?: { branchId?: string; formType?: string }
   ): boolean {
+    const legacyPersona = DocumentPolicyResolver.toLegacySalesInvoicePersona(persona);
     const workflowMode = DocumentPolicyResolver.resolveSalesWorkflowMode(settings);
     const basePolicy = DocumentPolicyResolver.getBasePolicyForMode(workflowMode);
-    let allowed = basePolicy[persona] ?? false;
+    let allowed = basePolicy[legacyPersona] ?? false;
 
     const rules = settings.governanceRules || [];
 
     // Level 1: company-scope rules
     for (const rule of rules) {
-      if (rule.persona !== persona) continue;
+      if (rule.persona !== legacyPersona) continue;
       if (rule.scope === 'company') {
         allowed = rule.action === 'allow';
       }
@@ -195,7 +218,7 @@ export class DocumentPolicyResolver {
     // Level 2: branch-scope rules (only if branchId is provided)
     if (context?.branchId) {
       for (const rule of rules) {
-        if (rule.persona !== persona) continue;
+        if (rule.persona !== legacyPersona) continue;
         if (rule.scope === 'branch' && rule.branchId === context.branchId) {
           allowed = rule.action === 'allow';
         }
@@ -205,7 +228,7 @@ export class DocumentPolicyResolver {
     // Level 3: form-scope rules (only if formType is provided)
     if (context?.formType) {
       for (const rule of rules) {
-        if (rule.persona !== persona) continue;
+        if (rule.persona !== legacyPersona) continue;
         if (rule.scope === 'form' && rule.formType === context.formType) {
           allowed = rule.action === 'allow';
         }

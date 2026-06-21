@@ -25,7 +25,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { CostPoint, Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -49,7 +49,9 @@ import {
 import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -117,11 +119,6 @@ interface VoucherBucketLine {
   docAmount: number;
 }
 
-interface COGSBucketLine {
-  inventoryAccountId: string;
-  cogsAccountId: string;
-  amountBase: number;
-}
 const determineReturnContext = (input: CreateSalesReturnInput): ReturnContext => {
   if (input.salesInvoiceId) return 'AFTER_INVOICE';
   if (input.deliveryNoteId) return 'BEFORE_INVOICE';
@@ -195,8 +192,9 @@ export class CreateSalesReturnUseCase {
     private readonly salesReturnRepo: ISalesReturnRepository,
     private readonly salesInvoiceRepo: ISalesInvoiceRepository,
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
-    private readonly recordChangeService?: RecordChangeService,
-    private readonly companyCurrencyRepo?: ICompanyCurrencyRepository
+    private readonly auditEngine?: IAuditEngine,
+    private readonly companyCurrencyRepo?: ICompanyCurrencyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
@@ -274,7 +272,9 @@ export class CreateSalesReturnUseCase {
     const returnNumber = await generateUniqueDocumentNumber(
       settings,
       'SR',
-      async (candidate) => !!(await this.salesReturnRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.salesReturnRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
     const salesReturn = new SalesReturn({
       id: randomUUID(),
@@ -322,8 +322,8 @@ export class CreateSalesReturnUseCase {
     await this.salesReturnRepo.create(salesReturn);
     await this.settingsRepo.saveSettings(settings);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: salesReturn.companyId,
         entityType: 'SALES_RETURN',
         entityId: salesReturn.id,
@@ -492,16 +492,18 @@ export class PostSalesReturnUseCase {
     private readonly itemCategoryRepo: IItemCategoryRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: ISalesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
-  ) {}
+  ) {
+    this.inventoryService = ensureInventoryCore(this.inventoryService);
+  }
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<SalesReturn> {
     const settings = await this.settingsRepo.getSettings(companyId);
@@ -624,7 +626,7 @@ export class PostSalesReturnUseCase {
 
     const revenueDebitBucket = new Map<string, VoucherBucketLine>();
     const taxDebitBucket = new Map<string, VoucherBucketLine>();
-    const cogsBucket = new Map<string, COGSBucketLine>();
+    const cogsBucket = new Map<string, InventoryCOGSBucketLine>();
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel }>();
     const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
     const partyItemPriceUpdates: PartyItemPriceUpsertInput[] = [];
@@ -918,26 +920,21 @@ export class PostSalesReturnUseCase {
             salesReturn.returnContext
           )
         ) {
-          const category = item.categoryId ? categoriesMap.get(item.categoryId) : null;
-          const cogsAccountId = item.cogsAccountId || category?.defaultCogsAccountId || invSettings?.defaultCOGSAccountId;
-          const inventoryAccountId = item.inventoryAssetAccountId || category?.defaultInventoryAssetAccountId || invSettings?.defaultInventoryAssetAccountId;
+          const accounts = this.inventoryService.resolveCOGSAccounts({
+            item,
+            categoriesById: categoriesMap,
+            defaultCOGSAccountId: invSettings?.defaultCOGSAccountId,
+            defaultInventoryAssetAccountId: invSettings?.defaultInventoryAssetAccountId,
+          });
+          const cogsAccountId = accounts?.cogsAccountId;
+          const inventoryAccountId = accounts?.inventoryAccountId;
           if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
           if (!inventoryAccountId) throw new Error(`No inventory account configured for item ${item.code}`);
 
           if (lineCostBase > 0) {
             line.cogsAccountId = line.cogsAccountId || cogsAccountId;
             line.inventoryAccountId = line.inventoryAccountId || inventoryAccountId;
-            const key = `${inventoryAccountId}|${cogsAccountId}`;
-            const existing = cogsBucket.get(key);
-            if (existing) {
-              existing.amountBase = roundMoney(existing.amountBase + lineCostBase);
-            } else {
-              cogsBucket.set(key, {
-                inventoryAccountId,
-                cogsAccountId,
-                amountBase: lineCostBase,
-              });
-            }
+            this.inventoryService.addToCOGSBucket(cogsBucket, cogsAccountId, inventoryAccountId, lineCostBase);
           }
         }
       }
@@ -1231,9 +1228,9 @@ export class PostSalesReturnUseCase {
     const posted = await this.salesReturnRepo.getById(companyId, id);
     if (!posted) throw new Error(`Sales return not found after posting: ${id}`);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const entityNumber = `SR-${posted.returnNumber}`;
-      await this.recordChangeService.recordPost({
+      await recordAuditPost(this.auditEngine, {
         companyId,
         entityType: 'SALES_RETURN',
         entityId: posted.id,
@@ -1242,7 +1239,7 @@ export class PostSalesReturnUseCase {
         userEmail: actor.userEmail,
       });
       if (periodLockOverride) {
-        await this.recordChangeService.recordPeriodLockOverride({
+        await recordAuditPeriodLockOverride(this.auditEngine, {
           companyId,
           entityType: 'SALES_RETURN',
           entityId: posted.id,
@@ -1435,7 +1432,7 @@ export interface UpdateSalesReturnInput {
 export class UpdateSalesReturnUseCase {
   constructor(
     private readonly salesReturnRepo: ISalesReturnRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdateSalesReturnInput, actor?: { userId: string; userEmail?: string }): Promise<SalesReturn> {
@@ -1503,9 +1500,9 @@ export class UpdateSalesReturnUseCase {
     const updated = new SalesReturn(current.toJSON() as any);
     await this.salesReturnRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'SALES_RETURN',
         entityId: updated.id,

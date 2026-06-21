@@ -6,6 +6,8 @@ import { ErrorCode } from '../../../errors/ErrorCodes';
 import { ApprovalPolicyService, ApprovalGateResult, AccountApprovalMetadata } from '../../../domain/accounting/policies/ApprovalPolicyService';
 import { IAccountingPolicyConfigProvider } from '../../../infrastructure/accounting/config/IAccountingPolicyConfigProvider';
 import { NotificationService } from '../../system/services/NotificationService';
+import { IApprovalEngine } from '../../system-core/contracts/IApprovalEngine';
+import { ApprovalEngine, ApprovalSubjectRegistry, LedgerCustodyApprovalPlugin } from '../../system-core';
 
 /**
  * Submit Voucher for Approval Use Case
@@ -33,7 +35,8 @@ export class SubmitVoucherUseCase {
     private readonly notificationService?: NotificationService,
     private readonly getApproverUserIds?: (companyId: string) => Promise<string[]>,
     private readonly policyRegistry?: any, // AccountingPolicyRegistry
-    private readonly validationService: any = null // VoucherValidationService
+    private readonly validationService: any = null, // VoucherValidationService
+    private readonly approvalEngine?: IApprovalEngine
   ) {}
 
   /**
@@ -79,31 +82,10 @@ export class SubmitVoucherUseCase {
       );
     }
 
-    // Step 3: Load policy config
-    const policyConfig = await this.policyConfigProvider.getConfig(companyId);
-    
-    // Step 4: Get account metadata for all touched accounts
-    const accountIds = [...new Set(voucher.lines.map(line => line.accountId))];
-    const accountMetadata = await this.getAccountMetadata(companyId, accountIds);
-    
-    // Step 5: Build Smart CC context with line-level debit/credit info
-    const smartCCContext = {
-      creatorUserId: submitterId,
-      voucherTotal: voucher.totalDebit || 0,
-      lines: voucher.lines.map(line => ({
-        accountId: line.accountId,
-        debitAmount: line.debitAmount || 0,
-        creditAmount: line.creditAmount || 0
-      })),
-      isReversal: !!voucher.reversalOfVoucherId
-    };
-    
-    // Step 6: Evaluate gates using Smart CC logic
-    const gateResult = this.approvalPolicyService.evaluateSmartGates(
-      policyConfig,
-      accountMetadata,
-      smartCCContext
-    );
+    // Step 3-6: Evaluate gates through the subject-agnostic approval engine.
+    // The registered accounting plug-in wraps the existing Smart FA/CC service,
+    // so voucher behavior and metadata remain unchanged.
+    const gateResult = await this.evaluateVoucherGates(companyId, voucher, submitterId);
     
     // Step 6.5: Check for missing custodians (if blocking enabled)
     if (gateResult.missingCustodianAccounts && gateResult.missingCustodianAccounts.length > 0) {
@@ -163,6 +145,40 @@ export class SubmitVoucherUseCase {
     });
     
     return savedVoucher;
+  }
+
+  private async evaluateVoucherGates(
+    companyId: string,
+    voucher: VoucherEntity,
+    submitterId: string
+  ): Promise<ApprovalGateResult> {
+    const engine = this.approvalEngine || new ApprovalEngine(
+      new ApprovalSubjectRegistry([
+        new LedgerCustodyApprovalPlugin(
+          this.policyConfigProvider,
+          this.approvalPolicyService,
+          this.getAccountMetadata
+        ),
+      ])
+    );
+    const result = await engine.evaluate(
+      {
+        type: 'accounting_voucher',
+        id: voucher.id,
+        payload: { voucher, submitterId },
+      },
+      {
+        companyId,
+        actorUserId: submitterId,
+        voucherType: voucher.type,
+      }
+    );
+    const gate = result.gates.find((entry) => entry.name === 'ledger_custody_financial_approval');
+    const accountingGateResult = gate?.metadata?.accountingGateResult as ApprovalGateResult | undefined;
+    if (!accountingGateResult) {
+      throw new Error('Approval engine did not return accounting voucher gate metadata.');
+    }
+    return accountingGateResult;
   }
 
   /**

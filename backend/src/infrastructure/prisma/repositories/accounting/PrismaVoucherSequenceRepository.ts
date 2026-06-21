@@ -9,6 +9,19 @@ import { PrismaClient } from '@prisma/client';
 import { IVoucherSequenceRepository } from '../../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { VoucherSequence } from '../../../../domain/accounting/entities/VoucherSequence';
 
+const formatNumber = (prefix: string, next: number, year?: number, format?: string) => {
+  const y = year ? String(year) : '';
+  if (format) {
+    return format
+      .replace('{PREFIX}', prefix)
+      .replace('{YYYY}', y)
+      .replace(/\{COUNTER:(\d+)\}/g, (_match, width) => String(next).padStart(Number(width) || 4, '0'))
+      .replace('{COUNTER}', String(next).padStart(4, '0'));
+  }
+  const counter = String(next).padStart(4, '0');
+  return year ? `${prefix}-${year}-${counter}` : `${prefix}-${counter}`;
+};
+
 export class PrismaVoucherSequenceRepository implements IVoucherSequenceRepository {
   constructor(private prisma: PrismaClient) {}
 
@@ -63,12 +76,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
         } as any,
       });
 
-      const counter = 1;
-      const paddedCounter = String(counter).padStart(4, '0');
-      if (year) {
-        return `${prefix}-${year}-${paddedCounter}`;
-      }
-      return `${prefix}-${paddedCounter}`;
+      return formatNumber(prefix, 1, year, format);
     }
 
     // Atomically increment and get the next number
@@ -79,13 +87,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
       } as any,
     });
 
-    const counter = updated.currentNumber;
-    const paddedCounter = String(counter).padStart(4, '0');
-
-    if (year) {
-      return `${prefix}-${year}-${paddedCounter}`;
-    }
-    return `${prefix}-${paddedCounter}`;
+    return formatNumber(prefix, updated.currentNumber, year, format);
   }
 
   async getCurrentSequence(companyId: string, prefix: string, year?: number): Promise<VoucherSequence | null> {

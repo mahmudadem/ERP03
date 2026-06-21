@@ -17,7 +17,7 @@ import {
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PaymentHistory, PaymentMethod } from '../../../domain/shared/entities/PaymentHistory';
-import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IExchangeRateRepository } from '../../../repository/interfaces/accounting/IExchangeRateRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -59,7 +59,8 @@ import {
 } from '../../inventory/services/ItemCostingStatsService';
 import { roundByCurrency } from '../../../domain/accounting/entities/CurrencyPrecisionHelpers';
 import { addDaysToISODate, roundMoney, updatePOStatus } from './PurchasePostingHelpers';
-import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { generateDocumentNumberWithEngine } from './PurchaseOrderUseCases';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { PostingError } from '../../../domain/shared/errors/AppError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import {
@@ -67,7 +68,9 @@ import {
   scalarChanged,
   lineSignaturesEqual,
 } from '../../common/services/PostedDocumentEditGuard';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
+import { calculateCommercialLineAmounts } from '../../system-core/commercial/CommercialCore';
 import {
   SubledgerDocumentPoster,
   SubledgerPostingEntry,
@@ -165,6 +168,7 @@ export interface PurchaseInvoiceLineInput {
    *  AMOUNT is a flat discount in document currency. */
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
+  discountAmountDoc?: number;
   /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
    *  net + tax during construction so totals match the user's input. */
   priceIsInclusive?: boolean;
@@ -267,7 +271,8 @@ export class CreatePurchaseInvoiceUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly companyCurrencyRepo: ICompanyCurrencyRepository
+    private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreatePurchaseInvoiceInput): Promise<PurchaseInvoice> {
@@ -327,10 +332,6 @@ export class CreatePurchaseInvoiceUseCase {
 
       const invoicedQty = sourceLine.invoicedQty;
       const unitPriceDoc = sourceLine.unitPriceDoc ?? poLine?.unitPriceDoc ?? 0;
-      const lineTotalDoc = roundMoney(invoicedQty * unitPriceDoc);
-      const unitPriceBase = roundMoney(unitPriceDoc * exchangeRate);
-      const lineTotalBase = roundMoney(lineTotalDoc * exchangeRate);
-
       const taxCodeId = await this.resolveTaxCodeId(input.companyId, sourceLine.taxCodeId, item);
       let taxRate = 0;
       let taxCodeDefaultInclusive = false;
@@ -349,6 +350,16 @@ export class CreatePurchaseInvoiceUseCase {
         sourceLine.priceIsInclusive !== undefined
           ? sourceLine.priceIsInclusive === true
           : taxCodeDefaultInclusive;
+      const lineAmounts = calculateCommercialLineAmounts({
+        quantity: invoicedQty,
+        unitPriceDoc,
+        exchangeRate,
+        taxRate,
+        priceIsInclusive: effectiveInclusive,
+        discountType: sourceLine.discountType,
+        discountValue: sourceLine.discountValue,
+        discountAmountDoc: sourceLine.discountAmountDoc,
+      });
 
       // Pre-totals here are illustrative; the PurchaseInvoice constructor
       // recomputes via normalizeLine, which is the source of truth for the
@@ -371,15 +382,19 @@ export class CreatePurchaseInvoiceUseCase {
         // discountAmountDoc/grossLineTotalDoc/lineTotalDoc/tax* from these.
         discountType: sourceLine.discountType,
         discountValue: sourceLine.discountValue,
-        lineTotalDoc,
-        unitPriceBase,
-        lineTotalBase,
+        grossLineTotalDoc: lineAmounts.grossLineTotalDoc,
+        discountAmountDoc: lineAmounts.discountAmountDoc,
+        lineTotalDoc: lineAmounts.lineTotalDoc,
+        unitPriceBase: lineAmounts.unitPriceBase,
+        grossLineTotalBase: lineAmounts.grossLineTotalBase,
+        discountAmountBase: lineAmounts.discountAmountBase,
+        lineTotalBase: lineAmounts.lineTotalBase,
         taxCodeId,
         taxCode: undefined,
         taxRate,
         priceIsInclusive: effectiveInclusive,
-        taxAmountDoc: roundMoney(lineTotalDoc * taxRate),
-        taxAmountBase: roundMoney(lineTotalBase * taxRate),
+        taxAmountDoc: lineAmounts.taxAmountDoc,
+        taxAmountBase: lineAmounts.taxAmountBase,
         warehouseId: sourceLine.warehouseId || poLine?.warehouseId || settings.defaultWarehouseId,
         accountId: '',
         stockMovementId: null,
@@ -407,11 +422,12 @@ export class CreatePurchaseInvoiceUseCase {
     const paymentTermsDays = vendor.paymentTermsDays ?? settings.defaultPaymentTermsDays;
     const dueDate = input.dueDate || addDaysToISODate(input.invoiceDate, paymentTermsDays);
     const now = new Date();
+    const invoiceNumber = await generateDocumentNumberWithEngine(settings, 'PI', input.companyId, this.numberingEngine);
 
     const invoice = new PurchaseInvoice({
       id: randomUUID(),
       companyId: input.companyId,
-      invoiceNumber: generateDocumentNumber(settings, 'PI'),
+      invoiceNumber,
       vendorInvoiceNumber: input.vendorInvoiceNumber,
       formType: input.formType || 'purchase_invoice_direct',
       voucherType: input.voucherType || 'purchase_invoice',
@@ -518,7 +534,7 @@ export class PostPurchaseInvoiceUseCase {
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly exchangeRateRepo: IExchangeRateRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
@@ -528,7 +544,8 @@ export class PostPurchaseInvoiceUseCase {
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
+    private readonly numberingEngine?: INumberingEngine
   ) {
     this.accountRepo = accountRepo;
   }
@@ -1145,27 +1162,25 @@ export class PostPurchaseInvoiceUseCase {
   private freezeTaxSnapshotSync(line: PurchaseInvoiceLine, rate: number, tax?: TaxCode): void {
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
-    // Honour priceIsInclusive: when set, unitPriceDoc IS the gross — split it.
-    const inclusive = line.priceIsInclusive === true;
-    const divisor = inclusive ? 1 + line.taxRate : 1;
-    const grossLineTotalDoc = roundMoney(line.invoicedQty * line.unitPriceDoc);
-    // Apply the line discount BEFORE tax, mirroring SalesInvoice.calculateDiscountAmountDoc.
-    // Without this the posting recomputed lineTotal from GROSS, so the inventory debit
-    // and AP credit ignored the line discount (vendor over-credited by the discount).
-    const lineDiscountDoc = line.discountType === 'PERCENT'
-      ? roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * ((line.discountValue || 0) / 100))))
-      : line.discountType === 'AMOUNT'
-        ? roundMoney(Math.max(0, Math.min(line.discountValue || 0, grossLineTotalDoc)))
-        : 0;
-    const postDiscountDoc = roundMoney(grossLineTotalDoc - lineDiscountDoc);
-    line.discountAmountDoc = lineDiscountDoc;
-    line.lineTotalDoc = roundMoney(postDiscountDoc / divisor);
-    line.unitPriceBase = roundMoney(line.unitPriceDoc * rate);
-    line.lineTotalBase = roundMoney(line.lineTotalDoc * rate);
-    line.taxAmountDoc = inclusive
-      ? roundMoney(postDiscountDoc - line.lineTotalDoc)
-      : roundMoney(line.lineTotalDoc * line.taxRate);
-    line.taxAmountBase = roundMoney(line.taxAmountDoc * rate);
+    const amounts = calculateCommercialLineAmounts({
+      quantity: line.invoicedQty,
+      unitPriceDoc: line.unitPriceDoc,
+      exchangeRate: rate,
+      taxRate: line.taxRate,
+      priceIsInclusive: line.priceIsInclusive === true,
+      discountType: line.discountType,
+      discountValue: line.discountValue,
+      discountAmountDoc: line.discountAmountDoc,
+    });
+    line.grossLineTotalDoc = amounts.grossLineTotalDoc;
+    line.discountAmountDoc = amounts.discountAmountDoc;
+    line.lineTotalDoc = amounts.lineTotalDoc;
+    line.unitPriceBase = amounts.unitPriceBase;
+    line.grossLineTotalBase = amounts.grossLineTotalBase;
+    line.discountAmountBase = amounts.discountAmountBase;
+    line.lineTotalBase = amounts.lineTotalBase;
+    line.taxAmountDoc = amounts.taxAmountDoc;
+    line.taxAmountBase = amounts.taxAmountBase;
   }
 
   private recalcInvoiceTotals(pi: PurchaseInvoice): void {
@@ -1281,7 +1296,9 @@ export class PostPurchaseInvoiceUseCase {
       const settlementDate = settlement.paymentDate || now.toISOString().split('T')[0];
       const settlementMethod = settlement.paymentMethod || 'CASH';
 
-      const voucherNo = await this.voucherSequenceRepo!.getNextNumber(companyId, 'PV');
+      const voucherNo = this.numberingEngine
+        ? await this.numberingEngine.next({ companyId, docType: 'PV', scope: 'company', prefix: 'PV', counterWidth: 4 })
+        : await this.voucherSequenceRepo!.getNextNumber(companyId, 'PV');
       const voucherId = `vch_${randomUUID()}`;
 
       const docAmount = roundMoney(settlementAmountBase / pi.exchangeRate);
@@ -1465,7 +1482,7 @@ export class UpdatePurchaseInvoiceUseCase {
   constructor(
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(
@@ -1575,9 +1592,9 @@ export class UpdatePurchaseInvoiceUseCase {
     const updated = new PurchaseInvoice(current.toJSON() as any);
     await this.purchaseInvoiceRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'PURCHASE_INVOICE',
         entityId: updated.id,
@@ -1621,7 +1638,7 @@ export class UnpostPurchaseInvoiceUseCase {
   constructor(
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager

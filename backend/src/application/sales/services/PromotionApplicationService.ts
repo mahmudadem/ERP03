@@ -1,4 +1,5 @@
 import { PromotionRule } from '../../../domain/sales/entities/PromotionRule';
+import { applyCommercialPromotions } from '../../system-core/commercial/CommercialCore';
 
 // ---------------------------------------------------------------------------
 // Input / output types
@@ -67,65 +68,6 @@ export class PromotionApplicationService {
     rules: PromotionRule[],
     asOfDate: string
   ): PromotionEvaluationResult {
-    const freeGoods: FreeGoodsSuggestion[] = [];
-    const lineDiscounts: LineDiscountSuggestion[] = [];
-
-    // Sort rules by priority ascending (stable sort in V8, so ties keep insertion order)
-    const sortedRules = [...rules].sort((a, b) => a.priority - b.priority);
-
-    // Filter to rules that are active on the evaluation date
-    const activeRules = sortedRules.filter((r) => r.isActiveOn(asOfDate));
-
-    for (const line of lines) {
-      let bxgyApplied = false;    // track whether a BUY_X_GET_Y already fired for this line
-      let discountApplied = false; // track whether a THRESHOLD_DISCOUNT already fired
-
-      for (const rule of activeRules) {
-        if (!rule.appliesToItem(line.itemId, line.categoryId)) continue;
-
-        // ----- BUY_X_GET_Y -----
-        if (rule.type === 'BUY_X_GET_Y' && !bxgyApplied) {
-          const cfg = rule.buyXGetY!;
-          if (line.qty >= cfg.buyQty) {
-            const freeQty = Math.floor(line.qty / cfg.buyQty) * cfg.getQty;
-            freeGoods.push({
-              sourceLineId: line.lineId,
-              ruleId: rule.id,
-              ruleName: rule.name,
-              itemId: cfg.getItemId ?? line.itemId,
-              qty: freeQty,
-            });
-            bxgyApplied = true;
-          }
-        }
-
-        // ----- THRESHOLD_DISCOUNT -----
-        if (rule.type === 'THRESHOLD_DISCOUNT' && !discountApplied) {
-          // Hard rule: manual discount always takes precedence
-          if (line.hasManualDiscount) continue;
-
-          const cfg = rule.thresholdDiscount!;
-          const thresholdMet =
-            cfg.thresholdBasis === 'QTY'
-              ? line.qty >= cfg.thresholdValue
-              : line.lineAmountDoc >= cfg.thresholdValue;
-
-          if (thresholdMet) {
-            lineDiscounts.push({
-              lineId: line.lineId,
-              ruleId: rule.id,
-              ruleName: rule.name,
-              discountPct: cfg.discountPct,
-            });
-            discountApplied = true;
-          }
-        }
-
-        // Short-circuit: if both mechanics are decided we can move to the next line
-        if (bxgyApplied && discountApplied) break;
-      }
-    }
-
-    return { freeGoods, lineDiscounts };
+    return applyCommercialPromotions({ lines, rules, asOfDate, source: 'sales' });
   }
 }

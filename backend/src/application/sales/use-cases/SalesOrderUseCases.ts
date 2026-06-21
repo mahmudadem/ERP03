@@ -1,3 +1,4 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { AppliedPromotionInfo } from '../../../domain/sales/entities/AppliedPromotion';
@@ -9,7 +10,9 @@ import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ICreditOverrideRepository } from '../../../repository/interfaces/sales/ICreditOverrideRepository';
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
@@ -20,7 +23,6 @@ import { CreditCheckResult, CreditCheckService } from '../services/CreditCheckSe
 import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
 import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const generateDocumentNumber = (
   settings: SalesSettings,
@@ -54,13 +56,51 @@ export const generateDocumentNumber = (
   return `${prefix}-${String(seq).padStart(5, '0')}`;
 };
 
+const getSalesNumberingConfig = (settings: SalesSettings, docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT'): { prefix: string; seedNextNumber: number } => {
+  if (docType === 'SO') return { prefix: settings.soNumberPrefix, seedNextNumber: settings.soNumberNextSeq };
+  if (docType === 'DN') return { prefix: settings.dnNumberPrefix, seedNextNumber: settings.dnNumberNextSeq };
+  if (docType === 'SI') return { prefix: settings.siNumberPrefix, seedNextNumber: settings.siNumberNextSeq };
+  if (docType === 'QT') return { prefix: settings.quoteNumberPrefix, seedNextNumber: settings.quoteNumberNextSeq };
+  return { prefix: settings.srNumberPrefix, seedNextNumber: settings.srNumberNextSeq };
+};
+
+const mirrorSalesNumbering = (settings: SalesSettings, docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT', allocatedNumber: string): void => {
+  const next = Math.max(getSalesNumberingConfig(settings, docType).seedNextNumber + 1, trailingNumber(allocatedNumber) + 1);
+  if (docType === 'SO') settings.soNumberNextSeq = next;
+  else if (docType === 'DN') settings.dnNumberNextSeq = next;
+  else if (docType === 'SI') settings.siNumberNextSeq = next;
+  else if (docType === 'QT') settings.quoteNumberNextSeq = next;
+  else settings.srNumberNextSeq = next;
+};
+
+const trailingNumber = (documentNumber: string): number => {
+  const match = documentNumber.match(/(\d+)\D*$/);
+  return match ? Number(match[1]) : 0;
+};
+
 export const generateUniqueDocumentNumber = async (
   settings: SalesSettings,
   docType: 'SO' | 'DN' | 'SI' | 'SR' | 'QT',
-  exists: (candidate: string) => Promise<boolean>
+  exists: (candidate: string) => Promise<boolean>,
+  numberingEngine?: INumberingEngine,
+  companyId?: string
 ): Promise<string> => {
   for (let attempt = 0; attempt < 100; attempt += 1) {
-    const candidate = generateDocumentNumber(settings, docType);
+    let candidate: string;
+    if (numberingEngine && companyId) {
+      const cfg = getSalesNumberingConfig(settings, docType);
+      candidate = await numberingEngine.next({
+        companyId,
+        docType,
+        scope: 'company',
+        prefix: cfg.prefix,
+        counterWidth: 5,
+        seedNextNumber: cfg.seedNextNumber,
+      });
+      mirrorSalesNumbering(settings, docType, candidate);
+    } else {
+      candidate = generateDocumentNumber(settings, docType);
+    }
     if (!(await exists(candidate))) {
       return candidate;
     }
@@ -152,7 +192,8 @@ export class CreateSalesOrderUseCase {
     private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly promotionRuleRepo?: IPromotionRuleRepository,
-    private readonly recordChangeService?: RecordChangeService,
+    private readonly auditEngine?: IAuditEngine,
+    private readonly numberingEngine?: INumberingEngine,
   ) {}
 
   async execute(input: CreateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
@@ -180,7 +221,9 @@ export class CreateSalesOrderUseCase {
     const orderNumber = await generateUniqueDocumentNumber(
       settings,
       'SO',
-      async (candidate) => !!(await this.salesOrderRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.salesOrderRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
     const so = new SalesOrder({
       id: randomUUID(),
@@ -329,8 +372,8 @@ export class CreateSalesOrderUseCase {
     await this.salesOrderRepo.create(so);
     await this.settingsRepo.saveSettings(settings);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: so.companyId,
         entityType: 'SALES_ORDER',
         entityId: so.id,
@@ -426,7 +469,7 @@ export class UpdateSalesOrderUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
     private readonly taxCodeRepo: ITaxCodeRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdateSalesOrderInput, actor?: { userId: string; userEmail?: string }): Promise<SalesOrder> {
@@ -499,9 +542,9 @@ export class UpdateSalesOrderUseCase {
 
     await this.salesOrderRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'SALES_ORDER',
         entityId: updated.id,

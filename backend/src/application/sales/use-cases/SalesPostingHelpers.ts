@@ -1,6 +1,6 @@
-﻿import { SOStatus, SalesOrder } from '../../../domain/sales/entities/SalesOrder';
+import { SOStatus, SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 
-export const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
+export { roundMoney } from '../../system-core/money/roundMoney';
 
 export const addDaysToISODate = (isoDate: string, days: number): string => {
   const [year, month, day] = isoDate.split('-').map((part) => Number(part));

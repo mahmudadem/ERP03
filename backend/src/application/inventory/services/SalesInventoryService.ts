@@ -1,13 +1,17 @@
 import {
   InventoryProcessINContractInput,
   InventoryProcessOUTContractInput,
-  ISalesInventoryService,
+  IInventoryCore,
+  InventoryCOGSAccountResolutionInput,
+  InventoryCOGSBucketLine,
+  addInventoryCOGSToBucket,
+  resolveInventoryCOGSAccounts,
 } from '../contracts/InventoryIntegrationContracts';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { RecordStockMovementUseCase } from '../use-cases/RecordStockMovementUseCase';
 
-export class SalesInventoryService implements ISalesInventoryService {
+export class SalesInventoryService implements IInventoryCore {
   constructor(private readonly movementUseCase: RecordStockMovementUseCase) {}
 
   processIN(input: InventoryProcessINContractInput) {
@@ -68,5 +72,18 @@ processOUT(input: InventoryProcessOUTContractInput) {
 
   writeStockLevel(level: StockLevel, transaction?: unknown): Promise<void> {
     return this.movementUseCase.writeStockLevel(level, transaction);
+  }
+
+  resolveCOGSAccounts(input: InventoryCOGSAccountResolutionInput) {
+    return resolveInventoryCOGSAccounts(input);
+  }
+
+  addToCOGSBucket(
+    bucket: Map<string, InventoryCOGSBucketLine>,
+    cogsAccountId: string,
+    inventoryAccountId: string,
+    amountBase: number
+  ): void {
+    addInventoryCOGSToBucket(bucket, cogsAccountId, inventoryAccountId, amountBase);
   }
 }

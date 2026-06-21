@@ -6,8 +6,9 @@ import {
 } from '../../../domain/pos/entities/PosSettings';
 import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
-import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
-import { GovernanceRule } from '../../../domain/sales/entities/SalesSettings';
+import { IPosPolicyRepository } from '../../../repository/interfaces/pos/IPosPolicyRepository';
+import { POSPolicy } from '../../../domain/pos/entities/POSPolicy';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
 export interface UpdatePosSettingsInput {
   companyId: string;
@@ -20,9 +21,9 @@ export interface UpdatePosSettingsInput {
   cashRounding?: PosCashRounding;
   allowPosDirectSales?: boolean;
   paymentMethods?: PosPaymentMethodConfig[];
+  actor?: { userId: string; userEmail?: string };
 }
 
-const POS_SALE_GOVERNANCE_RULE_ID = 'pos_direct_sale_form_allow';
 
 /**
  * Initialize (or re-initialize) POS settings for a company with the safe defaults.
@@ -52,15 +53,15 @@ export class GetPosSettingsUseCase {
  * Update POS settings. Validates that:
  *   - Every enabled payment method has a settlementAccountId that exists.
  *   - cashOverAccountId / cashShortAccountId, if set, exist.
- * Also keeps the Sales `governanceRules` list in sync with `allowPosDirectSales` —
- * a form-scoped allow rule for `formType:'pos_sale'` / `persona:'direct'` is
- * inserted when enabled and removed when disabled. We do NOT alter `workflowMode`.
+ * Also keeps the POS-owned policy in sync with `allowPosDirectSales` so direct
+ * sale authorization stays inside the POS/System Core boundary.
  */
 export class UpdatePosSettingsUseCase {
   constructor(
     private readonly posSettingsRepo: IPosSettingsRepository,
     private readonly accountRepo: IAccountRepository,
-    private readonly salesSettingsRepo: ISalesSettingsRepository
+    private readonly posPolicyRepo: IPosPolicyRepository,
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdatePosSettingsInput): Promise<PosSettings> {
@@ -102,28 +103,20 @@ export class UpdatePosSettingsUseCase {
 
     await this.posSettingsRepo.saveSettings(next);
 
-    // Sync the Sales governance rule.
-    const salesSettings = await this.salesSettingsRepo.getSettings(input.companyId);
-    if (salesSettings) {
-      const currentRules: GovernanceRule[] = (salesSettings.governanceRules || []).filter(
-        (r) => r.id !== POS_SALE_GOVERNANCE_RULE_ID
-      );
-      const updatedRules: GovernanceRule[] = next.allowPosDirectSales
-        ? [
-            ...currentRules,
-            {
-              id: POS_SALE_GOVERNANCE_RULE_ID,
-              scope: 'form',
-              formType: 'pos_sale',
-              action: 'allow',
-              persona: 'direct',
-            },
-          ]
-        : currentRules;
-      salesSettings.governanceRules = updatedRules;
-      await this.salesSettingsRepo.saveSettings(salesSettings);
-    }
+    const policy = (await this.posPolicyRepo.getPolicy(input.companyId)) || POSPolicy.createDefault(input.companyId);
+    policy.allowPosDirectSales = next.allowPosDirectSales;
+    await this.posPolicyRepo.savePolicy(policy);
 
+    if (this.auditEngine && input.actor) {
+      await this.auditEngine.record({
+        companyId: input.companyId,
+        entity: { type: 'POS_SETTINGS', id: input.companyId, number: next.receiptPrefix },
+        action: current ? 'UPDATE' : 'CREATE',
+        actor: input.actor,
+        before: current?.toJSON(),
+        after: next.toJSON(),
+      });
+    }
     return next;
   }
 

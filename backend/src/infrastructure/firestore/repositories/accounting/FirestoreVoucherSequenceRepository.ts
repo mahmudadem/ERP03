@@ -4,15 +4,15 @@ import { IVoucherSequenceRepository } from '../../../../repository/interfaces/ac
 import { VoucherSequence } from '../../../../domain/accounting/entities/VoucherSequence';
 
 const formatNumber = (prefix: string, next: number, year?: number, format?: string) => {
-  const counter = String(next).padStart(4, '0');
   const y = year ? String(year) : '';
   if (format) {
     return format
       .replace('{PREFIX}', prefix)
       .replace('{YYYY}', y)
-      .replace('{COUNTER:4}', counter)
-      .replace('{COUNTER}', counter);
+      .replace(/\{COUNTER:(\d+)\}/g, (_match, width) => String(next).padStart(Number(width) || 4, '0'))
+      .replace('{COUNTER}', String(next).padStart(4, '0'));
   }
+  const counter = String(next).padStart(4, '0');
   return year ? `${prefix}-${year}-${counter}` : `${prefix}-${counter}`;
 };
 

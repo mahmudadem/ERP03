@@ -30,24 +30,14 @@ import {
   OpenPosShiftUseCase,
 } from '../../../application/pos/use-cases/PosShiftUseCases';
 import { CompletePosSaleUseCase } from '../../../application/pos/use-cases/CompletePosSaleUseCase';
+import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
 import {
   GetPosBootstrapUseCase,
   SearchPosProductsUseCase,
 } from '../../../application/pos/use-cases/PosBootstrapUseCase';
 import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/PreviewPosSaleUseCase';
-import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
-import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
-import {
-  CreateSalesInvoiceUseCase,
-  PostSalesInvoiceUseCase,
-} from '../../../application/sales/use-cases/SalesInvoiceUseCases';
-import { RecordStockMovementUseCase } from '../../../application/inventory/use-cases/RecordStockMovementUseCase';
-import { SalesInventoryService } from '../../../application/inventory/services/SalesInventoryService';
-import {
-  CreateSalesReturnUseCase,
-  PostSalesReturnUseCase,
-} from '../../../application/sales/use-cases/SalesReturnUseCases';
 import { CompletePosReturnUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
+import { PostPosReturnUseCase } from '../../../application/pos/use-cases/PostPosReturnUseCase';
 import {
   GetCashierSalesSummaryUseCase,
   GetCashOverShortReportUseCase,
@@ -56,8 +46,6 @@ import {
   GetPosZReportUseCase,
   GetReceiptHistoryUseCase,
 } from '../../../application/pos/use-cases/PosReportingUseCases';
-import { CreditCheckService } from '../../../application/sales/services/CreditCheckService';
-import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
 import {
   validateUpdatePosSettingsInput,
   validateUpsertPosRegisterInput,
@@ -112,9 +100,14 @@ export class PosController {
       const useCase = new UpdatePosSettingsUseCase(
         diContainer.posSettingsRepository,
         diContainer.accountRepository,
-        diContainer.salesSettingsRepository
+        diContainer.posPolicyRepository,
+        diContainer.auditEngine
       );
-      const settings = await useCase.execute({ ...(req as any).body, companyId });
+      const settings = await useCase.execute({
+        ...(req as any).body,
+        companyId,
+        actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
+      });
       (res as any).json({ success: true, data: PosDTOMapper.toSettingsDTO(settings) });
     } catch (error) {
       next(error);
@@ -157,8 +150,12 @@ export class PosController {
     try {
       validateUpsertPosRegisterInput((req as any).body);
       const companyId = PosController.getCompanyId(req);
-      const useCase = new CreatePosRegisterUseCase(diContainer.posRegisterRepository);
-      const register = await useCase.execute({ ...(req as any).body, companyId });
+      const useCase = new CreatePosRegisterUseCase(diContainer.posRegisterRepository, diContainer.auditEngine);
+      const register = await useCase.execute({
+        ...(req as any).body,
+        companyId,
+        actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
+      });
       (res as any).status(201).json({ success: true, data: PosDTOMapper.toRegisterDTO(register) });
     } catch (error) {
       next(error);
@@ -170,8 +167,11 @@ export class PosController {
       validateUpsertPosRegisterInput((req as any).body);
       const companyId = PosController.getCompanyId(req);
       const id = String((req as any).params.id);
-      const useCase = new UpdatePosRegisterUseCase(diContainer.posRegisterRepository);
-      const register = await useCase.execute(companyId, id, (req as any).body || {});
+      const useCase = new UpdatePosRegisterUseCase(diContainer.posRegisterRepository, diContainer.auditEngine);
+      const register = await useCase.execute(companyId, id, {
+        ...((req as any).body || {}),
+        actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
+      });
       (res as any).json({ success: true, data: PosDTOMapper.toRegisterDTO(register) });
     } catch (error) {
       next(error);
@@ -179,18 +179,6 @@ export class PosController {
   }
 
   // ===== Shifts =====
-
-  private static buildAccountingPostingService(): SubledgerVoucherPostingService {
-    return new SubledgerVoucherPostingService(
-      diContainer.voucherRepository,
-      diContainer.ledgerRepository,
-      diContainer.companyCurrencyRepository,
-      diContainer.accountRepository,
-      new VoucherValidationService(),
-      diContainer.periodLockService,
-      diContainer.policyRegistry as any
-    );
-  }
 
   static async openShift(req: Request, res: Response, next: NextFunction) {
     try {
@@ -227,7 +215,7 @@ export class PosController {
         diContainer.posRegisterRepository,
         diContainer.posCashMovementRepository,
         diContainer.accountRepository,
-        PosController.buildAccountingPostingService(),
+        diContainer.accountingBridge,
         diContainer.transactionManager
       );
       const result = await useCase.execute({
@@ -261,7 +249,7 @@ export class PosController {
         diContainer.posRegisterRepository,
         diContainer.posCashMovementRepository,
         diContainer.accountRepository,
-        PosController.buildAccountingPostingService(),
+        diContainer.accountingBridge,
         diContainer.transactionManager
       );
       const result = await useCase.execute({
@@ -356,67 +344,6 @@ export class PosController {
 
   // ===== Sale / Receipts =====
 
-  private static buildSalesInventoryService(): SalesInventoryService {
-    const movementUseCase = new RecordStockMovementUseCase({
-      itemRepository: diContainer.itemRepository,
-      warehouseRepository: diContainer.warehouseRepository,
-      stockMovementRepository: diContainer.stockMovementRepository,
-      stockLevelRepository: diContainer.stockLevelRepository,
-      companyRepository: diContainer.companyRepository,
-      inventorySettingsRepository: diContainer.inventorySettingsRepository,
-      transactionManager: diContainer.transactionManager,
-    });
-    return new SalesInventoryService(movementUseCase);
-  }
-
-  private static buildCreateSalesInvoiceUseCase(recordChangeService?: RecordChangeService): CreateSalesInvoiceUseCase {
-    return new CreateSalesInvoiceUseCase(
-      diContainer.salesSettingsRepository,
-      diContainer.salesInvoiceRepository,
-      diContainer.salesOrderRepository,
-      diContainer.partyRepository,
-      diContainer.itemRepository,
-      diContainer.itemCategoryRepository,
-      diContainer.taxCodeRepository,
-      diContainer.companyCurrencyRepository,
-      diContainer.promotionRuleRepository,
-      new CreditCheckService(diContainer.salesInvoiceRepository),
-      diContainer.creditOverrideRepository,
-      recordChangeService,
-    );
-  }
-
-  private static buildPostSalesInvoiceUseCase(recordChangeService?: RecordChangeService): PostSalesInvoiceUseCase {
-    return new PostSalesInvoiceUseCase(
-      diContainer.salesSettingsRepository,
-      diContainer.inventorySettingsRepository,
-      diContainer.salesInvoiceRepository,
-      diContainer.salesOrderRepository,
-      diContainer.deliveryNoteRepository,
-      diContainer.partyRepository,
-      diContainer.taxCodeRepository,
-      diContainer.itemRepository,
-      diContainer.itemCategoryRepository,
-      diContainer.warehouseRepository,
-      diContainer.uomConversionRepository,
-      diContainer.companyCurrencyRepository,
-      // Real inventory service — required so stock-item POS sales create the inventory OUT movement.
-      PosController.buildSalesInventoryService(),
-      diContainer.companyModuleRepository,
-      PosController.buildAccountingPostingService(),
-      diContainer.accountRepository,
-      diContainer.transactionManager,
-      diContainer.paymentHistoryRepository,
-      diContainer.voucherRepository,
-      diContainer.voucherSequenceRepository,
-      diContainer.ledgerRepository,
-      diContainer.postingLogRepository,
-      recordChangeService,
-      diContainer.partyItemPriceRepository,
-      diContainer.recordSalesProfitLineFactsUseCase
-    );
-  }
-
   static async getBootstrap(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
@@ -451,7 +378,7 @@ export class PosController {
       const companyId = PosController.getCompanyId(req);
       const query = String((req as any).query?.q || '');
       const limit = (req as any).query?.limit ? Number((req as any).query.limit) : 25;
-      const useCase = new SearchPosProductsUseCase(diContainer.itemRepository);
+      const useCase = new SearchPosProductsUseCase(diContainer.itemRepository, diContainer.commercialCore);
       const result = await useCase.execute({ companyId, query, limit });
       (res as any).json({ success: true, data: result });
     } catch (error) {
@@ -462,7 +389,7 @@ export class PosController {
   static async previewSale(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
-      const useCase = new PreviewPosSaleUseCase(diContainer.itemRepository, diContainer.taxCodeRepository);
+      const useCase = new PreviewPosSaleUseCase(diContainer.itemRepository, diContainer.taxCodeRepository, diContainer.taxEngine);
       const result = await useCase.execute({
         companyId,
         lines: (req as any).body?.lines || [],
@@ -478,7 +405,6 @@ export class PosController {
       const companyId = PosController.getCompanyId(req);
       const userId = PosController.getUserId(req);
       const userEmail = PosController.getUserEmail(req);
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CompletePosSaleUseCase(
         diContainer.posShiftRepository,
         diContainer.posSettingsRepository,
@@ -487,9 +413,22 @@ export class PosController {
         diContainer.posPaymentRepository,
         diContainer.posCashMovementRepository,
         diContainer.transactionManager,
-        PosController.buildCreateSalesInvoiceUseCase(recordChangeService),
-        PosController.buildPostSalesInvoiceUseCase(recordChangeService),
-        diContainer.salesInvoiceRepository
+        new PostPosSaleUseCase(
+          diContainer.itemRepository,
+          diContainer.itemCategoryRepository,
+          diContainer.inventorySettingsRepository,
+          diContainer.partyRepository,
+          diContainer.taxCodeRepository,
+          diContainer.companyCurrencyRepository,
+          diContainer.inventoryCore,
+          diContainer.accountingBridge,
+          diContainer.taxEngine,
+          diContainer.commercialCore,
+          diContainer.promotionRuleRepository
+        ),
+        diContainer.policyEngine,
+        diContainer.numberingEngine,
+        diContainer.auditEngine
       );
       const result = await useCase.execute({
         companyId,
@@ -563,58 +502,29 @@ export class PosController {
 
   // ===== Returns =====
 
-  private static buildCreateSalesReturnUseCase(recordChangeService?: RecordChangeService): CreateSalesReturnUseCase {
-    return new CreateSalesReturnUseCase(
-      diContainer.salesSettingsRepository,
-      diContainer.salesReturnRepository,
-      diContainer.salesInvoiceRepository,
-      diContainer.deliveryNoteRepository,
-      recordChangeService,
-      diContainer.companyCurrencyRepository
-    );
-  }
-
-  private static buildPostSalesReturnUseCase(recordChangeService?: RecordChangeService): PostSalesReturnUseCase {
-    return new PostSalesReturnUseCase(
-      diContainer.salesSettingsRepository,
-      diContainer.inventorySettingsRepository,
-      diContainer.salesReturnRepository,
-      diContainer.salesInvoiceRepository,
-      diContainer.deliveryNoteRepository,
-      diContainer.salesOrderRepository,
-      diContainer.partyRepository,
-      diContainer.taxCodeRepository,
-      diContainer.itemRepository,
-      diContainer.itemCategoryRepository,
-      diContainer.uomConversionRepository,
-      diContainer.companyCurrencyRepository,
-      null as any,
-      diContainer.companyModuleRepository,
-      PosController.buildAccountingPostingService(),
-      diContainer.accountRepository,
-      diContainer.transactionManager,
-      recordChangeService,
-      diContainer.postingLogRepository,
-      diContainer.partyItemPriceRepository,
-      diContainer.recordSalesProfitLineFactsUseCase
-    );
-  }
-
   static async completeReturn(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
       const userId = PosController.getUserId(req);
       const userEmail = PosController.getUserEmail(req);
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
       const useCase = new CompletePosReturnUseCase(
         diContainer.posReceiptRepository,
         diContainer.posReturnRepository,
         diContainer.posShiftRepository,
         diContainer.posSettingsRepository,
         diContainer.posCashMovementRepository,
+        diContainer.posRegisterRepository,
         diContainer.transactionManager,
-        PosController.buildCreateSalesReturnUseCase(recordChangeService),
-        PosController.buildPostSalesReturnUseCase(recordChangeService)
+        new PostPosReturnUseCase(
+          diContainer.itemRepository,
+          diContainer.itemCategoryRepository,
+          diContainer.inventorySettingsRepository,
+          diContainer.partyRepository,
+          diContainer.companyCurrencyRepository,
+          diContainer.inventoryCore,
+          diContainer.accountingBridge
+        ),
+        diContainer.auditEngine
       );
       const result = await useCase.execute({
         companyId,

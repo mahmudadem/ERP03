@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { GoodsReceipt, GoodsReceiptLine } from '../../../domain/purchases/entities/GoodsReceipt';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
@@ -27,9 +27,10 @@ import {
   buildPurchaseCostPoint,
   buildUpdatedItemCostingStats,
 } from '../../inventory/services/ItemCostingStatsService';
-import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { generateDocumentNumberWithEngine } from './PurchaseOrderUseCases';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 import { roundByCurrency } from '../../../domain/accounting/entities/CurrencyPrecisionHelpers';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 
 export interface GoodsReceiptLineInput {
   lineId?: string;
@@ -95,7 +96,8 @@ export class CreateGoodsReceiptUseCase {
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly itemRepo: IItemRepository
+    private readonly itemRepo: IItemRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateGoodsReceiptInput): Promise<GoodsReceipt> {
@@ -171,10 +173,11 @@ export class CreateGoodsReceiptUseCase {
     }
 
     const now = new Date();
+    const grnNumber = await generateDocumentNumberWithEngine(settings, 'GRN', input.companyId, this.numberingEngine);
     const grn = new GoodsReceipt({
       id: randomUUID(),
       companyId: input.companyId,
-      grnNumber: generateDocumentNumber(settings, 'GRN'),
+      grnNumber,
       purchaseOrderId: po?.id,
       vendorId,
       vendorName,
@@ -229,7 +232,7 @@ export class PostGoodsReceiptUseCase {
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
@@ -690,7 +693,7 @@ export class UnpostGoodsReceiptUseCase {
   constructor(
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager

@@ -2,6 +2,167 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Epic 250l-3 — Commercial Core promotions)
+
+- **Goal:** Complete the final Commercial Core slice: POS-aware promotion evaluation with a clear stacking/conflict model and free-goods line insertion.
+- **What was done:** Added `ICommercialCore.applyPromotions(...)` with neutral promotion rule/line/result types. Moved the existing Sales promotion evaluator behind Commercial Core while keeping `PromotionApplicationService` as a compatibility wrapper. POS sale posting now applies Commercial Core promotions before tax/posting, supports threshold discount totals, inserts buy-X-get-Y free-goods lines at zero price, and carries promotion markers to receipt line snapshots.
+- **Accounting/ERP impact:** Promotion discounts change POS sale totals only when configured promotion rules apply. Free goods are zero-revenue lines but still move inventory and record COGS for stock items, preserving valuation visibility. Manual line discounts continue to block automatic threshold discounts.
+- **Verification:** Focused 250l-3 tests passed (6 suites / 69 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 186 passed / 2 skipped suites; 1,616 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250l-commercial-core.md`, and `planning/done/250l-commercial-core.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Hard-stop for CTO audit of 250k/250l.
+
+### Session: 2026-06-21 (Epic 250l-2 — Commercial Core cost-margin guard)
+
+- **Goal:** Complete the second Commercial Core slice: cost/margin validation with below-cost approval semantics.
+- **What was done:** Added `ICommercialCore.validateCostMargin(...)` and Commercial Core cost-resolution/approval support. DI supplies item average cost/purchase-price fallback and `IApprovalEngine`. POS sale posting now validates actual unit cost after Inventory Core stock OUT; pending below-cost/min-margin approval blocks before vouchers are recorded, while `approvedCostMarginOverride` allows an approved sale to post.
+- **Accounting/ERP impact:** Normal sale totals and voucher math are unchanged. The new guard prevents known below-cost POS sale posting without approval; it does not block unknown/zero-cost paths to avoid false failures on service/unsettled-cost scenarios.
+- **Verification:** Focused 250l-2 tests passed (5 suites / 38 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 186 passed / 2 skipped suites; 1,612 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250l-commercial-core.md`, and `planning/done/250l-commercial-core.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Commit 250l-2, then continue to 250l-3 promotions.
+
+### Session: 2026-06-21 (Epic 250l-1 — Commercial Core pricing/discount)
+
+- **Goal:** Complete the first Commercial Core slice: pricing seam + line/discount calculation ownership without changing SI/PI totals.
+- **What was done:** Added `CommercialCore` with `calcDiscount`, `calcLine`, and `resolvePrice`. Rewired Sales Invoice and Purchase Invoice amount normalization/freeze paths through Commercial Core. POS product search now calls `ICommercialCore.resolvePrice` and falls back to item `salePrice`. Added Commercial Core and POS product search tests plus an architecture guard preventing Commercial Core from importing Sales calculation internals.
+- **Accounting/ERP impact:** Existing SI/PI line discount, inclusive-tax, and purchase posting totals are intended unchanged. Commercial Core computes the discount first, then Tax Engine performs the tax split from that explicit discount amount. No ledger posting, COGS, AR/AP, period-lock, or approval behavior changed.
+- **Scope decision:** Sales/Purchases price-list CRUD/resolution remains module-local for now; SO/PO/SR/PR local discount helpers remain as follow-up cleanup. This slice focuses on posting-sensitive SI/PI line totals and the POS price seam.
+- **Verification:** Focused 250l-1 tests passed (7 suites / 80 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 186 passed / 2 skipped suites; 1,607 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250l-commercial-core.md`, and added/updated `planning/done/250l-commercial-core.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Commit 250l-1, then continue to 250l-2 cost/margin guard.
+
+### Session: 2026-06-21 (Epic 250k — Accounting Bridge hardening)
+
+- **Goal:** Complete Phase 4 task 250k: make `IAccountingBridge` choose full vs minimal recording by Accounting App activation, and remove the remaining POS direct-post bypass.
+- **What was done:** Added `FinancialEventRecord` with `full` / `minimal` mode. `LegacyAccountingBridgeAdapter` now reads `companyModule.accounting.isEnabled`: enabled delegates unchanged to `SubledgerVoucherPostingService`; disabled records a minimal `PostingLog` event. POS sale/return voucher-id handling was updated for the new return shape. POS shift close/force-close now records over/short through `IAccountingBridge` instead of constructing/calling the posting service. Added a POS architecture guard against direct `SubledgerVoucherPostingService` / `postInTransaction` usage.
+- **Accounting/ERP impact:** Full-mode posting output is intended unchanged. Accounting-off mode now preserves a durable minimal financial-event record instead of dropping the event, but it does not create ledger vouchers or financial statements. Minimal-event replay into GL remains an explicit future policy decision.
+- **Scope decision:** Sales, Purchases, and Inventory still use the established full posting service in this contained slice; a full bridge migration is logged as a follow-up because it is posting-sensitive and should be sliced by module with golden voucher checks.
+- **Verification:** Focused bridge/POS/architecture tests passed (5 suites / 26 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 184 passed / 2 skipped suites; 1,600 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `docs/architecture/accounting.md`, `planning/tasks/250k-accounting-bridge.md`, and added `planning/done/250k-accounting-bridge.md`.
+- **Time spent:** ~1.1h.
+- **Next:** Commit 250k, then continue to 250l-1 pricing/discount Commercial Core slice.
+
+### Session: 2026-06-21 (Epic 250j — Inventory Core tidy)
+
+- **Goal:** Complete Phase 3 task 250j: make `IInventoryCore` canonical and move Sales-owned COGS account/bucket helpers into Inventory Core.
+- **What was done:** Added neutral COGS account resolution and bucket accumulation helpers to the inventory core contract and service implementations. Rewired Sales Delivery Note, Sales Invoice, and Sales Return posting to call `IInventoryCore.resolveCOGSAccounts(...)` and `IInventoryCore.addToCOGSBucket(...)`. Replaced active Sales/Purchases-named inventory contract usage with `IInventoryCore`; deprecated aliases remain only for one phase. Added architecture guards preventing active use of `ISalesInventoryService`/`IPurchasesInventoryService` and local Sales COGS helper reintroduction.
+- **Accounting/ERP impact:** Ownership move only. COGS voucher timing and Sales document metadata remain in Sales posting workflows; COGS account selection and aggregation are now shared inventory-core behavior. No intended change to COGS amounts, stock movement quantities, valuation, tax, AR/AP, voucher balancing, approval, or period-lock behavior.
+- **Verification:** Focused COGS/architecture regressions passed (5 suites / 80 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 183 passed / 2 skipped suites; 1,597 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250j-inventory-core-tidy.md`, and added `planning/done/250j-inventory-core-tidy.md`.
+- **Time spent:** ~1.0h.
+- **Next:** Hard-stop for CTO audit of 250i/250j. Do not start Phase 4 unattended.
+
+### Session: 2026-06-21 (Epic 250i — Numbering Engine)
+
+- **Goal:** Complete Phase 3 task 250i: unify voucher, Sales/Purchase document, recurring invoice, and POS receipt numbering behind `INumberingEngine`.
+- **What was done:** Added `NumberingEngine` over the existing atomic sequence repositories with company/branch/terminal scope keys, display prefixes, counter widths, and lazy legacy seed support. Rewired DI, POS receipt allocation, Accounting voucher creation, Sales SO/DN/SI/SR/QT allocation including recurring invoices, Purchase PO/GRN/PI/PR allocation, and RV/PV settlement voucher allocation to prefer `INumberingEngine`. Firestore and Prisma sequence repositories now support arbitrary `{COUNTER:n}` formats.
+- **Accounting/ERP impact:** Number allocation ownership changed, but posting math did not. Voucher balancing, tax, COGS, AR/AP, inventory valuation, payment status, approvals, and period-lock behavior are unchanged. Existing next-number settings seed the unified sequence on first use and are mirrored forward to avoid sequence resets.
+- **Verification:** Focused numbering/POS/boundary tests passed (3 suites / 23 tests). Sales/Purchase numbering regressions passed (3 suites / 12 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 183 passed / 2 skipped suites; 1,595 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250i-numbering-engine.md`, and added `planning/done/250i-numbering-engine.md`.
+- **Time spent:** ~1.6h.
+- **Next:** 250i committed; 250j followed and is the hard-stop point for CTO audit.
+
+### Session: 2026-06-21 (Epic 250h — Tax Engine)
+
+- **Goal:** Resume Phase 3 after CTO-audited Phase 2 and complete 250h: extract Tax Engine calculation ownership for Sales, Purchases, and POS.
+- **What was done:** Added `TaxEngine` under System Core and replaced the Sales-coupled `ITaxEngine` contract with neutral tax inputs/outputs. Kept `SalesInvoiceCalculationService` as a compatibility wrapper over the engine. Rewired POS preview/posting, Sales Invoice normalization, Purchase Invoice normalization, and Purchase Invoice create/post tax-freeze paths to use the shared tax calculation. Added `allocateInvoiceDiscount` and `recoverable` APIs plus T8/golden/recoverable/allocation tests and architecture guards.
+- **Accounting/ERP impact:** Existing SI/PI/POS line tax and inclusive-price totals are intended unchanged. Invoice-level discount allocation is implemented and tested as an API, but not silently applied to posted document totals because that would intentionally change tax/grand totals and needs a separate accounting-approved behavior slice. Purchase recoverability is exposed by the engine; posting treatment for non-recoverable input tax remains a later explicit slice.
+- **Verification:** Focused 250h suite passed (5 suites / 50 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. Full backend suite passed: 182 passed / 2 skipped suites; 1,592 passed / 18 skipped tests.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250h-tax-engine.md`, and added `planning/done/250h-tax-engine.md`.
+- **Time spent:** ~1.8h.
+- **Next:** Commit 250h, then continue Phase 3 with 250i Numbering Engine. Hard-stop after 250j for CTO audit.
+
+### Session: 2026-06-21 (Epic 250g — Audit Engine)
+
+- **Goal:** Complete Phase 2 task 250g: route audit emission through `IAuditEngine` and wire missing POS audit records.
+- **What was done:** Added `auditEngineLegacyHelpers.ts` so existing Sales/Purchases create/update/post/period-lock audit payloads go through `IAuditEngine.record(...)`. Rewired Sales/Purchases use cases and controllers to use `diContainer.auditEngine` instead of constructing `RecordChangeService`. Added POS audit records for completed receipts, completed returns, POS settings updates, and POS register create/update. Added an architecture guard blocking direct `RecordChangeService` imports in Sales, Purchases, POS, and API controllers.
+- **Accounting/ERP impact:** Auditability/control improvement only. No voucher amount, tax, COGS, inventory movement, AR/AP, period-lock, approval, cash rounding, or tenant-scope behavior changed.
+- **Verification:** POS + architecture audit tests passed (4 suites / 30 tests). Additional Sales/Purchases regression tests passed (3 suites / 27 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Updated `docs/architecture/system-core.md`, `docs/architecture/pos-independence.md`, and added `planning/done/250g-audit-engine.md`.
+- **Time spent:** ~1.2h.
+- **Next:** Hard-stop for CTO audit. Do not start 250h/250i/250j or Phase 4 until explicitly resumed.
+
+### Session: 2026-06-21 (Epic 250f — Money Core)
+
+- **Goal:** Complete Phase 2 task 250f: replace audited local `roundMoney` copies with the System Core Money helper and apply POS cash rounding.
+- **What was done:** Removed the audited local `roundMoney` definitions across Sales, Purchases, POS, shared payment history, and seed scripts; kept `VoucherLineEntity.roundMoney(value, decimals)` as the low-level accounting precision primitive behind `CurrencyPrecisionHelpers`. Added a System Core architecture guard against new local `roundMoney` definitions. POS sale completion now rounds the payable total from `PosSettings.cashRounding` before tender validation and passes the rounding delta into POS posting.
+- **Accounting/ERP impact:** POS cash rounding is now posted, not merely stored. Positive rounding differences credit the configured Cash over account; negative differences debit the Cash short account. Missing required accounts block the sale before posting, preventing silent AR/settlement drift. No tax, COGS, inventory costing, approval, period-lock, or tenant-scope behavior changed.
+- **Verification:** Focused Money/POS/architecture tests passed (3 suites / 19 tests). `npm --prefix backend run build` passed. `npm --prefix backend run typecheck` passed after rerunning alone; the first parallel typecheck/build attempt hit a Prisma client rename race in shared `node_modules`.
+- **Docs:** Updated `docs/architecture/system-core.md`, `docs/architecture/pos-independence.md`, `docs/user-guide/pos/setup.md`, `docs/user-guide/pos/selling.md`, and added `planning/done/250f-money-core.md`.
+- **Time spent:** ~1.4h.
+- **Next:** Continue 250g Audit Engine, then hard-stop for CTO audit. Do not enter Phase 3/4.
+
+### Session: 2026-06-21 (Task 250e - Subject-agnostic approval engine)
+
+- **Goal:** Complete the Phase 1 approval seam after 250d/250d2, then hard-stop for CTO audit.
+- **What was done:** Added `ApprovalEngine`, `ApprovalSubjectRegistry`, and `LedgerCustodyApprovalPlugin`. Wrapped the existing `ApprovalPolicyService` Smart FA/CC logic as an `accounting_voucher` plug-in rather than duplicating it. Rewired `SubmitVoucherUseCase` to evaluate voucher gates through the approval engine while preserving the same `ApprovalGateResult` metadata, status transition, and notification behavior. Replaced the DI approval seam with the new subject-agnostic engine.
+- **Accounting/ERP impact:** Existing voucher approval behavior is intended unchanged. Posting is still rejected unless approval state is real and approved under `ApprovalRequiredPolicy`; 250e changes the approval dependency shape so future POS/Sales/Purchases override subjects can use the same engine.
+- **Verification:** Focused 250e tests passed: `ApprovalEngine.test.ts`, existing `ApprovalGateWorkflow`, `ApprovalRequiredPolicy`, `AccountingPolicyRegistry.isApprovalRequiredForVoucherType`, and `SubledgerVoucherPostingServicePolicy` suites (5 suites / 19 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Updated `docs/architecture/system-core.md` and added `planning/done/250e-approval-engine.md`.
+- **Time spent:** ~0.9h.
+- **Next:** Commit 250e, then stop and hand back for CTO audit. Do not start Phase 2.
+
+### Session: 2026-06-21 (Task 250d2 - POS return posting entry point)
+
+- **Goal:** Execute 250d2 after green 250d: decouple POS returns from Sales return use-cases and enable the folder-wide POS-to-Sales application/domain import ban.
+- **What was done:** Added POS-owned `PostPosReturnUseCase`; rewired `CompletePosReturnUseCase` and the POS controller so returns no longer construct Sales return use-cases or import Sales return domain types. POS returns now restock through `IInventoryCore`, record revenue/tax reversal, COGS reversal, and refund settlement through `IAccountingBridge`, and persist POS return/cash movement in one transaction. Removed the POS preview import of Sales calculation helpers. Enabled the folder-wide `backend/src/application/pos/` guard with no skip.
+- **Accounting/ERP impact:** POS return posting now uses System Core seams and carries `sourceModule: pos`, `sourceType: POS_RETURN`, and `documentPersona: POS_DIRECT_SALE`. The sale receipt snapshot now captures optional line-level account/cost metadata so returns can reverse COGS when that context exists. Historical receipts without that metadata may use current defaults or skip COGS reversal when no cost is available; documented for CTO audit.
+- **Verification:** Focused 250d2 tests passed: `CompletePosReturn.test.ts`, `PostPosReturn.test.ts`, sale regression tests, and `SystemCoreBoundaries.test.ts` (5 suites / 21 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Updated `docs/architecture/pos-independence.md` and `docs/architecture/system-core.md`; added `planning/done/250d2-pos-return-posting-entry-point.md`.
+- **Time spent:** ~1.4h.
+- **Next:** Commit 250d2, then continue to 250e approval-engine seam. Hard-stop after 250e for CTO audit.
+
+### Session: 2026-06-21 (Task 250d - POS sale posting entry point)
+
+- **Goal:** Resume Epic 250 after the CTO blocker ruling and implement only 250d: POS sale posting via System Core seams, without touching POS returns.
+- **What was done:** Added POS-owned `PostPosSaleUseCase`; rewired `CompletePosSaleUseCase` and the POS controller so sale completion no longer constructs `CreateSalesInvoiceUseCase` / `PostSalesInvoiceUseCase` or imports Sales invoice domain entities. The sale path now dry-runs totals for payment validation, posts stock OUT through `IInventoryCore`, records revenue/tax, COGS, and settlement vouchers through `IAccountingBridge`, and persists receipt/payment/cash movement/sequence in the same transaction. Added the active sale-path architecture guard while leaving the folder-wide POS-to-Sales ban skipped with TODO to 250d2.
+- **Accounting/ERP impact:** POS sale posting remains a real financial posting: revenue/tax, COGS/inventory, and settlement entries are still produced, with cash change netted before settlement. Metadata now identifies the source as POS and carries `documentPersona: POS_DIRECT_SALE`. POS returns are unchanged and remain the explicit 250d2 scope.
+- **Verification:** Focused 250d tests passed: `CompletePosSale.test.ts`, `PostPosSale.test.ts`, and `SystemCoreBoundaries.test.ts` (3 suites / 15 tests, 1 skipped 250d2 guard). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Added `docs/architecture/pos-independence.md`, updated `docs/architecture/system-core.md`, and added `planning/done/250d-pos-posting-entry-point.md`.
+- **Time spent:** ~1.6h.
+- **Next:** Commit 250d, then continue to 250d2 to decouple POS returns and enable the folder-wide POS-to-Sales architecture ban.
+
+### Session: 2026-06-21 (Task 250b - Document Core POS_DIRECT_SALE persona)
+
+- **Goal:** Execute Phase 1 task 250b so POS carries a first-class `POS_DIRECT_SALE` document persona through creation and posting metadata without changing posting behavior yet.
+- **What was done:** Added canonical persona mapping helpers to `DocumentPolicyResolver`; added optional `documentPersona` to `SalesInvoice`; resolved and persisted document persona in `CreateSalesInvoiceUseCase`; copied the persona into revenue, COGS, and settlement voucher metadata in `PostSalesInvoiceUseCase`; updated `CompletePosSaleUseCase` to send `documentPersona: 'POS_DIRECT_SALE'`; inverted the POS persona test and added a Sales posting metadata assertion.
+- **Accounting/ERP impact:** Metadata/control identity only. No voucher balancing, account mapping, tax calculation, inventory movement, COGS amount, AR settlement, period-lock, approval, or payment behavior changed. POS still uses the Sales compatibility entry point until 250d, but POS identity is no longer only `formType: 'pos_sale'`.
+- **Verification:** `npm --prefix backend run typecheck` passed; focused 250b suites passed (3 suites / 66 tests); `npm --prefix backend run build` passed; full backend suite passed: 176/178 suites passed, 2 skipped; 1567 tests passed, 19 skipped.
+- **Docs:** Updated `docs/architecture/system-core.md`, `planning/tasks/250b-document-core-persona.md`, and added `planning/done/250b-document-core-persona.md`.
+- **Time spent:** ~1.4h implementation/focused verification plus full-suite gate.
+- **Next:** Commit 250b, then continue to 250c under the unattended sequence.
+
+### Session: 2026-06-21 (Task 250a — System Core interface seams)
+
+- **Goal:** Execute Phase 0 of Epic 250 by introducing System Core interface seams and temporary adapters without changing consumer behavior.
+- **What was done:** Added `backend/src/application/system-core/` contracts, legacy adapters, the `roundMoney` helper seam, and the barrel export. Registered the seams in `bindRepositories.ts` as DI getters. Added `SystemCoreBoundaries.test.ts` with the POS-to-Sales import ban intentionally skipped until 250d. Created `docs/architecture/system-core.md` and the completion report `planning/done/250a-seams-and-interfaces.md`.
+- **Accounting/ERP impact:** No posting, voucher, tax, inventory valuation, AR/AP, approval, period-lock, audit, or reporting behavior changed. This is an internal boundary/seam phase only.
+- **Verification:** Baseline before edits: backend typecheck/build passed; full backend suite 175/177 suites passed, 2 skipped; 1565 tests passed, 18 skipped. After 250a: backend typecheck/build passed; focused SystemCoreBoundaries test passed; full backend suite 176/178 suites passed, 2 skipped; 1566 tests passed, 19 skipped. Count delta is the new active architecture assertion and the intentionally skipped 250d guard.
+- **Environment note:** The isolated worktree lacked backend dependencies; a local `backend/node_modules` junction to the main checkout's installed backend dependencies was created before baseline capture. No tracked files changed from this setup.
+- **Time spent:** ~1.6h implementation/verification plus baseline setup.
+- **Commit:** 0f2d3ded (feat(system-core): phase 0 interface seams + adapters [250a]).
+- **Next:** Continue to 250b under the owner-approved unattended run: add POS_DIRECT_SALE persona and invert T1, then verify and commit before 250c.
+
+### Session: 2026-06-21 (Epic 250 — System Core / Shared Engines transformation: audit + plans + worktree)
+
+- **Goal:** Pause POS; address the platform-wide finding that application modules own/embed shared engines. Produce the transformation plan and a clean execution environment for executing agents.
+- **What was done (planning + docs only — no code, no migrations, no file moves):**
+  - Authored the deep [Platform Architecture Audit — Engine vs App](../docs/audit/platform-architecture-engine-vs-app-audit.md) (code-verified, §A–N): only Accounting posting + Inventory are true shared engines; Approval is accounting-voucher-shaped (not a workflow engine); Tax codes shared but tax *calc* embedded in Sales + duplicated in Purchases; Document/Numbering/Money/Commercial/unified-Policy embedded or missing.
+  - Authored the [System Core / Shared Engines Master Plan](../docs/architecture/system-core-shared-engines-master-plan.md) (target architecture decisions, §1–7).
+  - Created branch `feat/system-core-transformation` + worktree `D:\DEV2026\ERP03-system-core` from clean `main` HEAD (957d8553) — deliberately **excludes** the uncommitted POS QA WIP on `main` so the refactor starts clean. Copied the reference audits + master plan into the branch.
+  - Wrote the epic + 12 phase plan files: [250 epic](./tasks/250-system-core-transformation-epic.md) and 250a–250l. Each is self-contained (objective, contract, exact files, steps, acceptance criteria, named tests, Definition of Done, CTO audit gate) so an executing agent can act cold.
+- **Decisions:**
+  - **Owner override of the 2026-06-13 feature freeze** — owner explicitly authorized this transformation and paused POS; logged as a sanctioned exception (same pattern as prior freeze exceptions).
+  - Branch from clean HEAD (not dirty POS WIP) — refactor must not build on uncommitted work.
+  - Execution model: agents implement, CTO audits each phase against acceptance criteria + the 10 architecture tests (audit §N).
+  - Phase 1 POS-blocking tasks sequenced **250b→c→d→e** (overlapping persona/POS/posting code; no parallel builders there).
+- **Accounting/ERP impact:** none yet — documentation + branch scaffolding only.
+- **Verification:** n/a (no code). Plan files + planning-doc updates committed on the transformation branch.
+- **Time spent:** ~1 session (audit + master plan + 13 plan files + planning docs).
+- **Next:** owner approves the Phase 0 (250a) plan; then assign one backend builder to introduce the interface seams + adapters with zero behavior change.
+
 ### Session: 2026-06-21 (Task 246B QA fix — Gross Profit item labels)
 
 - **Goal:** Fix owner QA finding where Gross Profit by Item displayed item UUIDs as the primary item label.
@@ -4276,3 +4437,20 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, `planning/ACTIVE.md`, and added [done/244-note09-uom-web-windows-parity.md](./done/244-note09-uom-web-windows-parity.md).
 - **Time spent:** ~0.7h.
 - **Next:** Review/merge the narrow NOTE-09 PR, then handle Task 244 NOTE-08/10/11/14 as separate branches so this parity fix does not broaden into UOM behavior changes.
+### Session: 2026-06-21 (Task 250c - Policy Engine minimum + POS policy decoupling)
+
+- **Goal:** Execute Phase 1 task 250c of the System Core transformation: move POS direct-sale authorization out of Sales Settings and into POS-owned policy behind `IPolicyEngine`.
+- **What was done:** Added `POSPolicy`, `POSTerminalPolicy`, and `CashierRolePolicy` plus POS policy repository interfaces and Firestore/Prisma implementations. Added the `PosPolicy` Prisma model and DI registration. Implemented `PolicyEngine` for POS direct-sale policy with most-restrictive-wins, preserving legacy accounting/sales/purchases policy adapter behavior. Rewired POS Settings so `allowPosDirectSales` writes `POSPolicy` instead of Sales `governanceRules`. Rewired POS sale completion to call `IPolicyEngine.resolve({ scope: 'pos', action: 'directSale' })` before creating the Sales compatibility document.
+- **Accounting/ERP impact:** No ledger posting, voucher balancing, tax, inventory valuation, AR settlement, period-lock, or account mapping behavior changed. The control boundary changed: POS direct-sale authorization is now POS-owned, so POS no longer depends on initialized Sales Settings or a Sales governance rule to permit direct sales.
+- **Verification:** `npm --prefix backend run typecheck` passed. Focused 250c tests passed: 3 suites / 19 tests. `npm --prefix backend run build` passed. Full backend suite passed: 177/179 suites passed, 2 skipped; 1571 tests passed, 19 skipped.
+- **Docs:** Updated [docs/architecture/system-core.md](../docs/architecture/system-core.md), [planning/tasks/250c-policy-engine-pos-decoupling.md](./tasks/250c-policy-engine-pos-decoupling.md), [planning/ACTIVE.md](./ACTIVE.md), and added [planning/done/250c-policy-engine-pos-decoupling.md](./done/250c-policy-engine-pos-decoupling.md).
+- **Time spent:** ~1.8h.
+- **Next:** Continue the unattended Phase 1 sequence with 250d, removing the remaining POS direct-sale dependency on Sales use-case imports by routing through Document Core.
+
+### Session: 2026-06-21 (250d analysis stop - POS import-ban scope blocker)
+
+- **Goal:** Continue the unattended System Core sequence into 250d after the green 250c commit.
+- **Result:** Stopped before implementation. The 250d objective/scope describes decoupling POS **direct sale** posting from Sales use cases, but its acceptance gate requires enabling the all-POS Sales import ban in `SystemCoreBoundaries.test.ts`. That architecture guard currently fails on existing POS return code (`CompletePosReturnUseCase` imports Sales return/domain types), which 250d does not explicitly authorize changing.
+- **Action taken:** Reverted the uncommitted exploratory 250d code edits and left the branch at the last green commit (`0299755e`, 250c). Updated `planning/ACTIVE.md` with the blocker and options for CTO decision.
+- **Accounting/ERP impact:** No 250d accounting or posting behavior was changed or committed. 250c remains the last green system state.
+- **Next:** CTO must decide whether to broaden 250d to include POS return decoupling, narrow the 250d guard to direct-sale files only, or add a separate prep task before 250d.

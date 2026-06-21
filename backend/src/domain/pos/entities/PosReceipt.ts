@@ -18,6 +18,14 @@ export interface PosReceiptLineSnapshot {
   taxCodeId?: string;
   lineTotal: number;
   salesInvoiceLineId?: string; // populated by CompletePosSale for P3 returns
+  revenueAccountId?: string;
+  taxAccountId?: string;
+  cogsAccountId?: string;
+  inventoryAccountId?: string;
+  unitCostBase?: number;
+  lineCostBase?: number;
+  appliedPromotionId?: string;
+  appliedPromotionName?: string;
 }
 
 export interface PosReceiptProps {
@@ -133,6 +141,14 @@ export class PosReceipt {
         taxCodeId: l.taxCodeId,
         lineTotal: Number(l.lineTotal),
         salesInvoiceLineId: l.salesInvoiceLineId,
+        revenueAccountId: l.revenueAccountId,
+        taxAccountId: l.taxAccountId,
+        cogsAccountId: l.cogsAccountId,
+        inventoryAccountId: l.inventoryAccountId,
+        unitCostBase: l.unitCostBase === undefined ? undefined : Number(l.unitCostBase),
+        lineCostBase: l.lineCostBase === undefined ? undefined : Number(l.lineCostBase),
+        appliedPromotionId: l.appliedPromotionId,
+        appliedPromotionName: l.appliedPromotionName,
       })),
       subtotal: Number(data.subtotal) || 0,
       discountTotal: Number(data.discountTotal) || 0,

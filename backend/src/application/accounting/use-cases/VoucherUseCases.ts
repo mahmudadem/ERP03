@@ -18,6 +18,7 @@ import { IAccountingPolicyConfigProvider } from '../../../infrastructure/account
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting/ICompanyCurrencyRepository';
 import { AccountValidationService } from '../services/AccountValidationService';
 import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 
 const UI_ONLY_VOUCHER_KEYS = new Set([
   'voucherConfig',
@@ -251,7 +252,8 @@ export class CreateVoucherUseCase {
     private ledgerRepo?: ILedgerRepository, // Needed for auto-post
     private policyRegistry?: any, // Needed for auto-post
     private currencyRepo?: ICompanyCurrencyRepository, // NEW: Optional for backward compat in constructor, but required logic
-    private sequenceRepo?: IVoucherSequenceRepository
+    private sequenceRepo?: IVoucherSequenceRepository,
+    private numberingEngine?: INumberingEngine
   ) {}
   
   private validationService = new VoucherValidationService();
@@ -306,7 +308,17 @@ export class CreateVoucherUseCase {
         const prefix = payload.prefix || (resolvedVoucherType || 'V').toString();
         const useYear = settings?.resetVoucherNumbersAnnually ? new Date(payload.date || Date.now()).getFullYear() : undefined;
         const numberFormat = payload.numberFormat || undefined;
-        voucherNo = await this.sequenceRepo.getNextNumber(companyId, prefix, useYear, numberFormat);
+        voucherNo = this.numberingEngine
+          ? await this.numberingEngine.next({
+              companyId,
+              docType: prefix,
+              scope: 'company',
+              prefix,
+              year: useYear,
+              counterWidth: 4,
+              format: numberFormat,
+            })
+          : await this.sequenceRepo.getNextNumber(companyId, prefix, useYear, numberFormat);
       } else if (autoNumbering) {
         voucherNo = `V-${Date.now()}`;
       }

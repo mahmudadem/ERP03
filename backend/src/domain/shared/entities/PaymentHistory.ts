@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 export type PaymentMethod = 'CASH' | 'BANK_TRANSFER' | 'CHECK' | 'CREDIT_CARD' | 'OTHER';
 export type PaymentSourceType = 'SALES_INVOICE' | 'PURCHASE_INVOICE';
 
@@ -23,7 +24,6 @@ export interface PaymentHistoryProps {
 const PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
 const SOURCE_TYPES: PaymentSourceType[] = ['SALES_INVOICE', 'PURCHASE_INVOICE'];
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const toDate = (value: unknown): Date => {
   if (!value) return new Date();

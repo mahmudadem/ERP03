@@ -1,6 +1,6 @@
 # POS — Setup Guide
 
-POS = Point of Sale. This guide covers **Phase 0** (settings + registers). Shifts, selling, and returns are added in later phases.
+POS = Point of Sale. This guide covers the settings and register setup needed before cashiers can open shifts, sell, and process returns.
 
 ## Before you start
 
@@ -15,10 +15,10 @@ POS lives behind the `pos` module entitlement. The bundle the company was create
 ## General
 
 - **Require an open shift to sell** — on (default). The cashier screen blocks sales when no shift is open on the register.
-- **Allow POS direct sales** — off (default). When you turn it on, the backend creates a form-scoped governance rule that allows the `direct` persona for `formType 'pos_sale'`. This is the **only** supported way to enable POS direct sales — we never silently change the company's `workflowMode` or convert personas. A confirmation dialog appears so this stays an explicit decision.
+- **Allow POS direct sales** — off (default). When you turn it on, POS policy allows the terminal to post POS direct sales through the shared inventory and accounting engines. This is the only supported way to enable POS direct sales.
 - **Walk-in customer** — pick the company-level party used when no named customer is attached to a receipt.
 - **Receipt number prefix** — default `R`. The receipt number is `{prefix}-{6-digit seq}`, e.g. `R-000001`.
-- **Cash rounding** — stored now, applied later. V1 only honors `none`.
+- **Cash rounding** — choose `none`, nearest `0.05`, or nearest `1`. When enabled, the terminal rounds the payable cash total and posts the difference to the configured cash over/short account.
 
 Click **Save**. You should see a success toast.
 
@@ -49,6 +49,8 @@ over_short = counted_cash − expected_cash
 
 If the variance is non-zero and the appropriate account is missing, shift close is blocked with a readable error. (Phase 1 enforces this.)
 
+The same accounts are also used for POS cash rounding at sale time: rounding up uses **Cash over**, and rounding down uses **Cash short**. If cash rounding is enabled and the required account is missing, the sale is blocked before posting.
+
 ## Registers
 
 **POS → Registers** (`/pos/registers`).
@@ -64,5 +66,5 @@ A register is required before cashiers can open shifts (Phase 1).
 ## Troubleshooting
 
 - **Settings save fails with "Account not found for cashOverAccountId"** — you typed an account id that doesn't exist in the Chart of Accounts. Pick from the dropdown or leave it blank until you create the account.
-- **Toggle "Allow POS direct sales" does nothing visible in the POS UI yet** — the rule is created server-side; the cashier screen that consumes it ships in Phase 2. You can verify via `GET /tenant/sales/settings` (look for `governanceRules` containing `formType:'pos_sale'`).
+- **Sale is blocked after enabling cash rounding** — check that Cash over and Cash short accounts are configured in POS Settings.
 - **Sidebar doesn't show POS entries** — your company bundle doesn't include the POS module. Contact your platform admin.

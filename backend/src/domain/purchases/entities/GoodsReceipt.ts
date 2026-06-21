@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 export type GRNStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 
 export interface GoodsReceiptLine {
@@ -40,7 +41,6 @@ export interface GoodsReceiptProps {
 
 const GRN_STATUSES: GRNStatus[] = ['DRAFT', 'POSTED', 'CANCELLED'];
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const toDate = (value: any): Date => {
   if (!value) return new Date();

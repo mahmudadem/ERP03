@@ -12,6 +12,7 @@ process.env.GCLOUD_PROJECT = process.env.GCLOUD_PROJECT || 'erp-03';
 
 import * as admin from 'firebase-admin';
 import { Timestamp } from 'firebase-admin/firestore';
+import { roundMoney } from '../application/system-core/money/roundMoney';
 
 if (!admin.apps.length) {
   admin.initializeApp({ projectId: process.env.GCLOUD_PROJECT });
@@ -27,10 +28,6 @@ function accountingCol(companyId: string, sub: string) {
 function isoToTimestamp(iso: string) {
   // Use T12:00:00Z to avoid timezone issues shifting the day
   return Timestamp.fromDate(new Date(iso + 'T12:00:00Z'));
-}
-
-function roundMoney(n: number): number {
-  return Math.round(n * 100) / 100;
 }
 
 // ─── Main ────────────────────────────────────────────────────────────────────

@@ -186,7 +186,8 @@ export class RecurringInvoiceController {
       const useCase = new GenerateRecurringInvoicesUseCase(
         diContainer.recurringInvoiceTemplateRepository,
         diContainer.salesInvoiceRepository,
-        diContainer.salesSettingsRepository
+        diContainer.salesSettingsRepository,
+        diContainer.numberingEngine
       );
       const invoices = await useCase.execute(companyId, userId, asOfDate);
       (res as any).json({ success: true, data: invoices.map((si) => SalesDTOMapper.toSalesInvoiceDTO(si)) });

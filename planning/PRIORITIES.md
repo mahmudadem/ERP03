@@ -11,6 +11,12 @@
 **v1 is feature-complete. No new features, no UI polish, no refactors until the pilot ships.**
 Full reasoning: [planning/CTO-AUDIT-2026-06-13.md](./CTO-AUDIT-2026-06-13.md) (Arabic: [CTO-AUDIT-2026-06-13.ar.md](./CTO-AUDIT-2026-06-13.ar.md)).
 
+> ### ⚠️ OWNER OVERRIDE (2026-06-21): System Core Transformation — Epic 250
+> The owner has **paused POS** and **authorized a platform refactor that supersedes the freeze**: separating shared engines (System Core) from application modules. Sanctioned because POS feature work was found wrong-by-construction on the current architecture (modules own/embed shared engines — see [Platform Architecture Audit](../docs/audit/platform-architecture-engine-vs-app-audit.md)).
+> - **Active work:** [Epic 250](./tasks/250-system-core-transformation-epic.md) on branch `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).
+> - While this epic is active it is the **top priority**, ahead of the ship plan below. The freeze still applies to *unrelated* feature/polish requests.
+> - **Task Lock:** Epic 250 planning ✅ (Claude/Opus, 2026-06-21). Execution phases 250a–250l ⬜ unassigned — pick up in order, one builder per file area.
+
 What IS allowed during the freeze:
 1. Fixes for failures found by the [golden-path QA scripts](./qa/golden-paths/README.md)
 2. The ship-plan items below (CI, deployment, scheduler, email, monitoring)

@@ -9,11 +9,10 @@ import {
   PosCashMovementTotals,
 } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
-import { IVoucherSequenceRepository } from '../../../repository/interfaces/accounting/IVoucherSequenceRepository';
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
+import { IAccountingBridge } from '../../system-core';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -158,8 +157,8 @@ export interface ClosePosShiftResult {
 
 /**
  * Close a shift: computes expected cash from movements + opening float, computes
- * over/short vs counted, posts a balanced JOURNAL_ENTRY voucher through
- * SubledgerVoucherPostingService if the variance is non-zero, then marks the
+ * over/short vs counted, records a balanced JOURNAL_ENTRY financial event through
+ * IAccountingBridge if the variance is non-zero, then marks the
  * shift CLOSED.  Runs in one transaction so the voucher + shift update are atomic.
  *
  * The voucher uses the register's `cashDrawerAccountId` on the cash side and the
@@ -173,7 +172,7 @@ export class ClosePosShiftUseCase {
     private readonly registerRepo: IPosRegisterRepository,
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly accountRepo: IAccountRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly transactionManager: ITransactionManager
   ) {}
 
@@ -261,8 +260,10 @@ export class ClosePosShiftUseCase {
       ];
 
       await this.transactionManager.runTransaction(async (tx) => {
-        const voucher = await this.accountingPostingService.postInTransaction(
-          {
+        const result = await this.accountingBridge.recordFinancialEvent({
+          kind: 'POS_SHIFT_OVER_SHORT',
+          transaction: tx,
+          subledgerVoucher: {
             companyId: input.companyId,
             voucherType: VoucherType.JOURNAL_ENTRY,
             voucherNo: `POS-SHIFT-${shift.id}`,
@@ -273,7 +274,9 @@ export class ClosePosShiftUseCase {
             lines,
             metadata: {
               sourceModule: 'pos',
+              sourceType: 'POS_SHIFT',
               referenceType: 'POS_SHIFT',
+              sourceId: shift.id,
               referenceId: shift.id,
               shiftId: shift.id,
               direction: isOver ? 'OVER' : 'SHORT',
@@ -283,9 +286,8 @@ export class ClosePosShiftUseCase {
             postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
             reference: shift.id,
           },
-          tx
-        );
-        voucherId = voucher.id;
+        });
+        voucherId = result.voucher?.id;
 
         // Mutate the shift in the same transaction.
         shift.status = 'CLOSED';
@@ -293,7 +295,7 @@ export class ClosePosShiftUseCase {
         shift.expectedCash = totals.expectedCash;
         shift.countedCash = round2(input.countedCash);
         shift.overShortAmount = overShort;
-        shift.overShortVoucherId = voucher.id;
+        shift.overShortVoucherId = voucherId;
         shift.updatedAt = new Date();
         await this.shiftRepo.update(shift, tx);
       });
@@ -333,7 +335,7 @@ export class ForceClosePosShiftUseCase {
     private readonly registerRepo: IPosRegisterRepository,
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly accountRepo: IAccountRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly transactionManager: ITransactionManager
   ) {}
 
@@ -345,7 +347,7 @@ export class ForceClosePosShiftUseCase {
       this.registerRepo,
       this.cashMovementRepo,
       this.accountRepo,
-      this.accountingPostingService,
+      this.accountingBridge,
       this.transactionManager
     );
     const result = await close.execute(input);

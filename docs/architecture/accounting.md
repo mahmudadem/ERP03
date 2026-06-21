@@ -25,13 +25,15 @@ It owns:
 
 These are two independent concepts. **Never conflate them.**
 
-- **Accounting Engine** = mandatory backend infrastructure. Chart of accounts, voucher posting service (`PostVoucherUseCase`), ledger repository, voucher types/forms, fiscal year, base currency seed. Must be initialized for any Sales/Purchases/Inventory posting to write GL entries. State: `companyModule.accounting.initialized === true`.
-- **Accounting App/UI** = optional user-facing module. The navigation entry, journal screens, voucher list, reports. A tenant may run Sales/Purchases without exposing these screens. State: `companyModule.accounting.isEnabled` (admin toggle). **This flag is irrelevant to posting** — posting paths must never consult it.
+- **Accounting Engine** = backend infrastructure for full voucher and ledger posting. Chart of accounts, voucher posting service (`PostVoucherUseCase` / `SubledgerVoucherPostingService`), ledger repository, voucher types/forms, fiscal year, base currency seed. Must be initialized for source modules to produce full GL entries. State: `companyModule.accounting.initialized === true`.
+- **Accounting App/UI** = optional user-facing module. The navigation entry, journal screens, voucher list, reports. A tenant may run POS or operational modules without exposing these screens. State: `companyModule.accounting.isEnabled` (admin toggle).
+- **Accounting Bridge** = System Core recording seam for source-module financial events. When the Accounting App is enabled, it uses the full posting engine and produces vouchers/ledger entries. When the Accounting App is disabled, it records a minimal `PostingLog` journal event so the operational financial event is still durable, but no GL voucher is created.
 
 **Implications:**
 - Sales/Purchases initialization auto-invokes `EnsureAccountingEngineInitialized` (which calls `InitializeAccountingUseCase` with safe defaults: `coaTemplate=standard`, calendar fiscal year, base currency from the company record). If the Engine cannot be initialized (no base currency on the company, no default COA template), it throws `AccountingEngineUnavailableError`.
-- All posting use cases (`PostSalesInvoiceUseCase`, `PostPurchaseInvoiceUseCase`, etc.) check `companyModule.accounting.initialized` via `isAccountingEngineReady`. If false (and `createAccountingEffect=true`), they throw `AccountingEngineUnavailableError` — never silently mark a document POSTED without GL.
-- Hiding the Accounting UI from the navigation **does not bypass** voucher creation. The books are correct regardless of what the user sees.
+- Existing Sales/Purchases/Inventory full-posting use cases still check `companyModule.accounting.initialized` or module readiness before writing GL.
+- POS financial events use `IAccountingBridge`: enabled Accounting App means full voucher posting; disabled Accounting App means minimal-journal event capture.
+- Minimal-journal records are not financial statements. They preserve the audit trail of operational events while Accounting UI is hidden. A future replay/migration policy is required before those minimal records become ledger vouchers.
 
 ## COA Template Baseline (Perpetual-Ready Defaults)
 

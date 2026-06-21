@@ -35,7 +35,7 @@ import {
   UpdatePurchaseReturnUseCase,
   UnpostPurchaseReturnUseCase,
 } from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
-import { RecordChangeService } from '../../../application/system/services/RecordChangeService';
+import { IAuditEngine } from '../../../application/system-core/contracts/IAuditEngine';
 import { IPurchasesInventoryService } from '../../../application/inventory/contracts/InventoryIntegrationContracts';
 import {
   GetPurchaseSettingsUseCase,
@@ -335,7 +335,8 @@ export class PurchaseController {
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.numberingEngine
       );
 
       const po = await useCase.execute({
@@ -480,7 +481,8 @@ export class PurchaseController {
         diContainer.goodsReceiptRepository,
         diContainer.purchaseOrderRepository,
         diContainer.partyRepository,
-        diContainer.itemRepository
+        diContainer.itemRepository,
+        diContainer.numberingEngine
       );
 
       const grn = await useCase.execute({
@@ -627,7 +629,8 @@ export class PurchaseController {
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.numberingEngine
       );
 
       const pi = await useCase.execute({
@@ -653,12 +656,12 @@ export class PurchaseController {
       const userId = PurchaseController.getUserId(req);
       const userEmail = PurchaseController.getUserEmail(req);
 
-      const recordChangeService = new RecordChangeService(diContainer.recordChangeLogRepository);
+      const IAuditEngine = diContainer.auditEngine;
 
       const useCase = new UpdatePurchaseInvoiceUseCase(
         diContainer.purchaseInvoiceRepository,
         diContainer.partyRepository,
-        recordChangeService
+        IAuditEngine
       );
 
       const pi = await useCase.execute({
@@ -745,7 +748,8 @@ export class PurchaseController {
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase
+        diContainer.recordSalesProfitLineFactsUseCase,
+        diContainer.numberingEngine
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -795,7 +799,8 @@ export class PurchaseController {
         diContainer.partyRepository,
         diContainer.itemRepository,
         diContainer.taxCodeRepository,
-        diContainer.companyCurrencyRepository
+        diContainer.companyCurrencyRepository,
+        diContainer.numberingEngine
       );
 
       const postUseCase = PurchaseController.buildPostPurchaseInvoiceUseCase();
@@ -881,7 +886,9 @@ export class PurchaseController {
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
       diContainer.ledgerRepository,
-      diContainer.partyItemPriceRepository
+      diContainer.partyItemPriceRepository,
+      undefined,
+      diContainer.numberingEngine
     );
   }
 
@@ -1132,7 +1139,8 @@ export class PurchaseController {
         diContainer.purchaseInvoiceRepository,
         diContainer.goodsReceiptRepository,
         diContainer.partyRepository,
-        diContainer.itemRepository
+        diContainer.itemRepository,
+        diContainer.numberingEngine
       );
 
       const purchaseReturn = await useCase.execute({

@@ -1,3 +1,4 @@
+import { roundMoney } from '../../../application/system-core/money/roundMoney';
 export type POStatus =
   | 'DRAFT'
   | 'CONFIRMED'
@@ -72,7 +73,6 @@ export interface PurchaseOrderProps {
 const PO_STATUSES: POStatus[] = ['DRAFT', 'CONFIRMED', 'PARTIALLY_RECEIVED', 'FULLY_RECEIVED', 'CLOSED', 'CANCELLED'];
 const PO_DISCOUNT_TYPES: PurchaseOrderDiscountType[] = ['PERCENT', 'AMOUNT'];
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 const normalizePODiscountType = (value: any): PurchaseOrderDiscountType | undefined => {
   if (value === null || value === undefined) return undefined;

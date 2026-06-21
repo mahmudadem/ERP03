@@ -7,7 +7,7 @@ import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { ISalesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -21,7 +21,9 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
-import { RecordChangeService } from '../../system/services/RecordChangeService';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
+import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -62,12 +64,6 @@ export interface ListDeliveryNotesFilters {
   limit?: number;
 }
 
-interface AccumulatedCOGS {
-  cogsAccountId: string;
-  inventoryAccountId: string;
-  amountBase: number;
-}
-
 const findSOLine = (so: SalesOrder, soLineId?: string, itemId?: string) => {
   if (soLineId) {
     return so.lines.find((line) => line.lineId === soLineId) || null;
@@ -85,7 +81,8 @@ export class CreateDeliveryNoteUseCase {
     private readonly salesOrderRepo: ISalesOrderRepository,
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
@@ -163,7 +160,9 @@ export class CreateDeliveryNoteUseCase {
     const dnNumber = await generateUniqueDocumentNumber(
       settings,
       'DN',
-      async (candidate) => !!(await this.deliveryNoteRepo.getByNumber(input.companyId, candidate))
+      async (candidate) => !!(await this.deliveryNoteRepo.getByNumber(input.companyId, candidate)),
+      this.numberingEngine,
+      input.companyId
     );
     const dn = new DeliveryNote({
       id: randomUUID(),
@@ -187,8 +186,8 @@ export class CreateDeliveryNoteUseCase {
     await this.deliveryNoteRepo.create(dn);
     await this.settingsRepo.saveSettings(settings);
 
-    if (this.recordChangeService && actor) {
-      await this.recordChangeService.recordCreate({
+    if (this.auditEngine && actor) {
+      await recordAuditCreate(this.auditEngine, {
         companyId: dn.companyId,
         entityType: 'DELIVERY_NOTE',
         entityId: dn.id,
@@ -235,13 +234,15 @@ export class PostDeliveryNoteUseCase {
     private readonly warehouseRepo: IWarehouseRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: ISalesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly recordChangeService?: RecordChangeService
-  ) {}
+    private readonly auditEngine?: IAuditEngine
+  ) {
+    this.inventoryService = ensureInventoryCore(this.inventoryService);
+  }
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true, periodLockOverride?: { reason: string; overriddenBy: string }, actor?: { userId: string; userEmail?: string; lockedThroughDate?: string }): Promise<DeliveryNote> {
     // ===================================================================
@@ -332,7 +333,7 @@ export class PostDeliveryNoteUseCase {
     // PHASE 1D: COMPUTE INVENTORY MOVEMENTS OUTSIDE TRANSACTION (pure computation)
     const inventoryMovements = new Map<string, { movement: StockMovement; updatedLevel: StockLevel; qtyInBaseUom: number }>();
     const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
-    const cogsBucket = new Map<string, AccumulatedCOGS>();
+    const cogsBucket = new Map<string, InventoryCOGSBucketLine>();
 
     for (const line of dn.lines) {
       const item = itemsMap.get(line.itemId)!;
@@ -490,14 +491,14 @@ export class PostDeliveryNoteUseCase {
 
       // PHASE 1E: PRE-RESOLVE COGS ACCOUNTS (bare reads before transaction)
       if (shouldPostDeliveryNoteAccounting) {
-        const cogsAccountId = item.cogsAccountId
-          || (item.categoryId ? categoriesMap.get(item.categoryId)?.defaultCogsAccountId : null)
-          || invSettings?.defaultCOGSAccountId
-          || settings.defaultCOGSAccountId;
-        const inventoryAccountId = item.inventoryAssetAccountId
-          || (item.categoryId ? categoriesMap.get(item.categoryId)?.defaultInventoryAssetAccountId : null)
-          || invSettings?.defaultInventoryAssetAccountId
-          || settings.defaultInventoryAccountId;
+        const resolvedAccounts = this.inventoryService.resolveCOGSAccounts({
+          item,
+          categoriesById: categoriesMap,
+          defaultCOGSAccountId: invSettings?.defaultCOGSAccountId || settings.defaultCOGSAccountId,
+          defaultInventoryAssetAccountId: invSettings?.defaultInventoryAssetAccountId || settings.defaultInventoryAccountId,
+        });
+        const cogsAccountId = resolvedAccounts?.cogsAccountId;
+        const inventoryAccountId = resolvedAccounts?.inventoryAccountId;
 
         if (!cogsAccountId) throw new Error(`No COGS account configured for item ${item.code}`);
         if (!inventoryAccountId) throw new Error(`No inventory account configured for item ${item.code}`);
@@ -507,17 +508,7 @@ export class PostDeliveryNoteUseCase {
         const resolvedInventoryId = await this.resolveAccountId(companyId, inventoryAccountId);
 
         if (resolvedCogsId && resolvedInventoryId && line.lineCostBase > 0) {
-          const key = `${resolvedCogsId}|${resolvedInventoryId}`;
-          const existing = cogsBucket.get(key);
-          if (existing) {
-            existing.amountBase = roundMoney(existing.amountBase + line.lineCostBase);
-          } else {
-            cogsBucket.set(key, {
-              cogsAccountId: resolvedCogsId,
-              inventoryAccountId: resolvedInventoryId,
-              amountBase: roundMoney(line.lineCostBase),
-            });
-          }
+          this.inventoryService.addToCOGSBucket(cogsBucket, resolvedCogsId, resolvedInventoryId, line.lineCostBase);
         }
       }
 
@@ -614,9 +605,9 @@ export class PostDeliveryNoteUseCase {
     const posted = await this.deliveryNoteRepo.getById(companyId, id);
     if (!posted) throw new Error(`Delivery note not found after posting: ${id}`);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const entityNumber = `DN-${posted.dnNumber}`;
-      await this.recordChangeService.recordPost({
+      await recordAuditPost(this.auditEngine, {
         companyId,
         entityType: 'DELIVERY_NOTE',
         entityId: posted.id,
@@ -625,7 +616,7 @@ export class PostDeliveryNoteUseCase {
         userEmail: actor.userEmail,
       });
       if (periodLockOverride) {
-        await this.recordChangeService.recordPeriodLockOverride({
+        await recordAuditPeriodLockOverride(this.auditEngine, {
           companyId,
           entityType: 'DELIVERY_NOTE',
           entityId: posted.id,
@@ -697,7 +688,7 @@ export class UpdateDeliveryNoteUseCase {
   constructor(
     private readonly deliveryNoteRepo: IDeliveryNoteRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly recordChangeService?: RecordChangeService
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: UpdateDeliveryNoteInput, actor?: { userId: string; userEmail?: string }): Promise<DeliveryNote> {
@@ -755,9 +746,9 @@ export class UpdateDeliveryNoteUseCase {
     const updated = new DeliveryNote(current.toJSON() as any);
     await this.deliveryNoteRepo.update(updated);
 
-    if (this.recordChangeService && actor) {
+    if (this.auditEngine && actor) {
       const after = updated.toJSON();
-      await this.recordChangeService.recordUpdate({
+      await recordAuditUpdate(this.auditEngine, {
         companyId: input.companyId,
         entityType: 'DELIVERY_NOTE',
         entityId: updated.id,

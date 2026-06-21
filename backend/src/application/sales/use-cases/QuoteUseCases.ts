@@ -1,8 +1,10 @@
+import { roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { Quote, QuoteLine } from '../../../domain/sales/entities/Quote';
 import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
 import { IQuoteRepository } from '../../../repository/interfaces/sales/IQuoteRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import {
   calculateSalesInvoiceLineAmounts,
   calculateSalesInvoiceTotals,
@@ -10,7 +12,6 @@ import {
 import { CreateSalesOrderUseCase, CreateSalesOrderInput, generateUniqueDocumentNumber } from './SalesOrderUseCases';
 import { CreateSalesInvoiceUseCase, CreateSalesInvoiceInput } from './SalesInvoiceUseCases';
 
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 // ---------------------------------------------------------------------------
 // Input interfaces
@@ -118,7 +119,8 @@ function buildQuoteLine(input: QuoteLineInput, index: number, exchangeRate: numb
 export class CreateQuoteUseCase {
   constructor(
     private readonly quoteRepo: IQuoteRepository,
-    private readonly salesSettingsRepo: ISalesSettingsRepository
+    private readonly salesSettingsRepo: ISalesSettingsRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreateQuoteInput): Promise<Quote> {
@@ -143,7 +145,7 @@ export class CreateQuoteUseCase {
     const quoteNumber = await generateUniqueDocumentNumber(settings, 'QT', async (candidate: string) => {
       const existing = await this.quoteRepo.getByNumber(input.companyId, candidate);
       return !!existing;
-    });
+    }, this.numberingEngine, input.companyId);
 
     const quote = new Quote({
       id: randomUUID(),
@@ -367,7 +369,8 @@ export class RejectQuoteUseCase {
 export class ReviseQuoteUseCase {
   constructor(
     private readonly quoteRepo: IQuoteRepository,
-    private readonly salesSettingsRepo: ISalesSettingsRepository
+    private readonly salesSettingsRepo: ISalesSettingsRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(companyId: string, id: string): Promise<Quote> {
@@ -381,7 +384,7 @@ export class ReviseQuoteUseCase {
     const newQuoteNumber = await generateUniqueDocumentNumber(settings, 'QT', async (candidate: string) => {
       const existing = await this.quoteRepo.getByNumber(companyId, candidate);
       return !!existing;
-    });
+    }, this.numberingEngine, companyId);
 
     const newQuote = new Quote({
       id: randomUUID(),

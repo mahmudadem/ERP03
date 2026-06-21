@@ -1,3 +1,4 @@
+import { roundCash, roundMoney } from '../../system-core/money/roundMoney';
 import { randomUUID } from 'crypto';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
 import { PosReceipt, PosReceiptLineSnapshot } from '../../../domain/pos/entities/PosReceipt';
@@ -10,11 +11,12 @@ import { IPosReceiptRepository } from '../../../repository/interfaces/pos/IPosRe
 import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPaymentRepository';
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { CreateSalesInvoiceUseCase, PostSalesInvoiceUseCase, SettlementInput } from '../../sales/use-cases/SalesInvoiceUseCases';
-import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
-import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
+import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
+import { PostPosSaleUseCase } from './PostPosSaleUseCase';
+import { PosCashRounding } from '../../../domain/pos/entities/PosSettings';
+import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export interface PosCartLine {
   itemId: string;
@@ -23,6 +25,7 @@ export interface PosCartLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  approvedCostMarginOverride?: boolean;
 }
 
 export interface PosCartPayment {
@@ -39,7 +42,7 @@ export interface CompletePosSaleInput {
   customerId?: string;
   lines: PosCartLine[];
   payments: PosCartPayment[];
-  actor: { userId: string; userEmail?: string };
+  actor: { userId: string; userEmail?: string; roleId?: string };
 }
 
 export interface CompletePosSaleResult {
@@ -49,36 +52,21 @@ export interface CompletePosSaleResult {
   change: number;
 }
 
-const POS_METHOD_TO_SI_METHOD: Record<PosPaymentMethod, 'CASH' | 'CREDIT_CARD' | 'BANK_TRANSFER' | 'OTHER'> = {
-  CASH: 'CASH',
-  CARD: 'CREDIT_CARD',
-  BANK_TRANSFER: 'BANK_TRANSFER',
-  CUSTOM: 'OTHER',
-};
-
 /**
  * Complete a POS sale.
  *
- * This use case does NOT build vouchers, write stock movements, or compute
- * tax. It delegates the financial posting to the existing Sales use case
- * `CreateAndPostSalesInvoiceUseCase`, passing `persona:'direct'`,
- * `source:'pos'`, `formType:'pos_sale'`. If the company has not allowed the
- * `direct` persona (the Allow POS direct sales toggle), Sales will throw
- * `PersonaNotAllowedError` and we surface it.
+ * This use case validates the POS operational flow and delegates posting to
+ * the POS-owned PostPosSaleUseCase, which talks to System Core seams
+ * (IInventoryCore + IAccountingBridge). POS sale completion does not construct
+ * Sales application use-cases.
  *
  * Sequencing:
  *   1. Validate shift OPEN + cashier match (or manager)
  *   2. Validate cart math (lines non-empty, payments non-empty, applied total = grand total)
  *   3. Validate payment-method config (each enabled method has an account, each `requiresReference` carries one)
- *   4. Build the SI input from the cart (lines include `warehouseId: register.warehouseId`)
- *   5. Build the SettlementInput from the payments. Use CASH_FULL for single-tender exact
- *      amount; MULTI for everything else. CASH change is netted off the settlement so the
- *      settlement total equals the receipt grand total.
- *   6. Call `createAndPostSalesInvoiceUseCase.execute(input, settlementInput, undefined, actor)`.
- *      This is where the existing SI post + voucher + COGS + inventory OUT + receipt vouchers happen.
- *   7. After SI is posted, persist the PosReceipt + PosPayment rows in one transaction (so the
- *      receipt numbers + cash-movement roll back if anything blows up).
- *   8. Bump settings.receiptNextSeq.
+ *   4. Allocate receipt number via System Core numbering and post the sale through POS-owned posting.
+ *   5. Persist PosReceipt + PosPayment rows + cash movement atomically.
+ *   6. Mirror settings.receiptNextSeq for legacy settings visibility.
  */
 export class CompletePosSaleUseCase {
   constructor(
@@ -89,9 +77,10 @@ export class CompletePosSaleUseCase {
     private readonly paymentRepo: IPosPaymentRepository,
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly transactionManager: ITransactionManager,
-    private readonly createSalesInvoiceUseCase: CreateSalesInvoiceUseCase,
-    private readonly postSalesInvoiceUseCase: PostSalesInvoiceUseCase,
-    private readonly salesInvoiceRepo: ISalesInvoiceRepository
+    private readonly postPosSaleUseCase: PostPosSaleUseCase,
+    private readonly policyEngine: IPolicyEngine,
+    private readonly numberingEngine: INumberingEngine,
+    private readonly auditEngine?: IAuditEngine
   ) {}
 
   async execute(input: CompletePosSaleInput): Promise<CompletePosSaleResult> {
@@ -130,6 +119,20 @@ export class CompletePosSaleUseCase {
       throw new Error(`POS register not found: ${input.registerId}`);
     }
 
+    const policyDecision = await this.policyEngine.resolve({
+      scope: 'pos',
+      action: 'directSale',
+      companyId: input.companyId,
+      context: {
+        registerId: input.registerId,
+        cashierUserId: input.actor.userId,
+        cashierRoleId: input.actor.roleId,
+        documentPersona: 'POS_DIRECT_SALE',
+      },
+    });
+    if (!policyDecision.allowed) {
+      throw new Error('POS direct sale is not allowed by POS policy.');
+    }
     // Validate payment-method config up front (independent of the total).
     for (const p of input.payments) {
       if (p.amount <= 0) {
@@ -147,171 +150,171 @@ export class CompletePosSaleUseCase {
       }
     }
 
-    // Build SI input. The Sales module owns ALL financial math — tax (inclusive/exclusive),
-    // discounts, COGS, inventory OUT. POS never recomputes the total or the tax.
-    const salesInvoiceInput = {
+    // Preview the total through the POS posting path before opening the write transaction.
+    // The same use-case will re-use these inputs for the actual stock/ledger write.
+    const receiptNumber = await this.numberingEngine.next({
+      companyId: input.companyId,
+      docType: 'POS_RECEIPT',
+      scope: 'terminal',
+      terminalId: input.registerId,
+      prefix: settings.receiptPrefix,
+      counterWidth: 6,
+      seedNextNumber: settings.receiptNextSeq,
+    });
+    const saleDate = new Date().toISOString().slice(0, 10);
+
+    const preview = await this.postPosSaleUseCase.execute({
       companyId: input.companyId,
       customerId,
-      invoiceDate: new Date().toISOString().slice(0, 10),
-      source: 'pos' as const,
-      // voucherType MUST be the canonical 'sales_invoice'; formType carries the POS persona/marker.
-      // (CreateSalesInvoiceUseCase derives voucherType from formType when it is omitted, and would
-      //  otherwise reject 'pos_sale' as an invalid voucher type.)
-      voucherType: 'sales_invoice' as const,
-      formType: 'pos_sale' as const,
-      persona: 'direct' as const,
-      createdBy: input.actor.userId,
+      documentNumber: receiptNumber,
+      date: saleDate,
       lines: input.lines.map((l) => ({
         itemId: l.itemId,
-        invoicedQty: l.qty,
-        unitPriceDoc: l.unitPrice,
+        qty: l.qty,
+        unitPrice: l.unitPrice,
         discountType: l.discountType,
         discountValue: l.discountValue,
         taxCodeId: l.taxCodeId,
+        approvedCostMarginOverride: l.approvedCostMarginOverride,
         warehouseId: register.warehouseId,
       })),
-    };
+      payments: [],
+      paymentMethods: settings.paymentMethods,
+      createdBy: input.actor.userId,
+      dryRun: true,
+    });
 
-    // Step 1 — create the SI as DRAFT so we can read its AUTHORITATIVE, tax-inclusive
-    // grand total before collecting/settling payment.
-    const { salesInvoice: draft } = await this.createSalesInvoiceUseCase.execute(
-      salesInvoiceInput as any,
-      undefined,
-      { userId: input.actor.userId, userEmail: input.actor.userEmail }
+    const cashRoundingRule = posCashRoundingRule(settings.cashRounding);
+    const grandTotal = roundMoney(preview.grandTotal, preview.currency);
+    const roundedGrandTotal = roundCash(grandTotal, preview.currency, cashRoundingRule);
+    const cashRoundingAdjustment = roundMoney(roundedGrandTotal - grandTotal, preview.currency);
+    if (cashRoundingAdjustment > 0 && !settings.cashOverAccountId) {
+      throw new Error('POS cash rounding gain requires a configured Cash Over account.');
+    }
+    if (cashRoundingAdjustment < 0 && !settings.cashShortAccountId) {
+      throw new Error('POS cash rounding loss requires a configured Cash Short account.');
+    }
+    const cashTendered = roundMoney(
+      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0),
+      preview.currency
     );
-
-    // Step 2 — validate the tendered payment against the SI grand total (incl. tax).
-    const grandTotal = round2(draft.grandTotalBase);
-    const cashTendered = round2(
-      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0)
+    const cashChange = roundMoney(Math.max(0, cashTendered - roundedGrandTotal), preview.currency);
+    const appliedTotal = roundMoney(
+      input.payments.reduce((s, p) => s + p.amount, 0) - cashChange,
+      preview.currency
     );
-    const cashChange = round2(Math.max(0, cashTendered - grandTotal));
-    const appliedTotal = round2(
-      input.payments.reduce((s, p) => s + p.amount, 0) - cashChange
-    );
-    if (Math.abs(appliedTotal - grandTotal) > 0.005) {
-      // No orphan: discard the draft we just created before failing.
-      await this.salesInvoiceRepo.delete(input.companyId, draft.id);
+    if (Math.abs(appliedTotal - roundedGrandTotal) > 0.005) {
       throw new Error(
-        `Payment total (${appliedTotal.toFixed(2)}) must equal the invoice grand total ` +
-        `incl. tax (${grandTotal.toFixed(2)}). Cash change of ${cashChange.toFixed(2)} is allowed.`
+        `Payment total (${appliedTotal.toFixed(2)}) must equal the POS sale grand total ` +
+        `incl. tax (${roundedGrandTotal.toFixed(2)}). Cash change of ${cashChange.toFixed(2)} is allowed.`
       );
     }
 
-    // Step 3 — build the settlement from the authoritative total. CASH_FULL only for a
-    // single tender that exactly equals the total with no change; MULTI otherwise.
-    // The POS-configured account for a method (PosSettings.paymentMethods) is authoritative for
-    // the GL settlement; if blank, Sales falls back to SalesSettings.paymentMethodConfigs.
-    const accountFor = (method: PosPaymentMethod): string | undefined =>
-      settings.getPaymentMethod(method)?.settlementAccountId?.trim() || undefined;
-
-    const singleTenderExact =
-      input.payments.length === 1 && appliedTotal === grandTotal && cashChange === 0;
-    const settlementInput: SettlementInput = singleTenderExact
-      ? {
-          settlementMode: 'CASH_FULL',
-          settlements: [
-            {
-              paymentMethod: POS_METHOD_TO_SI_METHOD[input.payments[0].method],
-              settlementAccountId: accountFor(input.payments[0].method),
-              amountBase: grandTotal,
-              reference: input.payments[0].reference,
-            },
-          ],
-        }
-      : {
-          settlementMode: 'MULTI',
-          settlements: input.payments.map((p) => ({
-            paymentMethod: POS_METHOD_TO_SI_METHOD[p.method],
-            settlementAccountId: accountFor(p.method),
-            amountBase: p.method === 'CASH' ? round2(p.amount - cashChange) : round2(p.amount),
-            reference: p.reference,
-          })),
-        };
-
-    // Step 4 — post the SI with settlement. Creates revenue/tax/COGS vouchers, inventory OUT,
-    // and one receipt voucher per settlement row, clearing AR to zero. Errors propagate.
-    const salesInvoice: SalesInvoice = await this.postSalesInvoiceUseCase.execute(
-      input.companyId,
-      draft.id,
-      true,
-      undefined,
-      settlementInput,
-      undefined,
-      { userId: input.actor.userId, userEmail: input.actor.userEmail }
-    );
-
-    // Persist POS-side artifacts. Receipt totals + line snapshots are hydrated from the
-    // posted SI so the printed receipt is the financial truth (incl. tax + resolved names).
-    const receiptNumber = settings.receiptPrefix + '-' + String(settings.receiptNextSeq).padStart(6, '0');
-    settings.receiptNextSeq += 1;
-
-    const receiptLines: PosReceiptLineSnapshot[] = salesInvoice.lines.map((l) => ({
-      itemId: l.itemId,
-      itemCode: l.itemCode,
-      itemName: l.itemName,
-      qty: l.invoicedQty,
-      uom: l.uom,
-      unitPrice: l.unitPriceDoc,
-      lineDiscount: round2(l.discountAmountBase ?? 0),
-      taxCodeId: l.taxCodeId,
-      lineTotal: round2(l.lineTotalBase),
-      salesInvoiceLineId: l.lineId, // lets POS returns reference the SI lines (P3)
+    const appliedPayments = input.payments.map((p) => ({
+      method: p.method,
+      amount: p.method === 'CASH' ? roundMoney(p.amount - cashChange, preview.currency) : roundMoney(p.amount, preview.currency),
+      reference: p.reference,
     }));
-    const discountTotal = round2(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 
-    const receipt = new PosReceipt({
-      id: `rcp_${randomUUID()}`,
-      companyId: input.companyId,
-      shiftId: input.shiftId,
-      registerId: input.registerId,
-      receiptNumber,
-      status: 'COMPLETED',
-      customerId,
-      customerName: draft.customerName,
-      lines: receiptLines,
-      subtotal: round2(salesInvoice.subtotalBase),
-      discountTotal,
-      taxTotal: round2(salesInvoice.taxTotalBase),
-      grandTotal: round2(salesInvoice.grandTotalBase),
-      salesInvoiceId: salesInvoice.id,
-      salesInvoiceNumber: salesInvoice.invoiceNumber,
-      createdBy: input.actor.userId,
-      createdAt: new Date(),
-    });
+    const cashApplied = roundMoney(
+      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0) - cashChange,
+      preview.currency
+    );
 
-    const payments: PosPayment[] = input.payments.map((p) =>
-      new PosPayment({
-        id: `pmt_${randomUUID()}`,
+    const { postedSale, receipt } = await this.transactionManager.runTransaction(async (tx) => {
+      const sale = await this.postPosSaleUseCase.execute({
         companyId: input.companyId,
-        receiptId: receipt.id,
-        method: p.method,
-        amount: round2(p.amount),
-        changeGiven: p.method === 'CASH' ? cashChange : 0,
-        reference: p.reference,
-        createdAt: receipt.createdAt,
-      })
-    );
+        customerId,
+        documentId: preview.documentId,
+        documentNumber: receiptNumber,
+        date: saleDate,
+        lines: input.lines.map((l) => ({
+          itemId: l.itemId,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
+          taxCodeId: l.taxCodeId,
+          approvedCostMarginOverride: l.approvedCostMarginOverride,
+          warehouseId: register.warehouseId,
+        })),
+        payments: appliedPayments,
+        paymentMethods: settings.paymentMethods,
+        cashRoundingAdjustmentBase: cashRoundingAdjustment,
+        cashRoundingAccountId: cashRoundingAdjustment > 0 ? settings.cashOverAccountId : settings.cashShortAccountId,
+        createdBy: input.actor.userId,
+        transaction: tx,
+      });
 
-    // Cash movement: SALE_CASH = cash applied (gross of change).
-    const cashApplied = round2(
-      input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0) - cashChange
-    );
-    const cashMovement =
-      cashApplied > 0
-        ? new PosCashMovement({
-            id: `cm_${randomUUID()}`,
-            companyId: input.companyId,
-            shiftId: input.shiftId,
-            registerId: input.registerId,
-            type: 'SALE_CASH',
-            amount: cashApplied,
-            createdBy: input.actor.userId,
-            createdAt: receipt.createdAt,
-          })
-        : null;
+      const receiptLines: PosReceiptLineSnapshot[] = sale.lines.map((l) => ({
+        itemId: l.itemId,
+        itemCode: l.itemCode,
+        itemName: l.itemName,
+        qty: l.qty,
+        uom: l.uom,
+        unitPrice: l.unitPrice,
+        lineDiscount: roundMoney(l.lineDiscount ?? 0),
+        taxCodeId: l.taxCodeId,
+        lineTotal: roundMoney(l.lineTotal),
+        salesInvoiceLineId: l.lineId, // legacy field name; 250d2 removes Sales return dependency.
+        revenueAccountId: l.revenueAccountId,
+        taxAccountId: l.taxAccountId,
+        cogsAccountId: l.cogsAccountId,
+        inventoryAccountId: l.inventoryAccountId,
+        unitCostBase: l.unitCostBase,
+        lineCostBase: l.lineCostBase,
+        appliedPromotionId: l.appliedPromotionId,
+        appliedPromotionName: l.appliedPromotionName,
+      }));
+      const discountTotal = roundMoney(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 
-    await this.transactionManager.runTransaction(async (tx) => {
+      const receipt = new PosReceipt({
+        id: `rcp_${randomUUID()}`,
+        companyId: input.companyId,
+        shiftId: input.shiftId,
+        registerId: input.registerId,
+        receiptNumber,
+        status: 'COMPLETED',
+        customerId,
+        customerName: sale.customerName,
+        lines: receiptLines,
+        subtotal: roundMoney(sale.subtotal),
+        discountTotal,
+        taxTotal: roundMoney(sale.taxTotal),
+        grandTotal: roundMoney(sale.roundedGrandTotal),
+        salesInvoiceId: sale.documentId,
+        salesInvoiceNumber: sale.documentNumber,
+        createdBy: input.actor.userId,
+        createdAt: new Date(),
+      });
+
+      const payments: PosPayment[] = input.payments.map((p) =>
+        new PosPayment({
+          id: `pmt_${randomUUID()}`,
+          companyId: input.companyId,
+          receiptId: receipt.id,
+          method: p.method,
+          amount: roundMoney(p.amount),
+          changeGiven: p.method === 'CASH' ? cashChange : 0,
+          reference: p.reference,
+          createdAt: receipt.createdAt,
+        })
+      );
+
+      const cashMovement =
+        cashApplied > 0
+          ? new PosCashMovement({
+              id: `cm_${randomUUID()}`,
+              companyId: input.companyId,
+              shiftId: input.shiftId,
+              registerId: input.registerId,
+              type: 'SALE_CASH',
+              amount: cashApplied,
+              createdBy: input.actor.userId,
+              createdAt: receipt.createdAt,
+            })
+          : null;
+
       await this.receiptRepo.create(receipt, tx);
       for (const pmt of payments) {
         await this.paymentRepo.create(pmt, tx);
@@ -319,14 +322,44 @@ export class CompletePosSaleUseCase {
       if (cashMovement) {
         await this.cashMovementRepo.create(cashMovement, tx);
       }
+      settings.receiptNextSeq = Math.max(settings.receiptNextSeq + 1, nextNumericSequence(receiptNumber) + 1);
       await this.settingsRepo.saveSettings(settings, tx);
+
+      return { postedSale: sale, receipt };
     });
+
+    if (this.auditEngine) {
+      await this.auditEngine.record({
+        companyId: input.companyId,
+        entity: { type: 'POS_RECEIPT', id: receipt.id, number: receipt.receiptNumber },
+        action: 'CREATE',
+        actor: { userId: input.actor.userId, userEmail: input.actor.userEmail },
+        after: {
+          ...receipt.toJSON(),
+          postedDocumentId: postedSale.documentId,
+          postedDocumentNumber: postedSale.documentNumber,
+          voucherIds: postedSale.voucherIds,
+          cashRoundingAdjustmentBase: postedSale.cashRoundingAdjustmentBase,
+        },
+      });
+    }
 
     return {
       receipt,
-      salesInvoiceId: salesInvoice.id,
-      salesInvoiceNumber: salesInvoice.invoiceNumber,
+      salesInvoiceId: postedSale.documentId,
+      salesInvoiceNumber: postedSale.documentNumber,
       change: cashChange,
     };
   }
+}
+
+function nextNumericSequence(documentNumber: string): number {
+  const match = documentNumber.match(/(\d+)\D*$/);
+  return match ? Number(match[1]) : 0;
+}
+
+function posCashRoundingRule(rounding: PosCashRounding): { increment?: number; mode?: 'NEAREST' } | null {
+  if (rounding === 'nearest_05') return { increment: 0.05, mode: 'NEAREST' };
+  if (rounding === 'nearest_1') return { increment: 1, mode: 'NEAREST' };
+  return null;
 }

@@ -212,14 +212,14 @@ describe('PosShiftUseCases', () => {
       const registerRepo = { getById: jest.fn().mockResolvedValue(makeRegister()), create: jest.fn(), update: jest.fn(), list: jest.fn() };
       const cashMovementRepo = { sumByShift: jest.fn().mockResolvedValue(totals), create: jest.fn(), listByShift: jest.fn() };
       const accountRepo = { getById: jest.fn() };
-      const accountingPostingService = { postInTransaction: jest.fn() };
+      const accountingBridge = { recordFinancialEvent: jest.fn() };
       const tx = { runTransaction: async (fn: any) => fn({}) };
-      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingPostingService as any, tx as any);
+      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
       const result = await useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 100, actor: { userId: 'cashier_1' } });
       expect(result.overShortAmount).toBe(0);
       expect(result.overShortVoucherId).toBeUndefined();
-      expect(accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+      expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
       expect(shiftRepo.update).toHaveBeenCalled();
     });
 
@@ -241,15 +241,15 @@ describe('PosShiftUseCases', () => {
       const cashMovementRepo = { sumByShift: jest.fn().mockResolvedValue(totals), create: jest.fn(), listByShift: jest.fn() };
       const accountRepo = { getById: jest.fn().mockImplementation(async (_c: string, id: string) => baseAccount(id)) };
       const postedVoucher = { id: 'voucher_over_1' };
-      const accountingPostingService = { postInTransaction: jest.fn().mockResolvedValue(postedVoucher) };
+      const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: postedVoucher }) };
       const tx = { runTransaction: async (fn: any) => fn({}) };
-      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingPostingService as any, tx as any);
+      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
       const result = await useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 110, actor: { userId: 'cashier_1' } });
       expect(result.overShortAmount).toBe(10);
       expect(result.overShortVoucherId).toBe('voucher_over_1');
-      expect(accountingPostingService.postInTransaction).toHaveBeenCalled();
-      const call = accountingPostingService.postInTransaction.mock.calls[0][0];
+      expect(accountingBridge.recordFinancialEvent).toHaveBeenCalled();
+      const call = accountingBridge.recordFinancialEvent.mock.calls[0][0].subledgerVoucher;
       const debit = call.lines.find((l: any) => l.side === 'Debit');
       const credit = call.lines.find((l: any) => l.side === 'Credit');
       expect(debit.accountId).toBe('cash-acc');     // Dr cash drawer
@@ -274,13 +274,13 @@ describe('PosShiftUseCases', () => {
       const registerRepo = { getById: jest.fn().mockResolvedValue(makeRegister()), create: jest.fn(), update: jest.fn(), list: jest.fn() };
       const cashMovementRepo = { sumByShift: jest.fn().mockResolvedValue(totals), create: jest.fn(), listByShift: jest.fn() };
       const accountRepo = { getById: jest.fn().mockImplementation(async (_c: string, id: string) => baseAccount(id)) };
-      const accountingPostingService = { postInTransaction: jest.fn().mockResolvedValue({ id: 'voucher_short_1' }) };
+      const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: { id: 'voucher_short_1' } }) };
       const tx = { runTransaction: async (fn: any) => fn({}) };
-      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingPostingService as any, tx as any);
+      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
       const result = await useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 90, actor: { userId: 'cashier_1' } });
       expect(result.overShortAmount).toBe(-10);
-      const call = accountingPostingService.postInTransaction.mock.calls[0][0];
+      const call = accountingBridge.recordFinancialEvent.mock.calls[0][0].subledgerVoucher;
       const debit = call.lines.find((l: any) => l.side === 'Debit');
       const credit = call.lines.find((l: any) => l.side === 'Credit');
       expect(debit.accountId).toBe('short-acc');    // Dr cash short
@@ -305,14 +305,14 @@ describe('PosShiftUseCases', () => {
       const registerRepo = { getById: jest.fn().mockResolvedValue(makeRegister()), create: jest.fn(), update: jest.fn(), list: jest.fn() };
       const cashMovementRepo = { sumByShift: jest.fn().mockResolvedValue(totals), create: jest.fn(), listByShift: jest.fn() };
       const accountRepo = { getById: jest.fn().mockResolvedValue(baseAccount('cash-acc')) };
-      const accountingPostingService = { postInTransaction: jest.fn() };
+      const accountingBridge = { recordFinancialEvent: jest.fn() };
       const tx = { runTransaction: async (fn: any) => fn({}) };
-      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingPostingService as any, tx as any);
+      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
       await expect(
         useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 90, actor: { userId: 'cashier_1' } })
       ).rejects.toThrow(/Cash Short account/);
-      expect(accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+      expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
       expect(shiftRepo.update).not.toHaveBeenCalled();
     });
 
@@ -341,9 +341,9 @@ describe('PosShiftUseCases', () => {
       const registerRepo = { getById: jest.fn(), create: jest.fn(), update: jest.fn(), list: jest.fn() };
       const cashMovementRepo = { sumByShift: jest.fn(), create: jest.fn(), listByShift: jest.fn() };
       const accountRepo = { getById: jest.fn() };
-      const accountingPostingService = { postInTransaction: jest.fn() };
+      const accountingBridge = { recordFinancialEvent: jest.fn() };
       const tx = { runTransaction: async (fn: any) => fn({}) };
-      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingPostingService as any, tx as any);
+      const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
       await expect(
         useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 100, actor: { userId: 'cashier_1' } })

@@ -8,6 +8,7 @@ import { Item } from '../../../domain/inventory/entities/Item';
 import { PosSettings } from '../../../domain/pos/entities/PosSettings';
 import { PosRegister } from '../../../domain/pos/entities/PosRegister';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
+import { ICommercialCore } from '../../system-core';
 
 export interface GetPosBootstrapInput {
   companyId: string;
@@ -80,19 +81,27 @@ export interface PosProductSearchResult {
 
 /**
  * Lightweight product search for the cashier screen. Code/barcode/prefix-name
- * match. Limited. We do NOT call the effective-price resolver from the Sales
- * settings here — the price the cashier sees is the item's `salePrice`. The
- * SI calculation in CreateSalesInvoiceUseCase is the source of truth.
+ * match. Limited. Price display goes through Commercial Core and falls back to
+ * the item's salePrice when no resolver result exists.
  */
 export class SearchPosProductsUseCase {
-  constructor(private readonly itemRepo: IItemRepository) {}
+  constructor(
+    private readonly itemRepo: IItemRepository,
+    private readonly commercialCore?: ICommercialCore
+  ) {}
 
   async execute(input: SearchPosProductsInput): Promise<PosProductSearchResult> {
     const q = (input.query || '').trim();
     if (!q) return { items: [] };
     const all = await this.itemRepo.searchItems(input.companyId, q, { limit: input.limit || 25, active: true });
-    return {
-      items: (all || []).map((it: Item) => ({
+    const items = await Promise.all((all || []).map(async (it: Item) => {
+      const resolvedPrice = await this.commercialCore?.resolvePrice({
+        companyId: input.companyId,
+        itemId: it.id,
+        channel: 'pos',
+        uomId: it.salesUomId,
+      });
+      return {
         id: it.id,
         code: it.code,
         barcode: it.barcode,
@@ -102,8 +111,11 @@ export class SearchPosProductsUseCase {
         baseUom: it.baseUom,
         salesUomId: it.salesUomId,
         defaultSalesTaxCodeId: it.defaultSalesTaxCodeId,
-        salePrice: it.salePrice,
-      })),
+        salePrice: resolvedPrice ?? it.salePrice,
+      };
+    }));
+    return {
+      items,
     };
   }
 }

@@ -21,7 +21,7 @@ import {
 import { PurchaseOrder } from '../../../domain/purchases/entities/PurchaseOrder';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
-import { IPurchasesInventoryService } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -52,7 +52,8 @@ import {
   buildDocumentPricePoint,
   buildUpdatedItemCostingStats,
 } from '../../inventory/services/ItemCostingStatsService';
-import { generateDocumentNumber } from './PurchaseOrderUseCases';
+import { generateDocumentNumberWithEngine } from './PurchaseOrderUseCases';
+import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { roundMoney, updatePOStatus } from './PurchasePostingHelpers';
 
 export interface PurchaseReturnLineInput {
@@ -196,7 +197,8 @@ export class CreatePurchaseReturnUseCase {
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly partyRepo: IPartyRepository,
-    private readonly itemRepo: IItemRepository
+    private readonly itemRepo: IItemRepository,
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(input: CreatePurchaseReturnInput): Promise<PurchaseReturn> {
@@ -254,10 +256,11 @@ export class CreatePurchaseReturnUseCase {
       vendorName = vendor?.displayName || '';
     }
 
+    const returnNumber = await generateDocumentNumberWithEngine(settings, 'PR', input.companyId, this.numberingEngine);
     const purchaseReturn = new PurchaseReturn({
       id: randomUUID(),
       companyId: input.companyId,
-      returnNumber: generateDocumentNumber(settings, 'PR'),
+      returnNumber,
       purchaseInvoiceId: purchaseInvoice?.id,
       goodsReceiptId: goodsReceipt?.id,
       purchaseOrderId: input.purchaseOrderId || purchaseInvoice?.purchaseOrderId || goodsReceipt?.purchaseOrderId,
@@ -486,7 +489,7 @@ export class PostPurchaseReturnUseCase {
     private readonly itemCategoryRepo: IItemCategoryRepository,
     private readonly uomConversionRepo: IUomConversionRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
@@ -1405,7 +1408,7 @@ export class UnpostPurchaseReturnUseCase {
     private readonly purchaseInvoiceRepo: IPurchaseInvoiceRepository,
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
-    private readonly inventoryService: IPurchasesInventoryService,
+    private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager
