@@ -37,6 +37,7 @@ import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/IS
 import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISalesOrderRepository';
 import { ISalesReturnRepository } from '../../../repository/interfaces/sales/ISalesReturnRepository';
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
+import { SalesSettings } from '../../../domain/sales/entities/SalesSettings';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
@@ -981,7 +982,7 @@ export class PostSalesReturnUseCase {
       return resolved;
     };
 
-    const arAccountId = this.resolveARAccount(customer);
+    const arAccountId = this.resolveARAccount(customer, settings);
     const resolvedARId = await resolveAccountCached(arAccountId);
 
     for (const [, line] of revenueDebitBucket) {
@@ -1297,11 +1298,16 @@ export class PostSalesReturnUseCase {
     return !!accountingModule?.initialized;
   }
 
-  private resolveARAccount(customer: Party): string {
-    if (!customer.defaultARAccountId) {
-      throw new Error(`Customer ${customer.displayName} has no linked AR account configured.`);
+  private resolveARAccount(customer: Party, settings: SalesSettings): string {
+    // Mirror the Sales Invoice chain (customer per-party AR → company default AR) so a
+    // customer's invoice and its return ALWAYS post to the same AR account; otherwise the
+    // subledger never nets. Falls back to the company default for parties without a sub-account
+    // (e.g. POS walk-ins).
+    const aid = customer.defaultARAccountId || settings.defaultARAccountId;
+    if (!aid) {
+      throw new Error(`Customer ${customer.displayName} has no linked AR account and no company default AR is configured.`);
     }
-    return customer.defaultARAccountId;
+    return aid;
   }
 
   private resolveRefundSettlementAccount(settings: any, perReturnOverride?: string): string {

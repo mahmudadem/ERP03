@@ -99,10 +99,11 @@ async function bootstrap() {
     defaultSalesTaxCodeId: taxCodeId, revenueAccountId: ACC.revenue, cogsAccountId: ACC.cogs, inventoryAssetAccountId: ACC.inv,
     active: true, createdBy: userId, createdAt: now(), updatedAt: now(),
   }));
+  // NOTE: deliberately NO per-party defaultARAccountId — a POS walk-in relies on the company
+  // default AR. This exercises the SI↔SR AR-resolution symmetry (both must fall back identically).
   await di.partyRepository.create(new Party({
     id: custId, companyId, code: 'WALKIN', legalName: 'Walk-in', displayName: 'Walk-in',
     roles: ['CUSTOMER'], defaultCurrency: 'USD', active: true,
-    defaultARAccountId: ACC.ar, // real onboarding assigns a per-customer AR sub-account
     createdBy: userId, createdAt: now(), updatedAt: now(),
   }));
 
