@@ -8,9 +8,9 @@
 - **Owner override of the feature freeze:** the 2026-06-13 freeze forbids refactors. The owner (Mahmud) has explicitly authorized this transformation and paused POS for it — this epic proceeds as an owner-sanctioned exception, same pattern as prior freeze exceptions logged in JOURNAL.
 - **Plan:** [planning/tasks/250-system-core-transformation-epic.md](./tasks/250-system-core-transformation-epic.md). Phase files 250a–250l.
 - **Reference:** [Platform Architecture Audit](../docs/audit/platform-architecture-engine-vs-app-audit.md) (§A–N) · [System Core Master Plan](../docs/architecture/system-core-shared-engines-master-plan.md).
-- **Execution model:** executing agents implement one phase task at a time (one builder per file area); CTO audits each against the task's acceptance criteria + the 10 architecture tests (audit §N) before marking the phase done.
+- **Execution model:** **Codex** is the executing agent (not a Claude-spawned subagent). It picks up [planning/briefs/20260621-codex-system-core-transformation.md](./briefs/20260621-codex-system-core-transformation.md), implements one phase task at a time (one builder per file area), and hands back after each phase. CTO (Claude) audits each against the task's acceptance criteria + the 10 architecture tests (audit §N) before marking the phase done.
 - **Phase order:** 0 seams (250a) → 1 POS-blocking **250b→c→d→e in sequence** → 2 money/audit (250f/g) → 3 tax/numbering/inventory (250h/i/j) → 4 bridge/commercial (250k/l).
-- **Where I left off:** worktree + branch created from clean `main` HEAD (957d8553, excludes uncommitted POS QA WIP); audits + master plan copied into branch; all 13 plan files written. **Next: owner approves Phase 0 plan, then assign one backend builder to 250a.**
+- **Where I left off:** worktree + branch created from clean `main` HEAD (957d8553, excludes uncommitted POS QA WIP); audits + master plan copied into branch; all 13 plan files written. **Next: Codex picks up the brief and executes Phase 0 (250a), then hands back for CTO audit.**
 - **Estimate:** ~3–5 weeks of execution + CTO audit between phases.
 
 ---
