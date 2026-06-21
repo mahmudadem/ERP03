@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 1 · **Blocking:** 🔴 POS-blocking
 **Depends on:** [250b](./250b-document-core-persona.md), [250c](./250c-policy-engine-pos-decoupling.md) · **Agent:** erp-backend-builder · **Estimate:** 2–4 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete — CTO-audited green (2026-06-21), commit `93561820`
 
 > **CTO ruling (2026-06-21) — blocker resolved.** Codex correctly stopped because the folder-wide POS→Sales import ban also catches `CompletePosReturnUseCase` (POS returns import Sales return use-cases), which is out of this task's scope. **Decision:** 250d stays scoped to the **POS direct-sale** path; its architecture guard is **narrowed to the sale path** (see below). POS **return** decoupling is its own task — [250d2](./250d2-pos-return-posting-entry-point.md). The **folder-wide** POS→Sales ban is flipped on at the end of 250d2, not here.
 

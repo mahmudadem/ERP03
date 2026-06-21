@@ -2,7 +2,7 @@
 
 **Parent:** [250 epic](./250-system-core-transformation-epic.md) · **Phase:** 1 · **Blocking:** 🔴 POS-blocking (completes POS independence)
 **Depends on:** [250d](./250d-pos-posting-entry-point.md) · **Agent:** erp-backend-builder · **Estimate:** 2–3 days
-**Status:** ⬜ Not started
+**Status:** ✅ Complete — CTO-audited green (2026-06-21), commit `1ff23b5f`
 
 > **Why this exists:** Created by CTO ruling on 2026-06-21. The folder-wide POS→Sales import ban could not be enabled in 250d because POS **returns** still import Sales. 250d decoupled the sale path; this task decouples the return path and then flips the **folder-wide** ban on. It is the mirror of 250d for returns.
 
