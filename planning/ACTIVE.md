@@ -1,5 +1,14 @@
 # 🎯 Current Focus
 
+## Task 246 complete - error-taxonomy 4xx merged into current main context (2026-06-21)
+
+- ✅ **PR #27 conflict resolution:** merged current `origin/main` into `feat/246-error-taxonomy`. The only conflict was this planning file; code merged cleanly.
+- ✅ **Task 246** — business-rule rejections now return structured **400** responses instead of 500/`INFRA_999` for the wired Sales/voucher paths.
+- Real change: added `SALES_INVALID_STATE` / `SALES_ALREADY_POSTED`; wired `SalesInvoiceUseCases`, `SubmitVoucherUseCase`, and `VoucherEntity.submit` to domain rule errors; duplicate-code master-data guards now return `VAL_DUPLICATE_ENTRY` as 400.
+- Accounting/control decision: re-posting a POSTED invoice returns a clean **400 `SALES_ALREADY_POSTED`** and does not silently no-op, preserving duplicate-posting protection.
+- Verification before conflict resolution: backend build; `ErrorTaxonomyBusinessRuleMapping.test.ts` 4/4; sales + accounting + domain-accounting 61 suites / 505 tests.
+- Follow-up remains explicit: purchases mirror has the `PurchaseRuleError` class but throw sites are not broadly converted because no QA-confirmed 500 leak was proven there.
+
 ## Task 247 — POS Module (all 5 phases) complete on `feat/247-pos-module` (2026-06-20)
 
 - ✅ **All 5 phases shipped and pushed (NOT merged to main):**

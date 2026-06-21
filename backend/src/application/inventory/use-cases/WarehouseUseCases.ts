@@ -1,6 +1,8 @@
 
 import { Warehouse } from '../../../domain/inventory/entities/Warehouse';
 import { IWarehouseRepository, WarehouseListOptions } from '../../../repository/interfaces/inventory';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { randomUUID } from 'crypto';
 
 export interface CreateWarehouseInput {
@@ -62,7 +64,7 @@ export class CreateWarehouseUseCase {
   async execute(data: CreateWarehouseInput): Promise<Warehouse> {
     const byCode = await this.repo.getWarehouseByCode(data.companyId, data.code);
     if (byCode) {
-      throw new Error(`Warehouse code already exists: ${data.code}`);
+      throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Warehouse code already exists: ${data.code}`, { field: 'code', code: data.code });
     }
 
     const parentId = await resolveValidatedParent(this.repo, data.companyId, null, data.parentId);
@@ -94,7 +96,7 @@ export class UpdateWarehouseUseCase {
     if (data.code && data.code !== current.code) {
       const duplicate = await this.repo.getWarehouseByCode(current.companyId, data.code);
       if (duplicate && duplicate.id !== id) {
-        throw new Error(`Warehouse code already exists: ${data.code}`);
+        throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Warehouse code already exists: ${data.code}`, { field: 'code', code: data.code });
       }
     }
 

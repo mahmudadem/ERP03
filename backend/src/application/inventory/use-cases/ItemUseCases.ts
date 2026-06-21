@@ -1,6 +1,8 @@
 
 import { Item } from '../../../domain/inventory/entities/Item';
 import { IItemRepository, ItemListOptions, IUomRepository } from '../../../repository/interfaces/inventory';
+import { BusinessError } from '../../../errors/AppError';
+import { ErrorCode } from '../../../errors/ErrorCodes';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { randomUUID } from 'crypto';
 
@@ -118,7 +120,7 @@ export class CreateItemUseCase {
   async execute(data: CreateItemInput): Promise<Item> {
     const existing = await this.itemRepo.getItemByCode(data.companyId, data.code);
     if (existing) {
-      throw new Error(`Item code already exists: ${data.code}`);
+      throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Item code already exists: ${data.code}`, { field: 'code', code: data.code });
     }
 
     let revenueAccountId = data.revenueAccountId;
