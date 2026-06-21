@@ -1,5 +1,16 @@
 # 🎯 Current Focus
 
+## POS QA fixes — terminal UX + persistence root cause (2026-06-21)
+
+- ✅ **Found the real cause of "POS Settings saves but doesn't persist":** `posApi`'s `ok()` double-unwrapped responses (the global interceptor already unwraps `{success,data}`), so every POS read resolved to `undefined` and the page showed defaults. Fixed `ok()` to the resilient `r?.data?.data ?? r?.data ?? r`. Prior sessions treated symptoms at the repo/UI layer; this is the root fix.
+- ✅ **Terminal "No open shift" fixed:** `GetPosBootstrapUseCase` now resolves a default register + open shift when called with only `cashierUserId`.
+- ✅ **Settings clear semantics fixed:** full-document write (no Firestore `merge`) + `''` clear-sentinel from the page.
+- ✅ **Cashier screen redesigned** (`PosTerminalPage`) into a Square/Loyverse-style product-grid + order-panel checkout with a React-state tender dialog. Browser-verified end-to-end; POS tests 35/35; backend rebuilt.
+- ✅ **Zero-price POS posting guard fixed:** POS now rejects non-positive line prices before creating a Sales Invoice draft, and the terminal prevents zero-price products from entering the cart. This prevents the `SI-SI-00004 must have at least two lines after assembly (got 0)` `INFRA_999` path.
+- ✅ **Tender modal staged-payment bug fixed:** typed/default Exact amount now counts as the active payment when completing a sale, so the modal no longer shows Tendered `0.00` and rejects the sale unless the cashier first clicks **Add payment**.
+- See [planning/done/247f-pos-terminal-ux-and-persistence-fixes.md](./done/247f-pos-terminal-ux-and-persistence-fixes.md). **Not yet committed/merged** — working-tree changes on `main`.
+- **Next:** owner re-test settings save/clear + a real positively-priced sale through the terminal (register needs a sale-priced item + non-cash settlement accounts), then GP06 cash/over-short path.
+
 ## Repo status — everything merged, branches pruned (2026-06-21)
 
 - ✅ **All feature work through Task 247 is merged into `origin/main` and local `main` (in sync at `e8ea3a34`, 0 ahead / 0 behind).** The "NOT merged to main" notes further down this file are historical and no longer reflect reality. Verified merged (some via squash, which hides them from `git merge-base --is-ancestor`): 242 strict pricing, 243-A/B/C+D pricing, 245 UX sweep, 246/246B Gross Profit, 247 POS.
@@ -44,7 +55,7 @@
 - 🛑 **NOT merged to main** — owner and CTO audit first.
 
 ## Next action (owner + CTO)
-Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./done/247-pos-module.md#consolidated-manual-test-script-owner-runnable) end-to-end on a fresh company with the POS module entitled. Each step is a single API call or a single UI flow. The cash-drawer / over-short paths are the headline to exercise first; the split-payment and CASH-change paths are the second headline.
+Run the consolidated manual TEST SCRIPT in [planning/done/247-pos-module.md](./done/247-pos-module.md#consolidated-manual-test-script-owner-runnable) end-to-end on a fresh company with the POS module entitled. The owner-runnable golden-path version is now [planning/qa/golden-paths/06-pos.md](./qa/golden-paths/06-pos.md). Each step is a single API call or a single UI flow. The cash-drawer / over-short paths are the headline to exercise first; the split-payment and CASH-change paths are the second headline.
 ## Task 246B complete - Sales Gross Profit report UI ready for owner QA (2026-06-20)
 
 - ✅ **Done on `codex/246-sales-gross-profit-ui`:**

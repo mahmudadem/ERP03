@@ -13,9 +13,10 @@ interface SidebarProps {
   isOpen: boolean;
   onToggle?: () => void;
   onNavigate?: () => void;
+  onMouseLeave?: () => void;
 }
 
-export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }) => {
+export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate, onMouseLeave }) => {
   const sections = useSidebarConfig();
   const { sidebarMode, sidebarPinned, toggleSidebarPinned, appearanceSettings, layoutMode } = useUserPreferences();
   const isCompact = layoutMode === 'compact';
@@ -25,14 +26,10 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
   const isPinnedAndDocked = sidebarPinned && isDesktop;
   const isFlyoutMode = sidebarMode === 'submenus';
 
-  const [isHovered, setIsHovered] = React.useState(false);
-  const isSidebarExpanded = isOpen || (isHovered && isFlyoutMode && isDesktop);
+  const isSidebarExpanded = isOpen;
 
-  // When the user clicks a nav item the cursor stays inside the sidebar,
-  // so onMouseLeave never fires. Reset isHovered here so the sidebar
-  // collapses immediately after navigation instead of waiting for mouse-out.
+  // When the user clicks a nav item the cursor stays inside the sidebar.
   const handleNavigate = React.useCallback(() => {
-    setIsHovered(false);
     if (onNavigate) onNavigate();
   }, [onNavigate]);
 
@@ -138,8 +135,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ isOpen, onToggle, onNavigate }
 
   return (
     <aside
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      onMouseLeave={onMouseLeave}
       className={clsx(
         "fixed flex flex-col print:hidden bg-[var(--app-sidebar-surface)] border-[var(--color-border)] transition-all duration-300 ease-out",
         !isFlyoutMode && "main-sidebar-accordion",

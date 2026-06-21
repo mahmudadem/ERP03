@@ -66,9 +66,21 @@ frontend/src/modules/pos/pages/                 PosHomePage, PosSettingsPage, Po
 }
 ```
 
-…and a `SettlementInput` (`CASH_FULL` for single-tender exact cash, `MULTI` for split/change). It then calls the existing `CreateAndPostSalesInvoiceUseCase` from `SalesInvoiceUseCases`. **No new posting, no new tax, no new COGS, no new inventory logic.** The Sales use case does what it always did, with a form-scoped governance rule `{ scope:'form', formType:'pos_sale', action:'allow', persona:'direct' }` flipped on by the `allowPosDirectSales` toggle in POS Settings.
+…and a `SettlementInput` (`CASH_FULL` for single-tender exact cash, `MULTI` for split/change). Settlement accounts are resolved from the active register, not from company-level POS Settings:
+
+- `CASH` uses `PosRegister.cashDrawerAccountId`.
+- `CARD`, `BANK_TRANSFER`, and `CUSTOM` use `PosRegister.settlementAccountIds[method]`.
+- Missing non-cash register settlement accounts block the sale before draft Sales Invoice creation.
+
+It then calls the existing `CreateAndPostSalesInvoiceUseCase` from `SalesInvoiceUseCases`. **No new posting, no new tax, no new COGS, no new inventory logic.** The Sales use case does what it always did, with a form-scoped governance rule `{ scope:'form', formType:'pos_sale', action:'allow', persona:'direct' }` flipped on by the `allowPosDirectSales` toggle in POS Settings.
 
 Returns go through the same boundary via `CreateSalesReturnUseCase` + `PostSalesReturnUseCase` against the receipt's linked `salesInvoiceId` (`AFTER_INVOICE`).
+
+### 3a. Cashier screen, bootstrap, and frontend data contract
+
+- **Bootstrap (`GetPosBootstrapUseCase`)** hydrates the terminal in one call. The cashier screen calls it with only `cashierUserId` (no register picker), so the use case resolves the **active register itself**: an explicit `registerId` wins, else a lone `ACTIVE` register (else a lone register of any status). The open shift is then read for that register, with a fallback to the cashier's own open shift (whose register is hydrated if none was picked). Without this resolution the terminal wrongly shows "No open shift for this register."
+- **`posApi` unwrap contract:** the global axios response interceptor (`setupErrorInterceptor`) already unwraps the `{ success, data }` envelope to the bare payload. Any per-module helper must therefore use the resilient `r?.data?.data ?? r?.data ?? r` form (falls through to the already-unwrapped value). A 2-level `r.data.data ?? r.data` form silently resolves to `undefined` and makes every read look "not persisted." All POS reads go through `ok()`, which uses the resilient form.
+- **`PosTerminalPage`** is a product-grid + order-panel checkout (search/scan tiles → cart with qty steppers → totals → green Pay → React-state tender dialog driven by the enabled payment methods). It never posts directly — `previewSale` supplies the authoritative tax-inclusive quote and `completeSale` posts the SI. Items with a non-positive sale price are blocked from the cart.
 
 ## 4. Money / stock safety
 
@@ -76,12 +88,15 @@ Returns go through the same boundary via `CreateSalesReturnUseCase` + `PostSales
 - Over/short voucher: only posted when variance ≠ 0; balanced Dr/Cr; missing over/short account blocks close with a readable error.
 - `PersonaNotAllowedError` from Sales is surfaced as-is, never caught-and-converted.
 - CASH change is netted off the SI settlement (settlement total = receipt grand total).
+- All POS money in/out is register-attributed: cash drawer, non-cash settlement accounts, sale cash movements, refunds, and shift close variance all carry the register context.
 - `allowPosDirectSales` toggle is the **only** way to let POS post direct sales. `workflowMode` is never touched.
 - Cash math: `expectedCash = openingFloat + SALE_CASH − REFUND_CASH + PAYIN − PAYOUT − DROP`.
 
 ## 5. Tenant isolation
 
 Every read is `(companyId, id)`-scoped. Settings is keyed on `companyId`. The `companyModuleGuard('pos')` runs at the tenant router mount before any of the POS routes.
+
+POS Settings persists as a **full document** — `FirestorePosSettingsRepository.saveSettings` writes the complete entity (no `{ merge: true }`), so blanked optional fields (walk-in customer, cash over/short accounts, payment-method label) are actually cleared rather than retaining a previous value. The Settings page sends `''` (not `undefined`) for cleared fields so the clear survives JSON serialization and reaches the repository.
 
 ## 6. Permissions (full set, in `PermissionCatalog.ts`)
 

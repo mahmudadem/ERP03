@@ -26,7 +26,7 @@ import { VoucherTypeInstallController } from '../controllers/system/VoucherTypeI
 import multer from 'multer';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
-import { permissionGuard } from '../middlewares/guards/permissionGuard';
+import { anyPermissionGuard, permissionGuard } from '../middlewares/guards/permissionGuard';
 
 
 const router = Router();
@@ -35,10 +35,10 @@ router.use(authMiddleware);
 router.use(companyContextMiddleware);
 
 // Accounts
-router.get('/accounts', permissionGuard('accounting.accounts.view'), AccountController.list);
+router.get('/accounts', anyPermissionGuard(['accounting.accounts.view', 'pos.settings.manage', 'pos.registers.manage']), AccountController.list);
 router.get('/accounts/valid', permissionGuard('accounting.vouchers.create'), AccountController.getValid);
 router.get('/accounts/resolve/:code', permissionGuard('accounting.vouchers.create'), AccountController.resolveCode);
-router.get('/accounts/:id', permissionGuard('accounting.accounts.view'), AccountController.getById);
+router.get('/accounts/:id', anyPermissionGuard(['accounting.accounts.view', 'pos.settings.manage', 'pos.registers.manage']), AccountController.getById);
 router.post('/accounts', permissionGuard('accounting.accounts.create'), AccountController.create);
 router.post('/accounts/batch-update-subgroups', permissionGuard('accounting.accounts.edit'), AccountController.batchUpdateSubgroups);
 router.put('/accounts/:id', permissionGuard('accounting.accounts.edit'), AccountController.update);

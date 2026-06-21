@@ -254,7 +254,8 @@ export const moduleMenuMap: Record<
     icon: '2gears',
     items: [
       { label: 'Forms Designer', path: '/tools/forms-designer', icon: 'Layout' },
-      { label: 'UI Lab 🎨', path: '/dev/ui-lab', icon: 'Sparkles' }
+      { label: 'UI Lab 🎨', path: '/dev/ui-lab', icon: 'Sparkles' },
+      { label: 'Report Demo', path: '/dev/report-table-demo', icon: 'FlaskConical' }
     ],
   },
   'ai-assistant': {

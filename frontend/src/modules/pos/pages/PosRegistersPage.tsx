@@ -51,6 +51,7 @@ const PosRegistersPage: React.FC<Props> = () => {
       name: '',
       warehouseId: '',
       cashDrawerAccountId: '',
+      settlementAccountIds: {},
       status: 'ACTIVE',
     });
     setShowForm(true);
@@ -114,6 +115,16 @@ const PosRegistersPage: React.FC<Props> = () => {
     { key: 'branchId', label: t('pos.registers.col.branch', { defaultValue: 'Branch' }), width: '120px', priority: 2, accessor: (r) => r.branchId || '—' },
     { key: 'warehouseId', label: t('pos.registers.col.warehouse', { defaultValue: 'Warehouse' }), width: '180px', priority: 2, accessor: (r) => r.warehouseId },
     { key: 'cashDrawerAccountId', label: t('pos.registers.col.cashAccount', { defaultValue: 'Cash account' }), width: '180px', priority: 2, accessor: (r) => r.cashDrawerAccountId },
+    {
+      key: 'settlementAccountIds',
+      label: t('pos.registers.col.settlementAccounts', { defaultValue: 'Non-cash accounts' }),
+      width: '180px',
+      priority: 3,
+      accessor: (r) => {
+        const accounts = r.settlementAccountIds || {};
+        return ['CARD', 'BANK_TRANSFER', 'CUSTOM'].filter((method) => !!accounts[method as keyof typeof accounts]).length;
+      },
+    },
     {
       key: 'status', label: t('pos.registers.col.status', { defaultValue: 'Status' }), width: '100px', priority: 1,
       render: (_v, r) => (
@@ -195,8 +206,42 @@ const PosRegistersPage: React.FC<Props> = () => {
                 <AccountSelector
                   value={editing.cashDrawerAccountId}
                   onChange={(a) => setEditing({ ...editing, cashDrawerAccountId: a?.id || '' })}
+                  allowedClassifications={['ASSET']}
+                  contextLabel={t('pos.registers.cashAccountContext', { defaultValue: 'Cash/Bank asset' })}
+                  enforceClassification
+                  enforceScope
                 />
+                <div className="text-xs text-slate-500 mt-1">
+                  {t('pos.registers.cashDrawerHelp', { defaultValue: 'Used for all CASH sales, cash refunds, cash movements, and over/short close entries for this register.' })}
+                </div>
               </div>
+
+              {(['CARD', 'BANK_TRANSFER', 'CUSTOM'] as const).map((method) => (
+                <div key={method} className="md:col-span-2">
+                  <label className="block text-sm font-medium mb-1">
+                    {t(`pos.registers.settlement.${method}`, { defaultValue: `${method} settlement account` })}
+                  </label>
+                  <AccountSelector
+                    value={editing.settlementAccountIds?.[method] || ''}
+                    onChange={(a) =>
+                      setEditing({
+                        ...editing,
+                        settlementAccountIds: {
+                          ...(editing.settlementAccountIds || {}),
+                          [method]: a?.id || '',
+                        },
+                      })
+                    }
+                    allowedClassifications={['ASSET']}
+                    contextLabel={t('pos.registers.cashAccountContext', { defaultValue: 'Cash/Bank asset' })}
+                    enforceClassification
+                    enforceScope
+                  />
+                  <div className="text-xs text-slate-500 mt-1">
+                    {t('pos.registers.nonCashSettlementHelp', { defaultValue: 'Used when this register accepts this non-cash method. Leave blank only if the method is not used at this register.' })}
+                  </div>
+                </div>
+              ))}
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <button

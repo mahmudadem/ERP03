@@ -16,5 +16,6 @@ router.get('/notifications/count', NotificationController.getUnreadCount);
 router.post('/notifications/read-all', NotificationController.markAllAsRead);
 router.post('/notifications/test', NotificationController.createTest);
 router.post('/notifications/:id/read', NotificationController.markAsRead);
+router.post('/notifications/:id/unread', NotificationController.markAsUnread);
 
 export default router;

@@ -1,23 +1,38 @@
 /**
- * PosTerminalPage.tsx — Phase 2 cashier screen.
+ * PosTerminalPage.tsx — Cashier checkout screen.
  *
- * Layout: product search (left) | cart (center) | tender (right).
- * Uses shared ItemSelector-free product search (debounced) + shared PartySelector
- * for customer + a ConfirmDialog on Complete Sale.
+ * Layout (modeled on Square / Loyverse / Shopify POS):
+ *   ┌─ context bar: register · shift · cashier · last receipt ──────────────┐
+ *   │  Products pane (search + scan + tile grid)  │  Order pane (cart,      │
+ *   │                                              │  totals, customer, Pay) │
+ *   └───────────────────────────────────────────────────────────────────────┘
+ *
+ * Backend stays authoritative: `previewSale` supplies the tax-inclusive quote,
+ * `completeSale` posts the Sales Invoice. The screen only collects intent.
  */
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { posApi, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
-import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
-import { Spinner } from '../../../components/ui/Spinner';
 import { errorHandler } from '../../../services/errorHandler';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Calculator, Plus, Trash2, Receipt, AlertTriangle } from 'lucide-react';
+import {
+  Search,
+  Plus,
+  Minus,
+  Trash2,
+  Receipt,
+  AlertTriangle,
+  ShoppingCart,
+  CreditCard,
+  Banknote,
+  Landmark,
+  Wallet,
+  ScanLine,
+} from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
@@ -31,13 +46,34 @@ interface CartLine {
   lineTotal: number;
 }
 
+type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+
 interface Payment {
-  method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+  method: PaymentMethod;
   amount: number;
   reference?: string;
 }
 
 interface Props { isWindow?: boolean }
+
+const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+const money = (n: number): string =>
+  (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const METHOD_META: Record<PaymentMethod, { label: string; Icon: typeof Banknote }> = {
+  CASH: { label: 'Cash', Icon: Banknote },
+  CARD: { label: 'Card', Icon: CreditCard },
+  BANK_TRANSFER: { label: 'Bank', Icon: Landmark },
+  CUSTOM: { label: 'Other', Icon: Wallet },
+};
+
+const initialsOf = (name: string): string =>
+  (name || '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() || '')
+    .join('') || '?';
 
 const PosTerminalPage: React.FC<Props> = () => {
   const { t } = useTranslation();
@@ -56,6 +92,13 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [completing, setCompleting] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any | null>(null);
+
+  // Tender form (React state — no more getElementById)
+  const [tenderMethod, setTenderMethod] = useState<PaymentMethod>('CASH');
+  const [tenderAmount, setTenderAmount] = useState<string>('');
+  const [tenderRef, setTenderRef] = useState<string>('');
+
+  const searchRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -97,6 +140,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   const subtotal = useMemo(() => cart.reduce((s, l) => s + l.qty * l.unitPrice, 0), [cart]);
   const discountTotal = useMemo(() => cart.reduce((s, l) => s + l.lineDiscount, 0), [cart]);
+  const itemCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
 
   // Tax-inclusive total comes from the backend quote (same calc the SI uses). While the
   // quote loads we fall back to a tax-exclusive estimate; the backend stays authoritative.
@@ -117,12 +161,35 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   const taxTotal = quote?.taxTotal ?? 0;
   const grandTotal = quote?.grandTotal ?? Math.max(0, subtotal - discountTotal);
-  const tenderedCash = useMemo(() => payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0), [payments]);
-  const tenderedTotal = useMemo(() => payments.reduce((s, p) => s + p.amount, 0), [payments]);
+  const stagedPayment = useMemo<Payment | null>(() => {
+    if (!showPayDialog) return null;
+    const amount = round2(Number(tenderAmount) || 0);
+    if (amount <= 0) return null;
+    return { method: tenderMethod, amount, reference: tenderRef || undefined };
+  }, [showPayDialog, tenderAmount, tenderMethod, tenderRef]);
+  const salePayments = useMemo<Payment[]>(
+    () => (stagedPayment ? [...payments, stagedPayment] : payments),
+    [payments, stagedPayment]
+  );
+  const tenderedCash = useMemo(() => salePayments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0), [salePayments]);
+  const tenderedTotal = useMemo(() => salePayments.reduce((s, p) => s + p.amount, 0), [salePayments]);
   const change = Math.max(0, tenderedCash - grandTotal);
   const paid = tenderedTotal - change;
+  const balanceDue = round2(Math.max(0, grandTotal - paid));
+
+  const enabledMethods = useMemo<PaymentMethod[]>(() => {
+    const enabled = (bootstrap?.settings?.paymentMethods || [])
+      .filter((m) => m.isEnabled)
+      .map((m) => m.code as PaymentMethod);
+    return enabled.length ? enabled : ['CASH'];
+  }, [bootstrap?.settings]);
 
   const onAddToCart = (item: any) => {
+    const unitPrice = Number(item.salePrice || 0);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      toast.error(t('pos.terminal.priceRequired', { defaultValue: 'Set a sale price for this item before selling it in POS.' }));
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((l) => l.itemId === item.id);
       if (existing) {
@@ -139,15 +206,16 @@ const PosTerminalPage: React.FC<Props> = () => {
           itemCode: item.code || '',
           itemName: item.name || '',
           qty: 1,
-          unitPrice: Number(item.salePrice || 0),
+          unitPrice,
           lineDiscount: 0,
-          lineTotal: round2(Number(item.salePrice || 0)),
+          lineTotal: round2(unitPrice),
         },
       ];
     });
   };
 
   const onUpdateQty = (itemId: string, qty: number) => {
+    if (qty <= 0) { onRemoveLine(itemId); return; }
     setCart((prev) =>
       prev.map((l) =>
         l.itemId === itemId
@@ -161,12 +229,42 @@ const PosTerminalPage: React.FC<Props> = () => {
     setCart((prev) => prev.filter((l) => l.itemId !== itemId));
   };
 
-  const onAddPayment = (p: Payment) => {
-    setPayments((prev) => [...prev, p]);
+  const onClearSale = () => {
+    setCart([]);
+    setPayments([]);
+    setSearchQuery('');
+    searchRef.current?.focus();
   };
 
-  const onRemovePayment = (idx: number) => {
-    setPayments((prev) => prev.filter((_, i) => i !== idx));
+  const onAddPayment = (p: Payment) => setPayments((prev) => [...prev, p]);
+  const onRemovePayment = (idx: number) => setPayments((prev) => prev.filter((_, i) => i !== idx));
+
+  // Scan flow: pressing Enter adds the top match and clears the box for the next scan.
+  const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && searchResults.length > 0) {
+      e.preventDefault();
+      onAddToCart(searchResults[0]);
+      setSearchQuery('');
+    }
+  };
+
+  const openPayDialog = () => {
+    if (cart.length === 0) return;
+    setTenderMethod(enabledMethods[0]);
+    setTenderAmount(balanceDue ? String(balanceDue) : String(round2(grandTotal)));
+    setTenderRef('');
+    setShowPayDialog(true);
+  };
+
+  const addTender = () => {
+    const amt = round2(Number(tenderAmount) || 0);
+    if (amt <= 0) {
+      toast.error(t('pos.terminal.tenderNeedAmount', { defaultValue: 'Pick a method and amount.' }));
+      return;
+    }
+    onAddPayment({ method: tenderMethod, amount: amt, reference: tenderRef || undefined });
+    setTenderAmount('');
+    setTenderRef('');
   };
 
   const onCompleteSale = async () => {
@@ -186,19 +284,16 @@ const PosTerminalPage: React.FC<Props> = () => {
         registerId: register.id,
         shiftId: shift.id,
         customerId,
-        lines: cart.map((l) => ({
-          itemId: l.itemId,
-          qty: l.qty,
-          unitPrice: l.unitPrice,
-        })),
-        payments,
+        lines: cart.map((l) => ({ itemId: l.itemId, qty: l.qty, unitPrice: l.unitPrice })),
+        payments: salePayments,
       });
       const data = unwrap<any>(result);
       setLastReceipt(data);
       toast.success(t('pos.terminal.completed', { defaultValue: 'Sale completed.' }));
-      // Reset cart
       setCart([]);
       setPayments([]);
+      setSearchQuery('');
+      searchRef.current?.focus();
     } catch (err: any) {
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to complete sale.');
     } finally {
@@ -208,7 +303,14 @@ const PosTerminalPage: React.FC<Props> = () => {
   };
 
   if (loading) {
-    return <div className="p-6 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>;
+    return (
+      <div className="flex h-full items-center justify-center bg-slate-50 dark:bg-[var(--color-bg-primary)]">
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-[var(--color-text-secondary)]">
+          <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+          {t('common.loading', { defaultValue: 'Loading…' })}
+        </div>
+      </div>
+    );
   }
 
   const register = bootstrap?.register;
@@ -217,142 +319,285 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   if (!register || !shift) {
     return (
-      <div className="p-6">
-        <Card>
-          <div className="p-6 text-center space-y-3">
-            <AlertTriangle className="w-8 h-8 text-amber-500 mx-auto" />
-            <p className="text-sm text-slate-700">
-              {t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' })}
-            </p>
-            <button
-              onClick={() => navigate('/pos/shift')}
-              className="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm"
-            >
-              {t('pos.terminal.openShiftCta', { defaultValue: 'Open a shift' })}
-            </button>
+      <div className="flex h-full items-center justify-center bg-slate-50 p-6 dark:bg-[var(--color-bg-primary)]">
+        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
+          <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-500/15">
+            <AlertTriangle className="h-6 w-6 text-amber-500" />
           </div>
-        </Card>
+          <p className="text-sm font-medium text-slate-700 dark:text-[var(--color-text-primary)]">
+            {t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' })}
+          </p>
+          <p className="mt-1 text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+            {t('pos.terminal.needOpenShiftHelp', { defaultValue: 'Open a shift to start taking sales on this till.' })}
+          </p>
+          <button
+            onClick={() => navigate('/pos/shift')}
+            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer"
+          >
+            {t('pos.terminal.openShiftCta', { defaultValue: 'Open a shift' })}
+          </button>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="h-full p-3 grid grid-cols-12 gap-3 bg-slate-50">
-      {/* Product search */}
-      <div className="col-span-4">
-        <Card>
-          <div className="p-3 space-y-2">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <Calculator className="w-4 h-4" /> {t('pos.terminal.searchTitle', { defaultValue: 'Search products' })}
-            </h3>
-            <input
-              autoFocus
-              type="text"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder={t('pos.terminal.searchPlaceholder', { defaultValue: 'Scan barcode / search SKU / name' })}
-              className="w-full rounded border border-slate-300 px-3 py-2 text-sm"
-            />
-            <div className="text-xs text-slate-500">
-              {t('pos.terminal.cashierLabel', { defaultValue: 'Cashier' })}: {user?.email || userId}
+    <div className="flex h-full flex-col bg-slate-50 dark:bg-[var(--color-bg-primary)]">
+      {/* Context bar */}
+      <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
+            <ShoppingCart className="h-5 w-5" />
+          </div>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+              {register.name}
+              <span className="ml-1.5 font-mono text-xs font-normal text-slate-400">{register.code}</span>
             </div>
-            <div className="max-h-[60vh] overflow-y-auto divide-y">
-              {searching && (
-                <div className="p-3 text-xs text-slate-500">{t('common.searching', { defaultValue: 'Searching…' })}</div>
-              )}
-              {!searching && searchResults.map((it) => (
-                <button
-                  key={it.id}
-                  onClick={() => onAddToCart(it)}
-                  className="w-full text-left p-2 hover:bg-slate-50"
-                >
-                  <div className="text-sm font-medium">{it.name}</div>
-                  <div className="text-xs text-slate-500 flex justify-between">
-                    <span>{it.code}</span>
-                    <span className="font-mono">{Number(it.salePrice || 0).toFixed(2)}</span>
-                  </div>
-                </button>
-              ))}
-              {!searching && searchQuery && searchResults.length === 0 && (
-                <div className="p-3 text-xs text-slate-500">{t('pos.terminal.noResults', { defaultValue: 'No matches.' })}</div>
-              )}
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                {t('pos.terminal.shiftOpen', { defaultValue: 'Shift open' })}
+              </span>
+              <span className="text-slate-300 dark:text-[var(--color-border)]">·</span>
+              <span className="truncate">{user?.email || userId}</span>
             </div>
           </div>
-        </Card>
-      </div>
+        </div>
 
-      {/* Cart */}
-      <div className="col-span-5">
-        <Card>
-          <div className="p-3 space-y-2">
-            <h3 className="font-semibold text-sm flex items-center gap-2">
-              <Receipt className="w-4 h-4" /> {t('pos.terminal.cartTitle', { defaultValue: 'Cart' })}
-            </h3>
-            <div className="border rounded">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b">
-                    <th className="py-2 px-2">{t('pos.terminal.item', { defaultValue: 'Item' })}</th>
-                    <th className="py-2 px-2 w-16">{t('pos.terminal.qty', { defaultValue: 'Qty' })}</th>
-                    <th className="py-2 px-2 text-right">{t('pos.terminal.price', { defaultValue: 'Price' })}</th>
-                    <th className="py-2 px-2 text-right">{t('pos.terminal.total', { defaultValue: 'Total' })}</th>
-                    <th className="py-2 px-2"></th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {cart.map((l) => (
-                    <tr key={l.itemId} className="border-b last:border-b-0">
-                      <td className="py-1.5 px-2">
-                        <div className="text-sm">{l.itemName}</div>
-                        <div className="text-xs text-slate-500">{l.itemCode}</div>
-                      </td>
-                      <td className="py-1.5 px-2">
-                        <input
-                          type="number"
-                          min="0"
-                          step="0.001"
-                          value={l.qty}
-                          onChange={(e) => onUpdateQty(l.itemId, Number(e.target.value) || 0)}
-                          className="w-14 rounded border border-slate-300 px-1.5 py-0.5 text-sm"
-                        />
-                      </td>
-                      <td className="py-1.5 px-2 text-right font-mono">{l.unitPrice.toFixed(2)}</td>
-                      <td className="py-1.5 px-2 text-right font-mono">{l.lineTotal.toFixed(2)}</td>
-                      <td className="py-1.5 px-2 text-right">
-                        <button onClick={() => onRemoveLine(l.itemId)} className="p-1 text-rose-500 hover:bg-rose-50 rounded">
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                  {cart.length === 0 && (
-                    <tr><td colSpan={5} className="p-4 text-center text-xs text-slate-500">
-                      {t('pos.terminal.cartEmpty', { defaultValue: 'Cart is empty. Add items from the left.' })}
-                    </td></tr>
-                  )}
-                </tbody>
-              </table>
+        <div className="flex items-center gap-2">
+          {lastReceipt && (
+            <div className="flex items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-1.5 text-xs dark:border-emerald-500/30 dark:bg-emerald-500/10">
+              <Receipt className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+              <span className="font-medium text-emerald-700 dark:text-emerald-300">
+                {lastReceipt.receipt?.receiptNumber || lastReceipt.salesInvoiceNumber}
+              </span>
+              <span className="text-emerald-600/80 dark:text-emerald-400/80">
+                {t('pos.terminal.change', { defaultValue: 'Change' })} {money(Number(lastReceipt.change || 0))}
+              </span>
             </div>
-            <div className="space-y-1 text-sm pt-2">
-              <div className="flex justify-between">
+          )}
+          <button
+            onClick={() => navigate('/pos/shift')}
+            className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+          >
+            {t('pos.terminal.manageShift', { defaultValue: 'Shift' })}
+          </button>
+        </div>
+      </header>
+
+      {/* Workspace */}
+      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-12">
+        {/* Products pane */}
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-7">
+          <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                ref={searchRef}
+                autoFocus
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={onSearchKeyDown}
+                placeholder={t('pos.terminal.searchPlaceholder', { defaultValue: 'Scan barcode / search SKU or name' })}
+                className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+              />
+              <ScanLine className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
+            </div>
+          </div>
+
+          <div className="min-h-0 flex-1 overflow-y-auto p-3">
+            {searching && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                {Array.from({ length: 6 }).map((_, i) => (
+                  <div key={i} className="h-[88px] animate-pulse rounded-xl bg-slate-100 dark:bg-[var(--color-bg-tertiary)]" />
+                ))}
+              </div>
+            )}
+
+            {!searching && searchResults.length > 0 && (
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                {searchResults.map((it) => {
+                  const unitPrice = Number(it.salePrice || 0);
+                  const canSell = Number.isFinite(unitPrice) && unitPrice > 0;
+                  return (
+                    <button
+                      key={it.id}
+                      onClick={() => onAddToCart(it)}
+                      title={`${it.name} — ${it.code}`}
+                      className={`group flex flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] ${
+                        canSell
+                          ? 'hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer'
+                          : 'opacity-75 cursor-not-allowed'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                          {initialsOf(it.name)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">{it.name}</div>
+                          <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">{it.code}</div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className={`font-mono text-sm font-bold ${canSell ? 'text-slate-900 dark:text-[var(--color-text-primary)]' : 'text-rose-600 dark:text-rose-400'}`}>
+                          {canSell ? money(unitPrice) : t('pos.terminal.noSalePrice', { defaultValue: 'No price' })}
+                        </span>
+                        <span className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-secondary)] ${
+                          canSell
+                            ? 'bg-slate-100 text-slate-600 group-hover:bg-indigo-600 group-hover:text-white'
+                            : 'bg-rose-50 text-rose-500'
+                        }`}>
+                          <Plus className="h-4 w-4" />
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
+            {!searching && searchQuery && searchResults.length === 0 && (
+              <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+                <Search className="mb-3 h-10 w-10 text-slate-200 dark:text-[var(--color-border)]" />
+                <p className="text-sm font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.noResultsFor', { defaultValue: 'No matches for' })} “{searchQuery}”
+                </p>
+              </div>
+            )}
+
+            {!searching && !searchQuery && (
+              <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+                <ScanLine className="mb-3 h-12 w-12 text-slate-200 dark:text-[var(--color-border)]" />
+                <p className="text-sm font-medium text-slate-600 dark:text-[var(--color-text-primary)]">
+                  {t('pos.terminal.searchPrompt', { defaultValue: 'Scan or search to add products' })}
+                </p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.searchPromptHelp', { defaultValue: 'Tap a product to add it to the order. Press Enter to add the top match.' })}
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Order pane */}
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-5">
+          <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
+            <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+              <Receipt className="h-4 w-4 text-indigo-600" />
+              {t('pos.terminal.currentSale', { defaultValue: 'Current sale' })}
+              {itemCount > 0 && (
+                <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                  {itemCount}
+                </span>
+              )}
+            </h2>
+            {cart.length > 0 && (
+              <button
+                onClick={onClearSale}
+                className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-[var(--color-text-secondary)] dark:hover:bg-rose-500/10 cursor-pointer"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                {t('pos.terminal.clear', { defaultValue: 'Clear' })}
+              </button>
+            )}
+          </div>
+
+          {/* Cart lines */}
+          <div className="min-h-0 flex-1 overflow-y-auto">
+            {cart.length === 0 ? (
+              <div className="flex h-full flex-col items-center justify-center py-16 text-center">
+                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100 dark:bg-[var(--color-bg-tertiary)]">
+                  <ShoppingCart className="h-7 w-7 text-slate-300 dark:text-[var(--color-text-secondary)]" />
+                </div>
+                <p className="text-sm font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.cartEmpty', { defaultValue: 'Cart is empty' })}
+                </p>
+                <p className="mt-1 text-xs text-slate-400 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.cartEmptyHelp', { defaultValue: 'Add items from the product list.' })}
+                </p>
+              </div>
+            ) : (
+              <ul className="divide-y divide-slate-100 dark:divide-[var(--color-border)]">
+                {cart.map((l) => (
+                  <li key={l.itemId} className="flex items-center gap-3 px-4 py-2.5">
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate text-sm font-medium text-slate-900 dark:text-[var(--color-text-primary)]">{l.itemName}</div>
+                      <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">
+                        {l.itemCode} · {money(l.unitPrice)}
+                      </div>
+                    </div>
+
+                    {/* Qty stepper */}
+                    <div className="flex flex-none items-center rounded-lg border border-slate-200 dark:border-[var(--color-border)]">
+                      <button
+                        onClick={() => onUpdateQty(l.itemId, round2(l.qty - 1))}
+                        aria-label={t('pos.terminal.decrease', { defaultValue: 'Decrease quantity' })}
+                        className="flex h-8 w-8 items-center justify-center rounded-l-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+                      >
+                        <Minus className="h-3.5 w-3.5" />
+                      </button>
+                      <input
+                        type="number"
+                        min="0"
+                        step="0.001"
+                        value={l.qty}
+                        onChange={(e) => onUpdateQty(l.itemId, Number(e.target.value) || 0)}
+                        aria-label={t('pos.terminal.qty', { defaultValue: 'Qty' })}
+                        className="h-8 w-12 border-x border-slate-200 bg-transparent text-center text-sm text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                      <button
+                        onClick={() => onUpdateQty(l.itemId, round2(l.qty + 1))}
+                        aria-label={t('pos.terminal.increase', { defaultValue: 'Increase quantity' })}
+                        className="flex h-8 w-8 items-center justify-center rounded-r-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+
+                    <div className="w-20 flex-none text-right font-mono text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+                      {money(l.lineTotal)}
+                    </div>
+                    <button
+                      onClick={() => onRemoveLine(l.itemId)}
+                      aria-label={t('pos.terminal.remove', { defaultValue: 'Remove line' })}
+                      className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 cursor-pointer"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          {/* Totals + customer + pay */}
+          <div className="flex-none space-y-3 border-t border-slate-100 bg-slate-50/60 p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/40">
+            <div className="space-y-1.5 text-sm">
+              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
                 <span>{t('pos.terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
-                <span className="font-mono">{subtotal.toFixed(2)}</span>
+                <span className="font-mono">{money(subtotal)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
                 <span>{t('pos.terminal.discount', { defaultValue: 'Discount' })}</span>
-                <span className="font-mono">{discountTotal.toFixed(2)}</span>
+                <span className="font-mono">{money(discountTotal)}</span>
               </div>
-              <div className="flex justify-between">
+              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
                 <span>{t('pos.terminal.tax', { defaultValue: 'Tax' })}</span>
-                <span className="font-mono">{taxTotal.toFixed(2)}</span>
+                <span className="font-mono">{money(taxTotal)}</span>
               </div>
-              <div className="flex justify-between text-lg font-bold">
-                <span>{t('pos.terminal.grandTotal', { defaultValue: 'Grand total' })}</span>
-                <span className="font-mono">{grandTotal.toFixed(2)}</span>
+              <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 dark:border-[var(--color-border)]">
+                <span className="text-base font-bold text-slate-900 dark:text-[var(--color-text-primary)]">
+                  {t('pos.terminal.grandTotal', { defaultValue: 'Total' })}
+                </span>
+                <span className="font-mono text-xl font-extrabold text-slate-900 dark:text-[var(--color-text-primary)]">{money(grandTotal)}</span>
               </div>
             </div>
-            <div className="pt-2">
-              <label className="block text-xs font-medium mb-1">
+
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
                 {t('pos.terminal.customer', { defaultValue: 'Customer' })}
               </label>
               <PartySelector
@@ -361,134 +606,154 @@ const PosTerminalPage: React.FC<Props> = () => {
                 onChange={(p) => setCustomerId(p?.id || settings?.walkInCustomerId)}
               />
             </div>
+
             <button
-              onClick={() => setShowPayDialog(true)}
+              onClick={openPayDialog}
               disabled={cart.length === 0}
-              className="w-full mt-2 px-3 py-2 rounded bg-indigo-600 text-white text-sm disabled:opacity-50"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-base font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
             >
+              <CreditCard className="h-5 w-5" />
               {t('pos.terminal.pay', { defaultValue: 'Pay' })}
+              <span className="font-mono">{money(grandTotal)}</span>
             </button>
           </div>
-        </Card>
-      </div>
-
-      {/* Tender + last receipt */}
-      <div className="col-span-3 space-y-3">
-        {lastReceipt && (
-          <Card>
-            <div className="p-3 space-y-2">
-              <h3 className="font-semibold text-sm">{t('pos.terminal.lastReceipt', { defaultValue: 'Last receipt' })}</h3>
-              <div className="text-xs text-slate-500">
-                {t('pos.terminal.receiptNumber', { defaultValue: 'Receipt' })}: <span className="font-mono">{lastReceipt.receipt?.receiptNumber}</span>
-              </div>
-              <div className="text-xs text-slate-500">
-                {t('pos.terminal.siNumber', { defaultValue: 'Sales Invoice' })}: <span className="font-mono">{lastReceipt.salesInvoiceNumber}</span>
-              </div>
-              <div className="text-xs text-slate-500">
-                {t('pos.terminal.change', { defaultValue: 'Change' })}: <span className="font-mono">{Number(lastReceipt.change || 0).toFixed(2)}</span>
-              </div>
-            </div>
-          </Card>
-        )}
+        </aside>
       </div>
 
       {/* Tender dialog */}
       <ConfirmDialog
         isOpen={showPayDialog}
-        title={t('pos.terminal.tenderTitle', { defaultValue: 'Tender' })}
+        title={t('pos.terminal.tenderTitle', { defaultValue: 'Take payment' })}
         message={
-          <div className="space-y-3">
-            <div className="grid grid-cols-3 gap-2 text-sm">
+          <div className="space-y-4">
+            {/* Amount due banner */}
+            <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-[var(--color-bg-tertiary)]">
+              <span className="text-sm font-medium text-slate-600 dark:text-[var(--color-text-secondary)]">
+                {t('pos.terminal.balanceDue', { defaultValue: 'Balance due' })}
+              </span>
+              <span className="font-mono text-lg font-bold text-slate-900 dark:text-[var(--color-text-primary)]">{money(balanceDue)}</span>
+            </div>
+
+            {/* Method buttons */}
+            <div>
+              <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                {t('pos.terminal.method', { defaultValue: 'Method' })}
+              </label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {enabledMethods.map((m) => {
+                  const meta = METHOD_META[m];
+                  const Icon = meta.Icon;
+                  const active = tenderMethod === m;
+                  return (
+                    <button
+                      key={m}
+                      type="button"
+                      onClick={() => setTenderMethod(m)}
+                      className={`flex flex-col items-center gap-1 rounded-xl border px-2 py-2.5 text-xs font-semibold transition-colors cursor-pointer ${
+                        active
+                          ? 'border-indigo-500 bg-indigo-50 text-indigo-700 dark:border-indigo-400 dark:bg-indigo-500/15 dark:text-indigo-300'
+                          : 'border-slate-200 text-slate-600 hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)]'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {meta.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Amount + reference */}
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium mb-1">{t('pos.terminal.method', { defaultValue: 'Method' })}</label>
-                <select
-                  id="tender-method"
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                  defaultValue="CASH"
-                >
-                  <option value="CASH">CASH</option>
-                  <option value="CARD">CARD</option>
-                  <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-                  <option value="CUSTOM">CUSTOM</option>
-                </select>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.amount', { defaultValue: 'Amount' })}
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={tenderAmount}
+                    onChange={(e) => setTenderAmount(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addTender(); } }}
+                    placeholder="0.00"
+                    className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setTenderAmount(String(balanceDue))}
+                    className="flex-none rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+                  >
+                    {t('pos.terminal.exact', { defaultValue: 'Exact' })}
+                  </button>
+                </div>
               </div>
               <div>
-                <label className="block text-xs font-medium mb-1">{t('pos.terminal.amount', { defaultValue: 'Amount' })}</label>
+                <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.reference', { defaultValue: 'Reference' })}
+                </label>
                 <input
-                  id="tender-amount"
-                  type="number"
-                  min="0"
-                  step="0.01"
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-medium mb-1">{t('pos.terminal.reference', { defaultValue: 'Reference' })}</label>
-                <input
-                  id="tender-ref"
                   type="text"
-                  className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
+                  value={tenderRef}
+                  onChange={(e) => setTenderRef(e.target.value)}
+                  placeholder={t('pos.terminal.referenceOptional', { defaultValue: 'Optional' })}
+                  className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
                 />
               </div>
             </div>
+
             <button
-              onClick={() => {
-                const method = (document.getElementById('tender-method') as HTMLSelectElement)?.value as any;
-                const amount = Number((document.getElementById('tender-amount') as HTMLInputElement)?.value) || 0;
-                const ref = (document.getElementById('tender-ref') as HTMLInputElement)?.value;
-                if (!method || amount <= 0) {
-                  toast.error(t('pos.terminal.tenderNeedAmount', { defaultValue: 'Pick a method and amount.' }));
-                  return;
-                }
-                onAddPayment({ method, amount, reference: ref || undefined });
-                (document.getElementById('tender-amount') as HTMLInputElement).value = '';
-                (document.getElementById('tender-ref') as HTMLInputElement).value = '';
-              }}
-              className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-slate-300 text-sm"
+              type="button"
+              onClick={addTender}
+              className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 cursor-pointer"
             >
-              <Plus className="w-3.5 h-3.5" /> {t('pos.terminal.addTender', { defaultValue: 'Add tender' })}
+              <Plus className="h-4 w-4" /> {t('pos.terminal.addTender', { defaultValue: 'Add payment' })}
             </button>
 
+            {/* Tender list */}
             {payments.length > 0 && (
-              <div className="border rounded">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="text-left text-xs text-slate-500 border-b">
-                      <th className="py-1 px-2">{t('pos.terminal.method', { defaultValue: 'Method' })}</th>
-                      <th className="py-1 px-2 text-right">{t('pos.terminal.amount', { defaultValue: 'Amount' })}</th>
-                      <th className="py-1 px-2"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {payments.map((p, i) => (
-                      <tr key={i} className="border-b last:border-b-0">
-                        <td className="py-1 px-2">{p.method}{p.reference ? ` (${p.reference})` : ''}</td>
-                        <td className="py-1 px-2 text-right font-mono">{p.amount.toFixed(2)}</td>
-                        <td className="py-1 px-2 text-right">
-                          <button onClick={() => onRemovePayment(i)} className="p-1 text-rose-500 hover:bg-rose-50 rounded">
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+              <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-[var(--color-border)] dark:border-[var(--color-border)]">
+                {payments.map((p, i) => {
+                  const Icon = METHOD_META[p.method].Icon;
+                  return (
+                    <li key={i} className="flex items-center gap-2 px-3 py-2 text-sm">
+                      <Icon className="h-4 w-4 text-slate-400" />
+                      <span className="flex-1 text-slate-700 dark:text-[var(--color-text-primary)]">
+                        {METHOD_META[p.method].label}
+                        {p.reference ? <span className="ml-1 text-xs text-slate-400">({p.reference})</span> : null}
+                      </span>
+                      <span className="font-mono font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">{money(p.amount)}</span>
+                      <button
+                        onClick={() => onRemovePayment(i)}
+                        aria-label={t('pos.terminal.remove', { defaultValue: 'Remove' })}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
             )}
 
-            <div className="text-sm space-y-1 pt-2 border-t">
-              <div className="flex justify-between">
-                <span>{t('pos.terminal.tendered', { defaultValue: 'Tendered' })}:</span>
-                <span className="font-mono">{tenderedTotal.toFixed(2)}</span>
+            {/* Tender summary */}
+            <div className="space-y-1 border-t border-slate-200 pt-3 text-sm dark:border-[var(--color-border)]">
+              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
+                <span>{t('pos.terminal.tendered', { defaultValue: 'Tendered' })}</span>
+                <span className="font-mono">{money(tenderedTotal)}</span>
               </div>
-              <div className="flex justify-between">
-                <span>{t('pos.terminal.change', { defaultValue: 'Change' })}:</span>
-                <span className="font-mono">{change.toFixed(2)}</span>
+              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
+                <span>{t('pos.terminal.change', { defaultValue: 'Change' })}</span>
+                <span className="font-mono">{money(change)}</span>
               </div>
-              <div className="flex justify-between font-semibold">
-                <span>{t('pos.terminal.applied', { defaultValue: 'Applied to invoice' })}:</span>
-                <span className="font-mono">{paid.toFixed(2)}</span>
+              <div className={`flex justify-between font-bold ${balanceDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                <span>
+                  {balanceDue > 0
+                    ? t('pos.terminal.balanceDue', { defaultValue: 'Balance due' })
+                    : t('pos.terminal.fullyPaid', { defaultValue: 'Fully paid' })}
+                </span>
+                <span className="font-mono">{money(balanceDue)}</span>
               </div>
             </div>
           </div>
@@ -496,12 +761,12 @@ const PosTerminalPage: React.FC<Props> = () => {
         tone="info"
         onConfirm={onCompleteSale}
         onCancel={() => setShowPayDialog(false)}
-        confirmLabel={completing ? '…' : t('pos.terminal.completeSale', { defaultValue: 'Complete sale' })}
+        confirmLabel={completing
+          ? t('common.processing', { defaultValue: 'Processing…' })
+          : t('pos.terminal.completeSale', { defaultValue: 'Complete sale' })}
       />
     </div>
   );
 };
-
-const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
 export default PosTerminalPage;

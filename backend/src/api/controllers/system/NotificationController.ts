@@ -114,6 +114,29 @@ export class NotificationController {
   }
 
   /**
+   * POST /notifications/:id/unread
+   * Mark a notification as unread
+   */
+  static async markAsUnread(req: Request, res: Response): Promise<void> {
+    try {
+      const userId = (req as any).user?.uid;
+      const notificationId = req.params.id;
+
+      if (!userId) {
+        res.status(401).json({ error: 'Unauthorized' });
+        return;
+      }
+
+      await diContainer.notificationService.markAsUnread(notificationId, userId);
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[NotificationController] markAsUnread error:', error);
+      res.status(500).json({ error: error.message || 'Failed to mark notification as unread' });
+    }
+  }
+
+  /**
    * POST /notifications/read-all
    * Mark all notifications as read for current user
    */

@@ -2,6 +2,91 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (POS tender staged-payment bug)
+
+- **Goal:** Fix owner QA screenshot where the POS payment modal showed an entered amount but still rejected completion with `Tendered total does not match grand total.`
+- **What was done:** Updated `frontend/src/modules/pos/pages/PosTerminalPage.tsx` so the visible tender method/amount/reference is treated as a staged payment while the dialog is open. The tendered/change/balance summary and `completeSale` payload now use committed payment rows plus the staged row. The explicit **Add payment** button still commits the current staged row for split-payment workflows.
+- **Accounting/ERP impact:** Frontend tender-state fix only. No backend posting, settlement-account routing, voucher, tax, COGS, inventory, AR/AP, tenant isolation, or governance behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report, confirm, SoD, TypeScript, and Vite checks; existing browser-data/bundle warnings remain.
+- **Time spent:** ~0.4h.
+- **Next:** Owner should retest one exact-cash POS sale by typing/using the prefilled amount and clicking **Complete sale** directly; then continue GP06 cash/over-short validation.
+
+### Session: 2026-06-21 (POS QA fix — zero-price terminal sale posting guard)
+
+- **Goal:** Fix owner QA screenshot where completing a POS sale failed with `Critical Error / INFRA_999`: `Subledger voucher SI-SI-00004 must have at least two lines after assembly (got 0)`.
+- **What was done:** Added a backend guard in `CompletePosSaleUseCase` that rejects empty carts, invalid quantities, non-finite payment amounts, and POS lines with `unitPrice <= 0` before any Sales Invoice draft is created. Added a regression test proving zero-priced POS lines do not call Sales Invoice create/post. Added a matching cashier-screen guard: zero-price search results show **No price** and cannot be added to the cart; attempting to add one shows a toast.
+- **Accounting/ERP impact:** Control fix. A zero-value POS sale no longer reaches Sales Invoice posting or subledger voucher assembly. No Sales Invoice math, tax, COGS, inventory movement, settlement routing, AR/AP, tenant scope, or voucher posting logic was changed.
+- **Verification:** `npm --prefix backend test -- --runInBand src/tests/application/pos/CompletePosSale.test.ts` passed (12/12). `npm --prefix frontend run typecheck` passed. `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed. `npm --prefix frontend run build` passed with existing browser-data/dynamic-import/chunk-size warnings only.
+- **Time spent:** ~0.5h.
+- **Next:** Retest the POS terminal with the same item. If it shows **No price**, set a positive sale price on the item master or price source before selling; then complete the sale again and confirm SI + receipt vouchers post normally.
+
+### Session: 2026-06-21 (POS QA fix — root-cause persistence + terminal shift + cashier UX)
+
+- **Goal:** Owner QA: (a) POS Settings "saves but does not persist", (b) POS Terminal says "No open shift for this register" while a shift is open, (c) the cashier screen is too basic.
+- **What was done:**
+  - **Root cause of (a) found and fixed:** `posApi`'s `ok()` helper double-unwrapped responses. The global response interceptor (`setupErrorInterceptor`) already strips the `{ success, data }` envelope, but `ok()` unwrapped again with a 2-level form (`r.data.data ?? r.data`) that lacked the `?? r` fallback every other api module uses — so **every POS read resolved to `undefined`**, the page fell back to defaults, and each save appeared to revert with a success toast. Fixed `ok()` to `r?.data?.data ?? r?.data ?? r`. This repairs all POS endpoints, not just settings.
+  - **(b) fixed:** `GetPosBootstrapUseCase` only resolved the register/open-shift when a `registerId` was passed, but the terminal calls bootstrap with only `cashierUserId`. It now resolves a default register (a lone active register) and its open shift, with a fallback to the cashier's open shift.
+  - **Clear semantics:** `FirestorePosSettingsRepository.saveSettings` dropped `{ merge: true }` (it always writes the complete settings doc) and the Settings page now sends `''` (not `undefined`) for cleared optional fields, so walk-in customer / over-short accounts can actually be cleared instead of retaining stale values.
+  - **(c) Terminal redesign:** `PosTerminalPage` rebuilt as a Square/Loyverse-style cashier screen — context bar (register/shift/cashier/last-receipt), product **tile grid** with scan-to-add (Enter adds top match), order panel with qty steppers + item-count badge + clear totals + large green Pay button, and a React-state tender dialog (method buttons from enabled methods, Exact helper, tendered/change/balance) replacing the old `getElementById` form. Added a sale-price guard (items priced 0 cannot be added).
+- **Accounting/ERP impact:** None to posting/voucher/tax/COGS/inventory/AR-AP/tenant rules. Settlement-account routing, governance toggle, and the SI/SR posting boundary are unchanged. Changes are frontend data-handling + a backend read-resolution fix + a Firestore write-mode fix; the only write-behavior change (full-document set) is safe because POS settings are always persisted as the complete entity.
+- **Verification:** Live emulator round-trips on the real tenant (`asd syria`): GET/PUT settings persist and re-read correctly; bootstrap with no `registerId` returns the open register+shift; clear-then-restore of walk-in customer works. Backend rebuilt (`npm run build`); POS application tests **35/35 pass**. Frontend `tsc --noEmit` clean. Browser-verified the redesigned terminal end-to-end (login → `/pos`): shift detected, search→tile→cart→qty stepper→totals→Pay→tender dialog, zero console errors, responsive + dark-mode tokens.
+- **Time spent:** ~1.5h.
+- **Next:** Owner re-test POS Settings save/clear and the terminal sale flow against a register that has a real sale price + non-cash settlement accounts; then run the full GP06 cash/ over-short path.
+
+### Session: 2026-06-21 (POS QA fix — settings save confirmation hardening)
+
+- **Goal:** Resolve continued owner QA report that POS Settings still looked like it did not persist.
+- **What was done:** Added a normal header **Save** button to POS Settings in addition to the floating unsaved-changes bar. Changed POS Settings save to `PUT` then immediate `GET` reload before showing success. Changed POS Setup finish flow to reload saved POS settings immediately after saving.
+- **Accounting/ERP impact:** UI persistence confirmation only. No posting, voucher, cash drawer, over/short, register money-account, inventory, AR/AP, tax, or tenant-scope behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing Vite chunk-size/browser-data warnings only.
+- **Time spent:** ~0.3h.
+- **Next:** Retest POS Settings with the new header Save button. Success now means the page has already reloaded from the backend; if values still disappear, the failure is below the page layer and should be traced from the API response/live backend process.
+
+### Session: 2026-06-21 (POS QA fix — setup page persisted settings reload)
+
+- **Goal:** Fix remaining owner QA report that saved POS input still did not persist.
+- **What was done:** Updated the POS setup wizard to load existing POS settings before rendering/editing instead of always starting from hard-coded defaults. Kept **Use defaults** as an explicit reset action. Also made POS Settings normalization return a fresh object instead of mutating the API response object.
+- **Accounting/ERP impact:** Persistence/UI correction only. This prevents setup from accidentally overwriting saved POS governance, walk-in customer, payment behavior, and over/short account choices with defaults. No posting logic, voucher logic, register money routing, taxes, inventory, AR/AP, or tenant isolation rules changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed with existing Vite chunk-size/browser-data warnings only.
+- **Time spent:** ~0.3h.
+- **Next:** Hard refresh the frontend and retest: save POS Settings, navigate away/back, revisit POS Setup, and confirm the same saved values are shown.
+
+### Session: 2026-06-21 (POS QA fix — Firestore settings/register persistence)
+
+- **Goal:** Fix owner QA finding that POS settings/register saved inputs still did not persist.
+- **What was done:** Updated POS Firestore settings/register repositories to strip `undefined` recursively before writes. This prevents optional fields such as walk-in customer, over/short accounts, branch, and settlement mappings from poisoning Firestore writes.
+- **Accounting/ERP impact:** Persistence hardening only. No posting logic or account routing rule changed beyond the register-level money-account fix already recorded.
+- **Verification:** Focused POS backend tests passed: `PosSettingsUseCases.test.ts` + `CompletePosSale.test.ts` (16/16). `npm --prefix backend run build` passed.
+- **Time spent:** ~0.2h.
+- **Next:** Rebuild and restart the backend/emulator, then retest POS Settings and POS Registers persistence.
+
+### Session: 2026-06-21 (POS QA fix — register-level money accounts)
+
+- **Goal:** Correct POS money-account ownership after owner QA challenged company-level settlement accounts.
+- **What was done:** Changed POS sales so CASH uses the register `cashDrawerAccountId` and CARD/BANK_TRANSFER/CUSTOM use register-level `settlementAccountIds`. Added register-level non-cash settlement account fields to the POS Register form. Removed settlement-account entry from POS Settings and POS Setup; settings now only control payment-method behavior (enabled, allows change, requires reference). Relaxed POS Settings validation so enabled methods no longer require company-level accounts. Added a Prisma JSON field for register settlement accounts.
+- **Accounting/ERP impact:** Control fix. All POS money in/out is now attributable to the register used for the transaction, while Cash Over and Cash Short remain company-level P&L classification accounts. Missing non-cash register accounts block the sale before draft Sales Invoice creation.
+- **Verification:** Focused POS backend tests passed: `PosSettingsUseCases.test.ts` + `CompletePosSale.test.ts` (16/16). `npm --prefix frontend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Time spent:** ~0.9h.
+- **Next:** Retest GP06 setup: create at least two registers, each with its own cash drawer and non-cash settlement accounts, then confirm POS Settings saves without company-level settlement accounts.
+
+### Session: 2026-06-21 (POS QA fix — COA accounts in POS selectors)
+
+- **Goal:** Fix owner QA finding where POS account selectors were not showing Chart of Accounts accounts during POS setup/settings/register configuration.
+- **What was done:** Broadened `AccountsProvider` so POS settings/register managers can load the account list even when Accounting is only an engine/hidden module. Added a narrow backend `anyPermissionGuard` and allowed `pos.settings.manage` / `pos.registers.manage` to read account list/details without granting account create/edit/delete or voucher permissions. Added strict account-type filters to POS selectors: settlement and cash drawer = ASSET, cash over = REVENUE, cash short = EXPENSE.
+- **Accounting/ERP impact:** Control fix only. POS managers can now choose valid COA accounts required for cash control and settlement setup; no posting logic, voucher logic, account mutation, inventory valuation, tax, AR/AP, or period-lock behavior changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed. `npm --prefix backend run build` passed.
+- **Time spent:** ~0.6h.
+- **Next:** Retest GP06 setup: walk-in customer should show CUSTOMER parties, while payment settlement/cash drawer/over-short fields should show filtered COA posting accounts.
+
+### Session: 2026-06-21 (POS QA test plan)
+
+- **Goal:** Prepare an owner-runnable QA test plan for the merged POS module.
+- **What was done:** Added [planning/qa/golden-paths/06-pos.md](./qa/golden-paths/06-pos.md), covering POS setup/governance, register setup, shift lifecycle, cash exact sale, split payment/change, returns, shift close variance vouchers, permissions, reports, and cross-module accounting checks. Updated the golden-path README index to include POS as script 06.
+- **Accounting/ERP impact:** Documentation only. The plan explicitly treats POS as a financial-control flow: linked posted Sales Invoices/Sales Returns, stock movement, cash drawer reconciliation, over/short vouchers, Trial Balance, GL, and inventory valuation must agree.
+- **Verification:** Document review only; no code or runtime tests were changed.
+- **Time spent:** ~0.4h.
+- **Next:** Run GP06 on a fresh tenant after GP01/GP02 have seeded accounting, inventory, customers/items, warehouses, and required posting accounts. File failures as `GP06-step##` in `planning/qa/findings.md`.
+
 ### Session: 2026-06-21 (Task 246B QA fix — Gross Profit item labels)
 
 - **Goal:** Fix owner QA finding where Gross Profit by Item displayed item UUIDs as the primary item label.
@@ -4276,3 +4361,17 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated `docs/architecture/inventory.md`, `docs/user-guide/inventory/README.md`, `planning/ACTIVE.md`, and added [done/244-note09-uom-web-windows-parity.md](./done/244-note09-uom-web-windows-parity.md).
 - **Time spent:** ~0.7h.
 - **Next:** Review/merge the narrow NOTE-09 PR, then handle Task 244 NOTE-08/10/11/14 as separate branches so this parity fix does not broaden into UOM behavior changes.
+# #   2 0 2 6 - 0 6 - 2 1 :   S i d e b a r   B e h a v i o r   F i x e s 
+ 
+ * * A g e n t : * *   A n t i g r a v i t y   ( C T O ) 
+ 
+ * * W h a t   w a s   d o n e : * * 
+ F i x e d   s e v e r a l   b u g s   r e l a t e d   t o   s i d e b a r   b e h a v i o r ,   p a r t i c u l a r l y   i n   t h e   ' S u b m e n u s '   ( f l y o u t )   m o d e   a n d   o n   m o b i l e   s c r e e n s : 
+ -   * * F l y o u t   m e n u   m i s p l a c e m e n t : * *   S t o p p e d   t h e   u n p i n n e d   f l y o u t   s i d e b a r   f r o m   e x p a n d i n g   o n   h o v e r .   I t   n o w   s t a y s   c o l l a p s e d   ( 5 r e m )   o n   h o v e r ,   e n s u r i n g   t h e   f i x e d - p o s i t i o n   f l y o u t   m e n u s   a l i g n   p e r f e c t l y   a n d   a r e n ' t   v i s u a l l y   c r u s h e d   b y   t h e   s i d e b a r   t r a n s i t i o n . 
+ -   * * M o b i l e   f l y o u t   m e n u s : * *   D i s a b l e d   f l y o u t   m e n u s   o n   m o b i l e   d e v i c e s .   F l y o u t   m e n u s   n o w   c o r r e c t l y   r e v e r t   t o   s t a n d a r d   a c c o r d i o n   b e h a v i o r   o n   m o b i l e   ( w h e r e   h o v e r   i s   u n a v a i l a b l e   a n d   h o r i z o n t a l   s p a c e   i s   l i m i t e d ) . 
+ -   * * D e s k t o p   p i n n e d   s t a t e   d e s y n c : * *   T h e   T o p B a r   h a m b u r g e r   m e n u   n o w   c o r r e c t l y   t o g g l e s   t h e   \ s i d e b a r P i n n e d \   p r e f e r e n c e   o n   d e s k t o p ,   r a t h e r   t h a n   t e m p o r a r i l y   t o g g l i n g   \ i s S i d e b a r O p e n \ .   T h i s   f i x e s   t h e   b u g   w h e r e   o p e n i n g   t h e   h a m b u r g e r   m e n u   c a u s e d   t h e   s i d e b a r   t o   s n a p   b a c k   t o   i t s   p r e v i o u s   s t a t e   o n   t h e   n e x t   w i n d o w   r e s i z e   o r   r e l o a d . 
+ -   * * F l y o u t   m o d e   l a y o u t : * *   A n   u n p i n n e d   f l y o u t   s i d e b a r   o p e n e d   v i a   t h e   h a m b u r g e r   m e n u   n o w   c o r r e c t l y   a c t s   a s   a n   o v e r l a y   a n d   n o   l o n g e r   p u s h e s   t h e   m a i n   c o n t e n t   p a g e . 
+ 
+ * * T i m e   s p e n t : * *   ~ 3 0 m 
+ * * N e x t   s t e p s : * *   M e r g e   t h e s e   b u g   f i x e s   i n t o   m a i n   a f t e r   o w n e r   v e r i f i c a t i o n .  
+ 

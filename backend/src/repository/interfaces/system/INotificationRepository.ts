@@ -35,6 +35,11 @@ export interface INotificationRepository {
   markAsReadByUser(notificationId: string, userId: string): Promise<void>;
 
   /**
+   * Mark notification as unread by a specific user
+   */
+  markAsUnreadByUser(notificationId: string, userId: string): Promise<void>;
+
+  /**
    * Mark all notifications as read for a user
    */
   markAllAsReadByUser(companyId: string, userId: string): Promise<void>;

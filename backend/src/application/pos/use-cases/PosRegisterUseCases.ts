@@ -10,6 +10,7 @@ export interface UpsertPosRegisterInput {
   branchId?: string;
   warehouseId: string;
   cashDrawerAccountId: string;
+  settlementAccountIds?: Partial<Record<'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM', string>>;
   status?: 'ACTIVE' | 'INACTIVE';
 }
 
@@ -26,6 +27,7 @@ export class CreatePosRegisterUseCase {
       branchId: input.branchId,
       warehouseId: input.warehouseId,
       cashDrawerAccountId: input.cashDrawerAccountId,
+      settlementAccountIds: input.settlementAccountIds,
       status: input.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
       createdAt: now,
       updatedAt: now,
@@ -46,6 +48,7 @@ export class UpdatePosRegisterUseCase {
     if (patch.branchId !== undefined) existing.branchId = patch.branchId?.trim() || undefined;
     if (patch.warehouseId !== undefined) existing.warehouseId = patch.warehouseId;
     if (patch.cashDrawerAccountId !== undefined) existing.cashDrawerAccountId = patch.cashDrawerAccountId;
+    if (patch.settlementAccountIds !== undefined) existing.settlementAccountIds = patch.settlementAccountIds;
     if (patch.status !== undefined) existing.status = patch.status;
     existing.updatedAt = new Date();
     await this.repo.update(existing);

@@ -87,22 +87,21 @@ const baseSalesSettings = () => ({
 
 describe('PosSettingsUseCases', () => {
   describe('UpdatePosSettingsUseCase', () => {
-    it('rejects an enabled payment method with no settlement account', async () => {
+    it('allows enabled payment methods without settlement accounts because accounts are register-level', async () => {
       const settings = baseSettings();
-      const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(settings), saveSettings: jest.fn() };
+      const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(settings), saveSettings: jest.fn().mockResolvedValue(undefined) };
       const accountRepo = { getById: jest.fn() };
-      const salesSettingsRepo = { getSettings: jest.fn(), saveSettings: jest.fn() };
+      const salesSettingsRepo = { getSettings: jest.fn().mockResolvedValue(baseSalesSettings()), saveSettings: jest.fn() };
       const useCase = new UpdatePosSettingsUseCase(posSettingsRepo as any, accountRepo as any, salesSettingsRepo as any);
 
-      await expect(
-        useCase.execute({
-          companyId: 'cmp_test',
-          paymentMethods: [
-            { code: 'CARD', settlementAccountId: '', requiresReference: false, allowsChange: false, isEnabled: true },
-          ],
-        })
-      ).rejects.toThrow(/settlement account/i);
-      expect(posSettingsRepo.saveSettings).not.toHaveBeenCalled();
+      const updated = await useCase.execute({
+        companyId: 'cmp_test',
+        paymentMethods: [
+          { code: 'CARD', settlementAccountId: '', requiresReference: false, allowsChange: false, isEnabled: true },
+        ],
+      });
+      expect(posSettingsRepo.saveSettings).toHaveBeenCalled();
+      expect(updated.paymentMethods[0].settlementAccountId).toBe('');
     });
 
     it('rejects a missing over-account', async () => {
@@ -185,7 +184,7 @@ describe('PosSettingsUseCases', () => {
       });
       expect(posSettingsRepo.saveSettings).toHaveBeenCalled();
       expect(updated.cashOverAccountId).toBe('over1');
-      expect(updated.paymentMethods.find((m) => m.code === 'CARD')?.settlementAccountId).toBe('card-clear');
+      expect(updated.paymentMethods.find((m) => m.code === 'CARD')?.settlementAccountId).toBe('');
     });
   });
 });

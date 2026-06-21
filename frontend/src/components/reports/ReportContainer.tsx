@@ -23,6 +23,7 @@ export interface ReportColumn {
   id: string;
   label: string;
   permanent?: boolean;
+  defaultHidden?: boolean;
 }
 
 export interface ReportConfig {
@@ -79,9 +80,10 @@ export function ReportContainer<TParams>({
   const [pageSize, setPageSize] = useState(config.defaultPageSize || 50);
   const [totalItems, setTotalItems] = useState(0);
 
-  const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>(
-    config.availableColumns?.map(c => c.id) || []
-  );
+  const [visibleColumnIds, setVisibleColumnIds] = useState<string[]>(() => {
+    if (!config.availableColumns) return [];
+    return config.availableColumns.filter(c => !c.defaultHidden).map(c => c.id);
+  });
   
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState(false);
@@ -90,7 +92,7 @@ export function ReportContainer<TParams>({
 
   useEffect(() => {
     if (config.availableColumns && (visibleColumnIds.length === 0)) {
-      setVisibleColumnIds(config.availableColumns.map(c => c.id));
+      setVisibleColumnIds(config.availableColumns.filter(c => !c.defaultHidden).map(c => c.id));
     }
   }, [config.availableColumns]);
 

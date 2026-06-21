@@ -24,7 +24,7 @@ Click **Save**. You should see a success toast.
 
 ## Payment methods
 
-Each row is one POS-side payment code mapped to a settlement account:
+Each row is one POS-side payment code and its behavior:
 
 | Code | Allows change? | Requires reference? | Typical use |
 |---|---|---|---|
@@ -33,8 +33,7 @@ Each row is one POS-side payment code mapped to a settlement account:
 | `BANK_TRANSFER` | no | yes (bank ref) | Bank-app transfers |
 | `CUSTOM` | no | optional | Loyalty, voucher, etc. |
 
-- **Settlement account** is the GL account that the receipt voucher Dr-side uses for that tender.
-- Saving with an enabled method whose settlement account is blank is rejected by the backend with a readable error.
+Payment accounts are not entered here. Money routing belongs to the register that handled the sale.
 
 ## Cash over / short
 
@@ -54,12 +53,19 @@ If the variance is non-zero and the appropriate account is missing, shift close 
 **POS → Registers** (`/pos/registers`).
 
 - Click **New Register**.
-- Fill in: code, name, branch (free text — there is no first-class Branch entity yet), warehouse, cash-drawer account.
+- Fill in: code, name, branch (free text — there is no first-class Branch entity yet), warehouse, cash-drawer account, and non-cash settlement accounts for methods used at this register.
 - Save. The register appears in the list.
 - Toggle a register to **INACTIVE** when you take it out of service. Already-open shifts on it remain open; new shifts cannot be opened.
-- Edit an existing register to change its name, warehouse, branch, or cash-drawer account.
+- Edit an existing register to change its name, warehouse, branch, cash-drawer account, or non-cash settlement accounts.
 
 A register is required before cashiers can open shifts (Phase 1).
+
+The register owns the POS money accounts:
+
+- **Cash-drawer account** — used for CASH sales, cash refunds, cash movements, and over/short close entries at this register.
+- **CARD / BANK_TRANSFER / CUSTOM settlement accounts** — used when this register accepts those non-cash methods.
+
+If a non-cash method is enabled in POS Settings but the active register has no settlement account for that method, the sale is blocked before any draft invoice is created.
 
 ## Troubleshooting
 

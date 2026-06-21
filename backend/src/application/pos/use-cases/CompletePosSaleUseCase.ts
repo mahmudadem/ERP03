@@ -13,6 +13,8 @@ import { ITransactionManager } from '../../../repository/interfaces/shared/ITran
 import { CreateSalesInvoiceUseCase, PostSalesInvoiceUseCase, SettlementInput } from '../../sales/use-cases/SalesInvoiceUseCases';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
+import { SalesRuleError } from '../../../domain/sales/errors/SalesRuleError';
+import { ErrorCategory } from '../../../domain/shared/errors/AppError';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -96,10 +98,53 @@ export class CompletePosSaleUseCase {
 
   async execute(input: CompletePosSaleInput): Promise<CompletePosSaleResult> {
     if (!input.lines?.length) {
-      throw new Error('Cart must have at least one line.');
+      throw new SalesRuleError('POS_EMPTY_CART', 'Cart must have at least one line.', {
+        fieldHints: ['lines'],
+        category: ErrorCategory.VALIDATION,
+      });
     }
     if (!input.payments?.length) {
-      throw new Error('At least one payment is required.');
+      throw new SalesRuleError('POS_PAYMENT_REQUIRED', 'At least one payment is required.', {
+        fieldHints: ['payments'],
+        category: ErrorCategory.VALIDATION,
+      });
+    }
+
+    input.lines.forEach((line, index) => {
+      const qty = Number(line.qty);
+      const unitPrice = Number(line.unitPrice);
+      if (!line.itemId?.trim()) {
+        throw new SalesRuleError('POS_INVALID_LINE', `Line ${index + 1}: item is required.`, {
+          fieldHints: [`lines[${index}].itemId`],
+          category: ErrorCategory.VALIDATION,
+        });
+      }
+      if (!Number.isFinite(qty) || qty <= 0) {
+        throw new SalesRuleError('POS_INVALID_QTY', `Line ${index + 1}: quantity must be greater than 0.`, {
+          fieldHints: [`lines[${index}].qty`],
+          category: ErrorCategory.VALIDATION,
+        });
+      }
+      if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+        throw new SalesRuleError(
+          'POS_INVALID_LINE_PRICE',
+          `Line ${index + 1}: POS item price must be greater than 0 before the sale can be posted.`,
+          {
+            fieldHints: [`lines[${index}].unitPrice`],
+            category: ErrorCategory.VALIDATION,
+          }
+        );
+      }
+    });
+
+    for (let i = 0; i < input.payments.length; i += 1) {
+      const amount = Number(input.payments[i].amount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        throw new SalesRuleError('POS_INVALID_PAYMENT_AMOUNT', `Payment ${i + 1}: amount must be positive.`, {
+          fieldHints: [`payments[${i}].amount`],
+          category: ErrorCategory.VALIDATION,
+        });
+      }
     }
 
     const shift = await this.shiftRepo.getById(input.companyId, input.shiftId);
@@ -132,9 +177,6 @@ export class CompletePosSaleUseCase {
 
     // Validate payment-method config up front (independent of the total).
     for (const p of input.payments) {
-      if (p.amount <= 0) {
-        throw new Error(`Payment amount must be positive.`);
-      }
       if (p.method !== 'CASH' && p.changeGiven && p.changeGiven > 0) {
         throw new Error(`Only CASH may give change; ${p.method} cannot.`);
       }
@@ -144,6 +186,9 @@ export class CompletePosSaleUseCase {
       }
       if (cfg.requiresReference && !p.reference?.trim()) {
         throw new Error(`Payment method ${p.method} requires a reference.`);
+      }
+      if (p.method !== 'CASH' && !register.settlementAccountIds?.[p.method]?.trim()) {
+        throw new Error(`Configure ${p.method} settlement account on register ${register.code} before using this payment method.`);
       }
     }
 
@@ -200,10 +245,16 @@ export class CompletePosSaleUseCase {
 
     // Step 3 — build the settlement from the authoritative total. CASH_FULL only for a
     // single tender that exactly equals the total with no change; MULTI otherwise.
-    // The POS-configured account for a method (PosSettings.paymentMethods) is authoritative for
-    // the GL settlement; if blank, Sales falls back to SalesSettings.paymentMethodConfigs.
-    const accountFor = (method: PosPaymentMethod): string | undefined =>
-      settings.getPaymentMethod(method)?.settlementAccountId?.trim() || undefined;
+    // CASH belongs to the physical register drawer. Non-cash methods use the
+    // selected register's settlement account mapping.
+    const accountFor = (method: PosPaymentMethod): string => {
+      if (method === 'CASH') return register.cashDrawerAccountId;
+      const accountId = register.settlementAccountIds?.[method]?.trim();
+      if (!accountId) {
+        throw new Error(`Configure ${method} settlement account on register ${register.code} before using this payment method.`);
+      }
+      return accountId;
+    };
 
     const singleTenderExact =
       input.payments.length === 1 && appliedTotal === grandTotal && cashChange === 0;

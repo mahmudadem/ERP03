@@ -67,7 +67,8 @@ export class UpdatePosSettingsUseCase {
     const current = (await this.posSettingsRepo.getSettings(input.companyId)) ||
       PosSettings.createDefault(input.companyId);
 
-    // Validate account references for any explicitly provided values.
+    // Validate company-level over/short account references. Payment settlement
+    // accounts belong to each register, not POS Settings.
     if (input.cashOverAccountId) {
       await this.assertAccount(input.companyId, input.cashOverAccountId, 'cashOverAccountId');
     }
@@ -76,14 +77,7 @@ export class UpdatePosSettingsUseCase {
     }
     if (Array.isArray(input.paymentMethods)) {
       for (const m of input.paymentMethods) {
-        if (m.isEnabled && !m.settlementAccountId?.trim()) {
-          throw new Error(
-            `Payment method ${m.code} is enabled but has no settlement account configured.`
-          );
-        }
-        if (m.isEnabled && m.settlementAccountId) {
-          await this.assertAccount(input.companyId, m.settlementAccountId, `paymentMethods.${m.code}.settlementAccountId`);
-        }
+        m.settlementAccountId = '';
       }
     }
 

@@ -16,8 +16,8 @@ const makeSettings = (): PosSettings =>
     cashRounding: 'none',
     allowPosDirectSales: true,
     paymentMethods: [
-      { code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true },
-      { code: 'CARD', settlementAccountId: 'card-acc', requiresReference: true, allowsChange: false, isEnabled: true },
+      { code: 'CASH', settlementAccountId: '', requiresReference: false, allowsChange: true, isEnabled: true },
+      { code: 'CARD', settlementAccountId: '', requiresReference: true, allowsChange: false, isEnabled: true },
     ],
   });
 
@@ -43,6 +43,7 @@ const makeRegister = (): PosRegister =>
     name: 'Front',
     warehouseId: 'wh1',
     cashDrawerAccountId: 'cash-acc',
+    settlementAccountIds: { CARD: 'card-acc' },
     status: 'ACTIVE',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -180,6 +181,17 @@ describe('CompletePosSaleUseCase', () => {
     expect(createUC.execute).not.toHaveBeenCalled();
   });
 
+  it('rejects zero-priced POS lines before creating a Sales Invoice draft', async () => {
+    const { useCase, createUC, postUC } = setup();
+    await expect(
+      run(useCase, [{ method: 'CASH', amount: 10 }], {
+        lines: [{ itemId: 'item_1', qty: 1, unitPrice: 0 }],
+      })
+    ).rejects.toThrow(/POS item price must be greater than 0/);
+    expect(createUC.execute).not.toHaveBeenCalled();
+    expect(postUC.execute).not.toHaveBeenCalled();
+  });
+
   it('builds the SI input with persona/source/formType and the walk-in customer', async () => {
     const { useCase, createUC } = setup();
     await run(useCase, [{ method: 'CASH', amount: 10 }]);
@@ -197,6 +209,7 @@ describe('CompletePosSaleUseCase', () => {
     const settlement = settlementOf(postUC);
     expect(settlement.settlementMode).toBe('CASH_FULL');
     expect(settlement.settlements[0].paymentMethod).toBe('CASH');
+    expect(settlement.settlements[0].settlementAccountId).toBe('cash-acc');
     expect(settlement.settlements[0].amountBase).toBe(10);
     expect(result.change).toBe(0);
     expect(result.salesInvoiceNumber).toBe('SI-0001');
@@ -210,9 +223,32 @@ describe('CompletePosSaleUseCase', () => {
     ]);
     const settlement = settlementOf(postUC);
     expect(settlement.settlementMode).toBe('MULTI');
+    expect(settlement.settlements.find((s: any) => s.paymentMethod === 'CASH').settlementAccountId).toBe('cash-acc');
     expect(settlement.settlements.find((s: any) => s.paymentMethod === 'CASH').amountBase).toBe(5);
+    expect(settlement.settlements.find((s: any) => s.paymentMethod === 'CREDIT_CARD').settlementAccountId).toBe('card-acc');
     expect(settlement.settlements.find((s: any) => s.paymentMethod === 'CREDIT_CARD').amountBase).toBe(5);
     expect(result.change).toBe(0);
+  });
+
+  it('rejects a non-cash payment when the register has no settlement account for that method', async () => {
+    const { useCase, createUC, postUC } = setup();
+    (useCase as any).registerRepo.getById.mockResolvedValue(
+      PosRegister.fromJSON({
+        id: 'reg_1',
+        companyId: 'cmp_test',
+        code: 'POS-01',
+        name: 'Front',
+        warehouseId: 'wh1',
+        cashDrawerAccountId: 'cash-acc',
+        settlementAccountIds: {},
+        status: 'ACTIVE',
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    );
+    await expect(run(useCase, [{ method: 'CARD', amount: 10, reference: 'AUTH-1' }])).rejects.toThrow(/Configure CARD settlement account/);
+    expect(createUC.execute).not.toHaveBeenCalled();
+    expect(postUC.execute).not.toHaveBeenCalled();
   });
 
   it('nets CASH change off the settlement (applied = grand total)', async () => {

@@ -6,6 +6,8 @@
  * drawer GL account (the settlement side of cash sales).
  */
 export type PosRegisterStatus = 'ACTIVE' | 'INACTIVE';
+export type PosRegisterPaymentMethodCode = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+export type PosRegisterSettlementAccounts = Partial<Record<PosRegisterPaymentMethodCode, string>>;
 
 export interface PosRegisterProps {
   id: string;
@@ -15,6 +17,7 @@ export interface PosRegisterProps {
   branchId?: string;
   warehouseId: string;
   cashDrawerAccountId: string;
+  settlementAccountIds?: PosRegisterSettlementAccounts;
   status: PosRegisterStatus;
   createdAt: Date;
   updatedAt: Date;
@@ -28,6 +31,7 @@ export class PosRegister {
   branchId?: string;
   warehouseId: string;
   cashDrawerAccountId: string;
+  settlementAccountIds: PosRegisterSettlementAccounts;
   status: PosRegisterStatus;
   readonly createdAt: Date;
   updatedAt: Date;
@@ -48,6 +52,11 @@ export class PosRegister {
     this.branchId = props.branchId?.trim() || undefined;
     this.warehouseId = props.warehouseId;
     this.cashDrawerAccountId = props.cashDrawerAccountId;
+    this.settlementAccountIds = Object.fromEntries(
+      Object.entries(props.settlementAccountIds || {})
+        .map(([method, accountId]) => [method, String(accountId || '').trim()])
+        .filter(([, accountId]) => !!accountId)
+    ) as PosRegisterSettlementAccounts;
     this.status = status;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
@@ -66,6 +75,7 @@ export class PosRegister {
       branchId: this.branchId,
       warehouseId: this.warehouseId,
       cashDrawerAccountId: this.cashDrawerAccountId,
+      settlementAccountIds: this.settlementAccountIds,
       status: this.status,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
@@ -81,6 +91,7 @@ export class PosRegister {
       branchId: data.branchId,
       warehouseId: data.warehouseId,
       cashDrawerAccountId: data.cashDrawerAccountId,
+      settlementAccountIds: data.settlementAccountIds,
       status: data.status,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
       updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),

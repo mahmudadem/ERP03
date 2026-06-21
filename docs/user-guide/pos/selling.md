@@ -4,9 +4,11 @@ The cashier screen is at **POS → Terminal**. It is the most-used surface in th
 
 ## Layout
 
-- **Left column** — product search. Type a SKU, barcode, or part of the product name; results appear after a short debounce. Click to add to the cart.
-- **Middle column** — the cart. Each row shows the line, editable qty, unit price, line total, and a delete button. Below: customer picker, subtotal, discount, grand total, and the **Pay** button.
-- **Right column** — the "Last receipt" card. After a sale, it shows the receipt number, the linked Sales Invoice number, and the change.
+A two-panel cashier screen (it stacks on narrow screens):
+
+- **Context bar** (top) — the active register name/code, a green "Shift open" indicator, and the signed-in cashier. After a sale, a green chip here shows the last receipt number and the change given.
+- **Products panel** (left) — a large search/scan box. Type a SKU, barcode, or part of the product name; matches appear as **tappable product tiles** (name, code, price). Click a tile to add it to the order. With a barcode scanner, scanning types the code and presses Enter, which adds the top match and clears the box for the next scan. Items that have no sale price set cannot be added — set a sale price on the item first.
+- **Order panel** (right, "Current sale") — each line shows the product, a **− / +** quantity stepper (you can also type a quantity, including fractional for weight items), the line total, and a remove button. A badge shows the total item count, and **Clear** empties the sale. Below the lines: subtotal, discount, tax, a bold **Total**, the customer picker, and a large green **Pay** button showing the amount due.
 
 ## Customer
 
@@ -14,14 +16,14 @@ Defaults to the company-configured **walk-in customer** from POS Settings. To at
 
 ## Tender
 
-Click **Pay** to open the Tender dialog. Add one or more payment rows:
+Click **Pay** to open the Tender dialog. It opens showing the **balance due** and the amount pre-filled. Add one or more payment rows:
 
-- Pick a **method** (CASH, CARD, BANK_TRANSFER, CUSTOM).
-- Enter the **amount** (tendered).
-- Optionally enter a **reference** (the system requires it for CARD / BANK_TRANSFER when the matching payment-method config has `requiresReference: true`).
-- Click **Add tender**.
+- Pick a **method** using the method buttons (only the payment methods enabled in POS Settings are shown — Cash, Card, Bank, Other).
+- Enter the **amount**, or click **Exact** to fill the remaining balance.
+- Optionally enter a **reference** (the system requires it for Card / Bank Transfer when the matching payment-method config has `requiresReference: true`).
+- Click **Add payment**.
 
-The dialog shows live: tendered total, change, and the amount that will be applied to the Sales Invoice (= tendered total − change). CASH change is automatically netted off the SI settlement; CARD/BANK/CUSTOM do not give change.
+The dialog shows live: tendered total, change, and whether the sale is **Fully paid** or still has a balance due. CASH change is automatically netted off the SI settlement; CARD/BANK/CUSTOM do not give change.
 
 When the applied amount equals the grand total, click **Complete sale**. The system:
 
