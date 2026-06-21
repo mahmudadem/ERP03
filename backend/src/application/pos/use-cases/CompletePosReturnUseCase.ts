@@ -8,12 +8,9 @@ import { IPosReturnRepository } from '../../../repository/interfaces/pos/IPosRet
 import { IPosShiftRepository } from '../../../repository/interfaces/pos/IPosShiftRepository';
 import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
+import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import {
-  CreateSalesReturnUseCase,
-  PostSalesReturnUseCase,
-} from '../../../application/sales/use-cases/SalesReturnUseCases';
-import { SalesReturn } from '../../../domain/sales/entities/SalesReturn';
+import { PostPosReturnUseCase } from './PostPosReturnUseCase';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -37,7 +34,7 @@ export interface CompletePosReturnInput {
 
 export interface CompletePosReturnResult {
   posReturn: PosReturn;
-  salesReturn: SalesReturn;
+  salesReturn: { id: string; returnNumber: string };
   refundTotal: number;
 }
 
@@ -46,9 +43,8 @@ export interface CompletePosReturnResult {
  *   1. Resolve original receipt; assert COMPLETED + linked to a salesInvoiceId.
  *   2. Resolve the CURRENT open shift on the register (return belongs to it, not the original shift).
  *   3. Validate return qty per line ≤ sold qty.
- *   4. Call CreateSalesReturnUseCase + PostSalesReturnUseCase with `salesInvoiceId` and
- *      the returned lines. The Sales layer reverses revenue/tax, restocks inventory,
- *      reverses COGS (mode-aware).
+ *   4. Post through POS-owned PostPosReturnUseCase, which calls System Core
+ *      inventory/accounting seams to restock and reverse financial effects.
  *   5. Persist the PosReturn + a PosCashMovement of type REFUND_CASH (when refundMethod === 'CASH').
  *   6. Return the link.
  */
@@ -59,9 +55,9 @@ export class CompletePosReturnUseCase {
     private readonly shiftRepo: IPosShiftRepository,
     private readonly settingsRepo: IPosSettingsRepository,
     private readonly cashMovementRepo: IPosCashMovementRepository,
+    private readonly registerRepo: IPosRegisterRepository,
     private readonly transactionManager: ITransactionManager,
-    private readonly createSalesReturnUseCase: CreateSalesReturnUseCase,
-    private readonly postSalesReturnUseCase: PostSalesReturnUseCase
+    private readonly postPosReturnUseCase: PostPosReturnUseCase
   ) {}
 
   async execute(input: CompletePosReturnInput): Promise<CompletePosReturnResult> {
@@ -106,9 +102,6 @@ export class CompletePosReturnUseCase {
       }
     }
 
-    // Build the Sales-return lines (referencing the SI's line ids). The Sales use
-    // case resolves the SI's lines by salesInvoiceLineId; we match by itemId+unitPrice
-    // for V1 (the receipt's lines snapshot itemId+unitPrice).
     const receiptLinesByItem = new Map<string, typeof originalReceipt.lines[number]>();
     for (const l of originalReceipt.lines) {
       // Use the first line for each item as the matching key.
@@ -117,48 +110,11 @@ export class CompletePosReturnUseCase {
       }
     }
 
-    const salesReturnLines = input.lines.map((l) => {
-      const snap = receiptLinesByItem.get(l.itemId);
-      if (!snap) throw new Error(`No matching receipt line for item ${l.itemId}.`);
-      return {
-        salesInvoiceLineId: snap.salesInvoiceLineId,
-        itemId: l.itemId,
-        returnedQty: l.qty,
-        unitPriceDoc: snap.unitPrice,
-        discountType: undefined as any,
-        discountValue: undefined as any,
-        taxCodeId: snap.taxCodeId,
-      };
-    });
-
-    // Create the sales return.
-    const salesReturn: SalesReturn = await this.createSalesReturnUseCase.execute(
-      {
-        companyId: input.companyId,
-        salesInvoiceId: originalReceipt.salesInvoiceId,
-        returnDate: new Date().toISOString().slice(0, 10),
-        currency: 'USD',
-        exchangeRate: 1,
-        reason: input.reason || 'POS return',
-        createdBy: input.actor.userId,
-        lines: salesReturnLines,
-      } as any,
-      { userId: input.actor.userId, userEmail: input.actor.userEmail }
-    );
-
-    // Post the sales return (reverses revenue/tax, restocks, reverses COGS).
-    const postedReturn: SalesReturn = await this.postSalesReturnUseCase.execute(
-      input.companyId,
-      salesReturn.id,
-      true,
-      undefined,
-      { userId: input.actor.userId, userEmail: input.actor.userEmail }
-    );
-
-    // Refund the customer what they actually paid back: the posted Sales Return's
-    // authoritative tax-INCLUSIVE total. (Computing it from unitPrice×qty here would omit
-    // tax, under-refund the customer, and leave the drawer/GL unreconciled.)
-    const refundTotal = round2(postedReturn.grandTotalBase);
+    const register = await this.registerRepo.getById(input.companyId, input.registerId);
+    if (!register) throw new Error(`POS register not found: ${input.registerId}`);
+    const settings = await this.settingsRepo.getSettings(input.companyId);
+    const refundSettlementAccountId = settings?.getPaymentMethod(input.refundMethod as any)?.settlementAccountId;
+    const returnNumber = `RET-${new Date().getTime()}`;
 
     const returnLines: PosReturnLine[] = input.lines.map((l) => {
       const snap = receiptLinesByItem.get(l.itemId);
@@ -172,48 +128,66 @@ export class CompletePosReturnUseCase {
       };
     });
 
-    const posReturn = new PosReturn({
-      id: `ret_${randomUUID()}`,
-      companyId: input.companyId,
-      shiftId: openShift.id,
-      registerId: input.registerId,
-      returnNumber: postedReturn.returnNumber || `RET-${postedReturn.id}`,
-      originalReceiptId: originalReceipt.id,
-      originalReceiptNumber: originalReceipt.receiptNumber,
-      salesInvoiceId: originalReceipt.salesInvoiceId,
-      lines: returnLines,
-      refundMethod: input.refundMethod,
-      refundTotal,
-      salesReturnId: postedReturn.id,
-      salesReturnNumber: postedReturn.returnNumber,
-      createdBy: input.actor.userId,
-      createdAt: new Date(),
-    });
+    const { posReturn, postedReturn } = await this.transactionManager.runTransaction(async (tx) => {
+      const postedReturn = await this.postPosReturnUseCase.execute({
+        companyId: input.companyId,
+        originalReceipt,
+        returnNumber,
+        registerId: input.registerId,
+        warehouseId: register.warehouseId,
+        date: new Date().toISOString().slice(0, 10),
+        lines: input.lines,
+        refundMethod: input.refundMethod,
+        settlementAccountId: refundSettlementAccountId,
+        createdBy: input.actor.userId,
+        transaction: tx,
+      });
 
-    // REFUND_CASH movement when refunding by cash.
-    const refundMovement =
-      input.refundMethod === 'CASH' && refundTotal > 0
-        ? new PosCashMovement({
-            id: `cm_${randomUUID()}`,
-            companyId: input.companyId,
-            shiftId: openShift.id,
-            registerId: input.registerId,
-            type: 'REFUND_CASH',
-            amount: refundTotal,
-            createdBy: input.actor.userId,
-            createdAt: posReturn.createdAt,
-          })
-        : null;
+      const posReturn = new PosReturn({
+        id: postedReturn.returnId,
+        companyId: input.companyId,
+        shiftId: openShift.id,
+        registerId: input.registerId,
+        returnNumber: postedReturn.returnNumber,
+        originalReceiptId: originalReceipt.id,
+        originalReceiptNumber: originalReceipt.receiptNumber,
+        salesInvoiceId: originalReceipt.salesInvoiceId,
+        lines: returnLines,
+        refundMethod: input.refundMethod,
+        refundTotal: postedReturn.refundTotal,
+        salesReturnId: postedReturn.returnId,
+        salesReturnNumber: postedReturn.returnNumber,
+        createdBy: input.actor.userId,
+        createdAt: new Date(),
+      });
 
-    await this.transactionManager.runTransaction(async (tx) => {
+      const refundMovement =
+        input.refundMethod === 'CASH' && postedReturn.refundTotal > 0
+          ? new PosCashMovement({
+              id: `cm_${randomUUID()}`,
+              companyId: input.companyId,
+              shiftId: openShift.id,
+              registerId: input.registerId,
+              type: 'REFUND_CASH',
+              amount: postedReturn.refundTotal,
+              createdBy: input.actor.userId,
+              createdAt: posReturn.createdAt,
+            })
+          : null;
+
       await this.returnRepo.create(posReturn, tx);
       if (refundMovement) {
         await this.cashMovementRepo.create(refundMovement, tx);
       }
+      return { posReturn, postedReturn };
     });
 
-    void PosReceipt; void PosShift; void this.settingsRepo; // silence unused-import warnings for V1
+    void PosReceipt; void PosShift; void input.reason; void input.actor.userEmail;
 
-    return { posReturn, salesReturn: postedReturn, refundTotal };
+    return {
+      posReturn,
+      salesReturn: { id: postedReturn.returnId, returnNumber: postedReturn.returnNumber },
+      refundTotal: postedReturn.refundTotal,
+    };
   }
 }

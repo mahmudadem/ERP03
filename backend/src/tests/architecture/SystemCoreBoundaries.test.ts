@@ -15,12 +15,12 @@ const collectTsFiles = (dir: string): string[] => {
 };
 
 describe('Architecture guard: system core boundaries', () => {
-  it.skip('250d2 TODO: POS folder-wide ban must not import Sales application or domain internals', () => {
+  it('250d2: POS must not import Sales application or domain internals', () => {
     const posDir = path.resolve(SRC, 'application/pos');
     const offenders: string[] = [];
     for (const file of collectTsFiles(posDir)) {
       const content = fs.readFileSync(file, 'utf8');
-      if (/from ['"]\.\.\/\.\.\/sales\//.test(content) || /from ['"].*domain\/sales\//.test(content)) {
+      if (importsSalesApplicationOrDomain(content)) {
         offenders.push(path.relative(SRC, file));
       }
     }
@@ -36,7 +36,7 @@ describe('Architecture guard: system core boundaries', () => {
       .filter((file) => fs.existsSync(file))
       .filter((file) => {
         const content = fs.readFileSync(file, 'utf8');
-        return /from ['"]\.\.\/\.\.\/sales\//.test(content) || /from ['"].*domain\/sales\//.test(content);
+        return importsSalesApplicationOrDomain(content);
       })
       .map((file) => path.relative(SRC, file));
     expect(offenders).toEqual([]);
@@ -60,3 +60,19 @@ describe('Architecture guard: system core boundaries', () => {
     }
   });
 });
+
+function importsSalesApplicationOrDomain(content: string): boolean {
+  const imports = content.matchAll(/from\s+['"]([^'"]+)['"]/g);
+  for (const match of imports) {
+    const specifier = match[1].replace(/\\/g, '/');
+    if (
+      specifier.includes('/application/sales/') ||
+      specifier.includes('/domain/sales/') ||
+      specifier.includes('../../sales/') ||
+      specifier.includes('../../../domain/sales/')
+    ) {
+      return true;
+    }
+  }
+  return false;
+}

@@ -227,6 +227,12 @@ export class CompletePosSaleUseCase {
         taxCodeId: l.taxCodeId,
         lineTotal: round2(l.lineTotal),
         salesInvoiceLineId: l.lineId, // legacy field name; 250d2 removes Sales return dependency.
+        revenueAccountId: l.revenueAccountId,
+        taxAccountId: l.taxAccountId,
+        cogsAccountId: l.cogsAccountId,
+        inventoryAccountId: l.inventoryAccountId,
+        unitCostBase: l.unitCostBase,
+        lineCostBase: l.lineCostBase,
       }));
       const discountTotal = round2(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 

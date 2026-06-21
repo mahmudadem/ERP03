@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-21 (Task 250d2 - POS return posting entry point)
+
+- **Goal:** Execute 250d2 after green 250d: decouple POS returns from Sales return use-cases and enable the folder-wide POS-to-Sales application/domain import ban.
+- **What was done:** Added POS-owned `PostPosReturnUseCase`; rewired `CompletePosReturnUseCase` and the POS controller so returns no longer construct Sales return use-cases or import Sales return domain types. POS returns now restock through `IInventoryCore`, record revenue/tax reversal, COGS reversal, and refund settlement through `IAccountingBridge`, and persist POS return/cash movement in one transaction. Removed the POS preview import of Sales calculation helpers. Enabled the folder-wide `backend/src/application/pos/` guard with no skip.
+- **Accounting/ERP impact:** POS return posting now uses System Core seams and carries `sourceModule: pos`, `sourceType: POS_RETURN`, and `documentPersona: POS_DIRECT_SALE`. The sale receipt snapshot now captures optional line-level account/cost metadata so returns can reverse COGS when that context exists. Historical receipts without that metadata may use current defaults or skip COGS reversal when no cost is available; documented for CTO audit.
+- **Verification:** Focused 250d2 tests passed: `CompletePosReturn.test.ts`, `PostPosReturn.test.ts`, sale regression tests, and `SystemCoreBoundaries.test.ts` (5 suites / 21 tests). `npm --prefix backend run typecheck` passed. `npm --prefix backend run build` passed.
+- **Docs:** Updated `docs/architecture/pos-independence.md` and `docs/architecture/system-core.md`; added `planning/done/250d2-pos-return-posting-entry-point.md`.
+- **Time spent:** ~1.4h.
+- **Next:** Commit 250d2, then continue to 250e approval-engine seam. Hard-stop after 250e for CTO audit.
+
 ### Session: 2026-06-21 (Task 250d - POS sale posting entry point)
 
 - **Goal:** Resume Epic 250 after the CTO blocker ruling and implement only 250d: POS sale posting via System Core seams, without touching POS returns.

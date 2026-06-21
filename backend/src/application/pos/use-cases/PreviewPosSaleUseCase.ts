@@ -1,9 +1,5 @@
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
-import {
-  calculateSalesInvoiceLineAmounts,
-  calculateSalesInvoiceTotals,
-} from '../../sales/services/SalesInvoiceCalculationService';
 
 export interface PreviewPosSaleLine {
   itemId: string;
@@ -35,12 +31,7 @@ export interface PreviewPosSaleResult {
 
 /**
  * Calculation-only quote for the cashier screen. It does NOT persist anything and
- * does NOT consume an invoice number. It REUSES the exact same calculation service
- * (`calculateSalesInvoiceLineAmounts` / `calculateSalesInvoiceTotals`) that
- * `CreateSalesInvoiceUseCase` uses, so the previewed tax-inclusive total matches the
- * total the Sales module will post. POS is base-currency only, so exchangeRate = 1.
- *
- * The Sales Invoice remains the source of truth at completion time; this is for display.
+ * does NOT consume a receipt number. POS is base-currency only in V1.
  */
 export class PreviewPosSaleUseCase {
   constructor(
@@ -49,8 +40,7 @@ export class PreviewPosSaleUseCase {
   ) {}
 
   async execute(input: PreviewPosSaleInput): Promise<PreviewPosSaleResult> {
-    const exchangeRate = 1;
-    const calcLines: Array<{ lineTotalDoc: number; lineTotalBase: number; taxAmountDoc: number; taxAmountBase: number }> = [];
+    const calcLines: Array<{ lineTotalBase: number; taxAmountBase: number }> = [];
     const outLines: PreviewPosSaleResult['lines'] = [];
 
     for (const l of input.lines) {
@@ -70,10 +60,9 @@ export class PreviewPosSaleUseCase {
         }
       }
 
-      const amounts = calculateSalesInvoiceLineAmounts({
-        invoicedQty: l.qty,
-        unitPriceDoc: l.unitPrice,
-        exchangeRate,
+      const amounts = calculatePosLineAmounts({
+        qty: l.qty,
+        unitPrice: l.unitPrice,
         taxRate,
         priceIsInclusive,
         discountType: l.discountType,
@@ -81,9 +70,7 @@ export class PreviewPosSaleUseCase {
       });
 
       calcLines.push({
-        lineTotalDoc: amounts.lineTotalDoc,
         lineTotalBase: amounts.lineTotalBase,
-        taxAmountDoc: amounts.taxAmountDoc,
         taxAmountBase: amounts.taxAmountBase,
       });
       outLines.push({
@@ -96,7 +83,7 @@ export class PreviewPosSaleUseCase {
       });
     }
 
-    const totals = calculateSalesInvoiceTotals(calcLines as any, []);
+    const totals = calculatePosTotals(calcLines);
     return {
       subtotal: totals.subtotalBase,
       taxTotal: totals.taxTotalBase,
@@ -104,4 +91,36 @@ export class PreviewPosSaleUseCase {
       lines: outLines,
     };
   }
+}
+
+const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+
+function calculatePosLineAmounts(input: {
+  qty: number;
+  unitPrice: number;
+  taxRate: number;
+  priceIsInclusive: boolean;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+}): { lineTotalBase: number; taxAmountBase: number } {
+  const gross = round2(input.qty * input.unitPrice);
+  const discount = input.discountType === 'PERCENT'
+    ? round2(gross * ((input.discountValue || 0) / 100))
+    : round2(input.discountValue || 0);
+  const afterDiscount = round2(gross - discount);
+  if (input.priceIsInclusive && input.taxRate > 0) {
+    const lineTotalBase = round2(afterDiscount / (1 + input.taxRate));
+    return { lineTotalBase, taxAmountBase: round2(afterDiscount - lineTotalBase) };
+  }
+  return { lineTotalBase: afterDiscount, taxAmountBase: round2(afterDiscount * input.taxRate) };
+}
+
+function calculatePosTotals(lines: Array<{ lineTotalBase: number; taxAmountBase: number }>): {
+  subtotalBase: number;
+  taxTotalBase: number;
+  grandTotalBase: number;
+} {
+  const subtotalBase = round2(lines.reduce((sum, line) => sum + line.lineTotalBase, 0));
+  const taxTotalBase = round2(lines.reduce((sum, line) => sum + line.taxAmountBase, 0));
+  return { subtotalBase, taxTotalBase, grandTotalBase: round2(subtotalBase + taxTotalBase) };
 }

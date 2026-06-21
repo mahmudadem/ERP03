@@ -1,6 +1,6 @@
 # POS Independence
 
-**Status:** Epic 250 in progress. 250d decouples POS sale posting. POS returns are still intentionally deferred to 250d2.
+**Status:** Epic 250 in progress. 250d decoupled POS sale posting; 250d2 decoupled POS return posting and enabled the folder-wide POS-to-Sales application/domain import ban.
 
 ## Boundary
 
@@ -41,11 +41,19 @@ The 250d sale path preserves the same financial shape expected from POS direct s
 
 The POS-configured payment-method settlement account is authoritative for settlement vouchers. Customer AR account comes from the selected/walk-in customer. Item revenue, COGS, and inventory accounts come from item/category/inventory settings.
 
-## Remaining 250d2 Work
+## POS Return Posting
 
-POS returns still use the Sales return path until 250d2. The architecture test therefore has two guards:
+250d2 introduces `PostPosReturnUseCase` as the POS-owned reversal entry point. `CompletePosReturnUseCase` no longer constructs `CreateSalesReturnUseCase`, `PostSalesReturnUseCase`, or references Sales Return domain entities.
 
-- active 250d sale-path ban for `CompletePosSaleUseCase` and `PostPosSaleUseCase`;
-- skipped folder-wide POS-to-Sales ban with a TODO to enable in 250d2.
+The POS return path now:
 
-250d2 must decouple returns and then turn on the folder-wide ban with no skips.
+1. validates the original completed receipt, current open shift, register, and return quantities;
+2. restocks returned tracked items through `IInventoryCore.processIN`;
+3. records revenue/tax reversal, COGS reversal, and refund settlement through `IAccountingBridge.recordFinancialEvent`;
+4. persists the POS return and refund cash movement in the same transaction.
+
+The return path uses optional posting metadata captured on POS receipt line snapshots by the 250d/250d2 sale path: revenue account, tax account, COGS account, inventory account, and original unit/line cost. Existing receipts that lack the optional cost metadata still load; COGS reversal posts when cost/account metadata is available.
+
+## Architecture Guard
+
+`backend/src/tests/architecture/SystemCoreBoundaries.test.ts` now enables the folder-wide guard: files under `backend/src/application/pos/` must not import Sales application internals or Sales domain internals. There is no 250d2 skip left in that guard.

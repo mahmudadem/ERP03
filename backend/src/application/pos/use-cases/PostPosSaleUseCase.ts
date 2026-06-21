@@ -58,6 +58,10 @@ export interface PostedPosSaleLine {
   unitCostBase: number;
   lineCostBase: number;
   stockMovementId?: string;
+  revenueAccountId?: string;
+  taxAccountId?: string;
+  cogsAccountId?: string;
+  inventoryAccountId?: string;
 }
 
 export interface PostPosSaleResult {
@@ -129,6 +133,8 @@ export class PostPosSaleUseCase {
       let stockMovementId: string | undefined;
       let unitCostBase = 0;
       let lineCostBase = 0;
+      let cogsAccountId: string | undefined;
+      let inventoryAccountId: string | undefined;
       if (item.trackInventory && !input.dryRun) {
         const movement = await this.inventoryCore.processOUT({
           companyId: input.companyId,
@@ -148,6 +154,8 @@ export class PostPosSaleUseCase {
 
         const cogsAccounts = this.resolveCogsAccounts(item, categoryMap, invSettings);
         if (lineCostBase > 0 && cogsAccounts) {
+          cogsAccountId = cogsAccounts.cogsAccountId;
+          inventoryAccountId = cogsAccounts.inventoryAccountId;
           addToBucket(cogsDebits, cogsAccounts.cogsAccountId, lineCostBase);
           addToBucket(inventoryCredits, cogsAccounts.inventoryAccountId, lineCostBase);
         }
@@ -184,6 +192,10 @@ export class PostPosSaleUseCase {
         unitCostBase,
         lineCostBase,
         stockMovementId,
+        revenueAccountId,
+        taxAccountId: amounts.taxBase > 0 ? tax.salesTaxAccountId : undefined,
+        cogsAccountId,
+        inventoryAccountId,
       });
 
       void idx;
