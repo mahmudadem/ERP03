@@ -25,7 +25,7 @@ const makeReceipt = (overrides: any = {}): PosReceipt =>
     salesInvoiceId: 'si_1',
     salesInvoiceNumber: 'SI-0001',
     createdBy: 'cashier_1',
-    createdAt: overrides.createdAt ? new Date(overrides.createdAt) : new Date('2026-06-20T10:00:00Z'),
+    createdAt: overrides.createdAt ? new Date(overrides.createdAt) : new Date(),
     ...overrides,
   });
 
@@ -45,7 +45,7 @@ const makeReturn = (overrides: any = {}): PosReturn =>
     salesReturnId: 'sr_1',
     salesReturnNumber: 'SR-0001',
     createdBy: 'cashier_1',
-    createdAt: overrides.createdAt ? new Date(overrides.createdAt) : new Date('2026-06-20T11:00:00Z'),
+    createdAt: overrides.createdAt ? new Date(overrides.createdAt) : new Date(),
     ...overrides,
   });
 
