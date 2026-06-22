@@ -1,6 +1,8 @@
 # Task 254 — Items / Stock / Catalog always-on (decouple from the Inventory module)
 
-> **Status:** Not started. **Priority:** MEDIUM (the largest of the engines-vs-modules trio).
+> **Status:** 🟡 BACKEND DONE (2026-06-22) — frontend surface remains. Added idempotent `EnsureInventoryEngineInitialized` (mirror of the accounting guard; inits the stock/catalog engine with safe defaults, no GL accounts required) and wired it into POS init (`PosController.initializePos`) + Sales/Purchase init (optional last constructor param, passed by the controllers). So any module that consumes items now guarantees the inventory engine is ready, and — combined with the guard already checking `initialized` (not `isEnabled`) + flexible permission-derived bundles — item management + oversell protection work for a POS/Sales-only tenant regardless of the Inventory module's enabled state. Verified: focused guard/init/POS tests + full backend suite **1634 green**, backend build clean.
+> **Remaining (frontend, UX decision):** a POS/Sales persona needs an item-management entry point that doesn't depend on the Inventory module sidebar being visible. Not yet built — needs a UX call on where it surfaces.
+> **Priority:** MEDIUM (the largest of the engines-vs-modules trio).
 > **Principle:** [engines-vs-modules.md](../../docs/architecture/engines-vs-modules.md) — "item" is a shared catalog concept; the Inventory module is the UI/reporting layer on top. Item management is gated by *permission*, not by module-enabled.
 
 ## Refined findings (2026-06-22 investigation — read before implementing)

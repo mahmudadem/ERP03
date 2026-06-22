@@ -242,7 +242,8 @@ export class PurchaseController {
         diContainer.voucherTypeDefinitionRepository,
         diContainer.voucherFormRepository,
         ensureAccountingEngine,
-        diContainer.inventorySettingsRepository
+        diContainer.inventorySettingsRepository,
+        diContainer.ensureInventoryEngine
       );
 
       const settings = await useCase.execute({

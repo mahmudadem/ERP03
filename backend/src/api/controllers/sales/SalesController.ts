@@ -331,7 +331,8 @@ export class SalesController {
         diContainer.voucherFormRepository,
         ensureAccountingEngine,
         diContainer.inventorySettingsRepository,
-        diContainer.encryptionService
+        diContainer.encryptionService,
+        diContainer.ensureInventoryEngine
       );
 
       const settings = await useCase.execute({

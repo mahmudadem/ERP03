@@ -160,6 +160,8 @@ import { SubledgerVoucherPostingService } from '../../application/accounting/ser
 import { RecordChangeService } from '../../application/system/services/RecordChangeService';
 import { RecordStockMovementUseCase } from '../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { SalesInventoryService } from '../../application/inventory/services/SalesInventoryService';
+import { InitializeInventoryUseCase } from '../../application/inventory/use-cases/InitializeInventoryUseCase';
+import { EnsureInventoryEngineInitialized } from '../../application/inventory/use-cases/EnsureInventoryEngineInitialized';
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
   import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
   import { AiRuntimeGuard } from '../../application/ai-assistant/services/AiRuntimeGuard';
@@ -1057,6 +1059,24 @@ export const diContainer = {
   },
   get auditEngine(): IAuditEngine {
     return new LegacyAuditEngineAdapter(new RecordChangeService(this.recordChangeLogRepository));
+  },
+  // Task 254: idempotent guard so the inventory/catalog/stock engine is ready whenever a
+  // consuming module (Sales/Purchases/POS) initializes — items + oversell protection work for
+  // any module regardless of the Inventory module's enabled state.
+  get ensureInventoryEngine(): EnsureInventoryEngineInitialized {
+    return new EnsureInventoryEngineInitialized(
+      this.companyModuleRepository,
+      this.companyRepository,
+      new InitializeInventoryUseCase(
+        this.companyRepository,
+        this.inventorySettingsRepository,
+        this.warehouseRepository,
+        this.uomRepository,
+        this.companyModuleRepository,
+        this.voucherTypeDefinitionRepository,
+        this.voucherFormRepository
+      )
+    );
   },
   get inventoryCore(): IInventoryCore {
     return new SalesInventoryService(new RecordStockMovementUseCase({
