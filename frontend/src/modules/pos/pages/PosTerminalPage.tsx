@@ -46,6 +46,8 @@ import {
   Pencil,
   Maximize,
   Minimize,
+  ChevronDown,
+  ChevronUp,
 } from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
@@ -138,6 +140,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [saleManagerOverride, setSaleManagerOverride] = useState<ManagerOverrideValue | null>(null);
   const [showSaleManagerOverride, setShowSaleManagerOverride] = useState(false);
   const [heldCarts, setHeldCarts] = useState<PosHeldCartDTO[]>([]);
+  const [isTotalsExpanded, setIsTotalsExpanded] = useState(false);
   const [editingLineId, setEditingLineId] = useState<string | null>(null);
   const [cashierRoleId, setCashierRoleId] = useState<string | undefined>(undefined);
   const [heldLoading, setHeldLoading] = useState(false);
@@ -1201,36 +1204,56 @@ const PosTerminalPage: React.FC<Props> = () => {
 
           {/* Totals + customer + pay */}
           <div className="flex-none space-y-2 border-t border-slate-100 bg-slate-50/60 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/40">
-            <div className="space-y-1 text-xs sm:space-y-1.5 lg:text-sm">
-              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                <span>{t('pos.terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
-                <span className="font-mono">{money(subtotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                <span>{t('pos.terminal.discount', { defaultValue: 'Discount' })}</span>
-                <span className="font-mono">{money(discountTotal)}</span>
-              </div>
-              <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                <span>{t('pos.terminal.tax', { defaultValue: 'Tax' })}</span>
-                <span className="font-mono">{money(taxTotal)}</span>
-              </div>
-              <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1 lg:pt-2 dark:border-[var(--color-border)]">
-                <span className="text-sm font-bold text-slate-900 lg:text-base dark:text-[var(--color-text-primary)]">
-                  {t('pos.terminal.grandTotal', { defaultValue: 'Total' })}
-                </span>
-                <span className="font-mono text-lg font-extrabold text-slate-900 lg:text-xl dark:text-[var(--color-text-primary)]">{money(grandTotal)}</span>
-              </div>
-            </div>
+            {/* Mobile Expand Toggle */}
+            <button
+              onClick={() => setIsTotalsExpanded(!isTotalsExpanded)}
+              className="flex w-full items-center justify-center py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 landscape:hidden md:hidden dark:text-slate-500 cursor-pointer"
+            >
+              {isTotalsExpanded ? (
+                <>
+                  {t('pos.terminal.hideDetails', { defaultValue: 'Hide Details' })}
+                  <ChevronUp className="ml-1 h-3 w-3" />
+                </>
+              ) : (
+                <>
+                  {t('pos.terminal.showDetails', { defaultValue: 'Show Details' })}
+                  <ChevronDown className="ml-1 h-3 w-3" />
+                </>
+              )}
+            </button>
 
-            <div>
-              <label className="mb-0.5 block text-[10px] font-medium text-slate-500 lg:mb-1 lg:text-xs dark:text-[var(--color-text-secondary)]">
-                {t('pos.terminal.customer', { defaultValue: 'Customer' })}
-              </label>
-              <PartySelector
-                role="CUSTOMER"
-                value={customerId}
-                onChange={(p) => setCustomerId(p?.id || settings?.walkInCustomerId)}
-              />
+            <div className={`space-y-2 lg:space-y-3 ${isTotalsExpanded ? 'block' : 'hidden landscape:block md:block'}`}>
+              <div className="space-y-1 text-xs sm:space-y-1.5 lg:text-sm">
+                <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
+                  <span>{t('pos.terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
+                  <span className="font-mono">{money(subtotal)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
+                  <span>{t('pos.terminal.discount', { defaultValue: 'Discount' })}</span>
+                  <span className="font-mono">{money(discountTotal)}</span>
+                </div>
+                <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
+                  <span>{t('pos.terminal.tax', { defaultValue: 'Tax' })}</span>
+                  <span className="font-mono">{money(taxTotal)}</span>
+                </div>
+                <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1 lg:pt-2 dark:border-[var(--color-border)]">
+                  <span className="text-sm font-bold text-slate-900 lg:text-base dark:text-[var(--color-text-primary)]">
+                    {t('pos.terminal.grandTotal', { defaultValue: 'Total' })}
+                  </span>
+                  <span className="font-mono text-lg font-extrabold text-slate-900 lg:text-xl dark:text-[var(--color-text-primary)]">{money(grandTotal)}</span>
+                </div>
+              </div>
+
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-slate-500 lg:mb-1 lg:text-xs dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.customer', { defaultValue: 'Customer' })}
+                </label>
+                <PartySelector
+                  role="CUSTOMER"
+                  value={customerId}
+                  onChange={(p) => setCustomerId(p?.id || settings?.walkInCustomerId)}
+                />
+              </div>
             </div>
 
             <button
