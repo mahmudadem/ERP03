@@ -836,7 +836,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       {/* Workspace */}
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 landscape:grid-cols-12 lg:grid-cols-12">
         {/* Products pane */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-7 lg:col-span-7">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-4 lg:col-span-7">
           <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
             <div className="relative">
               <input
@@ -855,7 +855,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
             {searching && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-3 xl:grid-cols-4">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="h-[88px] animate-pulse rounded-xl bg-slate-100 dark:bg-[var(--color-bg-tertiary)]" />
                 ))}
@@ -863,7 +863,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             )}
 
             {!searching && searchResults.length > 0 && (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-1 gap-2 lg:grid-cols-3 xl:grid-cols-4">
                 {searchResults.map((it) => {
                   const unitPrice = Number(it.salePrice || 0);
                   const canSell = Number.isFinite(unitPrice) && unitPrice > 0;
@@ -878,13 +878,17 @@ const PosTerminalPage: React.FC<Props> = () => {
                           : 'opacity-75 cursor-not-allowed'
                       }`}
                     >
-                      <div className="flex items-start gap-2">
-                        <div className="flex h-9 w-9 flex-none items-center justify-center rounded-lg bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                      <div className="flex flex-col sm:flex-row sm:items-start gap-2 sm:gap-3 w-full">
+                        <div className="flex h-8 w-8 sm:h-9 sm:w-9 flex-none items-center justify-center rounded-lg bg-indigo-100 text-[10px] sm:text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                           {initialsOf(it.name)}
                         </div>
-                        <div className="min-w-0">
-                          <div className="truncate text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">{it.name}</div>
-                          <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">{it.code}</div>
+                        <div className="min-w-0 flex-1 w-full">
+                          <div className="text-sm font-semibold leading-snug text-slate-900 line-clamp-2 dark:text-[var(--color-text-primary)]" title={it.name}>
+                            {it.name}
+                          </div>
+                          <div className="truncate font-mono text-[10px] sm:text-[11px] text-slate-500 mt-0.5 dark:text-[var(--color-text-secondary)]" title={it.code}>
+                            {it.code}
+                          </div>
                         </div>
                       </div>
                       <div className="mt-3 flex items-center justify-between">
@@ -929,7 +933,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         </section>
 
         {/* Order pane */}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-5 lg:col-span-5">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-8 lg:col-span-5">
           <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
               <Receipt className="h-4 w-4 text-indigo-600" />
@@ -975,17 +979,17 @@ const PosTerminalPage: React.FC<Props> = () => {
                   const quoteLine = activeIndex >= 0 ? quote?.lines?.[activeIndex] : undefined;
                   const taxName = quoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
                   return (
-                  <li key={l.lineId} className={`flex flex-col gap-3 px-4 py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'}`}>
-                    {/* ROW 1: Mobile (Flex Col) -> Desktop (Flex Row) */}
-                    <div className="flex flex-col xl:flex-row xl:items-center justify-between w-full gap-3 xl:gap-4">
+                  <li key={l.lineId} className={`flex flex-col gap-3 px-2 sm:px-4 py-2 sm:py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'}`}>
+                    {/* ROW 1: Single Row for all screens */}
+                    <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
                       {/* Left Side: Name, Edit (Desktop), Code, DefPrice, DefTax */}
-                      <div className="flex items-center gap-3 min-w-0 flex-1">
-                        <span className={`truncate text-[16px] font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
-                          <span className="mr-1.5 text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
+                      <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
+                        <span className={`truncate text-sm sm:text-[16px] font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`} title={l.itemName}>
+                          <span className="mr-1 sm:mr-1.5 text-[12px] sm:text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
                           {l.itemName}
                         </span>
                         {isVoided && (
-                          <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-[var(--color-border)] dark:bg-transparent">
+                          <span className="hidden sm:inline-block rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-[var(--color-border)] dark:bg-transparent">
                             {t('pos.terminal.voided', { defaultValue: 'Voided' })}
                           </span>
                         )}
@@ -1009,16 +1013,16 @@ const PosTerminalPage: React.FC<Props> = () => {
                       </div>
 
                       {/* Right Side: Qty Control, Mobile Edit, Mobile Line Total, Delete */}
-                      <div className="flex items-center justify-between xl:justify-end gap-3 shrink-0">
+                      <div className="flex items-center justify-end gap-1.5 sm:gap-3 shrink-0">
                         {/* Action Buttons */}
-                        <div className="flex items-center gap-2 xl:gap-3">
+                        <div className="flex items-center gap-1 sm:gap-3">
                           {!isVoided && (
-                            <div className="flex h-9 xl:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
+                            <div className="flex h-8 xl:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
                               <button
                                 onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
-                                className="flex h-full w-10 xl:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                                className="flex h-full w-7 sm:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
                               >
-                                <Minus className="h-4 w-4 xl:h-3.5 xl:w-3.5" />
+                                <Minus className="h-3.5 w-3.5" />
                               </button>
                               <input
                                 type="number"
@@ -1027,13 +1031,13 @@ const PosTerminalPage: React.FC<Props> = () => {
                                 value={l.qty}
                                 onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
                                 onFocus={(e) => e.target.select()}
-                                className="h-full w-12 xl:w-10 border-x border-slate-200 bg-transparent text-center text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                                className="h-full w-8 sm:w-10 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <button
                                 onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
-                                className="flex h-full w-10 xl:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                                className="flex h-full w-7 sm:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
                               >
-                                <Plus className="h-4 w-4 xl:h-3.5 xl:w-3.5" />
+                                <Plus className="h-3.5 w-3.5" />
                               </button>
                             </div>
                           )}
@@ -1043,31 +1047,31 @@ const PosTerminalPage: React.FC<Props> = () => {
                             <button
                               onClick={() => setEditingLineId(l.lineId)}
                               aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
-                              className="flex xl:hidden h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                              className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                             </button>
                           )}
 
                           {isVoided ? (
                             <button
                               onClick={() => beginVoidLine(l.lineId)}
-                              className="flex h-9 w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
                             >
-                              <RefreshCw className="h-4 w-4 xl:h-5 xl:w-5" />
+                              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-5 xl:w-5" />
                             </button>
                           ) : (
                             <button
                               onClick={() => beginVoidLine(l.lineId)}
-                              className="flex h-9 w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
+                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
                             >
-                              <Trash2 className="h-4 w-4 xl:h-5 xl:w-5" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-5 xl:w-5" />
                             </button>
                           )}
                         </div>
 
                         {/* MOBILE Line Total */}
-                        <div className={`xl:hidden font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through' : 'text-indigo-700 dark:text-indigo-400'}`}>
+                        <div className={`xl:hidden font-mono text-[13px] sm:text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through' : 'text-indigo-700 dark:text-indigo-400'}`}>
                           {money(l.lineTotal)}
                         </div>
                       </div>
