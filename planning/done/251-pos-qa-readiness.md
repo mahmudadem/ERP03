@@ -3,7 +3,7 @@
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
 **Status:** in progress locally; slices 1-8 green
-**Actual time:** ~11.1h so far
+**Actual time:** ~11.6h so far
 
 ## Technical Developer View
 
@@ -28,6 +28,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - Posted receipt void now creates a POS return for all remaining active receipt quantities and marks the receipt `VOIDED` inside the same transaction after the return is persisted.
 - POS exchange now creates one linked POS return and one linked replacement POS sale with the same `exchangeId`, and reports net due/refund for the cashier.
 - POS hold/recall now stores suspended carts as `PosHeldCart` records with `HELD`, `RECALLED`, and `CANCELLED` status. Holding a cart does not reserve stock, consume receipt numbers, create payments, or post accounting; recall restores the cart for later payment.
+- POS Override Audit now has a dedicated ReportContainer page under POS Reports.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -53,6 +54,7 @@ Files changed:
 - `backend/src/domain/pos/entities/POSPolicy.ts`
 - `frontend/src/api/posApi.ts`
 - `frontend/src/modules/pos/pages/PosTerminalPage.tsx`
+- `frontend/src/modules/pos/pages/PosOverrideAuditReportPage.tsx`
 - `backend/src/tests/application/pos/CompletePosSale.test.ts`
 - `backend/src/tests/application/pos/CompletePosReturn.test.ts`
 - `backend/src/tests/application/pos/PosShiftUseCases.test.ts`
@@ -87,6 +89,8 @@ Exchange now uses the same safe return and sale paths. The returned item comes b
 
 Cashiers can now hold and recall sales. Holding saves the active cart on the server and clears the terminal for the next customer. Recalling restores the held cart. Cancelling a held sale removes it from the active held list. None of those actions posts inventory, payment, receipt, or ledger activity until the cashier completes payment.
 
+Managers now have a POS **Override Audit** report page for voided lines, manual discounts, price overrides, and tax overrides. This uses the same report shell as the other POS reports.
+
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
 Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
@@ -117,7 +121,6 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 
 - Promotions remain production-gated until the stacking/cap model is implemented.
 - Cashier-facing manager approval capture UI is still required; this slice added backend policy hooks and enforcement.
-- Override audit report has backend/API coverage; a dedicated ReportContainer UI page is still a follow-up.
 - Exchange has backend/API coverage; cashier-facing exchange UI polish is still a follow-up.
 - Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
 - SQL deployments need a Prisma migration for the new POS shift reconciliation and held-cart fields before using them in SQL mode.

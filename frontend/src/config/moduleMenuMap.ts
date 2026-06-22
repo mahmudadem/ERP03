@@ -227,6 +227,7 @@ export const moduleMenuMap: Record<
           { label: 'Cashier Sales', path: '/pos/reports/cashiers', permission: 'pos.reports.view', icon: 'Users' },
           { label: 'Cash Over/Short', path: '/pos/reports/over-short', permission: 'pos.reports.view', icon: 'Scale' },
           { label: 'Receipt History', path: '/pos/reports/receipts', permission: 'pos.reports.view', icon: 'History' },
+          { label: 'Override Audit', path: '/pos/reports/override-audit', permission: 'pos.reports.view', icon: 'ShieldCheck' },
           { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'pos.reports.view', icon: 'CircleDollarSign' },
         ],
       },

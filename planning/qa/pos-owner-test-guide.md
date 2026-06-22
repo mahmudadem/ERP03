@@ -84,7 +84,7 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 26. Expected: sale is blocked before receipt/posting.
 27. Repeat with a manager override id supplied by API/test harness.
 28. Expected: sale completes and the receipt line carries the manager override id.
-29. Query `/tenant/pos/reports/override-audit` for the same date/register.
+29. Open **POS → Reports → Override Audit** or query `/tenant/pos/reports/override-audit` for the same date/register.
 30. Confirm rows appear for manual discount, price override, tax override, and any voided lines.
 31. Void a posted receipt that has no prior returns.
 32. Expected: a POS return is created for all active lines, stock and settlement reverse, and the original receipt status becomes `VOIDED`.

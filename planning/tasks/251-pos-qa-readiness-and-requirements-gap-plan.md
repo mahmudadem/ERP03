@@ -64,7 +64,7 @@
 | Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Missing inactive/blocked/expired/non-POS-enabled/non-discountable item guards as POS policy. |
 | Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
 | Promotions/offers | ⏸ Deferred | Must stay disabled until stacking/cap/conflict/return model lands. |
-| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history exist. Missing voided lines, cancelled receipts, manual discounts, price/tax overrides, reprints, top-selling items, promotion performance. |
+| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, and override audit exist. Missing cancelled receipts, reprints, top-selling items, and promotion performance. |
 | Hardware/offline | ⏸ Deferred | No hardware abstraction or offline queue yet; should be placeholders/plans only for V1 unless owner prioritizes. |
 
 ## Recommended Implementation Phases
@@ -98,7 +98,8 @@
 - **P0 slice 6 complete:** Posted receipt void/cancel through full remaining POS return plus duplicate-return guard.
 - **P0 slice 7 complete:** Exchange workflow as linked POS return + replacement POS sale sharing `exchangeId`.
 - **P1 slice 8 complete:** Hold/recall sale stores held carts server-side with `HELD` / `RECALLED` / `CANCELLED` status and terminal controls.
-- **P0/P1 next slice:** Cashier-facing exchange UI polish or dedicated override-audit report page.
+- **P1 slice 9 complete:** Dedicated Override Audit report page added under POS Reports.
+- **P0/P1 next slice:** Cashier-facing exchange UI polish.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
 - Decide whether branch should remain free text or wait for a first-class Branch entity.

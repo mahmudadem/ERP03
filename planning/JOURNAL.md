@@ -4575,3 +4575,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated POS architecture, selling guide, owner test guide, Task 251 gap matrix, completion report, ACTIVE, and this journal.
 - **Time spent:** ~1.3h for this slice; Task 251 total ~11.1h so far.
 - **Next:** Run full POS/backend/frontend verification, then proceed to cashier-facing exchange UI polish or the dedicated override-audit report page.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 9 override audit report page)
+
+- **Goal:** Close the POS reports gap where override audit had backend/API coverage but no manager-facing report page.
+- **What was done:** Added `PosOverrideAuditReportPage` with `ReportContainer`, wired `/pos/reports/override-audit` into router config and POS Reports menu, and updated POS docs/test guide/planning.
+- **Accounting/ERP impact:** Read-only reporting only. No receipt, payment, stock, tax, COGS, settlement, approval, or ledger behavior changed.
+- **Verification:** Frontend report checker/typecheck/build follows in this session.
+- **Time spent:** ~0.5h for this slice; Task 251 total ~11.6h so far.
+- **Next:** Cashier-facing exchange UI polish.

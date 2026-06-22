@@ -1,6 +1,6 @@
 # POS — Reports
 
-Six POS report pages + one link live under **POS → Reports** in the sidebar. The backend also exposes an override audit report for manager review. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
+Seven POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
 
 ## Z Report (by shift)
 
@@ -46,7 +46,7 @@ This is the report to run on every shift close, to spot cashier over/short trend
 **Input:** date range, optional register.
 **Output:** one row per voided line, manual discount, price override, or tax override. Rows show the receipt, register, shift, cashier, item, discount/override details, void reason, and manager override id when supplied.
 
-This report is currently available as the backend report endpoint `/tenant/pos/reports/override-audit`; a dedicated POS Reports page is a follow-up UI slice.
+Open **POS → Reports → Override Audit** to review these rows.
 
 ## Unsettled Costs (link)
 
