@@ -1,3 +1,11 @@
+export type POSManagerOverrideAction =
+  | 'VOID_LINE'
+  | 'PRICE_OVERRIDE'
+  | 'DISCOUNT_OVERRIDE'
+  | 'TAX_OVERRIDE'
+  | 'RETURN'
+  | 'REPRINT';
+
 export interface POSTerminalPolicyProps {
   registerId: string;
   allowDirectSales?: boolean;
@@ -6,6 +14,11 @@ export interface POSTerminalPolicyProps {
 export interface CashierRolePolicyProps {
   roleId: string;
   requireApprovalForDirectSales?: boolean;
+  managerOverrideActions?: POSManagerOverrideAction[];
+  maxLineDiscountPercent?: number;
+  maxLineDiscountAmount?: number;
+  allowPriceOverride?: boolean;
+  allowTaxOverride?: boolean;
 }
 
 export interface POSPolicyProps {
@@ -45,17 +58,34 @@ export class POSTerminalPolicy {
 export class CashierRolePolicy {
   readonly roleId: string;
   readonly requireApprovalForDirectSales: boolean;
+  readonly managerOverrideActions: POSManagerOverrideAction[];
+  readonly maxLineDiscountPercent?: number;
+  readonly maxLineDiscountAmount?: number;
+  readonly allowPriceOverride: boolean;
+  readonly allowTaxOverride: boolean;
 
   constructor(props: CashierRolePolicyProps) {
     if (!props.roleId?.trim()) throw new Error('CashierRolePolicy roleId is required');
     this.roleId = props.roleId.trim();
     this.requireApprovalForDirectSales = props.requireApprovalForDirectSales === true;
+    this.managerOverrideActions = Array.isArray(props.managerOverrideActions)
+      ? props.managerOverrideActions.filter(isManagerOverrideAction)
+      : [];
+    this.maxLineDiscountPercent = normalizeLimit(props.maxLineDiscountPercent);
+    this.maxLineDiscountAmount = normalizeLimit(props.maxLineDiscountAmount);
+    this.allowPriceOverride = props.allowPriceOverride !== false;
+    this.allowTaxOverride = props.allowTaxOverride !== false;
   }
 
   toJSON(): CashierRolePolicyProps {
     return {
       roleId: this.roleId,
       requireApprovalForDirectSales: this.requireApprovalForDirectSales,
+      managerOverrideActions: this.managerOverrideActions,
+      maxLineDiscountPercent: this.maxLineDiscountPercent,
+      maxLineDiscountAmount: this.maxLineDiscountAmount,
+      allowPriceOverride: this.allowPriceOverride,
+      allowTaxOverride: this.allowTaxOverride,
     };
   }
 }
@@ -113,4 +143,21 @@ export class POSPolicy {
       updatedAt: data.updatedAt,
     });
   }
+}
+
+function isManagerOverrideAction(value: unknown): value is POSManagerOverrideAction {
+  return [
+    'VOID_LINE',
+    'PRICE_OVERRIDE',
+    'DISCOUNT_OVERRIDE',
+    'TAX_OVERRIDE',
+    'RETURN',
+    'REPRINT',
+  ].includes(String(value));
+}
+
+function normalizeLimit(value: unknown): number | undefined {
+  if (value === undefined || value === null || value === '') return undefined;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
 }

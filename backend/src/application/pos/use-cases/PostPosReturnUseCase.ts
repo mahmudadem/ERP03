@@ -99,7 +99,7 @@ export class PostPosReturnUseCase {
           qty: sourceLine.qty,
           date: input.date,
           movementType: 'RETURN_IN',
-          refs: { type: 'SALES_RETURN', docId: returnId, lineId: receiptLine.salesInvoiceLineId || sourceLine.itemId },
+          refs: { type: 'POS_RETURN', docId: returnId, lineId: receiptLine.salesInvoiceLineId || sourceLine.itemId },
           currentUser: input.createdBy,
           unitCostInMoveCurrency: unitCostBase,
           moveCurrency: baseCurrency,

@@ -12,6 +12,7 @@ import { IPosReturnRepository } from '../../../repository/interfaces/pos/IPosRet
 import { IPosShiftRepository } from '../../../repository/interfaces/pos/IPosShiftRepository';
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
+import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPaymentRepository';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesReturnRepository } from '../../../repository/interfaces/sales/ISalesReturnRepository';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
@@ -148,11 +149,12 @@ export interface PaymentMethodSummaryRow {
 }
 
 export class GetPaymentMethodSummaryUseCase {
-  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+  constructor(
+    private readonly receiptRepo: IPosReceiptRepository,
+    private readonly paymentRepo: IPosPaymentRepository
+  ) {}
 
   async execute(input: GetPaymentMethodSummaryInput): Promise<PaymentMethodSummaryRow[]> {
-    // Payment method rows live in posPayments (we have to load each receipt's payments).
-    // V1: we re-fetch each receipt and read from its payment rows via the repo.
     const list = await this.receiptRepo.list(input.companyId, {
       dateFrom: input.dateFrom,
       dateTo: input.dateTo,
@@ -160,9 +162,24 @@ export class GetPaymentMethodSummaryUseCase {
       limit: 1000,
     } as any);
     const byMethod: Record<string, { count: number; amount: number }> = { CASH: { count: 0, amount: 0 }, CARD: { count: 0, amount: 0 }, BANK_TRANSFER: { count: 0, amount: 0 }, CUSTOM: { count: 0, amount: 0 } };
-    // Note: V1 does not aggregate from pos_payments here (it would require a payments repo
-    // list-by-company API). The summary is a placeholder that the cashier page can later
-    // enrich by listing payments per receipt.
+
+    await Promise.all(list.map(async (receipt) => {
+      const payments = await this.paymentRepo.listByReceipt(input.companyId, receipt.id);
+      const seenMethods = new Set<string>();
+      for (const payment of payments) {
+        const bucket = byMethod[payment.method];
+        if (!bucket) continue;
+        if (!seenMethods.has(payment.method)) {
+          bucket.count += 1;
+          seenMethods.add(payment.method);
+        }
+        const netAmount = payment.method === 'CASH'
+          ? payment.amount - payment.changeGiven
+          : payment.amount;
+        bucket.amount = round2(bucket.amount + netAmount);
+      }
+    }));
+
     return (Object.keys(byMethod) as Array<keyof typeof byMethod>).map((m) => ({
       method: m as any,
       receiptCount: byMethod[m].count,
@@ -300,4 +317,97 @@ export class GetReceiptHistoryUseCase {
       createdAt: r.createdAt.toISOString(),
     }));
   }
+}
+
+// ───────── 7. Override and void audit report ─────────
+
+export interface GetPosOverrideAuditReportInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  registerId?: string;
+  limit?: number;
+}
+
+export interface PosOverrideAuditRow {
+  receiptId: string;
+  receiptNumber: string;
+  registerId: string;
+  shiftId: string;
+  cashierUserId: string;
+  createdAt: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  eventType: 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE';
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  lineDiscount: number;
+  taxCodeId?: string;
+  voidReason?: string;
+  voidedBy?: string;
+  voidedAt?: string;
+  managerOverrideId?: string;
+}
+
+export class GetPosOverrideAuditReportUseCase {
+  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+
+  async execute(input: GetPosOverrideAuditReportInput): Promise<PosOverrideAuditRow[]> {
+    const receipts = await this.receiptRepo.list(input.companyId, {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      registerId: input.registerId,
+      limit: input.limit ?? 1000,
+    });
+    const rows: PosOverrideAuditRow[] = [];
+    for (const receipt of receipts) {
+      for (const line of receipt.lines) {
+        for (const eventType of auditEventTypesForLine(line)) {
+          rows.push({
+            receiptId: receipt.id,
+            receiptNumber: receipt.receiptNumber,
+            registerId: receipt.registerId,
+            shiftId: receipt.shiftId,
+            cashierUserId: receipt.createdBy,
+            createdAt: receipt.createdAt.toISOString(),
+            itemId: line.itemId,
+            itemCode: line.itemCode,
+            itemName: line.itemName,
+            qty: line.qty,
+            unitPrice: line.unitPrice,
+            lineTotal: line.lineTotal,
+            eventType,
+            discountType: line.discountType,
+            discountValue: line.discountValue,
+            lineDiscount: line.lineDiscount,
+            taxCodeId: line.taxCodeId,
+            voidReason: line.voidReason,
+            voidedBy: line.voidedBy,
+            voidedAt: line.voidedAt,
+            managerOverrideId: line.managerOverrideId,
+          });
+        }
+      }
+    }
+    return rows;
+  }
+}
+
+function auditEventTypesForLine(line: {
+  status?: string;
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  lineDiscount?: number;
+  discountValue?: number;
+}): Array<PosOverrideAuditRow['eventType']> {
+  const eventTypes: Array<PosOverrideAuditRow['eventType']> = [];
+  if (line.status === 'VOIDED') eventTypes.push('VOID_LINE');
+  if (line.priceOverride === true) eventTypes.push('PRICE_OVERRIDE');
+  if ((line.lineDiscount || 0) > 0 || (line.discountValue || 0) > 0) eventTypes.push('DISCOUNT_OVERRIDE');
+  if (line.taxOverride === true) eventTypes.push('TAX_OVERRIDE');
+  return eventTypes;
 }

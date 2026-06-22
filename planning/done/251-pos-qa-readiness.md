@@ -1,0 +1,120 @@
+# Task 251 — POS QA Readiness and Settlement Routing Fix
+
+**Date:** 2026-06-22
+**Branch:** `codex/pos-qa-readiness`
+**Status:** in progress locally; slices 1-7 green
+**Actual time:** ~9.8h so far
+
+## Technical Developer View
+
+This slice compared the POS implementation against the POS golden-path requirements and closed two concrete gaps:
+
+- Payment Methods report now aggregates persisted `PosPayment` rows instead of returning placeholder zeros.
+- POS sale and return settlement routing now uses the active register:
+  - CASH uses `PosRegister.cashDrawerAccountId`.
+  - CARD/BANK_TRANSFER/CUSTOM use `PosRegister.settlementAccountIds[method]`.
+  - Missing non-cash register settlement account blocks the sale before receipt/document posting.
+- POS settings payment methods now represent behavior rules only; legacy account ids are still validated if an older client sends them, but they are not required for enabled methods.
+- Promotions are now hard-disabled by default; promotion tests use an explicit test hook only.
+- POS stock movement references now use POS-specific document identity (`POS_DIRECT_SALE`, `POS_RETURN`) instead of Sales document labels.
+- POS terminal line removal now voids lines with cashier, timestamp, and reason instead of hard-deleting them. Voided lines are persisted on receipt audit, excluded from posting totals/stock/ledger, and filtered out of returnable quantity.
+- POS policy now has manager-override action hooks for `VOID_LINE`, `PRICE_OVERRIDE`, `DISCOUNT_OVERRIDE`, `TAX_OVERRIDE`, `RETURN`, and `REPRINT`. Sale and return use cases enforce the hooks where the current payload supports the action.
+- POS registers now persist `defaultPriceListId`, `allowedCashierUserIds`, and `hardwareProfileId`. Allowed cashiers are enforced on shift open; the price-list and hardware fields are stored placeholders for their later integration slices.
+- POS shifts now persist expected, counted, and variance totals by payment method. Fully balanced shifts are marked `RECONCILED`. Cash variance still posts over/short GL; non-cash variance is stored for settlement follow-up and does not auto-post.
+- POS cashier role policies now support sale-line limits for maximum discount percent/amount and whether manual price/tax overrides are allowed. Sale completion blocks over-limit lines unless the line carries an approved manager override id.
+- POS receipt line snapshots now preserve discount type/value, price override flag, tax override flag, and manager override id for audit review.
+- POS override audit report API (`/tenant/pos/reports/override-audit`) returns rows for voided lines, manual discounts, price overrides, and tax overrides.
+- POS returns now subtract prior POS returns before validating remaining returnable quantity.
+- Posted receipt void now creates a POS return for all remaining active receipt quantities and marks the receipt `VOIDED` inside the same transaction after the return is persisted.
+- POS exchange now creates one linked POS return and one linked replacement POS sale with the same `exchangeId`, and reports net due/refund for the cashier.
+- POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
+
+Files changed:
+
+- `backend/src/application/pos/use-cases/CompletePosSaleUseCase.ts`
+- `backend/src/application/pos/use-cases/CompletePosReturnUseCase.ts`
+- `backend/src/application/pos/use-cases/PosRegisterUseCases.ts`
+- `backend/src/application/pos/use-cases/PosShiftUseCases.ts`
+- `backend/prisma/schema.prisma`
+- `backend/src/application/pos/use-cases/PosReportingUseCases.ts`
+- `backend/src/application/pos/use-cases/PosSettingsUseCases.ts`
+- `backend/src/application/system-core/commercial/CommercialCore.ts`
+- `backend/src/application/system-core/PolicyEngine.ts`
+- `backend/src/api/controllers/pos/PosController.ts`
+- `backend/src/api/routes/pos.routes.ts`
+- `backend/src/domain/inventory/entities/StockMovement.ts`
+- `backend/src/domain/pos/entities/PosReceipt.ts`
+- `backend/src/domain/pos/entities/PosReturn.ts`
+- `backend/src/domain/pos/entities/PosRegister.ts`
+- `backend/src/domain/pos/entities/PosShift.ts`
+- `backend/src/domain/pos/entities/POSPolicy.ts`
+- `frontend/src/api/posApi.ts`
+- `frontend/src/modules/pos/pages/PosTerminalPage.tsx`
+- `backend/src/tests/application/pos/CompletePosSale.test.ts`
+- `backend/src/tests/application/pos/CompletePosReturn.test.ts`
+- `backend/src/tests/application/pos/PosShiftUseCases.test.ts`
+- `backend/src/tests/application/pos/PostPosSale.test.ts`
+- `backend/src/tests/application/pos/PostPosReturn.test.ts`
+- `backend/src/tests/application/pos/PosReporting.test.ts`
+- `backend/src/tests/application/pos/PosSettingsUseCases.test.ts`
+- `backend/src/tests/architecture/SystemCoreBoundaries.test.ts`
+- `docs/architecture/pos.md`
+- `docs/user-guide/pos/setup.md`
+- `docs/user-guide/pos/selling.md`
+- `docs/user-guide/pos/returns.md`
+- `docs/user-guide/pos/reports.md`
+- `planning/qa/golden-paths/06-pos.md`
+- `planning/qa/pos-owner-test-guide.md`
+- `planning/tasks/251-pos-qa-readiness-and-requirements-gap-plan.md`
+
+## End-User View
+
+POS now behaves closer to a real retail till setup. Each register has its own cash drawer and card/bank settlement accounts, so money from `POS-01` does not accidentally post to `POS-02` or a company-level placeholder account. The Payment Methods report now shows actual CASH/CARD/BANK/CUSTOM totals from completed receipts, with CASH reduced by change given.
+
+Cashiers now void entered cart lines instead of deleting them. A voided line stays visible on the receipt audit trail with the reason and user, but it does not affect the sale total, stock, ledger, tax, cash, or returnable quantity.
+
+POS can now enforce manager approval for sensitive cashier actions by role policy. The backend hooks are in place for voids, manual discounts, price/tax override flags, returns, and reprint policy checks. The cashier-facing manager approval capture workflow is still a follow-up.
+
+Cashier role policies can now also define hard limits for line discounts and whether manual price or tax edits are allowed. If a cashier exceeds those limits without a manager override id, the backend blocks the sale before any receipt, stock movement, ledger entry, or payment row is created. Managers can review exceptions through the override audit report.
+
+Posted receipt cancellation now behaves like a real POS financial reversal. The system creates a POS return for the remaining active quantities, reverses stock/settlement through the existing return path, and then marks the original receipt voided. Prior returns reduce the remaining quantity, so the same unit cannot be refunded twice.
+
+Exchange now uses the same safe return and sale paths. The returned item comes back through POS return, the replacement item goes out through POS sale, and both records share an exchange id. The response shows whether the customer owes extra or should receive a net refund.
+
+Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
+
+Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
+
+Promotions remain off for production POS. The system will not silently apply flash sales, BXGY, coupons, or free-gift rules until the missing stacking/cap/conflict/return model is implemented.
+
+For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full `planning/qa/golden-paths/06-pos.md`.
+
+## Tests
+
+- `npm test -- --runInBand src/tests/application/pos/CompletePosSale.test.ts src/tests/application/pos/CompletePosReturn.test.ts src/tests/application/pos/PosSettingsUseCases.test.ts src/tests/application/pos/PosReporting.test.ts` — passed, 4 suites / 31 tests.
+- `npm test -- --runInBand src/tests/application/pos/CompletePosSale.test.ts src/tests/application/pos/CompletePosReturn.test.ts` — passed, 2 suites / 21 tests after void-line slice.
+- `npm test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/pos/CompletePosSale.test.ts src/tests/application/pos/CompletePosReturn.test.ts` — passed, 3 suites / 28 tests after manager-override slice.
+- `npm test -- --runInBand src/tests/application/pos/PosShiftUseCases.test.ts` — passed, 1 suite / 11 tests after register-defaults slice.
+- `npm test -- --runInBand src/tests/application/pos/PosShiftUseCases.test.ts` — passed, 1 suite / 12 tests after shift-reconciliation slice.
+- `npm test -- --runInBand src/tests/application/pos/CompletePosSale.test.ts src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/pos/PosReporting.test.ts` — passed, 3 suites / 29 tests after price/discount/tax policy slice.
+- `npm test -- --runInBand src/tests/application/pos/CompletePosReturn.test.ts` — passed, 1 suite / 10 tests after posted-receipt void slice.
+- `npm test -- --runInBand src/tests/application/pos/CompletePosExchange.test.ts` — passed, 1 suite / 3 tests after exchange slice.
+- `npm test -- --runInBand src/tests/application/pos` — passed, 10 suites / 71 tests.
+- `npm test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — passed, 13 tests.
+- `npm run typecheck` from `backend/` — passed.
+- `npm run build` from `backend/` — passed.
+- `npm --prefix frontend run typecheck` — passed after repairing the local `frontend/node_modules` install.
+- `npm --prefix frontend run build` — passed.
+
+## Known Follow-Ups
+
+- Promotions remain production-gated until the stacking/cap model is implemented.
+- Cashier-facing manager approval capture UI is still required; this slice added backend policy hooks and enforcement.
+- Override audit report has backend/API coverage; a dedicated ReportContainer UI page is still a follow-up.
+- Exchange has backend/API coverage; cashier-facing exchange UI polish is still a follow-up.
+- Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
+- SQL deployments need a Prisma migration for the new `pos_shifts` JSON/date fields before using the payment-method reconciliation columns.
+- Posted-receipt void/cancel is not implemented yet; this slice covers pre-payment cart line void audit.
+- Accounting voucher enum still uses existing Sales Invoice / Sales Return voucher types for GL classification while POS metadata and stock refs preserve POS identity. Adding separate POS voucher types needs an accounting-policy review.
+- Branch is still free text on POS registers; a first-class Branch entity is a later product decision.
+- Owner still needs to run the POS golden path in the browser/API on a fresh tenant.

@@ -9,7 +9,8 @@ import client from './client';
 export type PosPaymentMethodCode = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
 export type PosCashRounding = 'none' | 'nearest_05' | 'nearest_1';
 export type PosRegisterStatus = 'ACTIVE' | 'INACTIVE';
-export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'FORCE_CLOSED' | 'CANCELLED';
+export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
+export type PosShiftPaymentTotals = Record<PosPaymentMethodCode, number>;
 
 export interface PosPaymentMethodDTO {
   code: PosPaymentMethodCode;
@@ -40,6 +41,9 @@ export interface PosRegisterDTO {
   name: string;
   branchId?: string;
   warehouseId: string;
+  defaultPriceListId?: string;
+  allowedCashierUserIds: string[];
+  hardwareProfileId?: string;
   cashDrawerAccountId: string;
   settlementAccountIds?: Partial<Record<PosPaymentMethodCode, string>>;
   status: PosRegisterStatus;
@@ -58,8 +62,13 @@ export interface PosShiftDTO {
   closedAt?: string;
   expectedCash?: number;
   countedCash?: number;
+  expectedPaymentTotals?: PosShiftPaymentTotals;
+  countedPaymentTotals?: PosShiftPaymentTotals;
+  overShortPaymentTotals?: PosShiftPaymentTotals;
   overShortAmount?: number;
   overShortVoucherId?: string;
+  reconciledAt?: string;
+  reconciledBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -100,10 +109,10 @@ export const posApi = {
   openShift: async (payload: { registerId: string; cashierUserId?: string; openingFloat: number }): Promise<PosShiftDTO> =>
     ok(client.post('/tenant/pos/shifts/open', payload)),
 
-  closeShift: async (id: string, payload: { countedCash: number }): Promise<any> =>
+  closeShift: async (id: string, payload: { countedCash: number; countedPaymentTotals?: Partial<PosShiftPaymentTotals> }): Promise<any> =>
     ok(client.post(`/tenant/pos/shifts/${encodeURIComponent(id)}/close`, payload)),
 
-  forceCloseShift: async (id: string, payload: { countedCash: number }): Promise<any> =>
+  forceCloseShift: async (id: string, payload: { countedCash: number; countedPaymentTotals?: Partial<PosShiftPaymentTotals> }): Promise<any> =>
     ok(client.post(`/tenant/pos/shifts/${encodeURIComponent(id)}/force-close`, payload)),
 
   createCashMovement: async (id: string, payload: { type: 'PAYIN' | 'PAYOUT' | 'DROP'; amount: number; reason?: string }): Promise<any> =>
@@ -134,7 +143,25 @@ export const posApi = {
     registerId: string;
     shiftId: string;
     customerId?: string;
-    lines: Array<{ itemId: string; qty: number; unitPrice: number; discountType?: 'PERCENT' | 'AMOUNT'; discountValue?: number; taxCodeId?: string }>;
+    cashierRoleId?: string;
+    lines: Array<{
+      itemId: string;
+      itemCode?: string;
+      itemName?: string;
+      uom?: string;
+      qty: number;
+      unitPrice: number;
+      discountType?: 'PERCENT' | 'AMOUNT';
+      discountValue?: number;
+      taxCodeId?: string;
+      priceOverride?: boolean;
+      taxOverride?: boolean;
+      status?: 'ACTIVE' | 'VOIDED';
+      voidedBy?: string;
+      voidedAt?: string;
+      voidReason?: string;
+      managerOverrideId?: string;
+    }>;
     payments: Array<{ method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM'; amount: number; reference?: string }>;
   }): Promise<any> =>
     ok(client.post('/tenant/pos/sales', payload)),
@@ -145,15 +172,55 @@ export const posApi = {
   getReceipt: async (id: string): Promise<{ receipt: any; payments: any[] }> =>
     ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}`)),
 
+  voidReceipt: async (id: string, payload: {
+    registerId: string;
+    shiftId?: string;
+    cashierRoleId?: string;
+    managerOverrideId?: string;
+    refundMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+    reason?: string;
+  }): Promise<any> =>
+    ok(client.post(`/tenant/pos/receipts/${encodeURIComponent(id)}/void`, payload)),
+
   // ===== Returns =====
   completeReturn: async (payload: {
     originalReceiptId: string;
     registerId: string;
     shiftId?: string;
+    cashierRoleId?: string;
+    managerOverrideId?: string;
     lines: Array<{ itemId: string; qty: number }>;
     refundMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
   }): Promise<any> =>
     ok(client.post('/tenant/pos/returns', payload)),
+
+  completeExchange: async (payload: {
+    originalReceiptId: string;
+    registerId: string;
+    shiftId: string;
+    customerId?: string;
+    cashierRoleId?: string;
+    managerOverrideId?: string;
+    returnLines: Array<{ itemId: string; qty: number }>;
+    saleLines: Array<{
+      itemId: string;
+      itemCode?: string;
+      itemName?: string;
+      uom?: string;
+      qty: number;
+      unitPrice: number;
+      discountType?: 'PERCENT' | 'AMOUNT';
+      discountValue?: number;
+      taxCodeId?: string;
+      priceOverride?: boolean;
+      taxOverride?: boolean;
+      managerOverrideId?: string;
+    }>;
+    salePayments: Array<{ method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM'; amount: number; reference?: string }>;
+    refundMethod: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+    reason?: string;
+  }): Promise<any> =>
+    ok(client.post('/tenant/pos/exchanges', payload)),
 
   listReturns: async (params?: { shiftId?: string; originalReceiptId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/returns', { params: params || {} })),
@@ -176,6 +243,9 @@ export const posApi = {
 
   getReceiptHistoryReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; customerId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/reports/receipt-history', { params: params || {} })),
+
+  getOverrideAuditReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; limit?: number }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/override-audit', { params: params || {} })),
 };
 
 export default posApi;

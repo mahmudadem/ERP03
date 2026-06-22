@@ -2,6 +2,7 @@ import { PosReceipt, PosReceiptStatus } from '../../../domain/pos/entities/PosRe
 
 export interface IPosReceiptRepository {
   create(receipt: PosReceipt, tx?: unknown): Promise<void>;
+  updateStatus(companyId: string, id: string, status: PosReceiptStatus, tx?: unknown): Promise<void>;
   getById(companyId: string, id: string): Promise<PosReceipt | null>;
   getByNumber(companyId: string, number: string): Promise<PosReceipt | null>;
   list(

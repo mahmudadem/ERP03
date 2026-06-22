@@ -38,8 +38,10 @@ router.post('/sales', idempotencyMiddleware, permissionGuard('pos.terminal.acces
 router.get('/receipts', permissionGuard('pos.terminal.access'), PosController.listReceipts);
 router.get('/receipts/:id', permissionGuard('pos.terminal.access'), PosController.getReceipt);
 router.get('/receipts/:id/reprint', permissionGuard('pos.receipt.reprint'), PosController.reprintReceipt);
+router.post('/receipts/:id/void', idempotencyMiddleware, permissionGuard('pos.return.create'), PosController.voidReceipt);
 
 // Returns
+router.post('/exchanges', idempotencyMiddleware, permissionGuard('pos.return.create'), permissionGuard('pos.terminal.access'), PosController.completeExchange);
 router.post('/returns', idempotencyMiddleware, permissionGuard('pos.return.create'), PosController.completeReturn);
 router.get('/returns', permissionGuard('pos.terminal.access'), PosController.listReturns);
 router.get('/returns/:id', permissionGuard('pos.terminal.access'), PosController.getReturn);
@@ -51,5 +53,6 @@ router.get('/reports/payment-methods', permissionGuard('pos.reports.view'), PosC
 router.get('/reports/cashier-sales', permissionGuard('pos.reports.view'), PosController.getCashierSales);
 router.get('/reports/cash-over-short', permissionGuard('pos.reports.view'), PosController.getCashOverShort);
 router.get('/reports/receipt-history', permissionGuard('pos.reports.view'), PosController.getReceiptHistory);
+router.get('/reports/override-audit', permissionGuard('pos.reports.view'), PosController.getOverrideAuditReport);
 
 export default router;

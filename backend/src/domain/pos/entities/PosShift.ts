@@ -5,7 +5,9 @@
  * (counted cash, expected cash, over/short amount + voucher id), and a
  * lifecycle status. Only ONE shift may be OPEN per register at a time.
  */
-export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'FORCE_CLOSED' | 'CANCELLED';
+export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
+export type PosShiftPaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
+export type PosShiftPaymentTotals = Record<PosShiftPaymentMethod, number>;
 
 export interface PosShiftProps {
   id: string;
@@ -18,8 +20,13 @@ export interface PosShiftProps {
   closedAt?: Date;
   expectedCash?: number;
   countedCash?: number;
+  expectedPaymentTotals?: Partial<PosShiftPaymentTotals>;
+  countedPaymentTotals?: Partial<PosShiftPaymentTotals>;
+  overShortPaymentTotals?: Partial<PosShiftPaymentTotals>;
   overShortAmount?: number;
   overShortVoucherId?: string;
+  reconciledAt?: Date;
+  reconciledBy?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -35,8 +42,13 @@ export class PosShift {
   closedAt?: Date;
   expectedCash?: number;
   countedCash?: number;
+  expectedPaymentTotals: PosShiftPaymentTotals;
+  countedPaymentTotals: PosShiftPaymentTotals;
+  overShortPaymentTotals: PosShiftPaymentTotals;
   overShortAmount?: number;
   overShortVoucherId?: string;
+  reconciledAt?: Date;
+  reconciledBy?: string;
   readonly createdAt: Date;
   updatedAt: Date;
 
@@ -48,7 +60,7 @@ export class PosShift {
     if (!Number.isFinite(props.openingFloat) || props.openingFloat < 0) {
       throw new Error('PosShift openingFloat must be a non-negative number');
     }
-    const status: PosShiftStatus = (['OPEN', 'CLOSED', 'FORCE_CLOSED', 'CANCELLED'] as PosShiftStatus[]).includes(props.status)
+    const status: PosShiftStatus = (['OPEN', 'CLOSED', 'RECONCILED', 'FORCE_CLOSED', 'CANCELLED'] as PosShiftStatus[]).includes(props.status)
       ? props.status
       : 'OPEN';
 
@@ -62,8 +74,13 @@ export class PosShift {
     this.closedAt = props.closedAt;
     this.expectedCash = props.expectedCash;
     this.countedCash = props.countedCash;
+    this.expectedPaymentTotals = normalizePaymentTotals(props.expectedPaymentTotals);
+    this.countedPaymentTotals = normalizePaymentTotals(props.countedPaymentTotals);
+    this.overShortPaymentTotals = normalizePaymentTotals(props.overShortPaymentTotals);
     this.overShortAmount = props.overShortAmount;
     this.overShortVoucherId = props.overShortVoucherId;
+    this.reconciledAt = props.reconciledAt;
+    this.reconciledBy = props.reconciledBy;
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -88,8 +105,13 @@ export class PosShift {
       closedAt: this.closedAt ? this.closedAt.toISOString() : null,
       expectedCash: this.expectedCash,
       countedCash: this.countedCash,
+      expectedPaymentTotals: this.expectedPaymentTotals,
+      countedPaymentTotals: this.countedPaymentTotals,
+      overShortPaymentTotals: this.overShortPaymentTotals,
       overShortAmount: this.overShortAmount,
       overShortVoucherId: this.overShortVoucherId,
+      reconciledAt: this.reconciledAt ? this.reconciledAt.toISOString() : null,
+      reconciledBy: this.reconciledBy,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
     };
@@ -107,10 +129,33 @@ export class PosShift {
       closedAt: data.closedAt ? new Date(data.closedAt) : undefined,
       expectedCash: data.expectedCash !== undefined ? Number(data.expectedCash) : undefined,
       countedCash: data.countedCash !== undefined ? Number(data.countedCash) : undefined,
+      expectedPaymentTotals: data.expectedPaymentTotals,
+      countedPaymentTotals: data.countedPaymentTotals,
+      overShortPaymentTotals: data.overShortPaymentTotals,
       overShortAmount: data.overShortAmount !== undefined ? Number(data.overShortAmount) : undefined,
       overShortVoucherId: data.overShortVoucherId || undefined,
+      reconciledAt: data.reconciledAt ? new Date(data.reconciledAt) : undefined,
+      reconciledBy: data.reconciledBy || undefined,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
       updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
     });
   }
 }
+
+export const EMPTY_POS_SHIFT_PAYMENT_TOTALS: PosShiftPaymentTotals = {
+  CASH: 0,
+  CARD: 0,
+  BANK_TRANSFER: 0,
+  CUSTOM: 0,
+};
+
+export function normalizePaymentTotals(value?: Partial<PosShiftPaymentTotals> | null): PosShiftPaymentTotals {
+  return {
+    CASH: round2(Number(value?.CASH) || 0),
+    CARD: round2(Number(value?.CARD) || 0),
+    BANK_TRANSFER: round2(Number(value?.BANK_TRANSFER) || 0),
+    CUSTOM: round2(Number(value?.CUSTOM) || 0),
+  };
+}
+
+const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;

@@ -5,12 +5,20 @@ The cashier screen is at **POS → Terminal**. It is the most-used surface in th
 ## Layout
 
 - **Left column** — product search. Type a SKU, barcode, or part of the product name; results appear after a short debounce. Click to add to the cart.
-- **Middle column** — the cart. Each row shows the line, editable qty, unit price, line total, and a delete button. Below: customer picker, subtotal, discount, grand total, and the **Pay** button.
+- **Middle column** — the cart. Each row shows the line, editable qty, unit price, line total, and a void button. Below: customer picker, subtotal, discount, grand total, and the **Pay** button.
 - **Right column** — the "Last receipt" card. After a sale, it shows the receipt number, the linked Sales Invoice number, and the change.
 
 ## Customer
 
 Defaults to the company-configured **walk-in customer** from POS Settings. To attach a named customer (e.g. a registered customer for history / credit-note purposes), use the customer picker to swap them. The sale still settles to cash/card.
+
+## Voiding a cart line
+
+Cashiers do not hard-delete entered lines. Click the trash icon on a cart row, enter a reason, and confirm **Void line**. The row remains visible as voided, is excluded from the totals, and is saved on the receipt audit trail when the sale completes.
+
+Voided lines do not post stock movement, revenue, tax, COGS, cash, or payment amounts. They also cannot be returned later from the receipt.
+
+If the cashier's role requires manager approval for voids, discounts, price overrides, or tax overrides, the backend blocks completion unless an approved manager override is supplied. Cashier roles can also set maximum line discount percent/amount and can block manual price or tax edits unless a manager approves.
 
 ## Tender
 
@@ -23,6 +31,8 @@ Click **Pay** to open the Tender dialog. Add one or more payment rows:
 
 The dialog shows live: tendered total, change, and the amount that will be applied to the Sales Invoice (= tendered total − change). CASH change is automatically netted off the SI settlement; CARD/BANK/CUSTOM do not give change.
 
+Settlement accounts come from the active register. CASH posts to the register's cash-drawer account; CARD, BANK_TRANSFER, and CUSTOM post to that register's configured settlement account. If a non-cash method is enabled but missing on the register, the sale is blocked before any receipt or posting is created.
+
 If cash rounding is enabled in POS Settings, the tender dialog uses the rounded cash total. For example, a total of `10.02` rounds to `10.00` when **nearest 0.05** is selected. The rounding difference is posted to the configured cash over/short account so the drawer, receipt, and accounting stay balanced.
 
 When the applied amount equals the payable total, click **Complete sale**. The system:
@@ -32,6 +42,8 @@ When the applied amount equals the payable total, click **Complete sale**. The s
 3. Writes a `SALE_CASH` cash movement on the current shift (net of change).
 4. Bumps the next receipt number.
 5. Returns the receipt number + posted document number + change to the cashier screen.
+
+Manual discounts, price override flags, tax override flags, voided lines, and manager approval ids are stored on the receipt audit trail. Managers can review those exceptions from the POS override audit report endpoint.
 
 ## Why "Allow POS direct sales" matters
 

@@ -13,6 +13,7 @@ import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosR
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { PostPosReturnUseCase } from './PostPosReturnUseCase';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
 
 
 export interface PosReturnLineInput {
@@ -30,13 +31,27 @@ export interface CompletePosReturnInput {
   refundMethod: PosReturnRefundMethod;
   /** Optional reason for the return; defaults to a generic POS reason (Sales requires one). */
   reason?: string;
-  actor: { userId: string; userEmail?: string };
+  managerOverrideId?: string;
+  voidOriginalReceipt?: boolean;
+  exchangeId?: string;
+  actor: { userId: string; userEmail?: string; roleId?: string };
 }
 
 export interface CompletePosReturnResult {
   posReturn: PosReturn;
   salesReturn: { id: string; returnNumber: string };
   refundTotal: number;
+}
+
+export interface VoidPosReceiptInput {
+  companyId: string;
+  receiptId: string;
+  registerId: string;
+  shiftId?: string;
+  refundMethod: PosReturnRefundMethod;
+  reason?: string;
+  managerOverrideId?: string;
+  actor: { userId: string; userEmail?: string; roleId?: string };
 }
 
 /**
@@ -59,6 +74,7 @@ export class CompletePosReturnUseCase {
     private readonly registerRepo: IPosRegisterRepository,
     private readonly transactionManager: ITransactionManager,
     private readonly postPosReturnUseCase: PostPosReturnUseCase,
+    private readonly policyEngine?: IPolicyEngine,
     private readonly auditEngine?: IAuditEngine
   ) {}
 
@@ -86,26 +102,61 @@ export class CompletePosReturnUseCase {
       throw new Error('The current shift is on a different register.');
     }
 
+    if (this.policyEngine) {
+      const decision = await this.policyEngine.resolve({
+        scope: 'pos',
+        action: 'managerOverride',
+        companyId: input.companyId,
+        context: {
+          overrideAction: 'RETURN',
+          registerId: input.registerId,
+          cashierUserId: input.actor.userId,
+          cashierRoleId: input.actor.roleId,
+          approvedOverrideId: input.managerOverrideId,
+          payload: {
+            originalReceiptId: input.originalReceiptId,
+            lineCount: input.lines.length,
+            refundMethod: input.refundMethod,
+          },
+        },
+      });
+      if (!decision.allowed) {
+        throw new Error('Manager approval is required for POS return.');
+      }
+    }
+
     // Validate return qty ≤ sold qty per line.
     const soldByItem = new Map<string, number>();
-    for (const l of originalReceipt.lines) {
+    for (const l of originalReceipt.lines.filter((line) => line.status !== 'VOIDED')) {
       soldByItem.set(l.itemId, (soldByItem.get(l.itemId) || 0) + l.qty);
     }
     const requestedByItem = new Map<string, number>();
     for (const l of input.lines) {
       requestedByItem.set(l.itemId, (requestedByItem.get(l.itemId) || 0) + l.qty);
     }
+    const previousReturns = await this.returnRepo.list(input.companyId, {
+      originalReceiptId: input.originalReceiptId,
+      limit: 1000,
+    });
+    const previouslyReturnedByItem = new Map<string, number>();
+    for (const returnDoc of previousReturns) {
+      for (const line of returnDoc.lines) {
+        previouslyReturnedByItem.set(line.itemId, (previouslyReturnedByItem.get(line.itemId) || 0) + line.qty);
+      }
+    }
     for (const [itemId, qty] of requestedByItem) {
       const sold = soldByItem.get(itemId);
-      if (!sold || qty > sold) {
+      const alreadyReturned = previouslyReturnedByItem.get(itemId) || 0;
+      const remaining = Math.max(0, (sold || 0) - alreadyReturned);
+      if (!sold || qty > remaining) {
         throw new Error(
-          `Return qty ${qty} for item ${itemId} exceeds sold qty ${sold || 0}.`
+          `Return qty ${qty} for item ${itemId} exceeds remaining returnable qty ${remaining}.`
         );
       }
     }
 
     const receiptLinesByItem = new Map<string, typeof originalReceipt.lines[number]>();
-    for (const l of originalReceipt.lines) {
+    for (const l of originalReceipt.lines.filter((line) => line.status !== 'VOIDED')) {
       // Use the first line for each item as the matching key.
       if (!receiptLinesByItem.has(l.itemId)) {
         receiptLinesByItem.set(l.itemId, l);
@@ -115,7 +166,16 @@ export class CompletePosReturnUseCase {
     const register = await this.registerRepo.getById(input.companyId, input.registerId);
     if (!register) throw new Error(`POS register not found: ${input.registerId}`);
     const settings = await this.settingsRepo.getSettings(input.companyId);
-    const refundSettlementAccountId = settings?.getPaymentMethod(input.refundMethod as any)?.settlementAccountId;
+    const refundConfig = settings?.getPaymentMethod(input.refundMethod as any);
+    if (!refundConfig || !refundConfig.isEnabled) {
+      throw new Error(`Refund method ${input.refundMethod} is not enabled.`);
+    }
+    const refundSettlementAccountId = input.refundMethod === 'CASH'
+      ? register.cashDrawerAccountId
+      : register.settlementAccountIds?.[input.refundMethod];
+    if (!refundSettlementAccountId) {
+      throw new Error(`Configure ${input.refundMethod} settlement account on POS register ${register.code || register.id}.`);
+    }
     const returnNumber = `RET-${new Date().getTime()}`;
 
     const returnLines: PosReturnLine[] = input.lines.map((l) => {
@@ -159,6 +219,7 @@ export class CompletePosReturnUseCase {
         refundTotal: postedReturn.refundTotal,
         salesReturnId: postedReturn.returnId,
         salesReturnNumber: postedReturn.returnNumber,
+        exchangeId: input.exchangeId,
         createdBy: input.actor.userId,
         createdAt: new Date(),
       });
@@ -181,6 +242,10 @@ export class CompletePosReturnUseCase {
       if (refundMovement) {
         await this.cashMovementRepo.create(refundMovement, tx);
       }
+      if (input.voidOriginalReceipt) {
+        await this.receiptRepo.updateStatus(input.companyId, originalReceipt.id, 'VOIDED', tx);
+        originalReceipt.status = 'VOIDED';
+      }
       return { posReturn, postedReturn };
     });
 
@@ -197,6 +262,7 @@ export class CompletePosReturnUseCase {
           postedReturnId: postedReturn.returnId,
           postedReturnNumber: postedReturn.returnNumber,
           voucherIds: postedReturn.voucherIds,
+          originalReceiptVoided: input.voidOriginalReceipt === true,
         },
       });
     }
@@ -208,5 +274,55 @@ export class CompletePosReturnUseCase {
       salesReturn: { id: postedReturn.returnId, returnNumber: postedReturn.returnNumber },
       refundTotal: postedReturn.refundTotal,
     };
+  }
+}
+
+export class VoidPosReceiptUseCase {
+  constructor(
+    private readonly receiptRepo: IPosReceiptRepository,
+    private readonly returnRepo: IPosReturnRepository,
+    private readonly completeReturnUseCase: CompletePosReturnUseCase
+  ) {}
+
+  async execute(input: VoidPosReceiptInput): Promise<CompletePosReturnResult> {
+    const receipt = await this.receiptRepo.getById(input.companyId, input.receiptId);
+    if (!receipt) throw new Error(`Receipt not found: ${input.receiptId}`);
+    if (receipt.status !== 'COMPLETED') {
+      throw new Error('Only COMPLETED receipts can be voided.');
+    }
+
+    const soldByItem = new Map<string, number>();
+    for (const line of receipt.lines.filter((l) => l.status !== 'VOIDED')) {
+      soldByItem.set(line.itemId, (soldByItem.get(line.itemId) || 0) + line.qty);
+    }
+    const previousReturns = await this.returnRepo.list(input.companyId, {
+      originalReceiptId: input.receiptId,
+      limit: 1000,
+    });
+    for (const returnDoc of previousReturns) {
+      for (const line of returnDoc.lines) {
+        soldByItem.set(line.itemId, Math.max(0, (soldByItem.get(line.itemId) || 0) - line.qty));
+      }
+    }
+
+    const lines = Array.from(soldByItem.entries())
+      .filter(([, qty]) => qty > 0)
+      .map(([itemId, qty]) => ({ itemId, qty }));
+    if (lines.length === 0) {
+      throw new Error('Receipt has no remaining returnable quantity to void.');
+    }
+
+    return this.completeReturnUseCase.execute({
+      companyId: input.companyId,
+      originalReceiptId: input.receiptId,
+      registerId: input.registerId,
+      shiftId: input.shiftId,
+      lines,
+      refundMethod: input.refundMethod,
+      reason: input.reason || 'POS receipt void',
+      managerOverrideId: input.managerOverrideId,
+      voidOriginalReceipt: true,
+      actor: input.actor,
+    });
   }
 }

@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { PosReceipt } from '../../../../domain/pos/entities/PosReceipt';
+import { PosReceipt, PosReceiptStatus } from '../../../../domain/pos/entities/PosReceipt';
 import { IPosReceiptRepository } from '../../../../repository/interfaces/pos/IPosReceiptRepository';
 
 export class PrismaPosReceiptRepository implements IPosReceiptRepository {
@@ -24,9 +24,18 @@ export class PrismaPosReceiptRepository implements IPosReceiptRepository {
         grandTotal: receipt.grandTotal,
         salesInvoiceId: receipt.salesInvoiceId || null,
         salesInvoiceNumber: receipt.salesInvoiceNumber || null,
+        exchangeId: receipt.exchangeId || null,
         createdBy: receipt.createdBy,
         createdAt: receipt.createdAt,
       },
+    });
+  }
+
+  async updateStatus(companyId: string, id: string, status: PosReceiptStatus, tx?: unknown): Promise<void> {
+    const client = (tx as Prisma.TransactionClient) || this.prisma;
+    await client.posReceipt.updateMany({
+      where: { id, companyId },
+      data: { status },
     });
   }
 
@@ -76,6 +85,7 @@ export class PrismaPosReceiptRepository implements IPosReceiptRepository {
       grandTotal: Number(record.grandTotal),
       salesInvoiceId: record.salesInvoiceId || undefined,
       salesInvoiceNumber: record.salesInvoiceNumber || undefined,
+      exchangeId: record.exchangeId || undefined,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
     });

@@ -1,12 +1,12 @@
 # POS — Reports
 
-Six POS reports + one link live under **POS → Reports** in the sidebar. All use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
+Six POS report pages + one link live under **POS → Reports** in the sidebar. The backend also exposes an override audit report for manager review. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
 
 ## Z Report (by shift)
 
 **Use:** finalized close summary for a single shift.
 **Input:** shift id (find it in **POS → Shift** history).
-**Output:** opening float, expected cash, gross sales, returns, net sales, receipt count, return count, over/short amount, and (if any) the linked journal voucher id. Variance is highlighted in red.
+**Output:** opening float, expected cash, payment-method reconciliation totals, gross sales, returns, net sales, receipt count, return count, over/short amount, and (if any) the linked journal voucher id. Variance is highlighted in red.
 
 This is the report to run on every shift close, to spot cashier over/short trends.
 
@@ -20,7 +20,7 @@ This is the report to run on every shift close, to spot cashier over/short trend
 
 **Use:** amounts per POS payment method.
 **Input:** date range.
-**Output:** CASH / CARD / BANK_TRANSFER / CUSTOM rows. (V1 returns the row skeleton; populating the amounts per method across all receipts of a period is a follow-up; the **Last receipt** card already shows per-receipt payment rows.)
+**Output:** CASH / CARD / BANK_TRANSFER / CUSTOM rows with receipt count and amount. CASH is reported net of any change given, so a `10.00` cash tender with `2.00` change reports `8.00` cash applied. Split payments count once for each method used on the receipt.
 
 ## Cashier Sales
 
@@ -32,13 +32,21 @@ This is the report to run on every shift close, to spot cashier over/short trend
 
 **Use:** variance history across all CLOSED shifts.
 **Input:** date range.
-**Output:** one row per closed shift with expected cash, counted cash, over/short, and the voucher id (if any was posted).
+**Output:** one row per closed or reconciled shift with expected cash, counted cash, over/short, and the voucher id (if any was posted).
 
 ## Receipt History
 
 **Use:** every POS receipt in the period with the linked Sales Invoice number.
 **Input:** date range.
 **Output:** receipt / SI / register / customer / total / date.
+
+## Override Audit
+
+**Use:** manager review of POS exceptions.
+**Input:** date range, optional register.
+**Output:** one row per voided line, manual discount, price override, or tax override. Rows show the receipt, register, shift, cashier, item, discount/override details, void reason, and manager override id when supplied.
+
+This report is currently available as the backend report endpoint `/tenant/pos/reports/override-audit`; a dedicated POS Reports page is a follow-up UI slice.
 
 ## Unsettled Costs (link)
 

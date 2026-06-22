@@ -42,6 +42,18 @@ export function validateUpsertPosRegisterInput(body: any): void {
   if (body.branchId !== undefined && body.branchId !== null) {
     if (typeof body.branchId !== 'string') throw new Error('branchId must be a string');
   }
+  if (body.defaultPriceListId !== undefined && body.defaultPriceListId !== null && typeof body.defaultPriceListId !== 'string') {
+    throw new Error('defaultPriceListId must be a string');
+  }
+  if (body.hardwareProfileId !== undefined && body.hardwareProfileId !== null && typeof body.hardwareProfileId !== 'string') {
+    throw new Error('hardwareProfileId must be a string');
+  }
+  if (body.allowedCashierUserIds !== undefined) {
+    if (!Array.isArray(body.allowedCashierUserIds)) throw new Error('allowedCashierUserIds must be an array');
+    for (const userId of body.allowedCashierUserIds) {
+      if (typeof userId !== 'string') throw new Error('allowedCashierUserIds must contain only strings');
+    }
+  }
   if (body.status !== undefined && !VALID_REGISTER_STATUS.includes(body.status)) {
     throw new Error(`status must be one of: ${VALID_REGISTER_STATUS.join(', ')}`);
   }

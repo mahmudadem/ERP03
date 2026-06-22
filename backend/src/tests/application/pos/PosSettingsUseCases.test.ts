@@ -60,22 +60,23 @@ const makePosPolicyRepo = (policy: any = basePolicy()) => ({
 });
 describe('PosSettingsUseCases', () => {
   describe('UpdatePosSettingsUseCase', () => {
-    it('rejects an enabled payment method with no settlement account', async () => {
+    it('allows enabled payment methods without company-level settlement accounts', async () => {
       const settings = baseSettings();
       const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(settings), saveSettings: jest.fn() };
       const accountRepo = { getById: jest.fn() };
       const posPolicyRepo = makePosPolicyRepo();
       const useCase = new UpdatePosSettingsUseCase(posSettingsRepo as any, accountRepo as any, posPolicyRepo as any);
 
-      await expect(
-        useCase.execute({
-          companyId: 'cmp_test',
-          paymentMethods: [
-            { code: 'CARD', settlementAccountId: '', requiresReference: false, allowsChange: false, isEnabled: true },
-          ],
-        })
-      ).rejects.toThrow(/settlement account/i);
-      expect(posSettingsRepo.saveSettings).not.toHaveBeenCalled();
+      const updated = await useCase.execute({
+        companyId: 'cmp_test',
+        paymentMethods: [
+          { code: 'CARD', settlementAccountId: '', requiresReference: false, allowsChange: false, isEnabled: true },
+        ],
+      });
+
+      expect(updated.paymentMethods[0].code).toBe('CARD');
+      expect(posSettingsRepo.saveSettings).toHaveBeenCalled();
+      expect(accountRepo.getById).not.toHaveBeenCalled();
     });
 
     it('rejects a missing over-account', async () => {

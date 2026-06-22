@@ -1720,8 +1720,13 @@ model PosShift {
   closedAt           DateTime?
   expectedCash       Float?
   countedCash        Float?
+  expectedPaymentTotals Json?
+  countedPaymentTotals Json?
+  overShortPaymentTotals Json?
   overShortAmount    Float?
   overShortVoucherId String?
+  reconciledAt       DateTime?
+  reconciledBy       String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -1770,6 +1775,7 @@ model PosReceipt {
   grandTotal          Float    @default(0)
   salesInvoiceId      String?
   salesInvoiceNumber  String?
+  exchangeId          String?
   createdBy           String
   createdAt           DateTime @default(now())
 
@@ -1781,6 +1787,7 @@ model PosReceipt {
   @@index([companyId, registerId])
   @@index([companyId, customerId])
   @@index([companyId, salesInvoiceId])
+  @@index([companyId, exchangeId])
   @@index([companyId, createdAt])
   @@map("pos_receipts")
 }
@@ -1815,6 +1822,7 @@ model PosReturn {
   refundTotal           Float    @default(0)
   salesReturnId         String?
   salesReturnNumber     String?
+  exchangeId            String?
   createdBy             String
   createdAt             DateTime @default(now())
 
@@ -1825,6 +1833,7 @@ model PosReturn {
   @@index([companyId, shiftId])
   @@index([companyId, originalReceiptId])
   @@index([companyId, salesInvoiceId])
+  @@index([companyId, exchangeId])
   @@index([companyId, createdAt])
   @@map("pos_returns")
 }

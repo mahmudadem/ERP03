@@ -100,6 +100,7 @@ describe('PostPosSaleUseCase', () => {
       warehouseId: 'wh1',
       qty: 2,
       movementType: 'SALES_DELIVERY',
+      refs: expect.objectContaining({ type: 'POS_DIRECT_SALE' }),
       transaction: { tx: true },
       metadata: expect.objectContaining({ sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' }),
     }));

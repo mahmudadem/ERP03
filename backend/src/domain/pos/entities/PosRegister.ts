@@ -16,6 +16,9 @@ export interface PosRegisterProps {
   name: string;
   branchId?: string;
   warehouseId: string;
+  defaultPriceListId?: string;
+  allowedCashierUserIds?: string[];
+  hardwareProfileId?: string;
   cashDrawerAccountId: string;
   settlementAccountIds?: PosRegisterSettlementAccounts;
   status: PosRegisterStatus;
@@ -30,6 +33,9 @@ export class PosRegister {
   name: string;
   branchId?: string;
   warehouseId: string;
+  defaultPriceListId?: string;
+  allowedCashierUserIds: string[];
+  hardwareProfileId?: string;
   cashDrawerAccountId: string;
   settlementAccountIds: PosRegisterSettlementAccounts;
   status: PosRegisterStatus;
@@ -51,6 +57,9 @@ export class PosRegister {
     this.name = props.name;
     this.branchId = props.branchId?.trim() || undefined;
     this.warehouseId = props.warehouseId;
+    this.defaultPriceListId = props.defaultPriceListId?.trim() || undefined;
+    this.allowedCashierUserIds = Array.from(new Set((props.allowedCashierUserIds || []).map((id) => String(id || '').trim()).filter(Boolean)));
+    this.hardwareProfileId = props.hardwareProfileId?.trim() || undefined;
     this.cashDrawerAccountId = props.cashDrawerAccountId;
     this.settlementAccountIds = Object.fromEntries(
       Object.entries(props.settlementAccountIds || {})
@@ -66,6 +75,10 @@ export class PosRegister {
     return this.status === 'ACTIVE';
   }
 
+  isCashierAllowed(userId: string): boolean {
+    return this.allowedCashierUserIds.length === 0 || this.allowedCashierUserIds.includes(userId);
+  }
+
   toJSON(): Record<string, any> {
     return {
       id: this.id,
@@ -74,6 +87,9 @@ export class PosRegister {
       name: this.name,
       branchId: this.branchId,
       warehouseId: this.warehouseId,
+      defaultPriceListId: this.defaultPriceListId,
+      allowedCashierUserIds: this.allowedCashierUserIds,
+      hardwareProfileId: this.hardwareProfileId,
       cashDrawerAccountId: this.cashDrawerAccountId,
       settlementAccountIds: this.settlementAccountIds,
       status: this.status,
@@ -90,6 +106,9 @@ export class PosRegister {
       name: data.name,
       branchId: data.branchId,
       warehouseId: data.warehouseId,
+      defaultPriceListId: data.defaultPriceListId,
+      allowedCashierUserIds: Array.isArray(data.allowedCashierUserIds) ? data.allowedCashierUserIds : [],
+      hardwareProfileId: data.hardwareProfileId,
       cashDrawerAccountId: data.cashDrawerAccountId,
       settlementAccountIds: data.settlementAccountIds,
       status: data.status,

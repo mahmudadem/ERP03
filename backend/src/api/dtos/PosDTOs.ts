@@ -18,6 +18,9 @@ export interface PosRegisterDTO {
   name: string;
   branchId?: string;
   warehouseId: string;
+  defaultPriceListId?: string;
+  allowedCashierUserIds: string[];
+  hardwareProfileId?: string;
   cashDrawerAccountId: string;
   settlementAccountIds?: Partial<Record<'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM', string>>;
   status: 'ACTIVE' | 'INACTIVE';
@@ -52,14 +55,19 @@ export interface PosShiftDTO {
   companyId: string;
   registerId: string;
   cashierUserId: string;
-  status: 'OPEN' | 'CLOSED' | 'FORCE_CLOSED' | 'CANCELLED';
+  status: 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
   openedAt: string;
   openingFloat: number;
   closedAt?: string;
   expectedCash?: number;
   countedCash?: number;
+  expectedPaymentTotals?: Record<string, number>;
+  countedPaymentTotals?: Record<string, number>;
+  overShortPaymentTotals?: Record<string, number>;
   overShortAmount?: number;
   overShortVoucherId?: string;
+  reconciledAt?: string;
+  reconciledBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,6 +81,9 @@ export class PosDTOMapper {
       name: register.name,
       branchId: register.branchId,
       warehouseId: register.warehouseId,
+      defaultPriceListId: register.defaultPriceListId,
+      allowedCashierUserIds: register.allowedCashierUserIds,
+      hardwareProfileId: register.hardwareProfileId,
       cashDrawerAccountId: register.cashDrawerAccountId,
       settlementAccountIds: register.settlementAccountIds,
       status: register.status,
@@ -115,8 +126,13 @@ export class PosDTOMapper {
       closedAt: shift.closedAt ? shift.closedAt.toISOString() : undefined,
       expectedCash: shift.expectedCash,
       countedCash: shift.countedCash,
+      expectedPaymentTotals: shift.expectedPaymentTotals,
+      countedPaymentTotals: shift.countedPaymentTotals,
+      overShortPaymentTotals: shift.overShortPaymentTotals,
       overShortAmount: shift.overShortAmount,
       overShortVoucherId: shift.overShortVoucherId,
+      reconciledAt: shift.reconciledAt ? shift.reconciledAt.toISOString() : undefined,
+      reconciledBy: shift.reconciledBy,
       createdAt: shift.createdAt.toISOString(),
       updatedAt: shift.updatedAt.toISOString(),
     };
@@ -184,9 +200,18 @@ export interface PosReceiptLineSnapshotDTO {
   qty: number;
   uom: string;
   unitPrice: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   lineDiscount: number;
   taxCodeId?: string;
   lineTotal: number;
+  status?: 'ACTIVE' | 'VOIDED';
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  voidedBy?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  managerOverrideId?: string;
   salesInvoiceLineId?: string;
 }
 
@@ -206,6 +231,7 @@ export interface PosReceiptDTO {
   grandTotal: number;
   salesInvoiceId?: string;
   salesInvoiceNumber?: string;
+  exchangeId?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -228,6 +254,7 @@ export const PosReceiptDTO = {
       grandTotal: r.grandTotal,
       salesInvoiceId: r.salesInvoiceId,
       salesInvoiceNumber: r.salesInvoiceNumber,
+      exchangeId: r.exchangeId,
       createdBy: r.createdBy,
       createdAt: r.createdAt.toISOString(),
     };
@@ -282,6 +309,7 @@ export interface PosReturnDTO {
   refundTotal: number;
   salesReturnId?: string;
   salesReturnNumber?: string;
+  exchangeId?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -302,6 +330,7 @@ export const PosReturnDTO = {
       refundTotal: r.refundTotal,
       salesReturnId: r.salesReturnId,
       salesReturnNumber: r.salesReturnNumber,
+      exchangeId: r.exchangeId,
       createdBy: r.createdBy,
       createdAt: r.createdAt.toISOString(),
     };

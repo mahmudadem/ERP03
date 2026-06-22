@@ -23,8 +23,10 @@ infrastructure/prisma/       Prisma*Repository (one per entity, parity with Fire
 application/pos/use-cases/   PosRegisterUseCases, PosSettingsUseCases,
                              PosShiftUseCases (Open/Close/ForceClose/CashMovement/
                              XReport), PosBootstrapUseCase, CompletePosSaleUseCase,
-                             CompletePosReturnUseCase, PosReportingUseCases
-                             (Z, Daily, Payment, Cashier, Over/Short, ReceiptHistory).
+                             CompletePosReturnUseCase, CompletePosExchangeUseCase,
+                             PosReportingUseCases
+                             (Z, Daily, Payment, Cashier, Over/Short, ReceiptHistory,
+                             OverrideAudit).
 infrastructure/di/           bound in bindRepositories.ts via DB_TYPE branching.
 api/dtos/PosDTOs.ts          PosDTOMapper + DTOs for every entity + reports.
 api/validators/pos.validators.ts
@@ -50,46 +52,57 @@ frontend/src/modules/pos/pages/                 PosHomePage, PosSettingsPage, Po
                                                 PosDateRangeInitiator.
 ```
 
-## 3. The headline integration (Phase 2 — the heart of the module)
+## 3. POS_DIRECT_SALE posting path
 
-`CompletePosSaleUseCase` builds a `CreateSalesInvoiceInput` from the cart, with:
+POS is a standalone application over System Core engines. A completed sale is a `POS_DIRECT_SALE` operational document and does not call Sales application use cases or depend on the Sales App being enabled.
 
-```
-{
-  companyId,
-  customerId,
-  invoiceDate: today,
-  source: 'pos',
-  formType: 'pos_sale',
-  persona: 'direct',
-  lines: [{ itemId, invoicedQty, unitPriceDoc, taxCodeId, warehouseId: register.warehouseId, ... }]
-}
-```
+`CompletePosSaleUseCase` validates the open shift, cashier, POS policy, register, tender rows, change, cash rounding, and receipt number. It then calls `PostPosSaleUseCase`, which uses shared engines directly:
 
-…and a `SettlementInput` (`CASH_FULL` for single-tender exact cash, `MULTI` for split/change). Settlement accounts are resolved from the active register, not from company-level POS Settings:
+- `IInventoryCore.processOUT` for stock items.
+- `ITaxEngine` for line tax math.
+- `IAccountingBridge.recordFinancialEvent` for revenue, COGS, settlement, and cash rounding events.
+- `IPolicyEngine` for POS direct-sale permission.
+- `INumberingEngine` for receipt numbering.
+- `IAuditEngine` for receipt audit.
+
+POS identity is preserved in stock movement refs and ledger metadata:
+
+- stock OUT refs use `POS_DIRECT_SALE`.
+- POS return stock IN refs use `POS_RETURN`.
+- accounting metadata uses `sourceModule: 'pos'`, `sourceType: 'POS_SALE' | 'POS_RETURN'`, and `documentPersona: 'POS_DIRECT_SALE'`.
+
+Settlement accounts are resolved from the active register, not from company-level POS Settings:
 
 - `CASH` uses `PosRegister.cashDrawerAccountId`.
 - `CARD`, `BANK_TRANSFER`, and `CUSTOM` use `PosRegister.settlementAccountIds[method]`.
-- Missing non-cash register settlement accounts block the sale before draft Sales Invoice creation.
+- Missing non-cash register settlement accounts block the sale before receipt/document posting.
+- Registers also carry `defaultPriceListId`, `allowedCashierUserIds`, and `hardwareProfileId`. `allowedCashierUserIds` is enforced when opening a shift; an empty list means any cashier with POS access can use the register. `defaultPriceListId` and `hardwareProfileId` are persisted placeholders for the next pricing/hardware integration slices.
 
-It then calls the existing `CreateAndPostSalesInvoiceUseCase` from `SalesInvoiceUseCases`. **No new posting, no new tax, no new COGS, no new inventory logic.** The Sales use case does what it always did, with a form-scoped governance rule `{ scope:'form', formType:'pos_sale', action:'allow', persona:'direct' }` flipped on by the `allowPosDirectSales` toggle in POS Settings.
+Line removal is audit-preserving. The terminal marks removed cart lines as `VOIDED` with cashier, timestamp, and reason. `CompletePosSaleUseCase` posts only active lines and appends voided snapshots to the persisted receipt; return validation filters them out so a removed line cannot later be refunded.
 
-Returns go through the same boundary via `CreateSalesReturnUseCase` + `PostSalesReturnUseCase` against the receipt's linked `salesInvoiceId` (`AFTER_INVOICE`).
+Posted receipt cancellation is implemented as a financial reversal, not a status-only edit. `VoidPosReceiptUseCase` builds a return for all remaining active receipt quantities, calls the same POS-owned return path, and marks the original receipt `VOIDED` inside the transaction after the return is persisted. `CompletePosReturnUseCase` subtracts prior POS returns from the receipt's sold quantity before validating new returns, preventing duplicate refunds or duplicate stock reversals.
+
+Exchange workflow is modeled as two normal POS documents linked by one `exchangeId`: a POS return for the item coming back and a POS direct sale for the replacement item. `CompletePosExchangeUseCase` orchestrates the two use cases and reports net due/refund for the cashier, but it does not create a new GL document type or merge the postings. This keeps stock-in, stock-out, revenue reversal, new revenue, COGS reversal, new COGS, tax, cash movement, and settlement audit on the same proven paths as standalone returns and sales. SQL deployments need a Prisma migration for `exchangeId` on `pos_receipts` and `pos_returns`.
+
+Manager override policy is centralized through `IPolicyEngine` instead of page-only checks. `POSPolicy.cashierRolePolicies[].managerOverrideActions` can require approval for `VOID_LINE`, `PRICE_OVERRIDE`, `DISCOUNT_OVERRIDE`, `TAX_OVERRIDE`, `RETURN`, and `REPRINT`. Cashier role policies can also define numeric sale-line controls: `maxLineDiscountPercent`, `maxLineDiscountAmount`, `allowPriceOverride`, and `allowTaxOverride`. Sale completion evaluates voided lines, explicit price/tax override flags, manual discounts, and cashier role limits; return completion evaluates the `RETURN` hook. If a cashier role requires approval, the use case blocks unless the payload carries an approved manager override id. Receipt line snapshots persist discount type/value, price/tax override flags, void metadata, and manager override id so the POS override audit report can review the exception after posting. The current slice creates the backend enforcement point; a richer approval-capture UI is still a follow-up.
+
+Shift close stores reconciliation by payment method. `PosShift` persists expected, counted, and variance totals for `CASH`, `CARD`, `BANK_TRANSFER`, and `CUSTOM`, plus `RECONCILED` status when every method balances. Cash variance still drives the over/short GL voucher; non-cash variance is stored for operational follow-up and does not auto-post because card/bank clearing needs a separate settlement process. SQL deployments need a Prisma migration for the new `pos_shifts` JSON/date columns.
+
+Promotions are hard-disabled by default. `PostPosSaleUseCase` does not read promotion rules unless the explicit test hook opens the gate; production must keep flash sales, BXGY, coupons, free gifts, and auto-promotions disabled until stacking/cap/conflict/return rules are implemented.
 
 ### 3a. Cashier screen, bootstrap, and frontend data contract
 
 - **Bootstrap (`GetPosBootstrapUseCase`)** hydrates the terminal in one call. The cashier screen calls it with only `cashierUserId` (no register picker), so the use case resolves the **active register itself**: an explicit `registerId` wins, else a lone `ACTIVE` register (else a lone register of any status). The open shift is then read for that register, with a fallback to the cashier's own open shift (whose register is hydrated if none was picked). Without this resolution the terminal wrongly shows "No open shift for this register."
 - **`posApi` unwrap contract:** the global axios response interceptor (`setupErrorInterceptor`) already unwraps the `{ success, data }` envelope to the bare payload. Any per-module helper must therefore use the resilient `r?.data?.data ?? r?.data ?? r` form (falls through to the already-unwrapped value). A 2-level `r.data.data ?? r.data` form silently resolves to `undefined` and makes every read look "not persisted." All POS reads go through `ok()`, which uses the resilient form.
-- **`PosTerminalPage`** is a product-grid + order-panel checkout (search/scan tiles → cart with qty steppers → totals → green Pay → React-state tender dialog driven by the enabled payment methods). It never posts directly — `previewSale` supplies the authoritative tax-inclusive quote and `completeSale` posts the SI. Items with a non-positive sale price are blocked from the cart.
+- **`PosTerminalPage`** is a product-grid + order-panel checkout (search/scan tiles → cart with qty steppers → totals → green Pay → React-state tender dialog driven by the enabled payment methods). It never posts directly — `previewSale` supplies the authoritative tax-inclusive quote and `completeSale` posts the POS direct sale. Items with a non-positive sale price are blocked from the cart. Removing a line opens a reason dialog and marks the line voided instead of deleting it from the sale audit trail.
 
 ## 4. Money / stock safety
 
 - One OPEN shift per register (`OpenPosShiftUseCase` enforces; UI refuses to render when no open shift).
 - Over/short voucher: only posted when variance ≠ 0; balanced Dr/Cr; missing over/short account blocks close with a readable error.
-- `PersonaNotAllowedError` from Sales is surfaced as-is, never caught-and-converted.
-- CASH change is netted off the SI settlement (settlement total = receipt grand total).
+- CASH change is netted off the POS settlement (settlement total = receipt grand total).
 - All POS money in/out is register-attributed: cash drawer, non-cash settlement accounts, sale cash movements, refunds, and shift close variance all carry the register context.
-- `allowPosDirectSales` toggle is the **only** way to let POS post direct sales. `workflowMode` is never touched.
+- `allowPosDirectSales` toggle writes POS policy and is the **only** way to let POS post direct sales. `workflowMode` is never touched.
 - Cash math: `expectedCash = openingFloat + SALE_CASH − REFUND_CASH + PAYIN − PAYOUT − DROP`.
 
 ## 5. Tenant isolation
@@ -123,20 +136,26 @@ pos.reports.view     View POS Reports
 | Cashier Sales | `/pos/reports/cashiers` | pos.reports.view | `GetCashierSalesSummaryUseCase` |
 | Cash Over/Short | `/pos/reports/over-short` | pos.reports.view | `GetCashOverShortReportUseCase` |
 | Receipt History | `/pos/reports/receipts` | pos.reports.view | `GetReceiptHistoryUseCase` |
+| Override Audit | API: `/tenant/pos/reports/override-audit` | pos.reports.view | `GetPosOverrideAuditReportUseCase` |
 | Unsettled Costs (link) | `/inventory/reports/unsettled-costs` | pos.reports.view | (existing inventory report) |
 
-All reports use the shared `<ReportContainer>` and pass `check-reports.mjs`.
+All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. The override audit report is currently an API/reporting-use-case surface for manager review; adding a dedicated `ReportContainer` UI page is a follow-up.
 
 ## 8. Testing
 
 - **Domain entities** have constructor validation; `toJSON`/`fromJSON` are symmetric.
 - **Use cases** are unit-tested with mock repos. POS tests live in `backend/src/tests/application/pos/`:
-  - `PosSettingsUseCases.test.ts` — 5 tests
+  - `PosSettingsUseCases.test.ts`
   - `PosShiftUseCases.test.ts` — 10 tests
-  - `CompletePosSale.test.ts` — 9 tests
-  - `CompletePosReturn.test.ts` — 5 tests
-  - `PosReporting.test.ts` — 4 tests
-  - **33 focused POS tests, all green.**
+  - `PostPosSale.test.ts`
+  - `PostPosReturn.test.ts`
+  - `CompletePosSale.test.ts`
+  - `CompletePosReturn.test.ts`
+  - `PolicyEnginePosPolicy.test.ts`
+  - `PosProductSearchCommercialCore.test.ts`
+  - `PosReporting.test.ts`
+  - **71 focused POS tests, all green in Task 251 after slice 7.**
+- **Architecture guards** assert POS imports no Sales application/domain internals, POS financial events go through `IAccountingBridge`, POS uses `ITaxEngine`, POS uses `INumberingEngine`, POS stock refs keep POS identity, and POS uses `IInventoryCore`.
 
 ## 9. Documentation
 

@@ -51,8 +51,10 @@ export class GetPosSettingsUseCase {
 
 /**
  * Update POS settings. Validates that:
- *   - Every enabled payment method has a settlementAccountId that exists.
  *   - cashOverAccountId / cashShortAccountId, if set, exist.
+ *   - legacy payment-method settlement accounts, if still supplied by an older client, exist.
+ * Money routing for sales/refunds is register-level (`PosRegister.cashDrawerAccountId`
+ * and `settlementAccountIds`) so every till reconciles to its own accounts.
  * Also keeps the POS-owned policy in sync with `allowPosDirectSales` so direct
  * sale authorization stays inside the POS/System Core boundary.
  */
@@ -77,12 +79,7 @@ export class UpdatePosSettingsUseCase {
     }
     if (Array.isArray(input.paymentMethods)) {
       for (const m of input.paymentMethods) {
-        if (m.isEnabled && !m.settlementAccountId?.trim()) {
-          throw new Error(
-            `Payment method ${m.code} is enabled but has no settlement account configured.`
-          );
-        }
-        if (m.isEnabled && m.settlementAccountId) {
+        if (m.settlementAccountId) {
           await this.assertAccount(input.companyId, m.settlementAccountId, `paymentMethods.${m.code}.settlementAccountId`);
         }
       }

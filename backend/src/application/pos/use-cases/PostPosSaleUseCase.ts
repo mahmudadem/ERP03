@@ -174,7 +174,7 @@ export class PostPosSaleUseCase {
           qty: sourceLine.qty,
           date: input.date,
           movementType: 'SALES_DELIVERY',
-          refs: { type: 'SALES_INVOICE', docId: documentId, lineId },
+          refs: { type: 'POS_DIRECT_SALE', docId: documentId, lineId },
           currentUser: input.createdBy,
           transaction: input.transaction,
           metadata: { sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' },

@@ -2,9 +2,8 @@
  * PosReturn — A receipt-based return.
  *
  * The return is the operational/print artifact. The financial truth lives on
- * the linked SalesReturn (created by the existing CreateSalesReturnUseCase +
- * PostSalesReturnUseCase against the receipt's `salesInvoiceId`). `salesReturnId`
- * is the link.
+ * the linked POS return posting result. `salesReturnId` remains as a legacy API
+ * link field.
  */
 export type PosReturnRefundMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
 
@@ -30,6 +29,7 @@ export interface PosReturnProps {
   refundTotal: number;
   salesReturnId?: string;
   salesReturnNumber?: string;
+  exchangeId?: string;
   createdBy: string;
   createdAt: Date;
 }
@@ -48,6 +48,7 @@ export class PosReturn {
   readonly refundTotal: number;
   salesReturnId?: string;
   salesReturnNumber?: string;
+  exchangeId?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
 
@@ -79,6 +80,7 @@ export class PosReturn {
     this.refundTotal = round2(props.refundTotal);
     this.salesReturnId = props.salesReturnId;
     this.salesReturnNumber = props.salesReturnNumber;
+    this.exchangeId = props.exchangeId;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
   }
@@ -98,6 +100,7 @@ export class PosReturn {
       refundTotal: this.refundTotal,
       salesReturnId: this.salesReturnId,
       salesReturnNumber: this.salesReturnNumber,
+      exchangeId: this.exchangeId,
       createdBy: this.createdBy,
       createdAt: this.createdAt.toISOString(),
     };
@@ -124,6 +127,7 @@ export class PosReturn {
       refundTotal: Number(data.refundTotal) || 0,
       salesReturnId: data.salesReturnId,
       salesReturnNumber: data.salesReturnNumber,
+      exchangeId: data.exchangeId,
       createdBy: data.createdBy,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
     });

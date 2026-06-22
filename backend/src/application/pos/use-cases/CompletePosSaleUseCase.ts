@@ -14,18 +14,28 @@ import { ITransactionManager } from '../../../repository/interfaces/shared/ITran
 import { IPolicyEngine } from '../../system-core/contracts/IPolicyEngine';
 import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { PostPosSaleUseCase } from './PostPosSaleUseCase';
-import { PosCashRounding } from '../../../domain/pos/entities/PosSettings';
+import { PosCashRounding, PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 
 
 export interface PosCartLine {
   itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  uom?: string;
   qty: number;
   unitPrice: number;
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
   approvedCostMarginOverride?: boolean;
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  status?: 'ACTIVE' | 'VOIDED';
+  voidedBy?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  managerOverrideId?: string;
 }
 
 export interface PosCartPayment {
@@ -42,6 +52,7 @@ export interface CompletePosSaleInput {
   customerId?: string;
   lines: PosCartLine[];
   payments: PosCartPayment[];
+  exchangeId?: string;
   actor: { userId: string; userEmail?: string; roleId?: string };
 }
 
@@ -87,6 +98,19 @@ export class CompletePosSaleUseCase {
     if (!input.lines?.length) {
       throw new Error('Cart must have at least one line.');
     }
+    const activeLines = input.lines.filter((line) => line.status !== 'VOIDED');
+    const voidedLines = input.lines.filter((line) => line.status === 'VOIDED');
+    if (activeLines.length === 0) {
+      throw new Error('Cart must have at least one active line.');
+    }
+    for (const line of voidedLines) {
+      if (!line.voidReason?.trim()) {
+        throw new Error('Voided POS lines require a reason.');
+      }
+      if (!line.voidedBy?.trim()) {
+        throw new Error('Voided POS lines require the cashier user.');
+      }
+    }
     if (!input.payments?.length) {
       throw new Error('At least one payment is required.');
     }
@@ -119,6 +143,11 @@ export class CompletePosSaleUseCase {
       throw new Error(`POS register not found: ${input.registerId}`);
     }
 
+    const registerPaymentMethods = settings.paymentMethods.map((method) => ({
+      ...method,
+      settlementAccountId: settlementAccountForRegister(method.code, register),
+    }));
+
     const policyDecision = await this.policyEngine.resolve({
       scope: 'pos',
       action: 'directSale',
@@ -133,6 +162,21 @@ export class CompletePosSaleUseCase {
     if (!policyDecision.allowed) {
       throw new Error('POS direct sale is not allowed by POS policy.');
     }
+
+    await this.assertManagerOverrideIfRequired(input, 'VOID_LINE', voidedLines.some((line) => Boolean(line.managerOverrideId)), {
+      lineCount: voidedLines.length,
+    }, voidedLines.length > 0);
+    await this.assertManagerOverrideIfRequired(input, 'PRICE_OVERRIDE', activeLines.some((line) => Boolean(line.managerOverrideId)), {
+      lineCount: activeLines.filter((line) => line.priceOverride === true).length,
+    }, activeLines.some((line) => line.priceOverride === true));
+    await this.assertManagerOverrideIfRequired(input, 'DISCOUNT_OVERRIDE', activeLines.some((line) => Boolean(line.managerOverrideId)), {
+      lineCount: activeLines.filter((line) => (line.discountValue || 0) > 0).length,
+    }, activeLines.some((line) => (line.discountValue || 0) > 0));
+    await this.assertManagerOverrideIfRequired(input, 'TAX_OVERRIDE', activeLines.some((line) => Boolean(line.managerOverrideId)), {
+      lineCount: activeLines.filter((line) => line.taxOverride === true).length,
+    }, activeLines.some((line) => line.taxOverride === true));
+    await this.assertSaleLineControls(input, activeLines);
+
     // Validate payment-method config up front (independent of the total).
     for (const p of input.payments) {
       if (p.amount <= 0) {
@@ -147,6 +191,10 @@ export class CompletePosSaleUseCase {
       }
       if (cfg.requiresReference && !p.reference?.trim()) {
         throw new Error(`Payment method ${p.method} requires a reference.`);
+      }
+      const registerAccountId = settlementAccountForRegister(p.method, register);
+      if (!registerAccountId) {
+        throw new Error(`Configure ${p.method} settlement account on POS register ${register.code || register.id}.`);
       }
     }
 
@@ -168,7 +216,7 @@ export class CompletePosSaleUseCase {
       customerId,
       documentNumber: receiptNumber,
       date: saleDate,
-      lines: input.lines.map((l) => ({
+      lines: activeLines.map((l) => ({
         itemId: l.itemId,
         qty: l.qty,
         unitPrice: l.unitPrice,
@@ -179,7 +227,7 @@ export class CompletePosSaleUseCase {
         warehouseId: register.warehouseId,
       })),
       payments: [],
-      paymentMethods: settings.paymentMethods,
+      paymentMethods: registerPaymentMethods,
       createdBy: input.actor.userId,
       dryRun: true,
     });
@@ -228,7 +276,7 @@ export class CompletePosSaleUseCase {
         documentId: preview.documentId,
         documentNumber: receiptNumber,
         date: saleDate,
-        lines: input.lines.map((l) => ({
+        lines: activeLines.map((l) => ({
           itemId: l.itemId,
           qty: l.qty,
           unitPrice: l.unitPrice,
@@ -239,33 +287,63 @@ export class CompletePosSaleUseCase {
           warehouseId: register.warehouseId,
         })),
         payments: appliedPayments,
-        paymentMethods: settings.paymentMethods,
+        paymentMethods: registerPaymentMethods,
         cashRoundingAdjustmentBase: cashRoundingAdjustment,
         cashRoundingAccountId: cashRoundingAdjustment > 0 ? settings.cashOverAccountId : settings.cashShortAccountId,
         createdBy: input.actor.userId,
         transaction: tx,
       });
 
-      const receiptLines: PosReceiptLineSnapshot[] = sale.lines.map((l) => ({
+      const receiptLines: PosReceiptLineSnapshot[] = sale.lines.map((l, index) => {
+        const sourceLine = activeLines[index];
+        return {
+          itemId: l.itemId,
+          itemCode: l.itemCode,
+          itemName: l.itemName,
+          qty: l.qty,
+          uom: l.uom,
+          unitPrice: l.unitPrice,
+          discountType: sourceLine?.discountType,
+          discountValue: sourceLine?.discountValue,
+          lineDiscount: roundMoney(l.lineDiscount ?? 0),
+          taxCodeId: l.taxCodeId,
+          lineTotal: roundMoney(l.lineTotal),
+          priceOverride: sourceLine?.priceOverride === true,
+          taxOverride: sourceLine?.taxOverride === true,
+          managerOverrideId: sourceLine?.managerOverrideId,
+          salesInvoiceLineId: l.lineId, // legacy field name; 250d2 removes Sales return dependency.
+          revenueAccountId: l.revenueAccountId,
+          taxAccountId: l.taxAccountId,
+          cogsAccountId: l.cogsAccountId,
+          inventoryAccountId: l.inventoryAccountId,
+          unitCostBase: l.unitCostBase,
+          lineCostBase: l.lineCostBase,
+          appliedPromotionId: l.appliedPromotionId,
+          appliedPromotionName: l.appliedPromotionName,
+          status: 'ACTIVE' as const,
+        };
+      });
+      const voidedReceiptLines: PosReceiptLineSnapshot[] = voidedLines.map((l) => ({
         itemId: l.itemId,
-        itemCode: l.itemCode,
-        itemName: l.itemName,
+        itemCode: l.itemCode || l.itemId,
+        itemName: l.itemName || l.itemId,
         qty: l.qty,
-        uom: l.uom,
-        unitPrice: l.unitPrice,
-        lineDiscount: roundMoney(l.lineDiscount ?? 0),
+        uom: l.uom || '',
+        unitPrice: roundMoney(l.unitPrice),
+        discountType: l.discountType,
+        discountValue: l.discountValue,
+        lineDiscount: roundMoney(l.discountValue || 0),
         taxCodeId: l.taxCodeId,
-        lineTotal: roundMoney(l.lineTotal),
-        salesInvoiceLineId: l.lineId, // legacy field name; 250d2 removes Sales return dependency.
-        revenueAccountId: l.revenueAccountId,
-        taxAccountId: l.taxAccountId,
-        cogsAccountId: l.cogsAccountId,
-        inventoryAccountId: l.inventoryAccountId,
-        unitCostBase: l.unitCostBase,
-        lineCostBase: l.lineCostBase,
-        appliedPromotionId: l.appliedPromotionId,
-        appliedPromotionName: l.appliedPromotionName,
+        lineTotal: roundMoney(Math.max(0, l.qty * l.unitPrice - (l.discountValue || 0))),
+        status: 'VOIDED',
+        priceOverride: l.priceOverride === true,
+        taxOverride: l.taxOverride === true,
+        voidedBy: l.voidedBy,
+        voidedAt: l.voidedAt,
+        voidReason: l.voidReason,
+        managerOverrideId: l.managerOverrideId,
       }));
+      const allReceiptLines = [...receiptLines, ...voidedReceiptLines];
       const discountTotal = roundMoney(receiptLines.reduce((s, l) => s + l.lineDiscount, 0));
 
       const receipt = new PosReceipt({
@@ -277,13 +355,14 @@ export class CompletePosSaleUseCase {
         status: 'COMPLETED',
         customerId,
         customerName: sale.customerName,
-        lines: receiptLines,
+        lines: allReceiptLines,
         subtotal: roundMoney(sale.subtotal),
         discountTotal,
         taxTotal: roundMoney(sale.taxTotal),
         grandTotal: roundMoney(sale.roundedGrandTotal),
         salesInvoiceId: sale.documentId,
         salesInvoiceNumber: sale.documentNumber,
+        exchangeId: input.exchangeId,
         createdBy: input.actor.userId,
         createdAt: new Date(),
       });
@@ -351,6 +430,59 @@ export class CompletePosSaleUseCase {
       change: cashChange,
     };
   }
+
+  private async assertManagerOverrideIfRequired(
+    input: CompletePosSaleInput,
+    overrideAction: 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE',
+    approvedOverride: boolean,
+    payload: Record<string, unknown>,
+    shouldEvaluate: boolean
+  ): Promise<void> {
+    if (!shouldEvaluate) return;
+    const decision = await this.policyEngine.resolve({
+      scope: 'pos',
+      action: 'managerOverride',
+      companyId: input.companyId,
+      context: {
+        overrideAction,
+        registerId: input.registerId,
+        cashierUserId: input.actor.userId,
+        cashierRoleId: input.actor.roleId,
+        approvedOverride,
+        payload,
+      },
+    });
+    if (!decision.allowed) {
+      throw new Error(`Manager approval is required for POS ${overrideAction.toLowerCase().replace(/_/g, ' ')}.`);
+    }
+  }
+
+  private async assertSaleLineControls(input: CompletePosSaleInput, activeLines: PosCartLine[]): Promise<void> {
+    for (const line of activeLines) {
+      const gross = roundMoney(Math.max(0, line.qty * line.unitPrice));
+      const discountAmount = calculateDiscountAmount(line, gross);
+      const discountPercent = gross > 0 ? roundMoney((discountAmount / gross) * 100) : 0;
+      const decision = await this.policyEngine.resolve({
+        scope: 'pos',
+        action: 'saleLineControls',
+        companyId: input.companyId,
+        context: {
+          registerId: input.registerId,
+          cashierUserId: input.actor.userId,
+          cashierRoleId: input.actor.roleId,
+          itemId: line.itemId,
+          priceOverride: line.priceOverride === true,
+          taxOverride: line.taxOverride === true,
+          discountAmount,
+          discountPercent,
+          approvedOverrideId: line.managerOverrideId,
+        },
+      });
+      if (!decision.allowed) {
+        throw new Error('Manager approval is required for POS price, discount, or tax override limits.');
+      }
+    }
+  }
 }
 
 function nextNumericSequence(documentNumber: string): number {
@@ -362,4 +494,20 @@ function posCashRoundingRule(rounding: PosCashRounding): { increment?: number; m
   if (rounding === 'nearest_05') return { increment: 0.05, mode: 'NEAREST' };
   if (rounding === 'nearest_1') return { increment: 1, mode: 'NEAREST' };
   return null;
+}
+
+function settlementAccountForRegister(
+  method: PosPaymentMethodConfig['code'],
+  register: { cashDrawerAccountId?: string; settlementAccountIds?: Record<string, string> }
+): string {
+  if (method === 'CASH') return register.cashDrawerAccountId || '';
+  return register.settlementAccountIds?.[method] || '';
+}
+
+function calculateDiscountAmount(line: PosCartLine, gross: number): number {
+  if (!line.discountType || !line.discountValue) return 0;
+  if (line.discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(gross, gross * (line.discountValue / 100))));
+  }
+  return roundMoney(Math.max(0, Math.min(gross, line.discountValue)));
 }

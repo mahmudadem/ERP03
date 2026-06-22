@@ -72,7 +72,7 @@ c52f6e36  feat(pos): phase 0 foundations — registers, settings, governance tog
 
 The end-to-end happy path on a fresh company:
 
-1. **Settings (governance):** `POST /tenant/pos/initialize`, then `PUT /tenant/pos/settings` with `allowPosDirectSales: true`. Confirm `GET /tenant/sales/settings` shows the `pos_direct_sale_form_allow` rule.
+1. **Settings (governance):** `POST /tenant/pos/initialize`, then `PUT /tenant/pos/settings` with `allowPosDirectSales: true`. Confirm POS policy allows `POS_DIRECT_SALE`; Sales Settings no longer owns this governance rule after the System Core transformation.
 2. **Register:** `POST /tenant/pos/registers` with `code:POS-01`, `name:Front`, `warehouseId`, `cashDrawerAccountId` (an existing Account). The list shows it.
 3. **Over/short accounts:** In POS Settings, set `cashOverAccountId` and `cashShortAccountId` to two existing Accounts.
 4. **Walk-in customer:** Set `walkInCustomerId` to a `CUSTOMER` Party.
@@ -99,11 +99,9 @@ The end-to-end happy path on a fresh company:
 
 These are **not** blockers; the module is functionally complete. Owner can choose to follow up later:
 
-- **Payment method aggregation** in the *Payment Methods* report returns placeholder zeros. Per-receipt payments are visible from the receipt detail and the cashier's "Last receipt" card. A future enhancement can read `pos_payments` and aggregate.
 - **`RecordChangeService.recordCreate` for POS entities** is not invoked from POS use cases (the Sales side already records sale/return state changes). A future ticket can add a `recordCreate` to `PosReceipt.create`/`PosReturn.create` for a cleaner audit surface.
 - **`ReceiptChangeService` for POS settings** is similarly not invoked.
 - **Offline mode** is out of V1 (per epic §8 risk table).
-- **CASH rounding** is a stored field only; the till always applies `none` for now.
 - **Branch is a free-text `branchId` string** on `PosRegister`. There is no first-class `Branch` entity.
 
 ## Type-C blockers skipped
