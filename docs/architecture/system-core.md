@@ -2,6 +2,8 @@
 
 **Status:** Epic 250 in progress. This document starts with the Phase 0 interface seams and will be expanded as phases 250b-250l land.
 
+> **For agents/SWEs:** the enforced engine boundaries and the "where does new logic go?" decision protocol live in **`AGENTS.md` → System Core / Engine Red Lines** and **→ New Feature "Where does this logic go?"**. Read those before adding or moving business logic. The boundaries are enforced by `backend/src/tests/architecture/SystemCoreBoundaries.test.ts`.
+
 ## Boundary
 
 System Core is the shared-engine layer for business logic used by multiple ERP apps. Application modules such as Sales, Purchases, POS, Inventory UI, and Accounting UI should orchestrate user workflows over System Core interfaces instead of importing each other's internals.
