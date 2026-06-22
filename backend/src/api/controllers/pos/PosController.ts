@@ -39,6 +39,7 @@ import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/Previe
 import { CompletePosReturnUseCase, VoidPosReceiptUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
 import { CompletePosExchangeUseCase } from '../../../application/pos/use-cases/CompletePosExchangeUseCase';
 import { ReprintPosReceiptUseCase } from '../../../application/pos/use-cases/PosReceiptUseCases';
+import { CreatePosManagerOverrideUseCase } from '../../../application/pos/use-cases/PosManagerOverrideUseCases';
 import {
   CancelPosHeldCartUseCase,
   GetPosHeldCartUseCase,
@@ -548,6 +549,27 @@ export class PosController {
           payments: result.payments.map((p: any) => PosPaymentDTO.fromDomain(p)),
         },
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createManagerOverride(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const userEmail = PosController.getUserEmail(req);
+      const useCase = new CreatePosManagerOverrideUseCase(diContainer.auditEngine);
+      const result = await useCase.execute({
+        companyId,
+        action: String((req as any).body?.action) as any,
+        managerUserId: String((req as any).body?.managerUserId || ''),
+        managerName: (req as any).body?.managerName ? String((req as any).body.managerName) : undefined,
+        reason: String((req as any).body?.reason || ''),
+        context: ((req as any).body?.context || {}) as Record<string, unknown>,
+        actor: { userId, userEmail },
+      });
+      (res as any).status(201).json({ success: true, data: result });
     } catch (error) {
       next(error);
     }

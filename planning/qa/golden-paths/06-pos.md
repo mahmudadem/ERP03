@@ -100,8 +100,8 @@ Estimated manual run time: **60–90 minutes** on a fresh tenant if master data 
 | # | Step | Expected |
 |---|------|----------|
 | 33a | Configure or seed a cashier role policy with a low max discount percent/amount and price/tax override disabled | Policy saves for that cashier role |
-| 33b | Try a POS sale with an over-limit manual line discount and no manager override id | Blocked before receipt, stock, ledger, payment, or cash movement persistence |
-| 33c | Repeat the same sale with an approved manager override id | Sale completes; receipt line carries the manager override id and discount metadata |
+| 33b | Try a POS sale with an over-limit manual line discount and no captured manager approval | Blocked before receipt, stock, ledger, payment, or cash movement persistence |
+| 33c | Repeat the same sale, click **Capture approval** in the Tender dialog, select a manager, enter the reason, and complete the sale | Sale completes; receipt line carries the generated manager override id and discount metadata |
 | 33d | Create or inspect a receipt containing a voided line, price override flag, tax override flag, and/or manual discount | Receipt snapshot keeps the exception metadata for audit review |
 
 ## H. Reports

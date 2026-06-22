@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { ManagerOverrideCapture, ManagerOverrideValue } from '../components/ManagerOverrideCapture';
 import { useConfirm as useConfirmHook } from '../../../hooks/useConfirm';
 import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
 import { ColumnDefinition } from '../../../components/ui/DataTable';
@@ -59,6 +60,8 @@ const PosReturnPage: React.FC<Props> = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [showExchangeConfirm, setShowExchangeConfirm] = useState(false);
   const [bootstrap, setBootstrap] = useState<any | null>(null);
+  const [managerOverride, setManagerOverride] = useState<ManagerOverrideValue | null>(null);
+  const [showManagerOverride, setShowManagerOverride] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -133,6 +136,7 @@ const PosReturnPage: React.FC<Props> = () => {
         shiftId: openShift.id,
         lines: returnLines.map((l) => ({ itemId: l.itemId, qty: l.returnQty })),
         refundMethod,
+        managerOverrideId: managerOverride?.managerOverrideId,
       });
       toast.success(t('pos.return.completed', {
         defaultValue: 'Return posted. Refund: {{amount}}.',
@@ -250,6 +254,7 @@ const PosReturnPage: React.FC<Props> = () => {
         }],
         refundMethod,
         reason: 'POS exchange',
+        managerOverrideId: managerOverride?.managerOverrideId,
       });
       const due = Number((result as any).netDueFromCustomer || 0);
       const refund = Number((result as any).netRefundToCustomer || 0);
@@ -259,6 +264,7 @@ const PosReturnPage: React.FC<Props> = () => {
       setReceipt(null);
       setLines([]);
       setReceiptNumber('');
+      setManagerOverride(null);
       setReplacementLines([]);
       setReplacementResults([]);
       setReplacementSearch('');
@@ -386,6 +392,24 @@ const PosReturnPage: React.FC<Props> = () => {
               <div className="flex justify-between text-lg font-bold">
                 <span>{t('pos.return.total', { defaultValue: 'Refund total' })}:</span>
                 <span className="font-mono">{total.toFixed(2)}</span>
+              </div>
+              <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="text-xs text-amber-900">
+                    {managerOverride
+                      ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', managerOverride.managerOverrideId)
+                      : t('pos.managerOverride.returnHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for returns or exchanges.' })}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowManagerOverride(true)}
+                    className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+                  >
+                    {managerOverride
+                      ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
+                      : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                  </button>
+                </div>
               </div>
               {mode === 'EXCHANGE' && (
                 <div className="space-y-3 rounded border border-indigo-100 bg-indigo-50/40 p-3">
@@ -570,6 +594,25 @@ const PosReturnPage: React.FC<Props> = () => {
         onConfirm={onSubmitExchange}
         onCancel={() => setShowExchangeConfirm(false)}
         confirmLabel={submitting ? '…' : t('pos.exchange.confirm', { defaultValue: 'Post exchange' })}
+      />
+      <ManagerOverrideCapture
+        isOpen={showManagerOverride}
+        action="RETURN"
+        title={mode === 'EXCHANGE'
+          ? t('pos.managerOverride.exchangeTitle', { defaultValue: 'Approve exchange' })
+          : t('pos.managerOverride.returnTitle', { defaultValue: 'Approve return' })}
+        context={{
+          receiptId: receipt?.id,
+          receiptNumber: receipt?.receiptNumber,
+          mode,
+          returnTotal: total,
+          replacementTotal,
+        }}
+        onCancel={() => setShowManagerOverride(false)}
+        onApproved={(override) => {
+          setManagerOverride(override);
+          setShowManagerOverride(false);
+        }}
       />
     </div>
   );

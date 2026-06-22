@@ -28,6 +28,26 @@
     "subtitle": "Cashier terminal. Opens to the register the current user is signed in on.",
     "comingSoon": "Cashier screen lands in Phase 247c. Configure registers and settings in the meantime."
   },
+  "managerOverride": {
+    "title": "Manager approval",
+    "action": "Action",
+    "manager": "Approving manager",
+    "selectManager": "Select manager",
+    "reason": "Reason",
+    "capture": "Capture approval",
+    "replace": "Replace approval",
+    "approved": "Manager approval captured.",
+    "attached": "Approval attached: {{id}}",
+    "managerRequired": "Select the approving manager.",
+    "reasonRequired": "Enter the approval reason.",
+    "voidTitle": "Approve line void",
+    "saleTitle": "Approve sale override",
+    "returnTitle": "Approve return",
+    "exchangeTitle": "Approve exchange",
+    "voidHelp": "Capture manager approval if the cashier role requires approval for line voids.",
+    "saleHelp": "Capture approval before completing a sale with restricted discounts, price, tax, or void overrides.",
+    "returnHelp": "Capture manager approval if the cashier role requires approval for returns or exchanges."
+  },
   "terminal": {
     "searchTitle": "Search products",
     "searchPlaceholder": "Scan barcode / search SKU / name",

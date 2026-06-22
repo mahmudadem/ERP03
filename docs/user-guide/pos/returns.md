@@ -15,7 +15,7 @@ From a completed receipt, the cashier can return all or some of the active sold 
    - For CASH refunds, writes a `REFUND_CASH` cash movement on the **current** open shift, reducing expected cash.
 6. A toast confirms the refund amount; the return history list refreshes.
 
-If the cashier's role requires manager approval for returns, the backend blocks the return unless an approved manager override is supplied.
+If the cashier's role requires manager approval for returns, click **Capture approval**, select the approving manager, enter the reason, and save before posting. The backend still enforces the policy; the approval id is attached to the return payload and stored for audit review.
 
 ## Voiding a Posted Receipt
 
@@ -43,7 +43,10 @@ To process an exchange:
 5. Search for the replacement item and add it to the replacement sale.
 6. Confirm the replacement quantity, price, payment method, and optional payment reference.
 7. Review **Return value**, **Replacement value**, and the calculated **Net due** or **Net refund**.
-8. Click **Post exchange** and confirm.
+8. If manager approval is required, click **Capture approval**, select the approving manager, and enter the reason.
+9. Click **Post exchange** and confirm.
+
+The same approval id is passed to both sides of the exchange: the POS return for the item coming back and the replacement POS sale for the item going out.
 
 ## Which shift does the return attach to?
 

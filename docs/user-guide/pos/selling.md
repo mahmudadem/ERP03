@@ -20,6 +20,10 @@ Voided lines do not post stock movement, revenue, tax, COGS, cash, or payment am
 
 If the cashier's role requires manager approval for voids, discounts, price overrides, or tax overrides, the backend blocks completion unless an approved manager override is supplied. Cashier roles can also set maximum line discount percent/amount and can block manual price or tax edits unless a manager approves.
 
+To capture approval from the cashier screen, click **Capture approval** in the line-void dialog or in the Tender dialog. Select the approving manager, enter the reason, and save. The system attaches the generated approval id to the sale payload and stores the approval in the audit trail.
+
+This is an audit capture step, not a manager password/PIN challenge. For now, supervisors must control who can access the signed-in cashier station and review exceptions through POS reports.
+
 ## Item selling guards
 
 POS blocks inactive inventory items before stock, receipt, payment, or accounting is posted. Product search only returns active items, and sale completion re-checks the item in the backend in case a stale screen or API payload tries to sell it.

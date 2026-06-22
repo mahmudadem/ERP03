@@ -4629,3 +4629,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused POS reporting test passed (`PosReporting`: 1 suite / 9 tests); backend typecheck/build passed; frontend report guard passed with 34 report routes; frontend typecheck/build passed.
 - **Time spent:** ~0.5h for this slice; Task 251 total ~14.7h so far.
 - **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or promotion-performance report after promotions are enabled.
+
+### Session: 2026-06-22 (Task 251 — POS P0/P1 slice 15 Manager Approval Capture UI)
+
+- **Goal:** Close the cashier-facing manager approval capture gap so backend manager-override policies are usable from POS screens instead of only by API/test harness.
+- **What was done:** Added `CreatePosManagerOverrideUseCase` and `POST /tenant/pos/manager-overrides`, which creates an audited `mgr_override_*` id with cashier, selected manager, action, reason, and context. Added a reusable `ManagerOverrideCapture` dialog. Wired the Terminal void dialog to attach approval ids to voided receipt lines, the Tender dialog to attach approval ids to active sale lines before completion, and the Returns/Exchange page to attach approval ids to return/exchange payloads. Updated exchange orchestration so the same approval id reaches both the POS return leg and replacement sale leg.
+- **Accounting/ERP impact:** Control/audit hardening only. No tax, COGS, stock valuation, settlement routing, voucher posting, period-lock, or approval-engine math changed. This is approval capture, not manager credential/PIN validation; stronger manager authentication remains a future security hardening slice.
+- **Verification:** Focused tests passed (`PosManagerOverrideUseCases` + `CompletePosExchange`: 2 suites / 6 tests). Backend typecheck/build passed. Frontend typecheck, report guard, and production build passed; build still reports existing bundle-size/Browserslist/baseline-data warnings.
+- **Docs:** Updated POS architecture, selling/returns user guides, owner test guide, Golden Path 06, Task 251 gap plan, completion report, and ACTIVE.
+- **Time spent:** ~1.1h for this slice; Task 251 total ~15.8h so far.
+- **Next:** Expiry/batch-aware item guards or remaining POS report gaps.

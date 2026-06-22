@@ -28,6 +28,26 @@
     "subtitle": "Kasiyer ekranı. Geçerli kullanıcının oturum açtığı kasaya açılır.",
     "comingSoon": "Kasiyer ekranı 247c aşamasında. Bu arada kasaları ve ayarları yapılandırın."
   },
+  "managerOverride": {
+    "title": "Yönetici onayı",
+    "action": "İşlem",
+    "manager": "Onaylayan yönetici",
+    "selectManager": "Yönetici seç",
+    "reason": "Sebep",
+    "capture": "Onayı kaydet",
+    "replace": "Onayı değiştir",
+    "approved": "Yönetici onayı kaydedildi.",
+    "attached": "Onay eklendi: {{id}}",
+    "managerRequired": "Onaylayan yöneticiyi seçin.",
+    "reasonRequired": "Onay sebebini girin.",
+    "voidTitle": "Satır iptalini onayla",
+    "saleTitle": "Satış istisnasını onayla",
+    "returnTitle": "İadeyi onayla",
+    "exchangeTitle": "Değişimi onayla",
+    "voidHelp": "Kasiyer rolü satır iptali için onay gerektiriyorsa yönetici onayı kaydedin.",
+    "saleHelp": "Kısıtlı indirim, fiyat, vergi veya iptal içeren satışı tamamlamadan önce onay kaydedin.",
+    "returnHelp": "Kasiyer rolü iade veya değişim için onay gerektiriyorsa yönetici onayı kaydedin."
+  },
   "terminal": {
     "searchTitle": "Ürün ara",
     "searchPlaceholder": "Barkod okut / SKU veya ad ile ara",

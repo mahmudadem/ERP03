@@ -86,7 +86,9 @@ export class CompletePosExchangeUseCase {
       registerId: input.registerId,
       shiftId: input.shiftId,
       customerId: input.customerId || originalReceipt.customerId,
-      lines: input.saleLines,
+      lines: input.managerOverrideId
+        ? input.saleLines.map((line) => ({ ...line, managerOverrideId: line.managerOverrideId || input.managerOverrideId }))
+        : input.saleLines,
       payments: input.salePayments,
       exchangeId,
       actor: input.actor,

@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-14 green
-**Actual time:** ~14.7h so far
+**Status:** in progress locally; slices 1-15 green
+**Actual time:** ~15.8h so far
 
 ## Technical Developer View
 
@@ -34,12 +34,15 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS Top Selling Items report now ranks completed receipt lines by item, excluding voided lines.
 - POS receipt reprint now checks `REPRINT` manager-override policy, writes a `POS_RECEIPT` record-change audit row, and exposes `/tenant/pos/reports/reprint-audit`.
 - POS Cancelled Receipts report now lists only POS receipts already marked `VOIDED` after the reversal/return flow.
+- POS manager approval capture now has a cashier-facing UI and backend endpoint. `/tenant/pos/manager-overrides` creates an audited `mgr_override_*` id; the terminal can attach it to voided lines and sale-line overrides, and the return/exchange page attaches it to POS returns/exchanges. Exchange forwards the same id to both return and replacement sale legs.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
 
 - `backend/src/application/pos/use-cases/CompletePosSaleUseCase.ts`
 - `backend/src/application/pos/use-cases/CompletePosReturnUseCase.ts`
+- `backend/src/application/pos/use-cases/CompletePosExchangeUseCase.ts`
+- `backend/src/application/pos/use-cases/PosManagerOverrideUseCases.ts`
 - `backend/src/application/pos/use-cases/PosRegisterUseCases.ts`
 - `backend/src/application/pos/use-cases/PosHeldCartUseCases.ts`
 - `backend/src/application/pos/use-cases/PosShiftUseCases.ts`
@@ -59,6 +62,7 @@ Files changed:
 - `backend/src/domain/pos/entities/PosShift.ts`
 - `backend/src/domain/pos/entities/POSPolicy.ts`
 - `frontend/src/api/posApi.ts`
+- `frontend/src/modules/pos/components/ManagerOverrideCapture.tsx`
 - `frontend/src/modules/pos/pages/PosTerminalPage.tsx`
 - `frontend/src/modules/pos/pages/PosReturnPage.tsx`
 - `frontend/src/modules/pos/pages/PosOverrideAuditReportPage.tsx`
@@ -72,6 +76,7 @@ Files changed:
 - `backend/src/tests/application/pos/PostPosReturn.test.ts`
 - `backend/src/tests/application/pos/PosReporting.test.ts`
 - `backend/src/tests/application/pos/ReprintPosReceiptUseCase.test.ts`
+- `backend/src/tests/application/pos/PosManagerOverrideUseCases.test.ts`
 - `backend/src/tests/application/pos/PosHeldCartUseCases.test.ts`
 - `backend/src/tests/application/pos/PosSettingsUseCases.test.ts`
 - `backend/src/tests/architecture/SystemCoreBoundaries.test.ts`
@@ -90,7 +95,7 @@ POS now behaves closer to a real retail till setup. Each register has its own ca
 
 Cashiers now void entered cart lines instead of deleting them. A voided line stays visible on the receipt audit trail with the reason and user, but it does not affect the sale total, stock, ledger, tax, cash, or returnable quantity.
 
-POS can now enforce manager approval for sensitive cashier actions by role policy. The backend hooks are in place for voids, manual discounts, price/tax override flags, returns, and reprint policy checks. The cashier-facing manager approval capture workflow is still a follow-up.
+POS can now enforce and capture manager approval for sensitive cashier actions by role policy. Cashiers can open a **Capture approval** dialog, select the approving manager, enter a reason, and attach the generated approval id to line voids, restricted sale-line overrides, returns, or exchanges. The approval is recorded in the audit trail. This is not yet a manager PIN/password challenge; it is an auditable approval capture for pilot control.
 
 Cashier role policies can now also define hard limits for line discounts and whether manual price or tax edits are allowed. If a cashier exceeds those limits without a manager override id, the backend blocks the sale before any receipt, stock movement, ledger entry, or payment row is created. Managers can review exceptions through the override audit report.
 
@@ -141,6 +146,12 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm --prefix frontend run typecheck` — passed after cashier-facing exchange UI slice.
 - `npm test -- --runInBand src/tests/application/pos/CompletePosExchange.test.ts` — passed, 1 suite / 3 tests after cashier-facing exchange UI slice.
 - `npm --prefix frontend run build` — passed after cashier-facing exchange UI slice.
+- `npm test -- --runInBand src/tests/application/pos/PosManagerOverrideUseCases.test.ts src/tests/application/pos/CompletePosExchange.test.ts` — passed, 2 suites / 6 tests after manager approval capture UI slice.
+- `npm run typecheck` from `backend/` — passed after manager approval capture UI slice.
+- `npm --prefix frontend run typecheck` — passed after manager approval capture UI slice.
+- `npm run build` from `backend/` — passed after manager approval capture UI slice.
+- `npm --prefix frontend run check:reports` — passed with 34 report routes after manager approval capture UI slice.
+- `npm --prefix frontend run build` — passed after manager approval capture UI slice; existing bundle-size/Browserslist/baseline-data warnings remain.
 - `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` — passed, 1 suite / 10 tests after item selling-policy guard slice.
 - `npm run typecheck` from `backend/` — passed after item selling-policy guard slice.
 - `npm run build` from `backend/` — passed after item selling-policy guard slice.
@@ -166,7 +177,7 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 ## Known Follow-Ups
 
 - Promotions remain production-gated until the stacking/cap model is implemented.
-- Cashier-facing manager approval capture UI is still required; this slice added backend policy hooks and enforcement.
+- Cashier-facing manager approval capture is now available for terminal voids, sale-line overrides, returns, and exchanges. A future hardening slice should add manager PIN/password authentication.
 - Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
 - POS item enabled/blocked/discountable flags are currently metadata-enforced; a first-class item-master UI for these flags is still a follow-up.
 - Expiry/batch-aware item guards are still a follow-up because current item master does not model POS batch expiry at sale-line level.

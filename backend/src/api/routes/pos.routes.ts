@@ -44,6 +44,7 @@ router.get('/receipts', permissionGuard('pos.terminal.access'), PosController.li
 router.get('/receipts/:id', permissionGuard('pos.terminal.access'), PosController.getReceipt);
 router.get('/receipts/:id/reprint', permissionGuard('pos.receipt.reprint'), PosController.reprintReceipt);
 router.post('/receipts/:id/void', idempotencyMiddleware, permissionGuard('pos.return.create'), PosController.voidReceipt);
+router.post('/manager-overrides', permissionGuard('pos.terminal.access'), PosController.createManagerOverride);
 
 // Returns
 router.post('/exchanges', idempotencyMiddleware, permissionGuard('pos.return.create'), permissionGuard('pos.terminal.access'), PosController.completeExchange);

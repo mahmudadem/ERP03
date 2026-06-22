@@ -124,6 +124,30 @@ describe('CompletePosExchangeUseCase', () => {
     expect(result.netRefundToCustomer).toBe(5);
   });
 
+  it('applies the exchange manager override id to both return and replacement sale legs', async () => {
+    const { useCase, completeReturnUseCase, completeSaleUseCase } = setup(25, 20);
+
+    await useCase.execute({
+      companyId: 'cmp_test',
+      originalReceiptId: 'rcp_original',
+      registerId: 'reg_1',
+      shiftId: 'shift_1',
+      returnLines: [{ itemId: 'item_a', qty: 1 }],
+      saleLines: [{ itemId: 'item_b', qty: 1, unitPrice: 25 }],
+      salePayments: [{ method: 'CASH', amount: 25 }],
+      refundMethod: 'CASH',
+      managerOverrideId: 'mgr_override_1',
+      actor: { userId: 'cashier_1' },
+    });
+
+    expect(completeReturnUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      managerOverrideId: 'mgr_override_1',
+    }));
+    expect(completeSaleUseCase.execute).toHaveBeenCalledWith(expect.objectContaining({
+      lines: [expect.objectContaining({ itemId: 'item_b', managerOverrideId: 'mgr_override_1' })],
+    }));
+  });
+
   it('rejects exchange without replacement payment rows', async () => {
     const { useCase, completeReturnUseCase } = setup();
 

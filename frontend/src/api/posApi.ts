@@ -11,6 +11,7 @@ export type PosCashRounding = 'none' | 'nearest_05' | 'nearest_1';
 export type PosRegisterStatus = 'ACTIVE' | 'INACTIVE';
 export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
 export type PosHeldCartStatus = 'HELD' | 'RECALLED' | 'CANCELLED';
+export type PosManagerOverrideAction = 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE' | 'RETURN' | 'REPRINT';
 export type PosShiftPaymentTotals = Record<PosPaymentMethodCode, number>;
 
 export interface PosPaymentMethodDTO {
@@ -115,6 +116,15 @@ export interface PosHeldCartDTO {
   cancelledAt?: string;
   cancelledBy?: string;
   cancelReason?: string;
+}
+
+export interface PosManagerOverrideDTO {
+  managerOverrideId: string;
+  approvedAt: string;
+  action: PosManagerOverrideAction;
+  managerUserId: string;
+  managerName?: string;
+  reason: string;
 }
 
 // The global response interceptor (setupErrorInterceptor) already unwraps the
@@ -247,6 +257,18 @@ export const posApi = {
 
   getReceipt: async (id: string): Promise<{ receipt: any; payments: any[] }> =>
     ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}`)),
+
+  reprintReceipt: async (id: string, params?: { managerOverrideId?: string; reason?: string }): Promise<{ receipt: any; payments: any[] }> =>
+    ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}/reprint`, { params: params || {} })),
+
+  createManagerOverride: async (payload: {
+    action: PosManagerOverrideAction;
+    managerUserId: string;
+    managerName?: string;
+    reason: string;
+    context?: Record<string, unknown>;
+  }): Promise<PosManagerOverrideDTO> =>
+    ok(client.post('/tenant/pos/manager-overrides', payload)),
 
   voidReceipt: async (id: string, payload: {
     registerId: string;

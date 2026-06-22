@@ -25,6 +25,7 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 - POS registers persist default price list id, allowed cashiers, and hardware profile id; allowed cashiers are enforced on shift open.
 - POS shift close stores expected/counted/variance by payment method and marks fully balanced shifts `RECONCILED`.
 - POS override audit report returns void, discount, price override, and tax override exception rows from receipt snapshots.
+- POS manager approval capture creates an audited `mgr_override_*` id from the cashier UI and can attach it to voids, sale overrides, returns, and exchanges.
 - POS receipt reprint checks cashier role policy for `REPRINT`, records a receipt audit event, and exposes it in the Reprint Audit report.
 - POS posted receipt void creates a POS return for remaining active quantities before marking the receipt `VOIDED`.
 - POS exchange creates a linked POS return and replacement POS sale with one `exchangeId`.
@@ -91,8 +92,8 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
     - `allowTaxOverride = false`
 25. Try completing a sale with an over-limit manual discount and no manager override id.
 26. Expected: sale is blocked before receipt/posting.
-27. Repeat with a manager override id supplied by API/test harness.
-28. Expected: sale completes and the receipt line carries the manager override id.
+27. Repeat after clicking **Capture approval** in the Tender dialog, selecting a manager, and entering a reason.
+28. Expected: sale completes and the receipt line carries the generated manager override id.
 29. Open **POS → Reports → Override Audit** or query `/tenant/pos/reports/override-audit` for the same date/register.
 30. Confirm rows appear for manual discount, price override, tax override, and any voided lines.
 31. Reprint a receipt through `/tenant/pos/receipts/:id/reprint`.
@@ -107,7 +108,7 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 40. Expected: return is blocked because there is no remaining returnable quantity.
 41. On another receipt, process a partial return, then void the receipt.
 42. Expected: the void returns only the remaining quantity, not the already-returned quantity.
-43. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, and post an exchange where the replacement item is more expensive than the returned item.
+43. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, click **Capture approval**, select a manager, enter a reason, and post an exchange where the replacement item is more expensive than the returned item.
 44. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net due from customer.
 45. Repeat from **POS → Returns → Exchange** where the replacement item is cheaper than the returned item.
 46. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net refund to customer.
@@ -128,6 +129,7 @@ Stop and log the failure in `planning/qa/findings.md` if any of these happen:
 - Trial Balance is not balanced after sales, returns, and over/short vouchers.
 - Non-cash settlement variance auto-posts to GL without a separate clearing/reconciliation workflow.
 - Over-limit discount or blocked price/tax override posts without manager approval.
+- The **Capture approval** dialog creates no approval id or the posted receipt/return/exchange does not carry the generated approval id.
 - Override audit report is empty after receipts with voids/manual discounts/price or tax override flags.
 - Receipt reprint succeeds without required manager approval, or Reprint Audit misses a reprinted receipt.
 - A posted receipt can be marked `VOIDED` without a linked POS return / financial reversal.

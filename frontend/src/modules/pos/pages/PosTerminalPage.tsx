@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { posApi, PosHeldCartDTO, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { ManagerOverrideCapture, ManagerOverrideValue } from '../components/ManagerOverrideCapture';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { errorHandler } from '../../../services/errorHandler';
 import { useAuth } from '../../../context/AuthContext';
@@ -108,6 +109,10 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [lastReceipt, setLastReceipt] = useState<any | null>(null);
   const [voidTarget, setVoidTarget] = useState<{ lineId?: string; all?: boolean } | null>(null);
   const [voidReason, setVoidReason] = useState('');
+  const [voidManagerOverride, setVoidManagerOverride] = useState<ManagerOverrideValue | null>(null);
+  const [showVoidManagerOverride, setShowVoidManagerOverride] = useState(false);
+  const [saleManagerOverride, setSaleManagerOverride] = useState<ManagerOverrideValue | null>(null);
+  const [showSaleManagerOverride, setShowSaleManagerOverride] = useState(false);
   const [heldCarts, setHeldCarts] = useState<PosHeldCartDTO[]>([]);
   const [heldLoading, setHeldLoading] = useState(false);
   const [holdingCart, setHoldingCart] = useState(false);
@@ -257,6 +262,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const beginVoidLine = (lineId: string) => {
     setVoidTarget({ lineId });
     setVoidReason('');
+    setVoidManagerOverride(null);
   };
 
   const onClearSale = () => {
@@ -269,6 +275,7 @@ const PosTerminalPage: React.FC<Props> = () => {
     }
     setVoidTarget({ all: true });
     setVoidReason('');
+    setVoidManagerOverride(null);
   };
 
   const confirmVoid = () => {
@@ -282,13 +289,14 @@ const PosTerminalPage: React.FC<Props> = () => {
       prev.map((l) => {
         const shouldVoid = voidTarget.all ? l.status !== 'VOIDED' : l.lineId === voidTarget.lineId;
         return shouldVoid
-          ? { ...l, status: 'VOIDED', voidedBy: userId, voidedAt, voidReason: reason }
+          ? { ...l, status: 'VOIDED', voidedBy: userId, voidedAt, voidReason: reason, managerOverrideId: voidManagerOverride?.managerOverrideId || l.managerOverrideId }
           : l;
       })
     );
     setPayments([]);
     setVoidTarget(null);
     setVoidReason('');
+    setVoidManagerOverride(null);
     toast.success(t('pos.terminal.lineVoided', { defaultValue: 'Line voided.' }));
     searchRef.current?.focus();
   };
@@ -437,6 +445,18 @@ const PosTerminalPage: React.FC<Props> = () => {
     setTenderRef('');
   };
 
+  const applySaleManagerOverride = (override: ManagerOverrideValue) => {
+    setSaleManagerOverride(override);
+    setCart((prev) =>
+      prev.map((line) =>
+        line.status !== 'VOIDED' && !line.managerOverrideId
+          ? { ...line, managerOverrideId: override.managerOverrideId }
+          : line
+      )
+    );
+    setShowSaleManagerOverride(false);
+  };
+
   const onCompleteSale = async () => {
     const register = bootstrap?.register;
     const shift = bootstrap?.openShift;
@@ -478,6 +498,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.success(t('pos.terminal.completed', { defaultValue: 'Sale completed.' }));
       setCart([]);
       setPayments([]);
+      setSaleManagerOverride(null);
       setSearchQuery('');
       searchRef.current?.focus();
     } catch (err: any) {
@@ -935,6 +956,30 @@ const PosTerminalPage: React.FC<Props> = () => {
               <Plus className="h-4 w-4" /> {t('pos.terminal.addTender', { defaultValue: 'Add payment' })}
             </button>
 
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold text-amber-900">
+                    {t('pos.managerOverride.title', { defaultValue: 'Manager approval' })}
+                  </div>
+                  <div className="mt-0.5 text-xs text-amber-800">
+                    {saleManagerOverride
+                      ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', saleManagerOverride.managerOverrideId)
+                      : t('pos.managerOverride.saleHelp', { defaultValue: 'Capture approval before completing a sale with restricted discounts, price, tax, or void overrides.' })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSaleManagerOverride(true)}
+                  className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+                >
+                  {saleManagerOverride
+                    ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
+                    : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                </button>
+              </div>
+            </div>
+
             {/* Tender list */}
             {payments.length > 0 && (
               <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-[var(--color-border)] dark:border-[var(--color-border)]">
@@ -1013,6 +1058,24 @@ const PosTerminalPage: React.FC<Props> = () => {
                 className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
               />
             </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-amber-900">
+                  {voidManagerOverride
+                    ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', voidManagerOverride.managerOverrideId)
+                    : t('pos.managerOverride.voidHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for line voids.' })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowVoidManagerOverride(true)}
+                  className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+                >
+                  {voidManagerOverride
+                    ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
+                    : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                </button>
+              </div>
+            </div>
           </div>
         }
         tone="warning"
@@ -1024,6 +1087,27 @@ const PosTerminalPage: React.FC<Props> = () => {
         confirmLabel={voidTarget?.all
           ? t('pos.terminal.voidAll', { defaultValue: 'Void all' })
           : t('pos.terminal.voidLine', { defaultValue: 'Void line' })}
+      />
+
+      <ManagerOverrideCapture
+        isOpen={showVoidManagerOverride}
+        action="VOID_LINE"
+        title={t('pos.managerOverride.voidTitle', { defaultValue: 'Approve line void' })}
+        context={{ registerId: register?.id, shiftId: shift?.id, lineId: voidTarget?.lineId, all: voidTarget?.all === true }}
+        onCancel={() => setShowVoidManagerOverride(false)}
+        onApproved={(override) => {
+          setVoidManagerOverride(override);
+          setShowVoidManagerOverride(false);
+        }}
+      />
+
+      <ManagerOverrideCapture
+        isOpen={showSaleManagerOverride}
+        action="DISCOUNT_OVERRIDE"
+        title={t('pos.managerOverride.saleTitle', { defaultValue: 'Approve sale override' })}
+        context={{ registerId: register?.id, shiftId: shift?.id, lineCount: activeCart.length, total: grandTotal }}
+        onCancel={() => setShowSaleManagerOverride(false)}
+        onApproved={applySaleManagerOverride}
       />
 
       <ConfirmDialog
