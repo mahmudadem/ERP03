@@ -1,6 +1,7 @@
 # Task 255 — Currency / FX as a shared engine
 
-> **Status:** Not started. **Priority:** MEDIUM. (Previously referred to informally as "Task 253"; renumbered to 255 for priority order behind the posting-flag and item/stock tasks.)
+> **Status:** ✅ DONE (2026-06-22) via **Option A** — `IFxEngine` seam. Investigation found the "duplication" was overstated: the `accounting` exchange-rate use-cases + service are already **re-export shims** of one canonical implementation in `application/core` (no real logic duplication). So Task 255 = formalize the shared seam: added `IFxEngine` contract (`resolveRate` exact/recent/inverse + `detectDeviations` + `saveReferenceRate`), `LegacyFxAdapter` wrapping the core use-cases (pure delegation, behaviour-preserving), DI getter `fxEngine`, barrel export, and a `SystemCoreBoundaries` guard. `IMoneyCore` stays a pure money/rounding engine. Verified: focused `FxEngine.test.ts` + boundary test + full backend suite **1643 green**, backend build clean. **Optional follow-up:** migrate the existing Currency/FXRevaluation controllers to consume `IFxEngine` instead of constructing the core use-cases directly (phased, like the accounting-bridge FUPs).
+> **Priority:** MEDIUM. (Previously referred to informally as "Task 253"; renumbered to 255 for priority order behind the posting-flag and item/stock tasks.)
 > **Principle:** [engines-vs-modules.md](../../docs/architecture/engines-vs-modules.md) — rate resolution is cross-cutting truth any module needs; it must be one always-on engine, not duplicated per module.
 
 ## The problem (duplication)

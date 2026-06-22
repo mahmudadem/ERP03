@@ -144,6 +144,7 @@ import {
   NumberingEngine,
   PolicyEngine,
   LegacyTaxEngineAdapter,
+  LegacyFxAdapter,
 } from '../../application/system-core';
 import {
   IAccountingBridge,
@@ -156,6 +157,7 @@ import {
   INumberingEngine,
   IPolicyEngine,
   ITaxEngine,
+  IFxEngine,
 } from '../../application/system-core';
 import { SubledgerVoucherPostingService } from '../../application/accounting/services/SubledgerVoucherPostingService';
 import { RecordChangeService } from '../../application/system/services/RecordChangeService';
@@ -1060,6 +1062,10 @@ export const diContainer = {
       this.companyModuleRepository,
       this.postingLogRepository
     );
+  },
+  // Task 255: single shared FX seam wrapping the centralized core exchange-rate logic.
+  get fxEngine(): IFxEngine {
+    return new LegacyFxAdapter(this.exchangeRateRepository);
   },
   get auditEngine(): IAuditEngine {
     return new LegacyAuditEngineAdapter(new RecordChangeService(this.recordChangeLogRepository));

@@ -79,7 +79,7 @@ POS, Sales, dashboards, and the AI assistant all consume the same facts differen
 | **Tax** | Tax computation; inclusive/exclusive resolution | Tax-code config UI |
 | **Numbering** | Unique sequential numbers (no gaps/dupes) | Number-format config UI |
 | **Approval** | The approval decision for any subject; enforcing the gate *before* GL/stock impact; override checks | Approval-policy config; approval inbox/center UI |
-| **Currency / FX** *(to build — Task 255)* | Rate resolution (exact/recent/inverse); base conversion; deviation detection — for any module | Rate-entry UI; FX revaluation reports |
+| **Currency / FX** (`IFxEngine`) | Rate resolution (exact/recent/inverse); deviation detection — for any module | Rate-entry UI; FX revaluation reports |
 | **Parties** *(treat as engine)* | Party identity (customer/vendor/walk-in); party→AR/AP account mapping — shared by Sales/Purchase/POS | Customer/vendor list; CRM screens |
 | **Documents / Audit** *(already engines)* | Document identity & state; immutable audit trail of every change | Document list UIs; audit-log viewer |
 
@@ -114,6 +114,8 @@ gates and finishing two extractions:
 - **[Task 254](../../planning/tasks/254-items-stock-catalog-always-on.md)** — item/stock/
   catalog always-on: decouple item management from the Inventory module (permission-gated,
   not module-gated); auto-init the stock engine; expose stock signals everywhere.
-- **[Task 255](../../planning/tasks/255-currency-fx-shared-engine.md)** — extract Currency/FX
-  into a shared engine (`IFxEngine` or fold into `IMoneyCore`); retire the duplicated
-  `core` + `accounting` rate stacks.
+- **[Task 255](../../planning/tasks/255-currency-fx-shared-engine.md)** — ✅ DONE. `IFxEngine`
+  seam added (rate resolution + deviation detection + reference-rate save), wrapping the
+  already-centralized `core` exchange-rate logic via `LegacyFxAdapter`. The `accounting` stack
+  was already a re-export shim of `core` (no real duplication). Migrating existing Currency
+  controllers to consume the engine is an optional phased follow-up.
