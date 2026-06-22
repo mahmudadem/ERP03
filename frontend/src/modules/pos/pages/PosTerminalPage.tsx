@@ -1020,10 +1020,10 @@ const PosTerminalPage: React.FC<Props> = () => {
                         {/* Action Buttons */}
                         <div className="flex items-center gap-1 sm:gap-3">
                           {!isVoided && (
-                            <div className="flex h-8 xl:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
+                            <div className="flex h-8 sm:h-9 xl:h-10 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
                               <button
                                 onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
-                                className="flex h-full w-7 sm:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                                className="flex h-full w-8 sm:w-9 xl:w-10 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
                               >
                                 <Minus className="h-3.5 w-3.5" />
                               </button>
@@ -1034,11 +1034,11 @@ const PosTerminalPage: React.FC<Props> = () => {
                                 value={l.qty}
                                 onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
                                 onFocus={(e) => e.target.select()}
-                                className="h-full w-8 sm:w-10 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                                className="h-full w-10 sm:w-12 xl:w-16 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <button
                                 onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
-                                className="flex h-full w-7 sm:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                                className="flex h-full w-8 sm:w-9 xl:w-10 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
                               >
                                 <Plus className="h-3.5 w-3.5" />
                               </button>
@@ -1059,16 +1059,16 @@ const PosTerminalPage: React.FC<Props> = () => {
                           {isVoided ? (
                             <button
                               onClick={() => beginVoidLine(l.lineId)}
-                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-8 xl:w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer xl:border xl:border-slate-200 xl:bg-white xl:shadow-sm dark:xl:border-[var(--color-border)] dark:xl:bg-[var(--color-bg-primary)]"
+                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer xl:border xl:border-slate-200 xl:bg-white xl:shadow-sm dark:xl:border-[var(--color-border)] dark:xl:bg-[var(--color-bg-primary)]"
                             >
-                              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-3.5 xl:w-3.5" />
+                              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-4 xl:w-4" />
                             </button>
                           ) : (
                             <button
                               onClick={() => beginVoidLine(l.lineId)}
-                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-8 xl:w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer xl:border xl:border-slate-200 xl:bg-white xl:shadow-sm xl:hover:border-rose-200 dark:xl:border-[var(--color-border)] dark:xl:bg-[var(--color-bg-primary)]"
+                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer xl:border xl:border-slate-200 xl:bg-white xl:shadow-sm xl:hover:border-rose-200 dark:xl:border-[var(--color-border)] dark:xl:bg-[var(--color-bg-primary)]"
                             >
-                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-3.5 xl:w-3.5" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-4 xl:w-4" />
                             </button>
                           )}
                         </div>
@@ -1191,7 +1191,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         />
                       </div>
 
-                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[148px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
+                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[196px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
                         {money(l.lineTotal)}
                       </div>
                     </div>
@@ -1207,7 +1207,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             {/* Mobile Expand Toggle */}
             <button
               onClick={() => setIsTotalsExpanded(!isTotalsExpanded)}
-              className="flex w-full items-center justify-center py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 landscape:hidden md:hidden dark:text-slate-500 cursor-pointer"
+              className="flex w-full items-center justify-center py-1 text-[10px] font-bold uppercase tracking-wider text-slate-400 transition-colors hover:text-slate-600 xl:hidden dark:text-slate-500 cursor-pointer"
             >
               {isTotalsExpanded ? (
                 <>
@@ -1222,7 +1222,7 @@ const PosTerminalPage: React.FC<Props> = () => {
               )}
             </button>
 
-            <div className={`space-y-2 lg:space-y-3 ${isTotalsExpanded ? 'block' : 'hidden landscape:block md:block'}`}>
+            <div className={`space-y-2 lg:space-y-3 ${isTotalsExpanded ? 'block' : 'hidden xl:block'}`}>
               <div className="space-y-1 text-xs sm:space-y-1.5 lg:text-sm">
                 <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
                   <span>{t('pos.terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
