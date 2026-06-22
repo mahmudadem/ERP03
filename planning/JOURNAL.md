@@ -4620,3 +4620,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused backend tests passed (`ReprintPosReceiptUseCase` + `PosReporting`: 2 suites / 10 tests); backend typecheck/build passed; frontend report guard passed with 33 report routes; frontend typecheck/build passed.
 - **Time spent:** ~0.7h for this slice; Task 251 total ~14.2h so far.
 - **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining POS report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 14 Cancelled Receipts report)
+
+- **Goal:** Close the cancelled-receipts report gap with a read-only manager report.
+- **What was done:** Added `GetCancelledReceiptsUseCase`, `/tenant/pos/reports/cancelled-receipts`, `posApi.getCancelledReceiptsReport()`, and `PosCancelledReceiptsReportPage` under POS Reports. The report lists only receipts whose status is `VOIDED`.
+- **Accounting/ERP impact:** Read-only reporting only. ERP03 still requires posted receipt cancellation to reverse through the POS return flow before marking the receipt voided; this report does not perform the cancellation.
+- **Verification:** Focused POS reporting test passed (`PosReporting`: 1 suite / 9 tests); backend typecheck/build passed; frontend report guard passed with 34 report routes; frontend typecheck/build passed.
+- **Time spent:** ~0.5h for this slice; Task 251 total ~14.7h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or promotion-performance report after promotions are enabled.

@@ -1,6 +1,6 @@
 # POS — Reports
 
-Nine POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
+Ten POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
 
 ## Z Report (by shift)
 
@@ -39,6 +39,14 @@ This is the report to run on every shift close, to spot cashier over/short trend
 **Use:** every POS receipt in the period with the linked Sales Invoice number.
 **Input:** date range.
 **Output:** receipt / SI / register / customer / total / date.
+
+## Cancelled Receipts
+
+**Use:** posted POS receipts that were marked voided after reversal.
+**Input:** date range.
+**Output:** receipt, status, register, cashier, original total, and date.
+
+This report does not create the cancellation. It only lists receipts already marked `VOIDED`. In ERP03 POS, posted receipt cancellation must first create the linked POS return/reversal, then mark the receipt voided.
 
 ## Top Selling Items
 

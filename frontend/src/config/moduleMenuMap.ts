@@ -227,6 +227,7 @@ export const moduleMenuMap: Record<
           { label: 'Cashier Sales', path: '/pos/reports/cashiers', permission: 'pos.reports.view', icon: 'Users' },
           { label: 'Cash Over/Short', path: '/pos/reports/over-short', permission: 'pos.reports.view', icon: 'Scale' },
           { label: 'Receipt History', path: '/pos/reports/receipts', permission: 'pos.reports.view', icon: 'History' },
+          { label: 'Cancelled Receipts', path: '/pos/reports/cancelled-receipts', permission: 'pos.reports.view', icon: 'Ban' },
           { label: 'Top Selling Items', path: '/pos/reports/top-selling-items', permission: 'pos.reports.view', icon: 'PackageCheck' },
           { label: 'Override Audit', path: '/pos/reports/override-audit', permission: 'pos.reports.view', icon: 'ShieldCheck' },
           { label: 'Reprint Audit', path: '/pos/reports/reprint-audit', permission: 'pos.reports.view', icon: 'Printer' },

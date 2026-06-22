@@ -130,7 +130,7 @@ pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
 
-## 7. Reports (9 POS + 1 link)
+## 7. Reports (10 POS + 1 link)
 
 | Report | Route | Permission | Source use case |
 |---|---|---|---|
@@ -140,12 +140,13 @@ pos.reports.view     View POS Reports
 | Cashier Sales | `/pos/reports/cashiers` | pos.reports.view | `GetCashierSalesSummaryUseCase` |
 | Cash Over/Short | `/pos/reports/over-short` | pos.reports.view | `GetCashOverShortReportUseCase` |
 | Receipt History | `/pos/reports/receipts` | pos.reports.view | `GetReceiptHistoryUseCase` |
+| Cancelled Receipts | `/pos/reports/cancelled-receipts` | pos.reports.view | `GetCancelledReceiptsUseCase` |
 | Top Selling Items | `/pos/reports/top-selling-items` | pos.reports.view | `GetTopSellingItemsUseCase` |
 | Override Audit | `/pos/reports/override-audit` | pos.reports.view | `GetPosOverrideAuditReportUseCase` |
 | Reprint Audit | `/pos/reports/reprint-audit` | pos.reports.view | `GetPosReprintAuditReportUseCase` |
 | Unsettled Costs (link) | `/inventory/reports/unsettled-costs` | pos.reports.view | (existing inventory report) |
 
-All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. Top Selling Items ranks gross completed receipt lines by item and excludes voided lines; it does not net later returns. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review. The Reprint Audit page reads `POS_RECEIPT` record-change rows created by `ReprintPosReceiptUseCase` and shows duplicate receipt-copy events.
+All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. Cancelled Receipts lists posted POS receipts whose status is `VOIDED` after reversal through `VoidPosReceiptUseCase`; it does not mark receipts voided directly. Top Selling Items ranks gross completed receipt lines by item and excludes voided lines; it does not net later returns. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review. The Reprint Audit page reads `POS_RECEIPT` record-change rows created by `ReprintPosReceiptUseCase` and shows duplicate receipt-copy events.
 
 ## 8. Testing
 

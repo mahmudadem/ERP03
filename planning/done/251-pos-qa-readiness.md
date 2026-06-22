@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-13 green
-**Actual time:** ~14.2h so far
+**Status:** in progress locally; slices 1-14 green
+**Actual time:** ~14.7h so far
 
 ## Technical Developer View
 
@@ -33,6 +33,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS sale posting now blocks inactive items, POS-disabled/POS-blocked item metadata, and manual/promotion discounts on non-discountable POS items before stock or ledger writes.
 - POS Top Selling Items report now ranks completed receipt lines by item, excluding voided lines.
 - POS receipt reprint now checks `REPRINT` manager-override policy, writes a `POS_RECEIPT` record-change audit row, and exposes `/tenant/pos/reports/reprint-audit`.
+- POS Cancelled Receipts report now lists only POS receipts already marked `VOIDED` after the reversal/return flow.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -63,6 +64,7 @@ Files changed:
 - `frontend/src/modules/pos/pages/PosOverrideAuditReportPage.tsx`
 - `frontend/src/modules/pos/pages/PosTopSellingItemsReportPage.tsx`
 - `frontend/src/modules/pos/pages/PosReprintAuditReportPage.tsx`
+- `frontend/src/modules/pos/pages/PosCancelledReceiptsReportPage.tsx`
 - `backend/src/tests/application/pos/CompletePosSale.test.ts`
 - `backend/src/tests/application/pos/CompletePosReturn.test.ts`
 - `backend/src/tests/application/pos/PosShiftUseCases.test.ts`
@@ -108,6 +110,8 @@ Managers now have a **Top Selling Items** report under POS Reports. It shows com
 
 Managers now have a **Reprint Audit** report under POS Reports. Receipt reprints are recorded with the cashier and manager override id when supplied. If the cashier role requires reprint approval, the backend blocks the reprint until a manager override id is provided.
 
+Managers now have a **Cancelled Receipts** report under POS Reports. It lists posted POS receipts marked `VOIDED` after the proper return/reversal flow. It does not cancel receipts by itself.
+
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
 Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
@@ -152,6 +156,12 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm --prefix frontend run check:reports` — passed with 33 report routes after Reprint Audit report page.
 - `npm --prefix frontend run typecheck` — passed after Reprint Audit report page.
 - `npm --prefix frontend run build` — passed after Reprint Audit report page.
+- `npm test -- --runInBand src/tests/application/pos/PosReporting.test.ts` — passed, 1 suite / 9 tests after Cancelled Receipts backend slice.
+- `npm run typecheck` from `backend/` — passed after Cancelled Receipts backend slice.
+- `npm run build` from `backend/` — passed after Cancelled Receipts backend slice.
+- `npm --prefix frontend run check:reports` — passed with 34 report routes after Cancelled Receipts report page.
+- `npm --prefix frontend run typecheck` — passed after Cancelled Receipts report page.
+- `npm --prefix frontend run build` — passed after Cancelled Receipts report page.
 
 ## Known Follow-Ups
 

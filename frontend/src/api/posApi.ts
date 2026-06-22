@@ -320,6 +320,9 @@ export const posApi = {
   getReceiptHistoryReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; customerId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/reports/receipt-history', { params: params || {} })),
 
+  getCancelledReceiptsReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; limit?: number }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/cancelled-receipts', { params: params || {} })),
+
   getTopSellingItemsReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/reports/top-selling-items', { params: params || {} })),
 

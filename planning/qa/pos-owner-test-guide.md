@@ -29,6 +29,7 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 - POS posted receipt void creates a POS return for remaining active quantities before marking the receipt `VOIDED`.
 - POS exchange creates a linked POS return and replacement POS sale with one `exchangeId`.
 - POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
+- POS cancelled-receipts report lists receipts marked `VOIDED` after the linked return/reversal flow.
 
 1. Open **POS → Settings**.
 2. Enable **Allow POS direct sales** and save.
@@ -100,14 +101,16 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 34. Confirm the receipt reprint row appears with cashier and manager override id.
 35. Void a posted receipt that has no prior returns.
 36. Expected: a POS return is created for all active lines, stock and settlement reverse, and the original receipt status becomes `VOIDED`.
-37. Try returning the same receipt again.
-38. Expected: return is blocked because there is no remaining returnable quantity.
-39. On another receipt, process a partial return, then void the receipt.
-40. Expected: the void returns only the remaining quantity, not the already-returned quantity.
-41. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, and post an exchange where the replacement item is more expensive than the returned item.
-42. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net due from customer.
-43. Repeat from **POS → Returns → Exchange** where the replacement item is cheaper than the returned item.
-44. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net refund to customer.
+37. Open **POS → Reports → Cancelled Receipts**.
+38. Expected: the voided receipt appears with status `VOIDED`; non-voided receipts do not appear.
+39. Try returning the same receipt again.
+40. Expected: return is blocked because there is no remaining returnable quantity.
+41. On another receipt, process a partial return, then void the receipt.
+42. Expected: the void returns only the remaining quantity, not the already-returned quantity.
+43. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, and post an exchange where the replacement item is more expensive than the returned item.
+44. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net due from customer.
+45. Repeat from **POS → Returns → Exchange** where the replacement item is cheaper than the returned item.
+46. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net refund to customer.
 
 ## Stop Conditions
 
@@ -128,6 +131,7 @@ Stop and log the failure in `planning/qa/findings.md` if any of these happen:
 - Override audit report is empty after receipts with voids/manual discounts/price or tax override flags.
 - Receipt reprint succeeds without required manager approval, or Reprint Audit misses a reprinted receipt.
 - A posted receipt can be marked `VOIDED` without a linked POS return / financial reversal.
+- Cancelled Receipts shows completed receipts, or misses receipts already marked `VOIDED`.
 - A receipt can be refunded twice for the same sold quantity.
 - Exchange creates only one side of the transaction, or the return and replacement sale are not linked by exchange id.
 - Inventory quantity or valuation does not move after POS sales/returns.

@@ -64,7 +64,7 @@
 | Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Inactive, POS-disabled/POS-blocked metadata, and non-discountable item guards are enforced in POS sale posting. Missing richer item-master UI fields and expiry/batch-aware guards. |
 | Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
 | Promotions/offers | ⏸ Deferred | Must stay disabled until stacking/cap/conflict/return model lands. |
-| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, top-selling items, override audit, and reprint audit exist. Missing cancelled receipts and promotion performance. |
+| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, cancelled receipts, top-selling items, override audit, and reprint audit exist. Missing promotion performance, which stays deferred while promotions are production-gated. |
 | Hardware/offline | ⏸ Deferred | No hardware abstraction or offline queue yet; should be placeholders/plans only for V1 unless owner prioritizes. |
 
 ## Recommended Implementation Phases
@@ -103,6 +103,7 @@
 - **P1 slice 11 complete:** POS sale posting blocks inactive/POS-disabled/POS-blocked items and non-discountable item discounts.
 - **P1 slice 12 complete:** Top Selling Items POS report added.
 - **P1 slice 13 complete:** POS receipt reprint enforces reprint manager-override policy, records an audit event, and exposes Reprint Audit under POS Reports.
+- **P1 slice 14 complete:** Cancelled Receipts report added for POS receipts marked `VOIDED` after reversal.
 - **P0/P1 next slice:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
@@ -134,3 +135,4 @@ This is a cash-control and settlement-routing fix. It does not change tax math, 
 - POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
 - Top Selling Items report ranks completed POS receipt lines by item and excludes voided lines.
 - POS receipt reprint enforces configured manager approval, records a receipt audit row, and appears in the Reprint Audit report.
+- Cancelled Receipts report lists only POS receipts with status `VOIDED`.
