@@ -1,5 +1,5 @@
 import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
-import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
+import { PosNegativeStockError } from '../../../domain/pos/errors/PosNegativeStockError';
 import { CommercialCore, __setPromotionsEnabledForTest } from '../../../application/system-core/commercial/CommercialCore';
 import { TaxEngine } from '../../../application/system-core/tax/TaxEngine';
 import { Item } from '../../../domain/inventory/entities/Item';
@@ -161,7 +161,12 @@ describe('PostPosSaleUseCase', () => {
     it('BLOCK refuses a sale that would drive on-hand negative, before any stock/ledger write', async () => {
       const { useCase, inventoryCore, accountingBridge } = setup({ onHand: 3 });
 
-      await expect(sale(useCase, { negativeStockPolicy: 'BLOCK' })).rejects.toBeInstanceOf(NegativeStockError);
+      const error = await sale(useCase, { negativeStockPolicy: 'BLOCK' }).catch((e) => e);
+      expect(error).toBeInstanceOf(PosNegativeStockError);
+      // The message must point at POS Settings, not the company allowNegativeStock flag
+      // (which may be ON yet POS still blocks — the bug this guards against).
+      expect(error.message).toMatch(/Negative stock at the till/);
+      expect(error.message).not.toMatch(/allowNegativeStock/);
 
       expect(inventoryCore.preFetchStockLevel).toHaveBeenCalledWith('cmp_test', 'item_1', 'wh1');
       expect(inventoryCore.processOUT).not.toHaveBeenCalled();
@@ -173,7 +178,7 @@ describe('PostPosSaleUseCase', () => {
 
       await expect(
         sale(useCase, { negativeStockPolicy: 'BLOCK', payments: [], paymentMethods: [], dryRun: true })
-      ).rejects.toBeInstanceOf(NegativeStockError);
+      ).rejects.toBeInstanceOf(PosNegativeStockError);
 
       expect(inventoryCore.processOUT).not.toHaveBeenCalled();
     });

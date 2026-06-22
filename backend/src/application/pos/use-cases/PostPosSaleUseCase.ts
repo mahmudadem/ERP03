@@ -12,7 +12,7 @@ import { IAccountingBridge, ICommercialCore, IInventoryCore, ITaxEngine, areProm
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig, PosNegativeStockPolicy } from '../../../domain/pos/entities/PosSettings';
 import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
-import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
+import { PosNegativeStockError } from '../../../domain/pos/errors/PosNegativeStockError';
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -540,7 +540,7 @@ export class PostPosSaleUseCase {
       // Tolerance guards against floating-point dust on fractional quantities.
       if (resultingQty < -1e-9) {
         const item = itemMap.get(itemId);
-        throw new NegativeStockError({
+        throw new PosNegativeStockError({
           companyId: input.companyId,
           itemId,
           warehouseId,

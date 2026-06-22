@@ -68,6 +68,17 @@ shift, and one tracked PRODUCT item. (No production data — see memory `project
 6. **i18n.** Switch UI language to Arabic and Turkish; confirm the selector label, options,
    and help text are translated.
 
+## Owner QA fix (2026-06-23)
+
+Live QA (company `allowNegativeStock` ON, item already at −22) correctly **blocked** a POS sale
+that would reach −23 — proving POS is independently strict. But the block reused the
+inventory-domain `NegativeStockError`, whose message said *"Negative stock is disabled for this
+company. Enable allowNegativeStock…"* — misleading, because the flag was already ON and the **POS**
+policy is what blocked. Fixed: new `domain/pos/errors/PosNegativeStockError.ts` (`POS_NEGATIVE_STOCK_BLOCKED`)
+with a POS-accurate message that points at *"Negative stock at the till" in POS Settings*, not the
+company flag. `PostPosSaleUseCase` now throws it; test asserts the message references POS Settings and
+**not** `allowNegativeStock`. (Run `npm run build` so the emulator's `lib/` serves the new message.)
+
 ## Follow-up
 
 - "Allow with manager approval" — deferred to [Task 257](../tasks/257-pos-manager-override-via-approval-engine.md)

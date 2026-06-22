@@ -2,6 +2,12 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-23 (Task 258 owner-QA fix — POS-accurate negative-stock message)
+
+- **Context:** Owner ran live QA with company `allowNegativeStock` ON and an item already at −22. POS correctly **blocked** a sale that would reach −23 (proves POS is independently strict), but the toast reused the inventory-domain `NegativeStockError` message ("Negative stock is disabled for this company. Enable allowNegativeStock…") — misleading, since the flag was already ON and the **POS** policy is what blocked.
+- **Fix:** New `domain/pos/errors/PosNegativeStockError.ts` (`POS_NEGATIVE_STOCK_BLOCKED`) with a POS-accurate, actionable message pointing at *"Negative stock at the till" in POS Settings*, not the company flag. `PostPosSaleUseCase` throws it; test asserts the message references POS Settings and not `allowNegativeStock`. User-guide troubleshooting updated. Backend `npm run build` re-run so the emulator `lib/` serves it.
+- **Verification:** `PostPosSale.test.ts` 18/18; backend typecheck + build clean.
+
 ### Session: 2026-06-22 (Task 257 — POS manager overrides via the Approval Engine)
 
 - **Context:** Owner said "do it all" after Task 258. Committed the 258 + POS readiness WIP bundle on branch `feat/pos-readiness-and-negative-stock`, then implemented Task 257 directly on top (the 251 override-flag work it depends on is present uncommitted in the same tree, so no concurrent-edit collision; the original "wait for 251 merge" caveat was waived by owner direction).
