@@ -61,7 +61,7 @@ export class LegacyAccountingBridgeAdapter implements IAccountingBridge {
         voucherIds: [],
         decisions: [],
         warnings: [
-          'Accounting App disabled: settlement/payment recorded in minimal-journal mode; no ledger voucher was posted.',
+          'Not linked to accounting (accounting engine not initialized): settlement/payment recorded in minimal-journal mode; no ledger voucher was posted.',
         ],
         postedAt: new Date(),
         postedBy: v.createdBy,
@@ -72,10 +72,18 @@ export class LegacyAccountingBridgeAdapter implements IAccountingBridge {
     return id;
   }
 
+  /**
+   * Full posting depends on the Accounting **Engine** being ready (`initialized`), NOT on the
+   * cosmetic Accounting **App/UI** toggle (`isEnabled`). See PR1 (done/102) + the engines-vs-modules
+   * rule: the engine is always-on and posts under the hood whenever it has a chart of accounts;
+   * the module on/off switch only controls UI visibility and must never gate posting. Minimal mode
+   * is the explicit fallback for a company that genuinely has no accounting engine initialized
+   * ("not linked to accounting").
+   */
   private async shouldUseFullPosting(companyId: string): Promise<boolean> {
     if (!this.companyModuleRepo) return true;
     const accountingModule = await this.companyModuleRepo.get(companyId, 'accounting');
-    return Boolean(accountingModule?.isEnabled);
+    return Boolean(accountingModule?.initialized);
   }
 
   private async recordMinimalJournal(event: FinancialEvent): Promise<string | undefined> {
@@ -100,7 +108,7 @@ export class LegacyAccountingBridgeAdapter implements IAccountingBridge {
         voucherIds: [],
         decisions: [],
         warnings: [
-          'Accounting App disabled: financial event recorded in minimal-journal mode; no ledger voucher was posted.',
+          'Not linked to accounting (accounting engine not initialized): financial event recorded in minimal-journal mode; no ledger voucher was posted.',
         ],
         postedAt: new Date(),
         postedBy: voucher.createdBy,

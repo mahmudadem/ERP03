@@ -2,6 +2,14 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (Engines-vs-Modules architecture rule + always-on tasks)
+
+- **No code changes — architecture clarification + planning.** Owner worked through the engine/module model and surfaced the core rule: **engines are always on (gated by permission, never by module-enabled); modules are windows + workflow + visibility.** Confirmed the consumer model (posting/stock/approval are engines; Accounting/Sales/POS are consumers) matches the decided architecture in `done/102-pr1` ("Accounting Engine mandatory; UI optional").
+- **Key finding (regression vs PR1):** `LegacyAccountingBridgeAdapter.shouldUseFullPosting` gates GL posting on `isEnabled` (the cosmetic module toggle) instead of `initialized` (engine ready) — re-introducing the exact conflation PR1 fixed. Disabling the Accounting module silently stops GL posting (minimal mode). Contradicts the owner's "post under the hood, reveal accounting later" vision.
+- **Also mapped:** item management is locked behind `moduleInitializedGuard('inventory')` (a POS/Sales-only user can't add items/prices), though the stock engine + oversell protection are already always-on; and Currency/FX is duplicated across `core` + `accounting` (no shared engine).
+- **Produced:** `docs/architecture/engines-vs-modules.md` (principle + two-flag rule + four litmus tests + signals-are-engine-owned + full engine/module classification table + forward rule). Distilled an "Engines vs Modules — the always-on rule" block into `AGENTS.md`. Captured three tasks: **253** posting-engine-always-acts (flip `isEnabled`→`initialized` + account-selector constrained inline-add check; HIGH/smallest), **254** items-stock-catalog-always-on, **255** currency-fx-shared-engine.
+- **Next:** owner to pick the starting task (253 recommended first — smallest, unlocks always-on posting + populated customer statements without the Accounting module). No implementation started yet.
+
 ### Session: 2026-06-22 (FUP-5 settlement bridging + live QA + tenant-header finding)
 
 - **FUP-5 — DONE.** Routed the settlement/payment receipt postings (which post a pre-assembled `VoucherEntity` via `PostingGateway`, not the subledger assembler) through the accounting bridge. Implemented **Option A**: added `IAccountingBridge.recordPreBuiltVoucher(event)` — the caller passes its real posting action as `postFull`; the bridge decides full-vs-minimal, invokes `postFull` verbatim in full mode, or records a minimal journal (no GL voucher) in minimal mode. Wired all 4 settlement sites: SI invoice settlement (`SalesInvoiceUseCases`), PI invoice settlement (`PurchaseInvoiceUseCases`), and the `record-payment` paths (`Post{Sales,Purchase}InvoiceWithSettlementUseCase` via `Record{Sales,Purchase}InvoicePaymentUseCase`), plus their controller construction sites. Payment-history `voucherId` is null in minimal mode.

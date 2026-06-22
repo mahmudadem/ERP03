@@ -26,6 +26,13 @@ interface AccountFormProps {
     accounts?: Account[];
     onSubmit: (data: NewAccountInput) => Promise<any>;
     onCancel: () => void;
+    /**
+     * Contextual constraint for inline creation from a typed account selector (engines-vs-modules
+     * rule, Task 253). When provided, the classification dropdown is restricted to this set so a
+     * non-accountant creating an account from, e.g., a "revenue account" picker cannot pick a wrong
+     * classification and silently corrupt the books. A single entry locks the field.
+     */
+    allowedClassifications?: AccountClassification[];
 }
 
 const CLASSIFICATIONS: { value: AccountClassification; label: string }[] = [
@@ -89,22 +96,34 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     accounts = [],
     onSubmit,
     onCancel,
+    allowedClassifications,
 }) => {
     const { t } = useTranslation('accounting');
+    // Contextual classification constraint (Task 253): restrict the dropdown when the form is
+    // opened from a typed selector; lock it when exactly one classification is allowed.
+    const hasClassificationConstraint = !!allowedClassifications && allowedClassifications.length > 0;
+    const classificationOptions = hasClassificationConstraint
+        ? CLASSIFICATIONS.filter(c => allowedClassifications!.includes(c.value))
+        : CLASSIFICATIONS;
+    const classificationLocked = hasClassificationConstraint && allowedClassifications!.length === 1;
     // Determine defaults
     const defaultClassification = 'ASSET';
-    
+
     // State
     const [userCode, setUserCode] = useState(initialValues?.userCode || initialValues?.code || '');
     const [name, setName] = useState(initialValues?.name || '');
     const [description, setDescription] = useState(initialValues?.description || '');
     const [status, setStatus] = useState<AccountStatus>(initialValues?.status || (initialValues?.isActive ? 'ACTIVE' : 'INACTIVE') || 'ACTIVE');
-    
-    const [classification, setClassification] = useState<AccountClassification>(
-        (initialValues?.classification as AccountClassification) || 
-        (initialValues?.type as AccountClassification) || 
-        defaultClassification
-    );
+
+    const initialClassification = ((): AccountClassification => {
+        const fromValues = (initialValues?.classification as AccountClassification) || (initialValues?.type as AccountClassification);
+        if (hasClassificationConstraint) {
+            // Honor the incoming value only if it's within the allowed set; otherwise snap to the first allowed.
+            return fromValues && allowedClassifications!.includes(fromValues) ? fromValues : allowedClassifications![0];
+        }
+        return fromValues || defaultClassification;
+    })();
+    const [classification, setClassification] = useState<AccountClassification>(initialClassification);
     const [accountRole, setAccountRole] = useState<AccountRole>(initialValues?.accountRole || 'POSTING');
     
     const [balanceNature, setBalanceNature] = useState<BalanceNature>(initialValues?.balanceNature || 'DEBIT');
@@ -421,15 +440,21 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                             value={classification}
                                             onChange={(e) => setClassification(e.target.value as AccountClassification)}
                                             className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-indigo-500/20 outline-none transition-all text-sm shadow-sm font-bold
-                                                ${parentId ? 'bg-amber-50/10 border-amber-100 text-amber-700 cursor-not-allowed' : 'bg-white border-gray-200'}`}
-                                            disabled={isUsed || isLocked || !!parentId}
+                                                ${(parentId || classificationLocked) ? 'bg-amber-50/10 border-amber-100 text-amber-700 cursor-not-allowed' : 'bg-white border-gray-200'}`}
+                                            disabled={isUsed || isLocked || !!parentId || classificationLocked}
                                         >
-                                            {CLASSIFICATIONS.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                            {classificationOptions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                                         </select>
                                         {parentId && (
                                             <div className="flex items-center gap-1.5 mt-1.5 px-1">
                                                 <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
                                                 <p className="text-[10px] text-amber-600 font-extrabold uppercase tracking-tight">Inherited from Parent Header</p>
+                                            </div>
+                                        )}
+                                        {!parentId && hasClassificationConstraint && (
+                                            <div className="flex items-center gap-1.5 mt-1.5 px-1">
+                                                <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
+                                                <p className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-tight">Set by the field you're adding from</p>
                                             </div>
                                         )}
                                     </div>

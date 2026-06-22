@@ -1956,7 +1956,7 @@ describe('PostSI — FUP-3 production bridge parity (full == legacy) + minimal m
       { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any
     );
-    const moduleEnabled = { get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleCode: 'accounting', isEnabled: true })) };
+    const moduleEnabled = { get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleCode: 'accounting', isEnabled: true, initialized: true })) };
     const postingLogRepo = { create: jest.fn(async () => undefined) };
     const bridge = new LegacyAccountingBridgeAdapter(bridgePostingService, moduleEnabled as any, postingLogRepo as any);
 
@@ -1981,14 +1981,14 @@ describe('PostSI — FUP-3 production bridge parity (full == legacy) + minimal m
     expect(prodPosted.cogsVoucherId).toBeTruthy();
   });
 
-  it('minimal mode (App disabled) posts NO GL voucher, records a minimal journal, still marks POSTED', async () => {
+  it('minimal mode (not linked to accounting — engine not initialized) posts NO GL voucher, records a minimal journal, still marks POSTED', async () => {
     const bridgeRepo = { save: jest.fn(async (v: any) => v) };
     const bridgePostingService = new SubledgerVoucherPostingService(
       bridgeRepo as any,
       { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
       { getBaseCurrency: jest.fn(async () => 'USD') } as any
     );
-    const moduleDisabled = { get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleCode: 'accounting', isEnabled: false })) };
+    const moduleDisabled = { get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleCode: 'accounting', isEnabled: false, initialized: false })) };
     const postingLogRepo = { create: jest.fn(async () => undefined) };
     const bridge = new LegacyAccountingBridgeAdapter(bridgePostingService, moduleDisabled as any, postingLogRepo as any);
 

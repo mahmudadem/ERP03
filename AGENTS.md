@@ -200,6 +200,16 @@ This project uses an OpenCode multi-agent workflow defined in `opencode.json`. T
 - **Promotions stay OFF in production.** Never remove or bypass `arePromotionsEnabledInProduction()`; do not enable until the stacking/cap model lands and is audited.
 - **`SystemCoreBoundaries.test.ts` is the enforcement.** Run it. Never weaken, skip, or delete a guard to make a change pass — if it fails, your change is in the wrong layer.
 
+### Engines vs Modules — the always-on rule
+
+> **Engines own the truth and the rules that keep it true. Modules own the windows into that truth and one type of user's way of working with it.** Full framework + classification table: [docs/architecture/engines-vs-modules.md](docs/architecture/engines-vs-modules.md).
+
+- **Engines are always on.** Constructed at boot, available to every tenant, gated only by *permission* — never by whether a module is enabled. The posting engine, stock engine, catalog, numbering, approval, tax, pricing, FX all act regardless of which module UIs are switched on.
+- **Two flags, never conflated:** `initialized` = "engine has the data it needs" (a readiness fact; kept always-true by auto-init) — real work checks this. `isEnabled` = "user can see/reach this module's screens" (security + visibility) — must **never** gate engine behavior.
+- **Four litmus tests** for any capability: (1) *turn the module off — must this still be correct?* → engine. (2) *will more than one module need it?* → engine (shared). (3) *is it the canonical record others depend on?* → engine owns the data. (4) *is it presentation / navigation / one user's workflow?* → module. A feature with both halves gets **split**.
+- **Signals are engine-owned** (low-stock is just one example). If a consumer must *ask* the engine or be *warned* by it, that query/signal is the engine's; the widget is the module's.
+- **Open gaps (tracked):** posting still gates on `isEnabled` not `initialized` ([253](planning/tasks/253-posting-engine-always-acts.md)); item management still locked behind the Inventory module ([254](planning/tasks/254-items-stock-catalog-always-on.md)); FX duplicated across `core` + `accounting` ([255](planning/tasks/255-currency-fx-shared-engine.md)).
+
 ### New Feature — "Where does this logic go?" (decide BEFORE coding)
 
 Before implementing any feature, classify each piece of logic:
