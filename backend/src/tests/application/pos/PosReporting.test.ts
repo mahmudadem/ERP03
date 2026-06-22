@@ -6,11 +6,13 @@ import {
   GetReceiptHistoryUseCase,
   GetPosOverrideAuditReportUseCase,
   GetTopSellingItemsUseCase,
+  GetPosReprintAuditReportUseCase,
 } from '../../../application/pos/use-cases/PosReportingUseCases';
 import { PosPayment } from '../../../domain/pos/entities/PosPayment';
 import { PosReceipt } from '../../../domain/pos/entities/PosReceipt';
 import { PosReturn } from '../../../domain/pos/entities/PosReturn';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
+import { RecordChangeLog } from '../../../domain/system/entities/RecordChangeLog';
 
 const makeReceipt = (overrides: any = {}): PosReceipt =>
   PosReceipt.fromJSON({
@@ -263,6 +265,55 @@ describe('PosReportingUseCases', () => {
         itemCode: 'B',
         managerOverrideId: 'mgr_override_1',
       });
+    });
+  });
+
+  describe('GetPosReprintAuditReportUseCase', () => {
+    it('lists POS receipt reprint audit rows from record-change logs', async () => {
+      const reprintLog = new RecordChangeLog({
+        companyId: 'cmp_test',
+        entityType: 'POS_RECEIPT' as any,
+        entityId: 'rcp_1',
+        entityNumber: 'R-000001',
+        action: 'UPDATE',
+        changes: [
+          { field: 'reprintRequested', before: false, after: true },
+          { field: 'managerOverrideId', before: null, after: 'mgr_override_1' },
+        ],
+        userId: 'cashier_1',
+        userEmail: 'cashier@example.com',
+        timestamp: new Date('2026-06-22T12:00:00.000Z'),
+      });
+      const nonReprintLog = new RecordChangeLog({
+        companyId: 'cmp_test',
+        entityType: 'POS_RECEIPT' as any,
+        entityId: 'rcp_2',
+        entityNumber: 'R-000002',
+        action: 'UPDATE',
+        changes: [{ field: 'status', before: 'COMPLETED', after: 'VOIDED' }],
+        userId: 'cashier_2',
+        timestamp: new Date('2026-06-22T12:05:00.000Z'),
+      });
+      const auditRepo = { list: jest.fn().mockResolvedValue([reprintLog, nonReprintLog]) };
+      const useCase = new GetPosReprintAuditReportUseCase(auditRepo as any);
+
+      const rows = await useCase.execute({ companyId: 'cmp_test', dateFrom: '2026-06-22', limit: 25 });
+
+      expect(auditRepo.list).toHaveBeenCalledWith('cmp_test', expect.objectContaining({
+        entityType: 'POS_RECEIPT',
+        action: 'UPDATE',
+        dateFrom: '2026-06-22',
+        limit: 25,
+      }));
+      expect(rows).toEqual([{
+        receiptId: 'rcp_1',
+        receiptNumber: 'R-000001',
+        action: 'REPRINT',
+        reprintedAt: '2026-06-22T12:00:00.000Z',
+        cashierUserId: 'cashier_1',
+        cashierUserEmail: 'cashier@example.com',
+        managerOverrideId: 'mgr_override_1',
+      }]);
     });
   });
 });

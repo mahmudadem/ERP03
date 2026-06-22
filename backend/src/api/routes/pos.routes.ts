@@ -60,5 +60,6 @@ router.get('/reports/cash-over-short', permissionGuard('pos.reports.view'), PosC
 router.get('/reports/receipt-history', permissionGuard('pos.reports.view'), PosController.getReceiptHistory);
 router.get('/reports/top-selling-items', permissionGuard('pos.reports.view'), PosController.getTopSellingItems);
 router.get('/reports/override-audit', permissionGuard('pos.reports.view'), PosController.getOverrideAuditReport);
+router.get('/reports/reprint-audit', permissionGuard('pos.reports.view'), PosController.getReprintAuditReport);
 
 export default router;

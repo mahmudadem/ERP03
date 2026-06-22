@@ -38,6 +38,7 @@ import {
 import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/PreviewPosSaleUseCase';
 import { CompletePosReturnUseCase, VoidPosReceiptUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
 import { CompletePosExchangeUseCase } from '../../../application/pos/use-cases/CompletePosExchangeUseCase';
+import { ReprintPosReceiptUseCase } from '../../../application/pos/use-cases/PosReceiptUseCases';
 import {
   CancelPosHeldCartUseCase,
   GetPosHeldCartUseCase,
@@ -52,6 +53,7 @@ import {
   GetDailyPosSummaryUseCase,
   GetPaymentMethodSummaryUseCase,
   GetPosOverrideAuditReportUseCase,
+  GetPosReprintAuditReportUseCase,
   GetPosZReportUseCase,
   GetReceiptHistoryUseCase,
   GetTopSellingItemsUseCase,
@@ -518,8 +520,36 @@ export class PosController {
   }
 
   static async reprintReceipt(req: Request, res: Response, next: NextFunction) {
-    // Reprint = same as getReceipt (read-only, no state change).
-    return PosController.getReceipt(req, res, next);
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new ReprintPosReceiptUseCase(
+        diContainer.posReceiptRepository,
+        diContainer.posPaymentRepository,
+        diContainer.policyEngine,
+        diContainer.auditEngine
+      );
+      const result = await useCase.execute({
+        companyId,
+        receiptId: id,
+        managerOverrideId: (req as any).query?.managerOverrideId ? String((req as any).query.managerOverrideId) : undefined,
+        reason: (req as any).query?.reason ? String((req as any).query.reason) : undefined,
+        actor: {
+          userId: PosController.getUserId(req),
+          userEmail: PosController.getUserEmail(req),
+          roleId: (req as any).user?.roleId,
+        },
+      });
+      (res as any).json({
+        success: true,
+        data: {
+          receipt: PosReceiptDTO.fromDomain(result.receipt),
+          payments: result.payments.map((p: any) => PosPaymentDTO.fromDomain(p)),
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
   }
 
   static async holdCart(req: Request, res: Response, next: NextFunction) {
@@ -985,6 +1015,22 @@ export class PosController {
         limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
       });
       (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getReprintAuditReport(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetPosReprintAuditReportUseCase(diContainer.recordChangeLogRepository);
+      const rows = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+        limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
+      });
+      (res as any).json({ success: true, data: rows });
     } catch (error) {
       next(error);
     }

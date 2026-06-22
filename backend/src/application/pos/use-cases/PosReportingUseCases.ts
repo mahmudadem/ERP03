@@ -13,6 +13,7 @@ import { IPosShiftRepository } from '../../../repository/interfaces/pos/IPosShif
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
 import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPaymentRepository';
+import { IRecordChangeLogRepository } from '../../../repository/interfaces/system/IRecordChangeLogRepository';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesReturnRepository } from '../../../repository/interfaces/sales/ISalesReturnRepository';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
@@ -468,4 +469,48 @@ function auditEventTypesForLine(line: {
   if ((line.lineDiscount || 0) > 0 || (line.discountValue || 0) > 0) eventTypes.push('DISCOUNT_OVERRIDE');
   if (line.taxOverride === true) eventTypes.push('TAX_OVERRIDE');
   return eventTypes;
+}
+
+// ───────── 9. Receipt reprint audit report ─────────
+
+export interface GetPosReprintAuditReportInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+}
+
+export interface PosReprintAuditRow {
+  receiptId: string;
+  receiptNumber?: string;
+  action: string;
+  reprintedAt: string;
+  cashierUserId: string;
+  cashierUserEmail?: string;
+  managerOverrideId?: string;
+}
+
+export class GetPosReprintAuditReportUseCase {
+  constructor(private readonly recordChangeLogRepo: IRecordChangeLogRepository) {}
+
+  async execute(input: GetPosReprintAuditReportInput): Promise<PosReprintAuditRow[]> {
+    const logs = await this.recordChangeLogRepo.list(input.companyId, {
+      entityType: 'POS_RECEIPT',
+      action: 'UPDATE',
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      limit: input.limit ?? 500,
+    });
+    return logs
+      .filter((log) => log.changes.some((change) => change.field === 'reprintRequested' && change.after === true))
+      .map((log) => ({
+        receiptId: log.entityId,
+        receiptNumber: log.entityNumber,
+        action: 'REPRINT',
+        reprintedAt: log.timestamp.toISOString(),
+        cashierUserId: log.userId,
+        cashierUserEmail: log.userEmail,
+        managerOverrideId: String(log.changes.find((change) => change.field === 'managerOverrideId')?.after || '') || undefined,
+      }));
+  }
 }
