@@ -834,9 +834,9 @@ const PosTerminalPage: React.FC<Props> = () => {
       </header>
 
       {/* Workspace */}
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-12">
+      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 landscape:grid-cols-12 lg:grid-cols-12">
         {/* Products pane */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-7">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-7 lg:col-span-7">
           <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
             <div className="relative">
               <input
@@ -929,7 +929,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         </section>
 
         {/* Order pane */}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-5">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-5 lg:col-span-5">
           <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
               <Receipt className="h-4 w-4 text-indigo-600" />
@@ -976,9 +976,9 @@ const PosTerminalPage: React.FC<Props> = () => {
                   const taxName = quoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
                   return (
                   <li key={l.lineId} className={`flex flex-col gap-3 px-4 py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'}`}>
-                    {/* ROW 1 */}
-                    <div className="flex items-center justify-between w-full gap-4">
-                      {/* Left Side: Name, Edit, Code, DefPrice, DefTax */}
+                    {/* ROW 1: Mobile (Flex Col) -> Desktop (Flex Row) */}
+                    <div className="flex flex-col xl:flex-row xl:items-center justify-between w-full gap-3 xl:gap-4">
+                      {/* Left Side: Name, Edit (Desktop), Code, DefPrice, DefTax */}
                       <div className="flex items-center gap-3 min-w-0 flex-1">
                         <span className={`truncate text-[16px] font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
                           <span className="mr-1.5 text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
@@ -993,13 +993,13 @@ const PosTerminalPage: React.FC<Props> = () => {
                           <button
                             onClick={() => setEditingLineId(l.lineId)}
                             aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                            className="hidden xl:flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
                           >
                             <Pencil className="h-5 w-5" />
                           </button>
                         )}
 
-                        <div className="ml-2 flex items-center gap-2 text-slate-400 dark:text-[var(--color-text-secondary)] shrink-0">
+                        <div className="hidden xl:flex ml-2 items-center gap-2 text-slate-400 dark:text-[var(--color-text-secondary)] shrink-0">
                           <span className="font-mono text-xs font-medium">{l.itemCode}</span>
                           <span className="text-[10px] opacity-30">|</span>
                           <span className="font-mono text-xs font-medium">{money(l.unitPrice)}</span>
@@ -1008,54 +1008,73 @@ const PosTerminalPage: React.FC<Props> = () => {
                         </div>
                       </div>
 
-                      {/* Right Side: Qty Control & Delete Icon */}
-                      <div className="flex items-center gap-3 shrink-0">
-                        {!isVoided && (
-                          <div className="flex h-9 sm:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
-                            <button
-                              onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
-                              className="flex h-full w-10 sm:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
-                            >
-                              <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                            </button>
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.001"
-                              value={l.qty}
-                              onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
-                              onFocus={(e) => e.target.select()}
-                              className="h-full w-12 sm:w-10 border-x border-slate-200 bg-transparent text-center text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
-                            />
-                            <button
-                              onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
-                              className="flex h-full w-10 sm:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
-                            >
-                              <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                            </button>
-                          </div>
-                        )}
+                      {/* Right Side: Qty Control, Mobile Edit, Mobile Line Total, Delete */}
+                      <div className="flex items-center justify-between xl:justify-end gap-3 shrink-0">
+                        {/* Action Buttons */}
+                        <div className="flex items-center gap-2 xl:gap-3">
+                          {!isVoided && (
+                            <div className="flex h-9 xl:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
+                              <button
+                                onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
+                                className="flex h-full w-10 xl:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                              >
+                                <Minus className="h-4 w-4 xl:h-3.5 xl:w-3.5" />
+                              </button>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.001"
+                                value={l.qty}
+                                onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
+                                onFocus={(e) => e.target.select()}
+                                className="h-full w-12 xl:w-10 border-x border-slate-200 bg-transparent text-center text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                              />
+                              <button
+                                onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
+                                className="flex h-full w-10 xl:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                              >
+                                <Plus className="h-4 w-4 xl:h-3.5 xl:w-3.5" />
+                              </button>
+                            </div>
+                          )}
 
-                        {isVoided ? (
-                          <button
-                            onClick={() => beginVoidLine(l.lineId)}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
-                          >
-                            <RefreshCw className="h-5 w-5" />
-                          </button>
-                        ) : (
-                          <button
-                            onClick={() => beginVoidLine(l.lineId)}
-                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
-                          >
-                            <Trash2 className="h-5 w-5" />
-                          </button>
-                        )}
+                          {/* MOBILE Edit Button */}
+                          {!isVoided && (
+                            <button
+                              onClick={() => setEditingLineId(l.lineId)}
+                              aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
+                              className="flex xl:hidden h-9 w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          )}
+
+                          {isVoided ? (
+                            <button
+                              onClick={() => beginVoidLine(l.lineId)}
+                              className="flex h-9 w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                            >
+                              <RefreshCw className="h-4 w-4 xl:h-5 xl:w-5" />
+                            </button>
+                          ) : (
+                            <button
+                              onClick={() => beginVoidLine(l.lineId)}
+                              className="flex h-9 w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4 xl:h-5 xl:w-5" />
+                            </button>
+                          )}
+                        </div>
+
+                        {/* MOBILE Line Total */}
+                        <div className={`xl:hidden font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through' : 'text-indigo-700 dark:text-indigo-400'}`}>
+                          {money(l.lineTotal)}
+                        </div>
                       </div>
                     </div>
 
-                    {/* ROW 2: Unit, PRICE, TAX, DIS %, DIS $, Line Total */}
-                    <div className="flex items-center gap-3">
+                    {/* ROW 2: Unit, PRICE, TAX, DIS %, DIS $, Line Total (Desktop Only) */}
+                    <div className="hidden xl:flex items-center gap-3">
                       <div
                         onClick={(e) => {
                           if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
@@ -1177,8 +1196,8 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
 
           {/* Totals + customer + pay */}
-          <div className="flex-none space-y-3 border-t border-slate-100 bg-slate-50/60 p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/40">
-            <div className="space-y-1.5 text-sm">
+          <div className="flex-none space-y-2 border-t border-slate-100 bg-slate-50/60 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/40">
+            <div className="space-y-1 text-xs sm:space-y-1.5 lg:text-sm">
               <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
                 <span>{t('pos.terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
                 <span className="font-mono">{money(subtotal)}</span>
@@ -1191,16 +1210,16 @@ const PosTerminalPage: React.FC<Props> = () => {
                 <span>{t('pos.terminal.tax', { defaultValue: 'Tax' })}</span>
                 <span className="font-mono">{money(taxTotal)}</span>
               </div>
-              <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-2 dark:border-[var(--color-border)]">
-                <span className="text-base font-bold text-slate-900 dark:text-[var(--color-text-primary)]">
+              <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1 lg:pt-2 dark:border-[var(--color-border)]">
+                <span className="text-sm font-bold text-slate-900 lg:text-base dark:text-[var(--color-text-primary)]">
                   {t('pos.terminal.grandTotal', { defaultValue: 'Total' })}
                 </span>
-                <span className="font-mono text-xl font-extrabold text-slate-900 dark:text-[var(--color-text-primary)]">{money(grandTotal)}</span>
+                <span className="font-mono text-lg font-extrabold text-slate-900 lg:text-xl dark:text-[var(--color-text-primary)]">{money(grandTotal)}</span>
               </div>
             </div>
 
             <div>
-              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+              <label className="mb-0.5 block text-[10px] font-medium text-slate-500 lg:mb-1 lg:text-xs dark:text-[var(--color-text-secondary)]">
                 {t('pos.terminal.customer', { defaultValue: 'Customer' })}
               </label>
               <PartySelector
@@ -1213,9 +1232,9 @@ const PosTerminalPage: React.FC<Props> = () => {
             <button
               onClick={openPayDialog}
               disabled={activeCart.length === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-base font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
             >
-              <CreditCard className="h-5 w-5" />
+              <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
               {t('pos.terminal.pay', { defaultValue: 'Pay' })}
               <span className="font-mono">{money(grandTotal)}</span>
             </button>
