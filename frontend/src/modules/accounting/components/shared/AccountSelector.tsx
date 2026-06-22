@@ -628,6 +628,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-[80] p-4">
            <AccountForm
              mode="create"
+             allowedClassifications={allowedClassifications}
              initialValues={{
                 userCode: modalSearch.match(/^\d+$/) ? modalSearch : '',
                 name: !modalSearch.match(/^\d+$/) ? modalSearch : '',

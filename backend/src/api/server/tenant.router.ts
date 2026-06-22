@@ -23,6 +23,7 @@ import sharedRoutes from '../routes/shared.routes';
 import currencyRoutes from '../routes/currency.routes';
 import designerRoutes from '../routes/designer.routes';
 import communicationsRoutes from '../routes/communications.routes';
+import printLayoutRoutes from '../routes/print-layout.routes';
 
 const router = Router();
 
@@ -51,6 +52,7 @@ for (const module of modules) {
 router.use('/currencies', companyContextMiddleware, currencyRoutes);
 router.use('/communications', communicationsRoutes);
 router.use('/designer', companyContextMiddleware, designerRoutes);
+router.use('/print-layouts', companyContextMiddleware, printLayoutRoutes);
 router.use('/shared', sharedRoutes);
 router.use('/rbac', rbacRoutes);
 router.use(companyModuleSettingsRoutes);

@@ -11,6 +11,7 @@ import { IGoodsReceiptRepository } from '../../../repository/interfaces/purchase
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
+import { EnsureInventoryEngineInitialized } from '../../inventory/use-cases/EnsureInventoryEngineInitialized';
 import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
 import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
 
@@ -146,11 +147,14 @@ export class InitializePurchasesUseCase {
     private readonly voucherTypeRepo: IVoucherTypeDefinitionRepository,
     private readonly voucherFormRepo: IVoucherFormRepository,
     private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
+    private readonly ensureInventoryEngine?: EnsureInventoryEngineInitialized
   ) {}
 
   async execute(input: InitializePurchasesInput): Promise<PurchaseSettings> {
     await this.ensureAccountingEngine.execute(input.companyId);
+    // Task 254: Purchases consumes items + stock — guarantee the inventory engine is ready too.
+    if (this.ensureInventoryEngine) await this.ensureInventoryEngine.execute(input.companyId, input.userId);
 
     if (input.defaultAPAccountId) {
       const apAccount = await this.accountRepo.getById(input.companyId, input.defaultAPAccountId);

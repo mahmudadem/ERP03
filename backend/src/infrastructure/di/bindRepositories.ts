@@ -79,6 +79,7 @@ import { FirestorePromotionRuleRepository } from '../firestore/repositories/sale
 import { FirestoreRecurringInvoiceTemplateRepository } from '../firestore/repositories/sales/FirestoreRecurringInvoiceTemplateRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
+import { FirestorePrintLayoutTemplateRepository } from '../firestore/repositories/print-layout/FirestorePrintLayoutTemplateRepository';
 import { FirestoreVoucherFormRepository } from '../firestore/repositories/designer/FirestoreVoucherFormRepository';
 import { FirestoreFormSettingsRepository } from '../firestore/repositories/designer/FirestoreFormSettingsRepository';
 import { FirestoreFieldLibraryRepository } from '../firestore/repositories/designer/FirestoreFieldLibraryRepository';
@@ -143,6 +144,7 @@ import {
   NumberingEngine,
   PolicyEngine,
   LegacyTaxEngineAdapter,
+  LegacyFxAdapter,
 } from '../../application/system-core';
 import {
   IAccountingBridge,
@@ -155,11 +157,14 @@ import {
   INumberingEngine,
   IPolicyEngine,
   ITaxEngine,
+  IFxEngine,
 } from '../../application/system-core';
 import { SubledgerVoucherPostingService } from '../../application/accounting/services/SubledgerVoucherPostingService';
 import { RecordChangeService } from '../../application/system/services/RecordChangeService';
 import { RecordStockMovementUseCase } from '../../application/inventory/use-cases/RecordStockMovementUseCase';
 import { SalesInventoryService } from '../../application/inventory/services/SalesInventoryService';
+import { InitializeInventoryUseCase } from '../../application/inventory/use-cases/InitializeInventoryUseCase';
+import { EnsureInventoryEngineInitialized } from '../../application/inventory/use-cases/EnsureInventoryEngineInitialized';
 import { AiToolRegistry } from '../../application/ai-assistant/services/AiToolRegistry';
   import { AiToolCallingOrchestrator } from '../../application/ai-assistant/services/AiToolCallingOrchestrator';
   import { AiRuntimeGuard } from '../../application/ai-assistant/services/AiRuntimeGuard';
@@ -848,6 +853,9 @@ export const diContainer = {
   get fieldLibraryRepository(): DesRepo.IFieldLibraryRepository {
     return new FirestoreFieldLibraryRepository(getDb());
   },
+  get printLayoutTemplateRepository() {
+    return new FirestorePrintLayoutTemplateRepository(getDb());
+  },
 
   // RBAC
   get rbacPermissionRepository(): IRbacPermissionRepository {
@@ -1055,8 +1063,30 @@ export const diContainer = {
       this.postingLogRepository
     );
   },
+  // Task 255: single shared FX seam wrapping the centralized core exchange-rate logic.
+  get fxEngine(): IFxEngine {
+    return new LegacyFxAdapter(this.exchangeRateRepository);
+  },
   get auditEngine(): IAuditEngine {
     return new LegacyAuditEngineAdapter(new RecordChangeService(this.recordChangeLogRepository));
+  },
+  // Task 254: idempotent guard so the inventory/catalog/stock engine is ready whenever a
+  // consuming module (Sales/Purchases/POS) initializes — items + oversell protection work for
+  // any module regardless of the Inventory module's enabled state.
+  get ensureInventoryEngine(): EnsureInventoryEngineInitialized {
+    return new EnsureInventoryEngineInitialized(
+      this.companyModuleRepository,
+      this.companyRepository,
+      new InitializeInventoryUseCase(
+        this.companyRepository,
+        this.inventorySettingsRepository,
+        this.warehouseRepository,
+        this.uomRepository,
+        this.companyModuleRepository,
+        this.voucherTypeDefinitionRepository,
+        this.voucherFormRepository
+      )
+    );
   },
   get inventoryCore(): IInventoryCore {
     return new SalesInventoryService(new RecordStockMovementUseCase({

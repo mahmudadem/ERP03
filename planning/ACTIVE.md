@@ -1,5 +1,17 @@
 # 🎯 Current Focus
 
+## Task 256 — Shared Print Layout Engine and Designer (2026-06-22)
+
+**Status:** ✅ V1 implemented locally on branch/worktree `feat/engines-always-on` / `D:\DEV2026\ERP03`.
+
+- **Why:** Owner clarified the print designer must be a company-level always-on engine consumed by POS, Sales, and other modules, not a static POS receipt template.
+- **What changed:** Added `IPrintLayoutCore`, `PrintLayoutCore`, company print-layout template persistence, `/tenant/print-layouts` API routes, and `/tools/print-layout-designer`. The designer supports paper presets, visible safe area, dynamic field binding, bill-table component editing, drag/resize, styling, save/load, and JSON import/export.
+- **Docs:** [docs/architecture/print-layout-engine.md](../docs/architecture/print-layout-engine.md), [docs/user-guide/settings/print-layout-designer.md](../docs/user-guide/settings/print-layout-designer.md), [planning/tasks/256-shared-print-layout-engine.md](./tasks/256-shared-print-layout-engine.md), [planning/done/256-shared-print-layout-engine.md](./done/256-shared-print-layout-engine.md).
+- **Verification:** Focused backend tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.
+- **Accounting impact:** UI/template engine only. No posting, tax, COGS, AR/AP, inventory valuation, payment, period-lock, or approval behavior changed. Layout scripts are intentionally blocked; layouts can bind only to approved schemas.
+- **Next:** Wire POS receipt runtime rendering as the first consumer, then Sales Invoice.
+- **Actual time:** ~2.75h.
+
 ## System Core / Shared Engines Transformation — Epic 250 (2026-06-21)
 
 **Status:** ✅ **ALL ENGINE PHASES (0–4) COMPLETE & CTO-audited (2026-06-21)** — 250a–250l done. Epic 250 implementation finished; remaining work is wrap-up docs + merge + named follow-ups. **Branch:** `feat/system-core-transformation` (worktree `D:\DEV2026\ERP03-system-core`).

@@ -55,6 +55,7 @@ describe('Architecture guard: system core boundaries', () => {
       'IAccountingBridge',
       'IAuditEngine',
       'IInventoryCore',
+      'IFxEngine',
     ]) {
       expect(barrel).toContain(`contracts/${contract}`);
     }

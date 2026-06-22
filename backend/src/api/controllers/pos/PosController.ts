@@ -71,6 +71,10 @@ export class PosController {
   static async initializePos(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
+      // Task 254: POS consumes items + stock, so guarantee the inventory/catalog/stock engine is
+      // ready here — a POS-only tenant can then manage items + get oversell protection without
+      // ever enabling the Inventory module.
+      await diContainer.ensureInventoryEngine.execute(companyId);
       const useCase = new InitializePosUseCase(diContainer.posSettingsRepository);
       const settings = await useCase.execute(companyId);
       (res as any).json({ success: true, data: PosDTOMapper.toSettingsDTO(settings) });
