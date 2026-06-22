@@ -130,7 +130,7 @@ pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
 
-## 7. Reports (8 POS + 1 link)
+## 7. Reports (9 POS + 1 link)
 
 | Report | Route | Permission | Source use case |
 |---|---|---|---|
@@ -142,9 +142,10 @@ pos.reports.view     View POS Reports
 | Receipt History | `/pos/reports/receipts` | pos.reports.view | `GetReceiptHistoryUseCase` |
 | Top Selling Items | `/pos/reports/top-selling-items` | pos.reports.view | `GetTopSellingItemsUseCase` |
 | Override Audit | `/pos/reports/override-audit` | pos.reports.view | `GetPosOverrideAuditReportUseCase` |
+| Reprint Audit | `/pos/reports/reprint-audit` | pos.reports.view | `GetPosReprintAuditReportUseCase` |
 | Unsettled Costs (link) | `/inventory/reports/unsettled-costs` | pos.reports.view | (existing inventory report) |
 
-All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. Top Selling Items ranks gross completed receipt lines by item and excludes voided lines; it does not net later returns. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review.
+All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. Top Selling Items ranks gross completed receipt lines by item and excludes voided lines; it does not net later returns. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review. The Reprint Audit page reads `POS_RECEIPT` record-change rows created by `ReprintPosReceiptUseCase` and shows duplicate receipt-copy events.
 
 ## 8. Testing
 
@@ -159,7 +160,8 @@ All UI report pages use the shared `<ReportContainer>` and pass `check-reports.m
   - `PolicyEnginePosPolicy.test.ts`
   - `PosProductSearchCommercialCore.test.ts`
   - `PosReporting.test.ts`
-  - **71 focused POS tests, all green in Task 251 after slice 7.**
+  - `ReprintPosReceiptUseCase.test.ts`
+  - **Focused POS suites are green through Task 251 slice 13.**
 - **Architecture guards** assert POS imports no Sales application/domain internals, POS financial events go through `IAccountingBridge`, POS uses `ITaxEngine`, POS uses `INumberingEngine`, POS stock refs keep POS identity, and POS uses `IInventoryCore`.
 
 ## 9. Documentation

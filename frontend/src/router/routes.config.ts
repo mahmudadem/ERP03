@@ -77,6 +77,7 @@ const PosCashOverShortReportPage = lazy(() => import('../modules/pos/pages/PosCa
 const PosReceiptHistoryReportPage = lazy(() => import('../modules/pos/pages/PosReceiptHistoryReportPage'));
 const PosOverrideAuditReportPage = lazy(() => import('../modules/pos/pages/PosOverrideAuditReportPage'));
 const PosTopSellingItemsReportPage = lazy(() => import('../modules/pos/pages/PosTopSellingItemsReportPage'));
+const PosReprintAuditReportPage = lazy(() => import('../modules/pos/pages/PosReprintAuditReportPage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
@@ -294,6 +295,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/pos/reports/receipts', label: 'Receipt History', component: PosReceiptHistoryReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
   { path: '/pos/reports/top-selling-items', label: 'Top Selling Items', component: PosTopSellingItemsReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
   { path: '/pos/reports/override-audit', label: 'Override Audit', component: PosOverrideAuditReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/reprint-audit', label: 'Reprint Audit', component: PosReprintAuditReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
 
 
   // SETTINGS

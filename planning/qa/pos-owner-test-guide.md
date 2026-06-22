@@ -25,6 +25,7 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 - POS registers persist default price list id, allowed cashiers, and hardware profile id; allowed cashiers are enforced on shift open.
 - POS shift close stores expected/counted/variance by payment method and marks fully balanced shifts `RECONCILED`.
 - POS override audit report returns void, discount, price override, and tax override exception rows from receipt snapshots.
+- POS receipt reprint checks cashier role policy for `REPRINT`, records a receipt audit event, and exposes it in the Reprint Audit report.
 - POS posted receipt void creates a POS return for remaining active quantities before marking the receipt `VOIDED`.
 - POS exchange creates a linked POS return and replacement POS sale with one `exchangeId`.
 - POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
@@ -93,16 +94,20 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 28. Expected: sale completes and the receipt line carries the manager override id.
 29. Open **POS → Reports → Override Audit** or query `/tenant/pos/reports/override-audit` for the same date/register.
 30. Confirm rows appear for manual discount, price override, tax override, and any voided lines.
-31. Void a posted receipt that has no prior returns.
-32. Expected: a POS return is created for all active lines, stock and settlement reverse, and the original receipt status becomes `VOIDED`.
-33. Try returning the same receipt again.
-34. Expected: return is blocked because there is no remaining returnable quantity.
-35. On another receipt, process a partial return, then void the receipt.
-36. Expected: the void returns only the remaining quantity, not the already-returned quantity.
-37. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, and post an exchange where the replacement item is more expensive than the returned item.
-38. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net due from customer.
-39. Repeat from **POS → Returns → Exchange** where the replacement item is cheaper than the returned item.
-40. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net refund to customer.
+31. Reprint a receipt through `/tenant/pos/receipts/:id/reprint`.
+32. If the cashier role requires `REPRINT` approval, confirm the call is blocked without `managerOverrideId` and allowed with one.
+33. Open **POS → Reports → Reprint Audit** or query `/tenant/pos/reports/reprint-audit`.
+34. Confirm the receipt reprint row appears with cashier and manager override id.
+35. Void a posted receipt that has no prior returns.
+36. Expected: a POS return is created for all active lines, stock and settlement reverse, and the original receipt status becomes `VOIDED`.
+37. Try returning the same receipt again.
+38. Expected: return is blocked because there is no remaining returnable quantity.
+39. On another receipt, process a partial return, then void the receipt.
+40. Expected: the void returns only the remaining quantity, not the already-returned quantity.
+41. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, and post an exchange where the replacement item is more expensive than the returned item.
+42. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net due from customer.
+43. Repeat from **POS → Returns → Exchange** where the replacement item is cheaper than the returned item.
+44. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net refund to customer.
 
 ## Stop Conditions
 
@@ -121,6 +126,7 @@ Stop and log the failure in `planning/qa/findings.md` if any of these happen:
 - Non-cash settlement variance auto-posts to GL without a separate clearing/reconciliation workflow.
 - Over-limit discount or blocked price/tax override posts without manager approval.
 - Override audit report is empty after receipts with voids/manual discounts/price or tax override flags.
+- Receipt reprint succeeds without required manager approval, or Reprint Audit misses a reprinted receipt.
 - A posted receipt can be marked `VOIDED` without a linked POS return / financial reversal.
 - A receipt can be refunded twice for the same sold quantity.
 - Exchange creates only one side of the transaction, or the return and replacement sale are not linked by exchange id.

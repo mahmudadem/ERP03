@@ -58,13 +58,13 @@
 | Shift/session | ✅ P0 reconciliation done | Open/close/cash movement/X report/force close exist. Shift close now stores expected, counted, and variance totals by payment method and marks fully balanced shifts as `RECONCILED`. Cash variance still posts the over/short voucher; non-cash variance is stored for settlement follow-up. |
 | Payments/change | 🟡 Partial | CASH/CARD/BANK/CUSTOM mixed payments, change, cash rounding, per-register settlement accounts exist. Missing: multi-currency tender/exchange-rate freeze and card/bank fees. |
 | Void instead of delete | ✅ Slice 1 done | Terminal line removal now records `VOIDED` line snapshots with cashier, time, and reason. Voided lines stay on the receipt audit trail, are excluded from posting totals/stock/ledger, and cannot be returned. Remaining follow-up: posted-receipt void/cancel flow. |
-| Manager override | 🟡 Backend hooks done | Below-cost uses approval via Commercial Core/Approval Engine. POS policy can now require manager approval for void, price override, discount override, return, tax override, and reprint; sale/return use cases enforce available hooks. Cashier role limits also require approval when configured. Missing: cashier-facing manager approval capture UI and posted receipt reprint endpoint enforcement. |
+| Manager override | 🟡 Backend hooks done | Below-cost uses approval via Commercial Core/Approval Engine. POS policy can now require manager approval for void, price override, discount override, return, tax override, and reprint; sale/return/reprint use cases enforce available hooks. Cashier role limits also require approval when configured. Missing: cashier-facing manager approval capture UI. |
 | Return/exchange | ✅ P0 done | Receipt-based selected-line returns, refunds, duplicate-return prevention, posted receipt void via full POS return, and exchange as linked POS return + replacement POS sale exist. Cashiers can process exchanges from POS → Returns → Exchange. |
-| Price/discount/tax edit policies | 🟡 Backend controls done | Cashier role limits exist for max line discount percent/amount and price/tax override permission; sale completion blocks over-limit lines unless a manager override id is supplied. Receipt snapshots and the override audit report expose void/discount/price/tax exceptions. Missing: manager approval capture UI and a dedicated override-audit report page. |
+| Price/discount/tax edit policies | 🟡 Backend controls done | Cashier role limits exist for max line discount percent/amount and price/tax override permission; sale completion blocks over-limit lines unless a manager override id is supplied. Receipt snapshots and the override audit report expose void/discount/price/tax exceptions. Missing: manager approval capture UI. |
 | Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Inactive, POS-disabled/POS-blocked metadata, and non-discountable item guards are enforced in POS sale posting. Missing richer item-master UI fields and expiry/batch-aware guards. |
 | Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
 | Promotions/offers | ⏸ Deferred | Must stay disabled until stacking/cap/conflict/return model lands. |
-| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, top-selling items, and override audit exist. Missing cancelled receipts, reprints, and promotion performance. |
+| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, top-selling items, override audit, and reprint audit exist. Missing cancelled receipts and promotion performance. |
 | Hardware/offline | ⏸ Deferred | No hardware abstraction or offline queue yet; should be placeholders/plans only for V1 unless owner prioritizes. |
 
 ## Recommended Implementation Phases
@@ -102,6 +102,7 @@
 - **P1 slice 10 complete:** Cashier-facing exchange mode added to POS Returns.
 - **P1 slice 11 complete:** POS sale posting blocks inactive/POS-disabled/POS-blocked items and non-discountable item discounts.
 - **P1 slice 12 complete:** Top Selling Items POS report added.
+- **P1 slice 13 complete:** POS receipt reprint enforces reprint manager-override policy, records an audit event, and exposes Reprint Audit under POS Reports.
 - **P0/P1 next slice:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
@@ -132,3 +133,4 @@ This is a cash-control and settlement-routing fix. It does not change tax math, 
 - POS held carts can be held, listed, recalled once, and cancelled without posting stock, receipt, payment, or ledger activity.
 - POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
 - Top Selling Items report ranks completed POS receipt lines by item and excludes voided lines.
+- POS receipt reprint enforces configured manager approval, records a receipt audit row, and appears in the Reprint Audit report.

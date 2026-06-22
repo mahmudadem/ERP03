@@ -229,6 +229,7 @@ export const moduleMenuMap: Record<
           { label: 'Receipt History', path: '/pos/reports/receipts', permission: 'pos.reports.view', icon: 'History' },
           { label: 'Top Selling Items', path: '/pos/reports/top-selling-items', permission: 'pos.reports.view', icon: 'PackageCheck' },
           { label: 'Override Audit', path: '/pos/reports/override-audit', permission: 'pos.reports.view', icon: 'ShieldCheck' },
+          { label: 'Reprint Audit', path: '/pos/reports/reprint-audit', permission: 'pos.reports.view', icon: 'Printer' },
           { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'pos.reports.view', icon: 'CircleDollarSign' },
         ],
       },

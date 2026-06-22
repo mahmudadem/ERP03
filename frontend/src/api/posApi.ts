@@ -325,6 +325,9 @@ export const posApi = {
 
   getOverrideAuditReport: async (params?: { dateFrom?: string; dateTo?: string; registerId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/reports/override-audit', { params: params || {} })),
+
+  getReprintAuditReport: async (params?: { dateFrom?: string; dateTo?: string; limit?: number }): Promise<any[]> =>
+    ok(client.get('/tenant/pos/reports/reprint-audit', { params: params || {} })),
 };
 
 export default posApi;

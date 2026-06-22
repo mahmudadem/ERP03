@@ -1,6 +1,6 @@
 # POS — Reports
 
-Eight POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
+Nine POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
 
 ## Z Report (by shift)
 
@@ -55,6 +55,14 @@ Voided receipt lines are excluded. This is a gross selling report and does not s
 **Output:** one row per voided line, manual discount, price override, or tax override. Rows show the receipt, register, shift, cashier, item, discount/override details, void reason, and manager override id when supplied.
 
 Open **POS → Reports → Override Audit** to review these rows.
+
+## Reprint Audit
+
+**Use:** manager review of duplicate receipt copies.
+**Input:** date range.
+**Output:** receipt number, reprint time, cashier user, cashier email, and manager override id when supplied.
+
+Open **POS → Reports → Reprint Audit** to review receipt reprint events. If cashier role policy requires approval for reprints, the backend blocks the reprint until a manager override id is supplied.
 
 ## Unsettled Costs (link)
 

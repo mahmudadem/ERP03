@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-12 green
-**Actual time:** ~13.5h so far
+**Status:** in progress locally; slices 1-13 green
+**Actual time:** ~14.2h so far
 
 ## Technical Developer View
 
@@ -32,6 +32,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS Returns now has a cashier-facing **Exchange** mode that collects returned receipt lines, replacement POS item lines, replacement payment method/reference, and posts through the existing exchange API.
 - POS sale posting now blocks inactive items, POS-disabled/POS-blocked item metadata, and manual/promotion discounts on non-discountable POS items before stock or ledger writes.
 - POS Top Selling Items report now ranks completed receipt lines by item, excluding voided lines.
+- POS receipt reprint now checks `REPRINT` manager-override policy, writes a `POS_RECEIPT` record-change audit row, and exposes `/tenant/pos/reports/reprint-audit`.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -61,12 +62,14 @@ Files changed:
 - `frontend/src/modules/pos/pages/PosReturnPage.tsx`
 - `frontend/src/modules/pos/pages/PosOverrideAuditReportPage.tsx`
 - `frontend/src/modules/pos/pages/PosTopSellingItemsReportPage.tsx`
+- `frontend/src/modules/pos/pages/PosReprintAuditReportPage.tsx`
 - `backend/src/tests/application/pos/CompletePosSale.test.ts`
 - `backend/src/tests/application/pos/CompletePosReturn.test.ts`
 - `backend/src/tests/application/pos/PosShiftUseCases.test.ts`
 - `backend/src/tests/application/pos/PostPosSale.test.ts`
 - `backend/src/tests/application/pos/PostPosReturn.test.ts`
 - `backend/src/tests/application/pos/PosReporting.test.ts`
+- `backend/src/tests/application/pos/ReprintPosReceiptUseCase.test.ts`
 - `backend/src/tests/application/pos/PosHeldCartUseCases.test.ts`
 - `backend/src/tests/application/pos/PosSettingsUseCases.test.ts`
 - `backend/src/tests/architecture/SystemCoreBoundaries.test.ts`
@@ -102,6 +105,8 @@ Cashiers can now process exchanges from **POS → Returns** by switching to **Ex
 POS now blocks unsafe item sale attempts at the backend posting boundary. Inactive items cannot be sold. Items can also be marked in metadata as disabled for POS, blocked for POS, or non-discountable; those rules are enforced before stock, receipt, payment, or ledger activity is created.
 
 Managers now have a **Top Selling Items** report under POS Reports. It shows completed POS receipt lines ranked by quantity sold and gross sales, excluding voided lines.
+
+Managers now have a **Reprint Audit** report under POS Reports. Receipt reprints are recorded with the cashier and manager override id when supplied. If the cashier role requires reprint approval, the backend blocks the reprint until a manager override id is provided.
 
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
@@ -141,6 +146,12 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm run typecheck` from `backend/` — passed after Top Selling Items report slice.
 - `npm run build` from `backend/` — passed after Top Selling Items report slice.
 - `npm --prefix frontend run build` — passed after Top Selling Items report slice.
+- `npm test -- --runInBand src/tests/application/pos/ReprintPosReceiptUseCase.test.ts src/tests/application/pos/PosReporting.test.ts` — passed, 2 suites / 10 tests after Reprint Audit backend slice.
+- `npm run typecheck` from `backend/` — passed after Reprint Audit backend slice.
+- `npm run build` from `backend/` — passed after Reprint Audit backend slice.
+- `npm --prefix frontend run check:reports` — passed with 33 report routes after Reprint Audit report page.
+- `npm --prefix frontend run typecheck` — passed after Reprint Audit report page.
+- `npm --prefix frontend run build` — passed after Reprint Audit report page.
 
 ## Known Follow-Ups
 

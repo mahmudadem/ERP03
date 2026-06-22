@@ -4611,3 +4611,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused POS reporting test passed (`PosReporting`: 1 suite / 7 tests), frontend report guard passed with 32 report routes, backend typecheck/build passed, and frontend typecheck/build passed.
 - **Time spent:** ~0.6h for this slice; Task 251 total ~13.5h so far.
 - **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 13 Reprint Audit)
+
+- **Goal:** Close the receipt reprint control/report gap from the POS requirements without changing posting behavior.
+- **What was done:** Added `ReprintPosReceiptUseCase`, enforcing the existing POS `REPRINT` manager-override policy before returning printable receipt data. Reprints now write a `POS_RECEIPT` record-change audit row. Extended the record-change repository with filtered listing, added `/tenant/pos/reports/reprint-audit`, added `PosReprintAuditReportPage`, and wired it under POS Reports.
+- **Accounting/ERP impact:** Audit/control only. Reprinting does not create, edit, void, return, settle, or post anything. It records duplicate-copy activity for manager review and can be blocked by cashier role policy until manager-approved.
+- **Verification:** Focused backend tests passed (`ReprintPosReceiptUseCase` + `PosReporting`: 2 suites / 10 tests); backend typecheck/build passed; frontend report guard passed with 33 report routes; frontend typecheck/build passed.
+- **Time spent:** ~0.7h for this slice; Task 251 total ~14.2h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining POS report gaps.
