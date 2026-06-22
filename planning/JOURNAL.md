@@ -4728,3 +4728,11 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Added `docs/architecture/pos-shortcuts-control-buttons.md`, `docs/user-guide/pos/shortcuts-and-control-buttons.md`, `planning/tasks/259-pos-shortcuts-control-buttons.md`, and `planning/done/259-pos-shortcuts-control-buttons.md`.
 - **Time spent:** ~4.4h.
 - **Next:** Review diff, commit, and merge if clean.
+
+### Session: 2026-06-23 (Task 259 follow-up — item selector for shortcut buttons)
+
+- **Goal:** Replace raw item id entry in POS shortcut setup with the shared item selector.
+- **What was done:** Updated the POS Settings `Layouts` tab so ITEM shortcut buttons use `ItemSelector`; selecting an item stores the canonical item id and can fill the shortcut label from the item name. Updated the user guide and completion report to remove the raw-id limitation.
+- **Accounting/ERP impact:** Data-entry quality only. No posting, tax, inventory valuation, settlement routing, period-lock, voucher, or approval behavior changed.
+- **Verification:** Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
+- **Time spent:** ~0.2h.

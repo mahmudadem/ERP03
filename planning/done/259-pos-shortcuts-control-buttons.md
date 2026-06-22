@@ -53,5 +53,4 @@ No posting, tax, COGS, inventory valuation, settlement routing, period lock, or 
 
 ## Known Follow-Ups
 
-- The current settings UI is a basic admin surface. A later usability pass should replace raw item ids with the shared item selector.
 - Physical printer/cash drawer device integration is still a hardware-runtime concern; this task returns safe backend command readiness and receipt print payloads.

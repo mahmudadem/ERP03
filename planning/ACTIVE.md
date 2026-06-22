@@ -9,7 +9,7 @@
 - **Docs:** [planning/tasks/259-pos-shortcuts-control-buttons.md](./tasks/259-pos-shortcuts-control-buttons.md), [planning/done/259-pos-shortcuts-control-buttons.md](./done/259-pos-shortcuts-control-buttons.md), [docs/architecture/pos-shortcuts-control-buttons.md](../docs/architecture/pos-shortcuts-control-buttons.md), [docs/user-guide/pos/shortcuts-and-control-buttons.md](../docs/user-guide/pos/shortcuts-and-control-buttons.md).
 - **Verification:** Focused POS layout tests green (`PosLayoutUseCases.test.ts`: 4 tests); backend typecheck/build green; frontend typecheck/build green. Frontend build has only existing browser-data/chunk-size warnings.
 - **Accounting impact:** Terminal configuration/control only. No posting, tax, COGS, inventory valuation, settlement routing, period-lock, voucher, or approval-engine semantics changed. Reprint approval/audit remains enforced.
-- **Follow-ups:** Replace raw item id entry in the basic settings UI with the shared item selector; physical printer/cash-drawer device execution remains a hardware runtime integration.
+- **Follow-ups:** Physical printer/cash-drawer device execution remains a hardware runtime integration.
 - **Actual time:** ~4.4h.
 
 ## Next action

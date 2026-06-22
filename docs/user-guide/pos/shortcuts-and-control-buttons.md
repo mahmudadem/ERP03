@@ -21,7 +21,7 @@ Cashiers use the configured buttons from the POS terminal.
 3. Create a product shortcut layout.
 4. Select the layout.
 5. Add a `GROUP` for a folder button, or an `ITEM` for a product button.
-6. For item buttons, enter the item id and optional sort order.
+6. For item buttons, choose the item from the item selector and set the optional sort order.
 7. Save the shortcut.
 
 On the terminal, group buttons open their child buttons. Item buttons add the linked item to the cart.

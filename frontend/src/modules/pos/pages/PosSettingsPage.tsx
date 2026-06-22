@@ -8,6 +8,7 @@ import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { ModuleSettingsLayout } from '../../../components/shared/ModuleSettingsLayout';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
+import { ItemSelector } from '../../../components/shared/selectors/ItemSelector';
 import { AccountSelector } from '../../../modules/accounting/components/shared/AccountSelector';
 import { listRoles, CompanyRole } from '../../../api/companyAdmin';
 import {
@@ -720,15 +721,24 @@ const PosSettingsPage: React.FC<Props> = () => {
                     <span className="mb-1 block text-xs font-medium text-slate-500">{t('common.label', { defaultValue: 'Label' })}</span>
                     <input value={newNode.label || ''} onChange={(e) => setNewNode((prev) => ({ ...prev, label: e.target.value }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
                   </label>
-                  <label className="text-sm">
-                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.itemId', { defaultValue: 'Item ID' })}</span>
-                    <input disabled={newNode.nodeType !== 'ITEM'} value={newNode.itemId || ''} onChange={(e) => setNewNode((prev) => ({ ...prev, itemId: e.target.value }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-100" />
-                  </label>
+                  <div className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.item', { defaultValue: 'Item' })}</span>
+                    <ItemSelector
+                      value={newNode.itemId || ''}
+                      disabled={newNode.nodeType !== 'ITEM'}
+                      placeholder={t('pos.settings.layouts.selectItem', { defaultValue: 'Select item...' })}
+                      onChange={(item) => setNewNode((prev) => ({
+                        ...prev,
+                        itemId: item?.id || '',
+                        label: prev.label || item?.name || '',
+                      }))}
+                    />
+                  </div>
                   <label className="text-sm">
                     <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.sortOrder', { defaultValue: 'Sort order' })}</span>
                     <input type="number" value={newNode.sortOrder ?? 0} onChange={(e) => setNewNode((prev) => ({ ...prev, sortOrder: Number(e.target.value) || 0 }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
                   </label>
-                  <button type="button" onClick={saveProductNode} disabled={!selectedProductLayoutId || !newNode.label} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                  <button type="button" onClick={saveProductNode} disabled={!selectedProductLayoutId || !newNode.label || (newNode.nodeType === 'ITEM' && !newNode.itemId)} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
                     {t('pos.settings.layouts.addShortcut', { defaultValue: 'Add shortcut' })}
                   </button>
                 </div>
