@@ -4736,3 +4736,11 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** Data-entry quality only. No posting, tax, inventory valuation, settlement routing, period-lock, voucher, or approval behavior changed.
 - **Verification:** Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
 - **Time spent:** ~0.2h.
+
+### Session: 2026-06-23 (Task 259 follow-up — dedicated POS Shortcuts page)
+
+- **Goal:** Replace the ambiguous POS Settings layout editor with a dedicated shortcut management surface and fix terminal layout selection ambiguity.
+- **What was done:** Added `POS -> Shortcuts` route/sidebar page. The page manages terminal shortcut layouts, makes a selected layout active/default, creates groups, bulk-selects many inventory items into a group/root, and edits/enables/disables/deletes groups and item buttons. Backend layout creation/update now clears other default layouts when one layout is marked default, preventing older empty defaults from winning runtime resolution. Removed the old Layouts tab from POS Settings navigation.
+- **Accounting/ERP impact:** Data-entry UX and terminal configuration only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
+- **Verification:** Backend typecheck passed. Frontend typecheck passed. Focused POS layout test passed (`PosLayoutUseCases.test.ts`: 1 suite / 4 tests). Backend build passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
+- **Time spent:** ~1.4h.

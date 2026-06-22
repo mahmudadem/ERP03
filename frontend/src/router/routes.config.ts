@@ -66,6 +66,7 @@ const EmployeesListPage = lazy(() => import('../modules/hr/pages/EmployeesListPa
 const PosHomePage = lazy(() => import('../modules/pos/pages/PosHomePage'));
 const PosSetupPage = lazy(() => import('../modules/pos/pages/PosSetupPage'));
 const PosSettingsPage = lazy(() => import('../modules/pos/pages/PosSettingsPage'));
+const PosShortcutManagerPage = lazy(() => import('../modules/pos/pages/PosShortcutManagerPage'));
 const PosRegistersPage = lazy(() => import('../modules/pos/pages/PosRegistersPage'));
 const PosShiftPage = lazy(() => import('../modules/pos/pages/PosShiftPage'));
 const PosReturnPage = lazy(() => import('../modules/pos/pages/PosReturnPage'));
@@ -284,6 +285,7 @@ export const routesConfig: AppRoute[] = [
   // POS
   { path: '/pos/setup', label: 'POS Setup', component: PosSetupPage, section: 'SETUP', requiredModule: 'pos', requiredPermission: 'pos.settings.manage', hideInMenu: true },
   { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
+  { path: '/pos/shortcuts', label: 'Shortcuts', component: PosShortcutManagerPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
   { path: '/pos/settings', label: 'Settings', component: PosSettingsPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
   { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },
   { path: '/pos/shift', label: 'Shift', component: PosShiftPage, section: 'POS', requiredPermission: 'pos.shift.open', requiredModule: 'pos' },

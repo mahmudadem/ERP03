@@ -319,7 +319,6 @@ const PosSettingsPage: React.FC<Props> = () => {
     { id: 'payments', label: t('pos.settings.paymentMethods.title', { defaultValue: 'Payment Methods' }), icon: Shield },
     { id: 'overShort', label: t('pos.settings.overShort.title', { defaultValue: 'Cash Over/Short' }), icon: ShieldCheck },
     { id: 'cashierPolicies', label: t('pos.settings.cashierPolicies.title', { defaultValue: 'Cashier Policies' }), icon: UserCog },
-    { id: 'layouts', label: t('pos.settings.layouts.title', { defaultValue: 'Layouts' }), icon: UserCog },
   ];
 
   return (

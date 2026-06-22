@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-23  
 **Branch:** `codex/pos-shortcuts-control-buttons`  
-**Actual time:** ~4.2 hours
+**Actual time:** ~5.6 hours
 
 ## Technical Developer View
 
@@ -23,6 +23,8 @@ Frontend:
 - Extended `posApi` with runtime layout, layout admin, command execution, and receipt print APIs.
 - Updated the POS terminal to load runtime shortcuts/control buttons, render shortcut groups/items, and execute control commands through the backend executor.
 - Added POS Settings `Layouts` tab for basic layout/node/button administration.
+- Added a dedicated `POS -> Shortcuts` manager for product shortcut layouts, active/default selection, group editing, and bulk assignment of multiple items into a selected group.
+- Hardened backend default-layout updates so marking one product/control layout as default clears older defaults for the same tenant/company scope.
 
 Documentation:
 
@@ -32,9 +34,9 @@ Documentation:
 
 ## End-User View
 
-POS admins can now configure cashier screen shortcut buttons and control buttons from POS Settings.
+POS admins can now configure cashier screen shortcut buttons from `POS -> Shortcuts` and control buttons from POS Settings.
 
-Cashiers can use product shortcut groups and item buttons directly on the terminal. They can also use configured action buttons such as Hold Sale, Recall Sale, Print Receipt, Reprint, payment shortcuts, Return/Refund, and End Shift.
+Admins can create product shortcut groups, select several inventory items at once, add them into the group, edit labels/sort order, and activate or disable layouts/groups/buttons. Cashiers can use active product shortcut groups and item buttons directly on the terminal. They can also use configured action buttons such as Hold Sale, Recall Sale, Print Receipt, Reprint, payment shortcuts, Return/Refund, and End Shift.
 
 Protected actions remain permission-controlled. Reprint still follows the existing approval/audit rules.
 

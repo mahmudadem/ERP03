@@ -8,23 +8,23 @@ Control buttons let you choose which POS actions appear on the terminal, such as
 
 ## Who Can Configure It
 
-Users with POS settings permission can configure layouts from:
+Users with POS settings permission can configure product shortcuts from:
 
-`POS -> Settings -> Layouts`
+`POS -> Shortcuts`
 
 Cashiers use the configured buttons from the POS terminal.
 
 ## Product Shortcut Layouts
 
-1. Open `POS -> Settings`.
-2. Select the `Layouts` tab.
-3. Create a product shortcut layout.
-4. Select the layout.
-5. Add a `GROUP` for a folder button, or an `ITEM` for a product button.
-6. For item buttons, choose the item from the item selector and set the optional sort order.
-7. Save the shortcut.
+1. Open `POS -> Shortcuts`.
+2. Create or select a terminal layout.
+3. Click `Use on terminal` so the selected layout becomes the active default layout.
+4. Add groups such as Drinks, Food, or Services.
+5. Select a group, or select Root buttons.
+6. Search items and tick multiple items.
+7. Click `Add selected` to create item buttons in the selected group.
 
-On the terminal, group buttons open their child buttons. Item buttons add the linked item to the cart.
+Use Edit on a group or item button to rename it, change sort order, activate it, or disable it. On the terminal, group buttons open their child buttons. Item buttons add the linked item to the cart.
 
 ## Control Button Layouts
 
@@ -35,7 +35,7 @@ On the terminal, group buttons open their child buttons. Item buttons add the li
 5. Choose a command, zone, label, and sort order.
 6. Save the control button.
 
-The terminal shows active visible buttons in the configured zone.
+The terminal shows active visible buttons in the configured zone. Product shortcuts are configured from `POS -> Shortcuts`; control buttons remain part of POS layout settings.
 
 ## Print And Reprint
 

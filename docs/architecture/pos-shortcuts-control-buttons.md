@@ -16,7 +16,8 @@ The backend owns the layout model, validation, scope resolution, and command reg
 - API controller/routes: `backend/src/api/controllers/pos/PosController.ts`, `backend/src/api/routes/pos.routes.ts`
 - Frontend API: `frontend/src/api/posApi.ts`
 - Runtime UI: `frontend/src/modules/pos/pages/PosTerminalPage.tsx`
-- Admin UI: `frontend/src/modules/pos/pages/PosSettingsPage.tsx`
+- Product shortcut admin UI: `frontend/src/modules/pos/pages/PosShortcutManagerPage.tsx`
+- Control button settings UI: `frontend/src/modules/pos/pages/PosSettingsPage.tsx`
 
 ## Data Model
 
@@ -39,6 +40,8 @@ Product shortcut nodes support:
 
 - `GROUP`: navigational folder; cannot reference an item.
 - `ITEM`: sellable shortcut; must reference an item.
+
+The product shortcut manager lets users bulk-select inventory items and create many item buttons under a group/root in one action. It also exposes active/default layout controls so the terminal resolver has one clear company default layout.
 
 Control buttons support fixed zones:
 

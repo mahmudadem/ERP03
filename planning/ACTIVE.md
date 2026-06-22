@@ -5,12 +5,12 @@
 **Status:** ✅ Implemented on branch `codex/pos-shortcuts-control-buttons`.
 
 - **Why:** The owner requested the full POS shortcuts/control-buttons package one slice at a time: backend layout models/resolver/API, safe command registry/execution, terminal runtime wiring, admin/settings UI, receipt print/reprint integration, docs, and verification.
-- **What changed:** Added configurable POS product shortcut layouts/nodes and control button layouts/buttons; Firestore repository + DI; runtime resolver with USER → REGISTER → BRANCH → COMPANY priority; allowlisted command registry with permission/prerequisite checks; POS terminal shortcut/control rendering; POS Settings `Layouts` tab; receipt print/reprint payload integration with the shared print-layout engine.
+- **What changed:** Added configurable POS product shortcut layouts/nodes and control button layouts/buttons; Firestore repository + DI; runtime resolver with USER → REGISTER → BRANCH → COMPANY priority; allowlisted command registry with permission/prerequisite checks; POS terminal shortcut/control rendering; dedicated `POS -> Shortcuts` page with group editing and bulk item assignment; receipt print/reprint payload integration with the shared print-layout engine.
 - **Docs:** [planning/tasks/259-pos-shortcuts-control-buttons.md](./tasks/259-pos-shortcuts-control-buttons.md), [planning/done/259-pos-shortcuts-control-buttons.md](./done/259-pos-shortcuts-control-buttons.md), [docs/architecture/pos-shortcuts-control-buttons.md](../docs/architecture/pos-shortcuts-control-buttons.md), [docs/user-guide/pos/shortcuts-and-control-buttons.md](../docs/user-guide/pos/shortcuts-and-control-buttons.md).
 - **Verification:** Focused POS layout tests green (`PosLayoutUseCases.test.ts`: 4 tests); backend typecheck/build green; frontend typecheck/build green. Frontend build has only existing browser-data/chunk-size warnings.
 - **Accounting impact:** Terminal configuration/control only. No posting, tax, COGS, inventory valuation, settlement routing, period-lock, voucher, or approval-engine semantics changed. Reprint approval/audit remains enforced.
 - **Follow-ups:** Physical printer/cash-drawer device execution remains a hardware runtime integration.
-- **Actual time:** ~4.4h.
+- **Actual time:** ~5.6h.
 
 ## Next action
 

@@ -95,6 +95,7 @@ export class CreatePosProductShortcutLayoutUseCase {
       createdAt: now,
       updatedAt: now,
     });
+    if (layout.isDefault) await clearOtherProductDefaults(this.repo, layout);
     await this.repo.createProductLayout(layout);
     return layout;
   }
@@ -116,6 +117,7 @@ export class UpdatePosProductShortcutLayoutUseCase {
       createdAt: existing.createdAt,
       updatedAt: new Date(),
     });
+    if (layout.isDefault) await clearOtherProductDefaults(this.repo, layout);
     await this.repo.updateProductLayout(layout);
     return layout;
   }
@@ -226,6 +228,7 @@ export class CreatePosControlButtonLayoutUseCase {
       createdAt: now,
       updatedAt: now,
     });
+    if (layout.isDefault) await clearOtherControlDefaults(this.repo, layout);
     await this.repo.createControlLayout(layout);
     return layout;
   }
@@ -247,6 +250,7 @@ export class UpdatePosControlButtonLayoutUseCase {
       createdAt: existing.createdAt,
       updatedAt: new Date(),
     });
+    if (layout.isDefault) await clearOtherControlDefaults(this.repo, layout);
     await this.repo.updateControlLayout(layout);
     return layout;
   }
@@ -470,6 +474,40 @@ async function assertProductLayoutExists(repo: IPosLayoutRepository, companyId: 
 async function assertControlLayoutExists(repo: IPosLayoutRepository, companyId: string, layoutId: string) {
   const layout = await repo.getControlLayout(companyId, layoutId);
   if (!layout) throw new Error(`POS control button layout not found: ${layoutId}`);
+}
+
+async function clearOtherProductDefaults(repo: IPosLayoutRepository, layout: PosProductShortcutLayout) {
+  const layouts = await repo.listProductLayouts(layout.companyId);
+  await Promise.all(layouts
+    .filter((candidate) => candidate.id !== layout.id && candidate.isDefault)
+    .map((candidate) => repo.updateProductLayout(new PosProductShortcutLayout({
+      id: candidate.id,
+      companyId: candidate.companyId,
+      name: candidate.name,
+      scopeType: candidate.scopeType,
+      scopeId: candidate.scopeId,
+      isDefault: false,
+      isActive: candidate.isActive,
+      createdAt: candidate.createdAt,
+      updatedAt: new Date(),
+    }))));
+}
+
+async function clearOtherControlDefaults(repo: IPosLayoutRepository, layout: PosControlButtonLayout) {
+  const layouts = await repo.listControlLayouts(layout.companyId);
+  await Promise.all(layouts
+    .filter((candidate) => candidate.id !== layout.id && candidate.isDefault)
+    .map((candidate) => repo.updateControlLayout(new PosControlButtonLayout({
+      id: candidate.id,
+      companyId: candidate.companyId,
+      name: candidate.name,
+      scopeType: candidate.scopeType,
+      scopeId: candidate.scopeId,
+      isDefault: false,
+      isActive: candidate.isActive,
+      createdAt: candidate.createdAt,
+      updatedAt: new Date(),
+    }))));
 }
 
 async function validateProductNodeGraph(repo: IPosLayoutRepository, node: PosProductShortcutNode) {
