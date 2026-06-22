@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-11 green
-**Actual time:** ~12.9h so far
+**Status:** in progress locally; slices 1-12 green
+**Actual time:** ~13.5h so far
 
 ## Technical Developer View
 
@@ -31,6 +31,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS Override Audit now has a dedicated ReportContainer page under POS Reports.
 - POS Returns now has a cashier-facing **Exchange** mode that collects returned receipt lines, replacement POS item lines, replacement payment method/reference, and posts through the existing exchange API.
 - POS sale posting now blocks inactive items, POS-disabled/POS-blocked item metadata, and manual/promotion discounts on non-discountable POS items before stock or ledger writes.
+- POS Top Selling Items report now ranks completed receipt lines by item, excluding voided lines.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -59,6 +60,7 @@ Files changed:
 - `frontend/src/modules/pos/pages/PosTerminalPage.tsx`
 - `frontend/src/modules/pos/pages/PosReturnPage.tsx`
 - `frontend/src/modules/pos/pages/PosOverrideAuditReportPage.tsx`
+- `frontend/src/modules/pos/pages/PosTopSellingItemsReportPage.tsx`
 - `backend/src/tests/application/pos/CompletePosSale.test.ts`
 - `backend/src/tests/application/pos/CompletePosReturn.test.ts`
 - `backend/src/tests/application/pos/PosShiftUseCases.test.ts`
@@ -99,6 +101,8 @@ Cashiers can now process exchanges from **POS → Returns** by switching to **Ex
 
 POS now blocks unsafe item sale attempts at the backend posting boundary. Inactive items cannot be sold. Items can also be marked in metadata as disabled for POS, blocked for POS, or non-discountable; those rules are enforced before stock, receipt, payment, or ledger activity is created.
 
+Managers now have a **Top Selling Items** report under POS Reports. It shows completed POS receipt lines ranked by quantity sold and gross sales, excluding voided lines.
+
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
 Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
@@ -131,6 +135,12 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` — passed, 1 suite / 10 tests after item selling-policy guard slice.
 - `npm run typecheck` from `backend/` — passed after item selling-policy guard slice.
 - `npm run build` from `backend/` — passed after item selling-policy guard slice.
+- `npm test -- --runInBand src/tests/application/pos/PosReporting.test.ts` — passed, 1 suite / 7 tests after Top Selling Items report slice.
+- `npm --prefix frontend run check:reports` — passed with 32 report routes after Top Selling Items report slice.
+- `npm --prefix frontend run typecheck` — passed after Top Selling Items report slice.
+- `npm run typecheck` from `backend/` — passed after Top Selling Items report slice.
+- `npm run build` from `backend/` — passed after Top Selling Items report slice.
+- `npm --prefix frontend run build` — passed after Top Selling Items report slice.
 
 ## Known Follow-Ups
 

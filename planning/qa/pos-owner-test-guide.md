@@ -81,6 +81,8 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 21d. Hold another sale and cancel it from **Recall**. Confirm it disappears from the held list and no receipt/payment/stock movement is created.
 22. Open **POS → Reports → Payment Methods**.
 23. Confirm payment totals are real, not zero placeholders. CASH must be net of change.
+23a. Open **POS → Reports → Top Selling Items**.
+23b. Confirm completed receipt lines appear by item, voided lines are excluded, and quantity/gross sales rank descending.
 24. Configure or seed a cashier role policy with:
     - max line discount percent below the test discount
     - `allowPriceOverride = false`
@@ -112,6 +114,7 @@ Stop and log the failure in `planning/qa/findings.md` if any of these happen:
 - Inactive, POS-disabled, or POS-blocked items can be sold.
 - A non-discountable POS item accepts a manual or promotion discount.
 - Payment Methods report shows zero totals after completed receipts.
+- Top Selling Items includes voided lines or misses completed receipt lines.
 - A voided cart line disappears completely instead of staying on the receipt audit trail.
 - A voided line changes stock, ledger, tax, cash, or returnable quantity.
 - Trial Balance is not balanced after sales, returns, and over/short vouchers.

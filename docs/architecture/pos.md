@@ -26,7 +26,7 @@ application/pos/use-cases/   PosRegisterUseCases, PosSettingsUseCases,
                              CompletePosReturnUseCase, CompletePosExchangeUseCase,
                              PosReportingUseCases
                              (Z, Daily, Payment, Cashier, Over/Short, ReceiptHistory,
-                             OverrideAudit).
+                             TopSellingItems, OverrideAudit).
 infrastructure/di/           bound in bindRepositories.ts via DB_TYPE branching.
 api/dtos/PosDTOs.ts          PosDTOMapper + DTOs for every entity + reports.
 api/validators/pos.validators.ts
@@ -49,7 +49,7 @@ frontend/src/modules/pos/pages/                 PosHomePage, PosSettingsPage, Po
                                                 PosZReportPage, PosDailySummaryReportPage,
                                                 PosPaymentMethodReportPage, PosCashierSalesReportPage,
                                                 PosCashOverShortReportPage, PosReceiptHistoryReportPage,
-                                                PosOverrideAuditReportPage,
+                                                PosTopSellingItemsReportPage, PosOverrideAuditReportPage,
                                                 PosDateRangeInitiator.
 ```
 
@@ -130,7 +130,7 @@ pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
 
-## 7. Reports (7 POS + 1 link)
+## 7. Reports (8 POS + 1 link)
 
 | Report | Route | Permission | Source use case |
 |---|---|---|---|
@@ -140,10 +140,11 @@ pos.reports.view     View POS Reports
 | Cashier Sales | `/pos/reports/cashiers` | pos.reports.view | `GetCashierSalesSummaryUseCase` |
 | Cash Over/Short | `/pos/reports/over-short` | pos.reports.view | `GetCashOverShortReportUseCase` |
 | Receipt History | `/pos/reports/receipts` | pos.reports.view | `GetReceiptHistoryUseCase` |
+| Top Selling Items | `/pos/reports/top-selling-items` | pos.reports.view | `GetTopSellingItemsUseCase` |
 | Override Audit | `/pos/reports/override-audit` | pos.reports.view | `GetPosOverrideAuditReportUseCase` |
 | Unsettled Costs (link) | `/inventory/reports/unsettled-costs` | pos.reports.view | (existing inventory report) |
 
-All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review.
+All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. Top Selling Items ranks gross completed receipt lines by item and excludes voided lines; it does not net later returns. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review.
 
 ## 8. Testing
 

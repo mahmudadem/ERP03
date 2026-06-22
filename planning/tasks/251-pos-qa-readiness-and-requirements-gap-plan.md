@@ -64,7 +64,7 @@
 | Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Inactive, POS-disabled/POS-blocked metadata, and non-discountable item guards are enforced in POS sale posting. Missing richer item-master UI fields and expiry/batch-aware guards. |
 | Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
 | Promotions/offers | ⏸ Deferred | Must stay disabled until stacking/cap/conflict/return model lands. |
-| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, and override audit exist. Missing cancelled receipts, reprints, top-selling items, and promotion performance. |
+| POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, top-selling items, and override audit exist. Missing cancelled receipts, reprints, and promotion performance. |
 | Hardware/offline | ⏸ Deferred | No hardware abstraction or offline queue yet; should be placeholders/plans only for V1 unless owner prioritizes. |
 
 ## Recommended Implementation Phases
@@ -101,6 +101,7 @@
 - **P1 slice 9 complete:** Dedicated Override Audit report page added under POS Reports.
 - **P1 slice 10 complete:** Cashier-facing exchange mode added to POS Returns.
 - **P1 slice 11 complete:** POS sale posting blocks inactive/POS-disabled/POS-blocked items and non-discountable item discounts.
+- **P1 slice 12 complete:** Top Selling Items POS report added.
 - **P0/P1 next slice:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
@@ -130,3 +131,4 @@ This is a cash-control and settlement-routing fix. It does not change tax math, 
 - POS exchange creates a linked return and replacement sale with one exchange id and reports net due/refund.
 - POS held carts can be held, listed, recalled once, and cancelled without posting stock, receipt, payment, or ledger activity.
 - POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
+- Top Selling Items report ranks completed POS receipt lines by item and excludes voided lines.

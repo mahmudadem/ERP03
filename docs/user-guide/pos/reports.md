@@ -1,6 +1,6 @@
 # POS — Reports
 
-Seven POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
+Eight POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
 
 ## Z Report (by shift)
 
@@ -39,6 +39,14 @@ This is the report to run on every shift close, to spot cashier over/short trend
 **Use:** every POS receipt in the period with the linked Sales Invoice number.
 **Input:** date range.
 **Output:** receipt / SI / register / customer / total / date.
+
+## Top Selling Items
+
+**Use:** gross item ranking from completed POS receipts.
+**Input:** date range.
+**Output:** item code/name, quantity sold, gross sales, and receipt count.
+
+Voided receipt lines are excluded. This is a gross selling report and does not subtract later returns.
 
 ## Override Audit
 

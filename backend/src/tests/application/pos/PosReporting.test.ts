@@ -5,6 +5,7 @@ import {
   GetCashOverShortReportUseCase,
   GetReceiptHistoryUseCase,
   GetPosOverrideAuditReportUseCase,
+  GetTopSellingItemsUseCase,
 } from '../../../application/pos/use-cases/PosReportingUseCases';
 import { PosPayment } from '../../../domain/pos/entities/PosPayment';
 import { PosReceipt } from '../../../domain/pos/entities/PosReceipt';
@@ -151,6 +152,45 @@ describe('PosReportingUseCases', () => {
       const rows = await useCase.execute({ companyId: 'cmp_test' });
       expect(rows[0].receiptNumber).toBe('R-000001');
       expect(rows[0].salesInvoiceNumber).toBe('SI-0001');
+    });
+  });
+
+  describe('GetTopSellingItemsUseCase', () => {
+    it('aggregates completed receipt lines by item and excludes voided lines', async () => {
+      const receiptRepo = {
+        list: jest.fn().mockResolvedValue([
+          makeReceipt({
+            id: 'rcp_1',
+            lines: [
+              { itemId: 'i1', itemCode: 'A', itemName: 'A', qty: 2, uom: 'ea', unitPrice: 10, lineDiscount: 0, lineTotal: 20 },
+              { itemId: 'i2', itemCode: 'B', itemName: 'B', qty: 1, uom: 'ea', unitPrice: 5, lineDiscount: 0, lineTotal: 5, status: 'VOIDED' },
+            ],
+          }),
+          makeReceipt({
+            id: 'rcp_2',
+            lines: [
+              { itemId: 'i1', itemCode: 'A', itemName: 'A', qty: 1, uom: 'ea', unitPrice: 10, lineDiscount: 0, lineTotal: 10 },
+              { itemId: 'i3', itemCode: 'C', itemName: 'C', qty: 5, uom: 'ea', unitPrice: 2, lineDiscount: 0, lineTotal: 10 },
+            ],
+          }),
+          makeReceipt({
+            id: 'rcp_3',
+            status: 'VOIDED',
+            lines: [
+              { itemId: 'i4', itemCode: 'D', itemName: 'D', qty: 99, uom: 'ea', unitPrice: 1, lineDiscount: 0, lineTotal: 99 },
+            ],
+          }),
+        ]),
+      };
+      const useCase = new GetTopSellingItemsUseCase(receiptRepo as any);
+
+      const rows = await useCase.execute({ companyId: 'cmp_test', registerId: 'reg_1' });
+
+      expect(receiptRepo.list).toHaveBeenCalledWith('cmp_test', expect.objectContaining({ registerId: 'reg_1' }));
+      expect(rows).toEqual([
+        { itemId: 'i3', itemCode: 'C', itemName: 'C', qtySold: 5, grossSales: 10, receiptCount: 1 },
+        { itemId: 'i1', itemCode: 'A', itemName: 'A', qtySold: 3, grossSales: 30, receiptCount: 2 },
+      ]);
     });
   });
 

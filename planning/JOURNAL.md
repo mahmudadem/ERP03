@@ -4602,3 +4602,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused backend POS sale-posting test passed (`PostPosSale`: 1 suite / 10 tests); backend typecheck/build passed.
 - **Time spent:** ~0.5h for this slice; Task 251 total ~12.9h so far.
 - **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 12 Top Selling Items report)
+
+- **Goal:** Close one remaining POS report gap with a manager-facing top-selling item report.
+- **What was done:** Added `GetTopSellingItemsUseCase`, `/tenant/pos/reports/top-selling-items`, `posApi.getTopSellingItemsReport()`, and `PosTopSellingItemsReportPage` under POS Reports. The report ranks completed receipt lines by item and excludes voided lines.
+- **Accounting/ERP impact:** Read-only reporting only. It is a gross selling report from POS receipts and does not net later returns; no posting, settlement, stock, tax, or ledger behavior changed.
+- **Verification:** Focused POS reporting test passed (`PosReporting`: 1 suite / 7 tests), frontend report guard passed with 32 report routes, backend typecheck/build passed, and frontend typecheck/build passed.
+- **Time spent:** ~0.6h for this slice; Task 251 total ~13.5h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.

@@ -319,7 +319,65 @@ export class GetReceiptHistoryUseCase {
   }
 }
 
-// ───────── 7. Override and void audit report ─────────
+// ───────── 7. Top selling items report ─────────
+
+export interface GetTopSellingItemsInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  registerId?: string;
+  limit?: number;
+}
+
+export interface TopSellingItemRow {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  qtySold: number;
+  grossSales: number;
+  receiptCount: number;
+}
+
+export class GetTopSellingItemsUseCase {
+  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+
+  async execute(input: GetTopSellingItemsInput): Promise<TopSellingItemRow[]> {
+    const receipts = await this.receiptRepo.list(input.companyId, {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      registerId: input.registerId,
+      limit: 1000,
+    });
+    const byItem = new Map<string, TopSellingItemRow & { receiptIds: Set<string> }>();
+    for (const receipt of receipts) {
+      if (receipt.status !== 'COMPLETED') continue;
+      for (const line of receipt.lines) {
+        if (line.status === 'VOIDED') continue;
+        const key = line.itemId;
+        const bucket = byItem.get(key) || {
+          itemId: line.itemId,
+          itemCode: line.itemCode,
+          itemName: line.itemName,
+          qtySold: 0,
+          grossSales: 0,
+          receiptCount: 0,
+          receiptIds: new Set<string>(),
+        };
+        bucket.qtySold = round2(bucket.qtySold + line.qty);
+        bucket.grossSales = round2(bucket.grossSales + line.lineTotal);
+        bucket.receiptIds.add(receipt.id);
+        bucket.receiptCount = bucket.receiptIds.size;
+        byItem.set(key, bucket);
+      }
+    }
+    return Array.from(byItem.values())
+      .map(({ receiptIds, ...row }) => row)
+      .sort((a, b) => b.qtySold - a.qtySold || b.grossSales - a.grossSales)
+      .slice(0, input.limit ?? 50);
+  }
+}
+
+// ───────── 8. Override and void audit report ─────────
 
 export interface GetPosOverrideAuditReportInput {
   companyId: string;
