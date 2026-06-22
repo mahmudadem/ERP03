@@ -48,6 +48,7 @@ export interface PosSettingsDTO {
   receiptNextSeq: number;
   cashRounding: 'none' | 'nearest_05' | 'nearest_1';
   allowPosDirectSales: boolean;
+  negativeStockPolicy: 'BLOCK' | 'ALLOW';
   paymentMethods: PosPaymentMethodDTO[];
 }
 
@@ -104,6 +105,7 @@ export class PosDTOMapper {
       receiptNextSeq: settings.receiptNextSeq,
       cashRounding: settings.cashRounding,
       allowPosDirectSales: settings.allowPosDirectSales,
+      negativeStockPolicy: settings.negativeStockPolicy,
       paymentMethods: settings.paymentMethods.map((m) => ({
         code: m.code,
         settlementAccountId: m.settlementAccountId,

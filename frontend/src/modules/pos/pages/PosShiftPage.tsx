@@ -167,7 +167,10 @@ const PosShiftPage: React.FC<Props> = () => {
 
   const shiftColumns: ColumnDefinition<PosShiftDTO>[] = [
     { key: 'id', label: t('pos.shift.col.id', { defaultValue: 'Shift' }), width: '180px', priority: 1, accessor: (r) => r.id.slice(-8) },
-    { key: 'registerId', label: t('pos.shift.col.register', { defaultValue: 'Register' }), width: '120px', priority: 1, accessor: (r) => r.registerId },
+    { key: 'registerId', label: t('pos.shift.col.register', { defaultValue: 'Register' }), width: '120px', priority: 1, accessor: (r) => {
+      const reg = registers.find(reg => reg.id === r.registerId);
+      return reg ? `${reg.code} - ${reg.name}` : r.registerId;
+    } },
     { key: 'status', label: t('pos.shift.col.status', { defaultValue: 'Status' }), width: '100px', priority: 1,
       render: (_v, r) => (
         <span className={`px-2 py-0.5 rounded text-xs ${r.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
@@ -191,7 +194,10 @@ const PosShiftPage: React.FC<Props> = () => {
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-indigo-600" />
               <h2 className="text-lg font-semibold">
-                {t('pos.shift.openTitle', { defaultValue: 'Open shift' })} — {openShift.registerId}
+                {t('pos.shift.openTitle', { defaultValue: 'Open shift' })} — {(() => {
+                  const reg = registers.find(r => r.id === openShift.registerId);
+                  return reg ? `${reg.code} - ${reg.name}` : openShift.registerId;
+                })()}
               </h2>
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">

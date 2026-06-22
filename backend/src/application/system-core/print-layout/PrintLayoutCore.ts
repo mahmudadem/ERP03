@@ -101,6 +101,14 @@ export class PrintLayoutCore implements IPrintLayoutCore {
           fieldPath: column.path,
           width: index === 0 ? 42 : 18,
         })),
+        tableOptions: {
+          headerBackgroundColor: '#E4E4E7',
+          headerTextColor: '#18181B',
+          rowHeight: documentType === 'POS_RECEIPT' ? 6 : 8,
+          overflowMode: 'continue',
+          repeatHeaderOnPageBreak: true,
+          maxPreviewRows: 12,
+        },
         style: { fontSize: 9, borderColor: '#D4D4D8', borderWidth: 1 },
       },
       { id: 'grand_total', type: 'field', fieldPath: 'totals.grandTotal', label: 'Total', x: 8, y: documentType === 'POS_RECEIPT' ? 142 : 178, width: paper.width - 16, height: 10, style: { fontSize: 13, fontWeight: 'bold', textAlign: 'right' } },
@@ -131,6 +139,18 @@ export class PrintLayoutCore implements IPrintLayoutCore {
       if (component.type === 'table' && dataSchema) {
         const tableColumns = component.tablePath ? tables.get(component.tablePath) : undefined;
         if (!tableColumns) throw new Error(`Unknown print table: ${component.tablePath}`);
+        if (component.tableOptions) {
+          const options = component.tableOptions;
+          if (options.rowHeight !== undefined && (options.rowHeight < 3 || options.rowHeight > 40)) {
+            throw new Error(`Print table ${component.id} row height must be between 3 and 40.`);
+          }
+          if (options.maxPreviewRows !== undefined && (options.maxPreviewRows < 1 || options.maxPreviewRows > 200)) {
+            throw new Error(`Print table ${component.id} preview rows must be between 1 and 200.`);
+          }
+          if (options.overflowMode && !['continue', 'clip', 'shrink'].includes(options.overflowMode)) {
+            throw new Error(`Print table ${component.id} has an invalid overflow mode.`);
+          }
+        }
         for (const column of component.columns || []) {
           if (!tableColumns.has(column.fieldPath)) throw new Error(`Unknown print table column: ${column.fieldPath}`);
         }

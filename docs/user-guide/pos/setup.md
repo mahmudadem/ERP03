@@ -19,6 +19,7 @@ POS lives behind the `pos` module entitlement. The bundle the company was create
 - **Walk-in customer** — pick the company-level party used when no named customer is attached to a receipt.
 - **Receipt number prefix** — default `R`. The receipt number is `{prefix}-{6-digit seq}`, e.g. `R-000001`.
 - **Cash rounding** — choose `none`, nearest `0.05`, or nearest `1`. When enabled, the terminal rounds the payable cash total and posts the difference to the configured cash over/short account.
+- **Negative stock at the till** — `Block` (default) or `Allow`. **Block** stops the terminal from selling more of an item than is on hand in the register's warehouse, even if your company allows negative stock elsewhere (e.g. for back-office invoices). The cashier is stopped before tendering, with a message naming the item and warehouse. **Allow** defers to the company-level inventory setting instead. Because the till hands goods over physically, Block is the recommended default; switch to Allow only if you deliberately sell ahead of stock receipts at the counter.
 
 Click **Save**. You should see a success toast.
 
@@ -74,4 +75,5 @@ If a register has allowed cashiers configured, other cashiers are blocked before
 - **Card or bank sale is blocked with "Configure ... settlement account on POS register ..."** — open **POS → Registers**, edit the active register, and set the missing non-cash settlement account.
 - **Open shift is blocked with "Cashier is not allowed..."** — edit the register and add that user to the allowed cashiers list, or clear the list to allow all POS cashiers.
 - **Sale is blocked after enabling cash rounding** — check that Cash over and Cash short accounts are configured in POS Settings.
+- **Sale is blocked with "Stock OUT would drive ... negative"** — the item doesn't have enough on hand in the register's warehouse and **Negative stock at the till** is set to `Block`. Receive or transfer stock into that warehouse, or (if you intend to sell ahead of receipts) change the policy to `Allow` in POS Settings.
 - **Sidebar doesn't show POS entries** — your company bundle doesn't include the POS module. Contact your platform admin.

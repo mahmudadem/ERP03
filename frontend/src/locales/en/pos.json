@@ -107,6 +107,12 @@
       "nearest_05": "Nearest 0.05",
       "nearest_1": "Nearest 1"
     },
+    "negativeStockPolicy": "Negative stock at the till",
+    "negativeStockPolicyHelp": "Block keeps the till from overselling even when the company allows negative stock for back-office sales. Allow defers to the company inventory setting.",
+    "negativeStock": {
+      "block": "Block — never sell below zero stock",
+      "allow": "Allow — defer to company inventory setting"
+    },
     "paymentMethods": {
       "title": "Payment methods"
     },

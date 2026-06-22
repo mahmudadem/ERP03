@@ -1,4 +1,5 @@
 import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
+import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
 import { CommercialCore, __setPromotionsEnabledForTest } from '../../../application/system-core/commercial/CommercialCore';
 import { TaxEngine } from '../../../application/system-core/tax/TaxEngine';
 import { Item } from '../../../domain/inventory/entities/Item';
@@ -41,7 +42,7 @@ const makeParty = () =>
     updatedAt: new Date(),
   });
 
-const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitCostBase?: number; item?: Item } = {}) => {
+const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitCostBase?: number; item?: Item; onHand?: number } = {}) => {
   const itemRepo = { getItem: jest.fn().mockResolvedValue(options.item || makeItem()) };
   const itemCategoryRepo = { getCompanyCategories: jest.fn().mockResolvedValue([]) };
   const inventorySettingsRepo = { getSettings: jest.fn().mockResolvedValue({ defaultCOGSAccountId: 'cogs-default', defaultInventoryAssetAccountId: 'inv-default' }) };
@@ -54,6 +55,9 @@ const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitC
       unitCostBase: options.unitCostBase ?? 4,
       totalCostBase: (options.unitCostBase ?? 4) * 2,
     }),
+    preFetchStockLevel: jest.fn().mockResolvedValue(
+      options.onHand === undefined ? null : { qtyOnHand: options.onHand }
+    ),
   };
   const accountingBridge = { recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: { id: 'v_1' } }) };
   const useCase = new PostPosSaleUseCase(
@@ -138,6 +142,69 @@ describe('PostPosSaleUseCase', () => {
     expect(inventoryCore.processOUT).not.toHaveBeenCalled();
     expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
     expect(result.grandTotal).toBe(20);
+  });
+
+  describe('POS negative-stock policy (independent of company allowNegativeStock)', () => {
+    const sale = (useCase: PostPosSaleUseCase, extra: Record<string, any> = {}) =>
+      useCase.execute({
+        companyId: 'cmp_test',
+        customerId: 'walk-in-cust',
+        documentNumber: 'R-000001',
+        date: '2026-06-21',
+        lines: [{ itemId: 'item_1', qty: 5, unitPrice: 10, warehouseId: 'wh1' }],
+        payments: [{ method: 'CASH', amount: 50 }],
+        paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+        createdBy: 'cashier_1',
+        ...extra,
+      });
+
+    it('BLOCK refuses a sale that would drive on-hand negative, before any stock/ledger write', async () => {
+      const { useCase, inventoryCore, accountingBridge } = setup({ onHand: 3 });
+
+      await expect(sale(useCase, { negativeStockPolicy: 'BLOCK' })).rejects.toBeInstanceOf(NegativeStockError);
+
+      expect(inventoryCore.preFetchStockLevel).toHaveBeenCalledWith('cmp_test', 'item_1', 'wh1');
+      expect(inventoryCore.processOUT).not.toHaveBeenCalled();
+      expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+    });
+
+    it('BLOCK refuses even on a dry-run preview so the terminal blocks before tendering', async () => {
+      const { useCase, inventoryCore } = setup({ onHand: 0 });
+
+      await expect(
+        sale(useCase, { negativeStockPolicy: 'BLOCK', payments: [], paymentMethods: [], dryRun: true })
+      ).rejects.toBeInstanceOf(NegativeStockError);
+
+      expect(inventoryCore.processOUT).not.toHaveBeenCalled();
+    });
+
+    it('BLOCK allows the sale when on-hand fully covers the requested quantity', async () => {
+      const { useCase, inventoryCore } = setup({ onHand: 5 });
+
+      const result = await sale(useCase, { negativeStockPolicy: 'BLOCK' });
+
+      expect(result.grandTotal).toBe(50);
+      expect(inventoryCore.processOUT).toHaveBeenCalledTimes(1);
+    });
+
+    it('ALLOW does not add a POS block (defers to the company inventory flag in processOUT)', async () => {
+      const { useCase, inventoryCore } = setup({ onHand: 0 });
+
+      const result = await sale(useCase, { negativeStockPolicy: 'ALLOW' });
+
+      expect(result.grandTotal).toBe(50);
+      expect(inventoryCore.preFetchStockLevel).not.toHaveBeenCalled();
+      expect(inventoryCore.processOUT).toHaveBeenCalledTimes(1);
+    });
+
+    it('an absent policy is treated as ALLOW so the use-case contract stays backward compatible', async () => {
+      const { useCase, inventoryCore } = setup({ onHand: 0 });
+
+      await sale(useCase);
+
+      expect(inventoryCore.preFetchStockLevel).not.toHaveBeenCalled();
+      expect(inventoryCore.processOUT).toHaveBeenCalledTimes(1);
+    });
   });
 
   it('blocks inactive POS items before stock or ledger writes', async () => {

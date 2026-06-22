@@ -8,11 +8,28 @@ import client from './client';
 
 export type PosPaymentMethodCode = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
 export type PosCashRounding = 'none' | 'nearest_05' | 'nearest_1';
+export type PosNegativeStockPolicy = 'BLOCK' | 'ALLOW';
 export type PosRegisterStatus = 'ACTIVE' | 'INACTIVE';
 export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
 export type PosHeldCartStatus = 'HELD' | 'RECALLED' | 'CANCELLED';
 export type PosManagerOverrideAction = 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE' | 'RETURN' | 'REPRINT';
 export type PosShiftPaymentTotals = Record<PosPaymentMethodCode, number>;
+
+export interface PosCashierRolePolicyDTO {
+  roleId: string;
+  requireApprovalForDirectSales?: boolean;
+  managerOverrideActions?: PosManagerOverrideAction[];
+  maxLineDiscountPercent?: number;
+  maxLineDiscountAmount?: number;
+  allowPriceOverride?: boolean;
+  allowTaxOverride?: boolean;
+}
+
+export interface PosPolicyDTO {
+  companyId: string;
+  allowPosDirectSales: boolean;
+  cashierRolePolicies: PosCashierRolePolicyDTO[];
+}
 
 export interface PosPaymentMethodDTO {
   code: PosPaymentMethodCode;
@@ -33,6 +50,7 @@ export interface PosSettingsDTO {
   receiptNextSeq: number;
   cashRounding: PosCashRounding;
   allowPosDirectSales: boolean;
+  negativeStockPolicy: PosNegativeStockPolicy;
   paymentMethods: PosPaymentMethodDTO[];
 }
 
@@ -147,6 +165,12 @@ export const posApi = {
   updateSettings: async (payload: Partial<PosSettingsDTO>): Promise<PosSettingsDTO> =>
     ok(client.put('/tenant/pos/settings', payload)),
 
+  getPolicy: async (): Promise<PosPolicyDTO> =>
+    ok(client.get('/tenant/pos/policy')),
+
+  updatePolicy: async (payload: Partial<PosPolicyDTO>): Promise<PosPolicyDTO> =>
+    ok(client.put('/tenant/pos/policy', payload)),
+
   listRegisters: async (): Promise<PosRegisterDTO[]> =>
     ok(client.get('/tenant/pos/registers')),
 
@@ -189,7 +213,7 @@ export const posApi = {
     ok(client.get('/tenant/pos/products/search', { params: { q, limit } })),
 
   /** Calculation-only quote (tax-inclusive) for the cashier screen. Does not persist. */
-  previewSale: async (lines: Array<{ itemId: string; qty: number; unitPrice: number }>):
+  previewSale: async (lines: Array<{ itemId: string; qty: number; unitPrice: number; discountType?: 'PERCENT' | 'AMOUNT'; discountValue?: number; taxCodeId?: string; manualTaxAmount?: number }>):
     Promise<{ subtotal: number; taxTotal: number; grandTotal: number; lines: any[] }> =>
     ok(client.post('/tenant/pos/sales/preview', { lines })),
 
@@ -207,7 +231,9 @@ export const posApi = {
       unitPrice: number;
       discountType?: 'PERCENT' | 'AMOUNT';
       discountValue?: number;
+      lineDiscount?: number;
       taxCodeId?: string;
+      manualTaxAmount?: number;
       priceOverride?: boolean;
       taxOverride?: boolean;
       status?: 'ACTIVE' | 'VOIDED';

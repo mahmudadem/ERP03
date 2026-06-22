@@ -14,7 +14,9 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { posApi, PosHeldCartDTO, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
+import { authApi } from '../../../api/auth';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { Modal } from '../../../components/ui/Modal';
 import { ManagerOverrideCapture, ManagerOverrideValue } from '../components/ManagerOverrideCapture';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { errorHandler } from '../../../services/errorHandler';
@@ -36,6 +38,8 @@ import {
   Archive,
   RotateCcw,
   XCircle,
+  Tag,
+  Pencil,
 } from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
@@ -48,9 +52,17 @@ interface CartLine {
   uom?: string;
   qty: number;
   unitPrice: number;
+  originalUnitPrice?: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  discountPercent?: number;
   lineDiscount: number;
   lineTotal: number;
+  taxCodeId?: string;
+  manualTaxAmount?: number;
   status: 'ACTIVE' | 'VOIDED';
+  priceOverride?: boolean;
+  taxOverride?: boolean;
   voidedBy?: string;
   voidedAt?: string;
   voidReason?: string;
@@ -68,6 +80,12 @@ interface Payment {
 interface Props { isWindow?: boolean }
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
+const discountAmountFromPercent = (qty: number, unitPrice: number, percent?: number): number =>
+  round2(Math.max(0, qty * unitPrice) * Math.max(0, Number(percent) || 0) / 100);
+const discountPercentFromAmount = (qty: number, unitPrice: number, amount?: number): number => {
+  const gross = Math.max(0, qty * unitPrice);
+  return gross > 0 ? round2((Math.max(0, Number(amount) || 0) / gross) * 100) : 0;
+};
 const money = (n: number): string =>
   (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const makeLineId = (): string =>
@@ -114,6 +132,8 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [saleManagerOverride, setSaleManagerOverride] = useState<ManagerOverrideValue | null>(null);
   const [showSaleManagerOverride, setShowSaleManagerOverride] = useState(false);
   const [heldCarts, setHeldCarts] = useState<PosHeldCartDTO[]>([]);
+  const [editingLineId, setEditingLineId] = useState<string | null>(null);
+  const [cashierRoleId, setCashierRoleId] = useState<string | undefined>(undefined);
   const [heldLoading, setHeldLoading] = useState(false);
   const [holdingCart, setHoldingCart] = useState(false);
   const [showHeldCarts, setShowHeldCarts] = useState(false);
@@ -129,9 +149,13 @@ const PosTerminalPage: React.FC<Props> = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const result = await posApi.getBootstrap({ cashierUserId: userId });
+        const [result, permissions] = await Promise.all([
+          posApi.getBootstrap({ cashierUserId: userId }),
+          authApi.getMyPermissions().catch(() => null),
+        ]);
         const data = unwrap<any>(result);
         setBootstrap(data);
+        setCashierRoleId(permissions?.roleId || undefined);
         if (data?.settings?.walkInCustomerId) setCustomerId(data.settings.walkInCustomerId);
       } catch (err) {
         console.error('Bootstrap failed', err);
@@ -175,12 +199,20 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   // Tax-inclusive total comes from the backend quote (same calc the SI uses). While the
   // quote loads we fall back to a tax-exclusive estimate; the backend stays authoritative.
-  const [quote, setQuote] = useState<{ subtotal: number; taxTotal: number; grandTotal: number } | null>(null);
+  const [quote, setQuote] = useState<{ subtotal: number; taxTotal: number; grandTotal: number; lines: Array<{ itemId: string; taxAmount: number; taxCodeId?: string; taxCodeName?: string; taxRate?: number }> } | null>(null);
   useEffect(() => {
     if (activeCart.length === 0) { setQuote(null); return; }
     const handle = setTimeout(async () => {
       try {
-        const q = await posApi.previewSale(activeCart.map((l) => ({ itemId: l.itemId, qty: l.qty, unitPrice: l.unitPrice })));
+        const q = await posApi.previewSale(activeCart.map((l) => ({
+          itemId: l.itemId,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
+          taxCodeId: l.taxCodeId,
+          manualTaxAmount: l.manualTaxAmount,
+        })));
         setQuote(q);
       } catch (err) {
         console.error('Preview failed', err);
@@ -207,6 +239,15 @@ const PosTerminalPage: React.FC<Props> = () => {
   const change = Math.max(0, tenderedCash - grandTotal);
   const paid = tenderedTotal - change;
   const balanceDue = round2(Math.max(0, grandTotal - paid));
+  const editingLine = useMemo(() => cart.find((line) => line.lineId === editingLineId && line.status !== 'VOIDED') || null, [cart, editingLineId]);
+  const editingLineActiveIndex = editingLine ? activeCart.findIndex((line) => line.lineId === editingLine.lineId) : -1;
+  const editingQuoteLine = editingLineActiveIndex >= 0 ? quote?.lines?.[editingLineActiveIndex] : undefined;
+  const editingTaxName = editingQuoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
+  const editingTaxAmount = editingLine
+    ? editingLine.taxOverride
+      ? (editingLine.manualTaxAmount ?? editingQuoteLine?.taxAmount ?? 0)
+      : (editingQuoteLine?.taxAmount ?? 0)
+    : 0;
 
   const enabledMethods = useMemo<PaymentMethod[]>(() => {
     const enabled = (bootstrap?.settings?.paymentMethods || [])
@@ -226,7 +267,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       if (existing) {
         return prev.map((l) =>
           l.lineId === existing.lineId
-            ? { ...l, qty: l.qty + 1, lineTotal: round2((l.qty + 1) * l.unitPrice - l.lineDiscount) }
+            ? recalculateLine({ ...l, qty: l.qty + 1 })
             : l
         );
       }
@@ -240,12 +281,35 @@ const PosTerminalPage: React.FC<Props> = () => {
           uom: item.uom || item.unitOfMeasure || '',
           qty: 1,
           unitPrice,
+          originalUnitPrice: unitPrice,
+          discountPercent: 0,
           lineDiscount: 0,
           lineTotal: round2(unitPrice),
+          taxCodeId: item.defaultSalesTaxCodeId,
           status: 'ACTIVE',
         },
       ];
     });
+  };
+
+  const recalculateLine = (line: CartLine): CartLine => {
+    const gross = round2(line.qty * line.unitPrice);
+    const lineDiscount = line.discountType === 'PERCENT'
+      ? discountAmountFromPercent(line.qty, line.unitPrice, line.discountPercent ?? line.discountValue)
+      : Math.min(Math.max(0, round2(line.lineDiscount || line.discountValue || 0)), gross);
+    const discountPercent = discountPercentFromAmount(line.qty, line.unitPrice, lineDiscount);
+    return {
+      ...line,
+      lineDiscount,
+      discountPercent,
+      discountValue: lineDiscount > 0
+        ? line.discountType === 'PERCENT'
+          ? discountPercent
+          : lineDiscount
+        : undefined,
+      discountType: lineDiscount > 0 ? (line.discountType || 'AMOUNT') : undefined,
+      lineTotal: round2(gross - lineDiscount),
+    };
   };
 
   const onUpdateQty = (lineId: string, qty: number) => {
@@ -253,7 +317,57 @@ const PosTerminalPage: React.FC<Props> = () => {
     setCart((prev) =>
       prev.map((l) =>
         l.lineId === lineId && l.status !== 'VOIDED'
-          ? { ...l, qty, lineTotal: round2(qty * l.unitPrice - l.lineDiscount) }
+          ? recalculateLine({ ...l, qty })
+          : l
+      )
+    );
+  };
+
+  const onUpdateUnitPrice = (lineId: string, unitPrice: number) => {
+    const nextPrice = Math.max(0.01, round2(unitPrice || 0));
+    setCart((prev) =>
+      prev.map((l) => {
+        if (l.lineId !== lineId || l.status === 'VOIDED') return l;
+        return recalculateLine({
+          ...l,
+          unitPrice: nextPrice,
+          priceOverride: Math.abs(nextPrice - (l.originalUnitPrice ?? nextPrice)) > 0.005,
+        });
+      })
+    );
+  };
+
+  const onUpdateLineDiscount = (lineId: string, discountAmount: number) => {
+    setCart((prev) =>
+      prev.map((l) => {
+        if (l.lineId !== lineId || l.status === 'VOIDED') return l;
+        const maxDiscount = round2(l.qty * l.unitPrice);
+        const lineDiscount = Math.min(Math.max(0, round2(discountAmount || 0)), maxDiscount);
+        return recalculateLine({
+          ...l,
+          discountType: lineDiscount > 0 ? 'AMOUNT' : undefined,
+          lineDiscount,
+          discountValue: lineDiscount,
+        });
+      })
+    );
+  };
+
+  const onUpdateDiscountPercent = (lineId: string, percent: number) => {
+    setCart((prev) =>
+      prev.map((l) =>
+        l.lineId === lineId && l.status !== 'VOIDED'
+          ? recalculateLine({ ...l, discountType: percent > 0 ? 'PERCENT' : undefined, discountPercent: Math.max(0, round2(percent || 0)), discountValue: Math.max(0, round2(percent || 0)) })
+          : l
+      )
+    );
+  };
+
+  const onUpdateManualTax = (lineId: string, taxAmount: number) => {
+    setCart((prev) =>
+      prev.map((l) =>
+        l.lineId === lineId && l.status !== 'VOIDED'
+          ? { ...l, manualTaxAmount: Math.max(0, round2(taxAmount || 0)), taxOverride: true }
           : l
       )
     );
@@ -356,7 +470,13 @@ const PosTerminalPage: React.FC<Props> = () => {
           qty: l.qty,
           unitPrice: l.unitPrice,
           lineDiscount: l.lineDiscount,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
+          taxCodeId: l.taxCodeId,
+          manualTaxAmount: l.manualTaxAmount,
           lineTotal: l.lineTotal,
+          priceOverride: l.priceOverride,
+          taxOverride: l.taxOverride,
           managerOverrideId: l.managerOverrideId,
         })),
         subtotal,
@@ -396,6 +516,12 @@ const PosTerminalPage: React.FC<Props> = () => {
         lineTotal: Number(line.lineTotal) || round2((Number(line.qty) || 0) * (Number(line.unitPrice) || 0) - (Number(line.lineDiscount) || 0)),
         status: 'ACTIVE',
         managerOverrideId: line.managerOverrideId,
+        priceOverride: line.priceOverride,
+        taxOverride: line.taxOverride,
+        taxCodeId: line.taxCodeId,
+        manualTaxAmount: Number((line as any).manualTaxAmount) || undefined,
+        discountType: line.discountType === 'PERCENT' ? 'AMOUNT' : line.discountType,
+        discountValue: Number(line.discountValue) || Number(line.lineDiscount) || undefined,
       })));
       setCustomerId(recalled.customerId || settings?.walkInCustomerId);
       setPayments([]);
@@ -478,6 +604,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         registerId: register.id,
         shiftId: shift.id,
         customerId,
+        cashierRoleId,
         lines: cart.map((l) => ({
           itemId: l.itemId,
           itemCode: l.itemCode,
@@ -485,6 +612,13 @@ const PosTerminalPage: React.FC<Props> = () => {
           uom: l.uom,
           qty: l.qty,
           unitPrice: l.unitPrice,
+          discountType: l.discountType,
+          discountValue: l.discountValue,
+          lineDiscount: l.lineDiscount,
+          taxCodeId: l.taxCodeId,
+          manualTaxAmount: l.manualTaxAmount,
+          priceOverride: l.priceOverride,
+          taxOverride: l.taxOverride,
           status: l.status,
           voidedBy: l.voidedBy,
           voidedAt: l.voidedAt,
@@ -754,63 +888,125 @@ const PosTerminalPage: React.FC<Props> = () => {
               <ul className="divide-y divide-slate-100 dark:divide-[var(--color-border)]">
                 {cart.map((l) => {
                   const isVoided = l.status === 'VOIDED';
+                  const activeIndex = activeCart.findIndex((line) => line.lineId === l.lineId);
+                  const quoteLine = activeIndex >= 0 ? quote?.lines?.[activeIndex] : undefined;
+                  const taxName = quoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
                   return (
-                  <li key={l.lineId} className={`flex items-center gap-3 px-4 py-2.5 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : ''}`}>
-                    <div className="min-w-0 flex-1">
-                      <div className={`truncate text-sm font-medium ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>{l.itemName}</div>
-                      <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">
-                        {l.itemCode} · {money(l.unitPrice)}
-                        {isVoided ? ` · ${t('pos.terminal.voided', { defaultValue: 'Voided' })}` : ''}
+                  <li key={l.lineId} className={`flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 px-4 py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-50/50 dark:hover:bg-[var(--color-bg-tertiary)]/50 transition-colors'}`}>
+                    {/* Top/Left: Item Info */}
+                    <div className="flex min-w-0 flex-1 flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`truncate text-sm font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
+                          {l.itemName}
+                        </span>
+                        {isVoided && (
+                          <span className="rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-[var(--color-border)] dark:bg-transparent">
+                            {t('pos.terminal.voided', { defaultValue: 'Voided' })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap items-center gap-3 mt-1.5">
+                        <span className="font-mono text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">{l.itemCode}</span>
+                        
+                        <div className="flex items-center gap-1.5 rounded bg-slate-50 px-1.5 py-1 dark:bg-[var(--color-bg-primary)]/50">
+                          <label className="text-[10px] font-bold tracking-wider text-slate-400">PRICE</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={l.unitPrice}
+                            onChange={(e) => onUpdateUnitPrice(l.lineId, Number(e.target.value) || 0)}
+                            disabled={isVoided}
+                            className="h-6 w-16 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1.5 rounded bg-slate-50 px-1.5 py-1 dark:bg-[var(--color-bg-primary)]/50">
+                          <label className="text-[10px] font-bold tracking-wider text-slate-400">DIS</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={l.lineDiscount}
+                            onChange={(e) => onUpdateLineDiscount(l.lineId, Number(e.target.value) || 0)}
+                            disabled={isVoided}
+                            className="h-6 w-16 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                        </div>
+
+                        <div className="flex items-center gap-1.5 rounded bg-slate-50 px-1.5 py-1 dark:bg-[var(--color-bg-primary)]/50" title={`${taxName}${quoteLine?.taxRate !== undefined ? ` ${(quoteLine.taxRate * 100).toFixed(2)}%` : ''}`}>
+                          <label className="text-[10px] font-bold tracking-wider text-slate-400">TAX</label>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.01"
+                            value={l.taxOverride ? (l.manualTaxAmount || 0) : (quoteLine?.taxAmount || 0)}
+                            onChange={(e) => onUpdateManualTax(l.lineId, Number(e.target.value) || 0)}
+                            disabled={isVoided}
+                            className={`h-6 w-16 rounded border bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none ${l.taxOverride ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-900/20' : 'border-slate-200 dark:border-[var(--color-border)]'}`}
+                          />
+                        </div>
                       </div>
                     </div>
 
-                    {/* Qty stepper */}
-                    {isVoided ? (
-                      <div className="w-28 flex-none rounded-lg border border-slate-200 px-2 py-1 text-center text-xs font-semibold text-slate-500 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]">
-                        {t('pos.terminal.voided', { defaultValue: 'Voided' })}
-                      </div>
-                    ) : (
-                    <div className="flex flex-none items-center rounded-lg border border-slate-200 dark:border-[var(--color-border)]">
-                      <button
-                        onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
-                        aria-label={t('pos.terminal.decrease', { defaultValue: 'Decrease quantity' })}
-                        className="flex h-8 w-8 items-center justify-center rounded-l-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
-                      >
-                        <Minus className="h-3.5 w-3.5" />
-                      </button>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.001"
-                        value={l.qty}
-                        onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
-                        aria-label={t('pos.terminal.qty', { defaultValue: 'Qty' })}
-                        className="h-8 w-12 border-x border-slate-200 bg-transparent text-center text-sm text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
-                      />
-                      <button
-                        onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
-                        aria-label={t('pos.terminal.increase', { defaultValue: 'Increase quantity' })}
-                        className="flex h-8 w-8 items-center justify-center rounded-r-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                    )}
+                    {/* Bottom/Right: Controls & Price */}
+                    <div className="flex w-full shrink-0 items-center justify-between sm:w-auto sm:justify-end gap-3 mt-1 sm:mt-0">
+                      {/* Quantity Controls */}
+                      {!isVoided && (
+                        <div className="flex h-9 sm:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
+                          <button
+                            onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
+                            aria-label={t('pos.terminal.decrease', { defaultValue: 'Decrease quantity' })}
+                            className="flex h-full w-10 sm:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                          >
+                            <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                          </button>
+                          <input
+                            type="number"
+                            min="0"
+                            step="0.001"
+                            value={l.qty}
+                            onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
+                            aria-label={t('pos.terminal.qty', { defaultValue: 'Qty' })}
+                            className="h-full w-12 sm:w-10 border-x border-slate-200 bg-transparent text-center text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                          />
+                          <button
+                            onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
+                            aria-label={t('pos.terminal.increase', { defaultValue: 'Increase quantity' })}
+                            className="flex h-full w-10 sm:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
+                          >
+                            <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
+                          </button>
+                        </div>
+                      )}
 
-                    <div className={`w-20 flex-none text-right font-mono text-sm font-semibold ${isVoided ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
-                      {money(l.lineTotal)}
+                      <div className="flex items-center gap-3 sm:gap-4">
+                        {/* Total Price */}
+                        <div className={`flex sm:w-20 flex-col items-end justify-center font-mono text-[15px] sm:text-sm font-semibold ${isVoided ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
+                          {money(l.lineTotal)}
+                        </div>
+
+                        {/* Actions */}
+                        {!isVoided && (
+                          <div className="flex items-center gap-1.5 sm:gap-1">
+                            <button
+                              onClick={() => setEditingLineId(l.lineId)}
+                              aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
+                              className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                            <button
+                              onClick={() => beginVoidLine(l.lineId)}
+                              aria-label={t('pos.terminal.remove', { defaultValue: 'Remove line' })}
+                              className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
-                    {isVoided ? (
-                      <div className="h-8 w-8 flex-none" />
-                    ) : (
-                      <button
-                        onClick={() => beginVoidLine(l.lineId)}
-                        aria-label={t('pos.terminal.remove', { defaultValue: 'Remove line' })}
-                        className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 cursor-pointer"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </button>
-                    )}
                   </li>
                 );
                 })}
@@ -1109,6 +1305,102 @@ const PosTerminalPage: React.FC<Props> = () => {
         onCancel={() => setShowSaleManagerOverride(false)}
         onApproved={applySaleManagerOverride}
       />
+
+      <Modal
+        isOpen={Boolean(editingLine)}
+        onClose={() => setEditingLineId(null)}
+        title={t('pos.terminal.editLineTitle', { defaultValue: 'Edit sale line' })}
+      >
+        {editingLine && (
+          <div className="space-y-4">
+            <div className="min-w-0">
+              <div className="truncate text-base font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+                {editingLine.itemName}
+              </div>
+              <div className="mt-1 flex min-w-0 items-center gap-2 overflow-hidden text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+                <span className="flex-none font-mono">{editingLine.itemCode}</span>
+                <span className="h-4 w-px flex-none bg-slate-200 dark:bg-[var(--color-border)]" />
+                <span className="min-w-0 truncate">
+                  {t('pos.terminal.taxCodeLabel', { defaultValue: 'Tax' })}: {editingTaxName}
+                  {editingQuoteLine?.taxRate !== undefined ? ` ${(editingQuoteLine.taxRate * 100).toFixed(2)}%` : ''}
+                </span>
+              </div>
+            </div>
+
+            <div className="border-t border-slate-200 dark:border-[var(--color-border)]" />
+
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.unitPrice', { defaultValue: 'Unit price' })}
+                </span>
+                <input
+                  type="number"
+                  min="0.01"
+                  step="0.01"
+                  value={editingLine.unitPrice}
+                  onChange={(e) => onUpdateUnitPrice(editingLine.lineId, Number(e.target.value) || 0)}
+                  className="h-12 w-full rounded-lg border border-slate-300 px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.discountPercent', { defaultValue: 'Discount percent' })}
+                </span>
+                <div className="flex h-12 rounded-lg border border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
+                  <input
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    value={editingLine.discountPercent ?? 0}
+                    onChange={(e) => onUpdateDiscountPercent(editingLine.lineId, Number(e.target.value) || 0)}
+                    className="min-w-0 flex-1 bg-transparent px-3 text-right font-mono text-base text-slate-900 outline-none dark:text-[var(--color-text-primary)]"
+                  />
+                  <span className="flex w-10 items-center justify-center border-l border-slate-200 text-sm font-semibold text-slate-500 dark:border-[var(--color-border)]">%</span>
+                </div>
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.lineDiscount', { defaultValue: 'Line discount' })}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingLine.lineDiscount}
+                  onChange={(e) => onUpdateLineDiscount(editingLine.lineId, Number(e.target.value) || 0)}
+                  className="h-12 w-full rounded-lg border border-slate-300 px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.taxAmount', { defaultValue: 'Tax amount' })}
+                </span>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={editingTaxAmount}
+                  onChange={(e) => onUpdateManualTax(editingLine.lineId, Number(e.target.value) || 0)}
+                  className="h-12 w-full rounded-lg border border-slate-300 px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                />
+              </label>
+            </div>
+
+            <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-[var(--color-bg-tertiary)]">
+              <span className="text-slate-500 dark:text-[var(--color-text-secondary)]">
+                {t('pos.terminal.lineTotal', { defaultValue: 'Line total' })}
+              </span>
+              <span className="font-mono text-base font-bold text-slate-900 dark:text-[var(--color-text-primary)]">
+                {money(editingLine.lineTotal)}
+              </span>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       <ConfirmDialog
         isOpen={showHeldCarts}

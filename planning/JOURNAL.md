@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (Task 258 — POS-specific negative-stock policy)
+
+- **Context:** Closed "the remaining backend safety gap" from the POS commercial-rules audit (§C rows 70–71, §J answer 6). POS was inheriting the company-wide `InventorySettings.allowNegativeStock` flag, so a company allowing negative stock for back-office invoicing would let the physical till oversell.
+- **What changed:** Added `PosSettings.negativeStockPolicy` (`BLOCK` default | `ALLOW`). `PostPosSaleUseCase.assertNegativeStockAllowed` pre-fetches the selling-warehouse level via `IInventoryCore.preFetchStockLevel`, aggregates requested qty per (item, warehouse), and throws `NegativeStockError` before any stock/ledger write **and** on the dry-run preview — so the terminal blocks before tendering. `ALLOW`/absent defers to the company flag. POS can only be the same as or stricter than the company flag. Threaded through `CompletePosSaleUseCase` (preview + real), the update use-case, validator, DTO, settings UI, and en/ar/tr i18n. Reused the inventory-domain `NegativeStockError` for a consistent named message.
+- **Deferred:** `ALLOW_WITH_APPROVAL` intentionally left to Task 257 (Approval Engine owns *who* approves) to avoid colliding with that in-flight override-flag path.
+- **Verification:** `PostPosSale.test.ts` 18/18 (+5 new); full POS suite 14 suites / 97 tests green; backend typecheck + build clean; POS frontend files typecheck clean (pre-existing unrelated `UserPreferencesContext.tsx` WIP errors remain in the working tree); en/ar/tr `pos.json` parse-validated.
+- **Accounting/ERP impact:** Control hardening only — no GL/tax/COGS/valuation/settlement/period-lock/approval-semantics change.
+- **Docs:** [tasks/258](./tasks/258-pos-negative-stock-policy.md), [done/258](./done/258-pos-negative-stock-policy.md), `docs/architecture/pos.md` §4a, `docs/user-guide/pos/setup.md`.
+
 ### Session: 2026-06-22 (Engines-always-on trio — Tasks 253 / 254 / 255 implemented)
 
 - **Context:** Following the engines-vs-modules clarification, the owner directed "do all the fixing." Implemented all three tasks on branch `feat/engines-always-on`, behaviour-preserving, each committed separately.
@@ -13,8 +22,9 @@
 
 ### Session: 2026-06-22 (Task 256 — Shared Print Layout Engine and Designer)
 
+- **Follow-up improvement:** Added useful bill-table tools before POS/Sales runtime wiring: header background/text color, row height, preview row count, overflow behavior (`continue`, `clip`, `shrink`), and repeat-header metadata for page breaks. Backend validation now rejects invalid table behavior options from imported JSON.
 - **What was done:** Implemented V1 of a company-level, always-on Print Layout Engine rather than a POS-only receipt template. Added `IPrintLayoutCore`, layout validation, data schemas for `POS_RECEIPT` and `SALES_INVOICE`, company template persistence under `companies/{companyId}/core/Settings/print_layouts`, `/tenant/print-layouts` API routes, and a shared Tools page at `/tools/print-layout-designer`.
-- **Designer scope:** Paper presets, visible safe area, drag/resize components, text/field/table/box/logo/QR placeholders, style controls, editable bill-table columns, save/load defaults, and JSON import/export.
+- **Designer scope:** Paper presets, visible safe area, drag/resize components, text/field/table/box/logo/QR placeholders, style controls, editable bill-table columns, long-bill behavior, save/load defaults, and JSON import/export.
 - **Control decision:** No custom scripts/formulas in V1. Layouts bind only to approved schema fields and table columns; backend rejects unknown bindings and out-of-paper components.
 - **Accounting/ERP impact:** No posting, tax, COGS, settlement, AR/AP, inventory, approval, or period-lock behavior changed. This is a shared print-template engine and UI surface only.
 - **Verification:** Focused backend print-layout tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.

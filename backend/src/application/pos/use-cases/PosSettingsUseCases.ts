@@ -3,6 +3,7 @@ import {
   PosSettings,
   PosPaymentMethodConfig,
   PosCashRounding,
+  PosNegativeStockPolicy,
 } from '../../../domain/pos/entities/PosSettings';
 import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
@@ -20,6 +21,7 @@ export interface UpdatePosSettingsInput {
   receiptNextSeq?: number;
   cashRounding?: PosCashRounding;
   allowPosDirectSales?: boolean;
+  negativeStockPolicy?: PosNegativeStockPolicy;
   paymentMethods?: PosPaymentMethodConfig[];
   actor?: { userId: string; userEmail?: string };
 }
@@ -95,6 +97,7 @@ export class UpdatePosSettingsUseCase {
       receiptNextSeq: input.receiptNextSeq !== undefined ? input.receiptNextSeq : current.receiptNextSeq,
       cashRounding: input.cashRounding !== undefined ? input.cashRounding : current.cashRounding,
       allowPosDirectSales: input.allowPosDirectSales !== undefined ? input.allowPosDirectSales : current.allowPosDirectSales,
+      negativeStockPolicy: input.negativeStockPolicy !== undefined ? input.negativeStockPolicy : current.negativeStockPolicy,
       paymentMethods: input.paymentMethods !== undefined ? input.paymentMethods : current.paymentMethods,
     });
 

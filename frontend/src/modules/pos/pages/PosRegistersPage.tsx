@@ -6,6 +6,8 @@ import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { posApi, PosRegisterDTO } from '../../../api/posApi';
 import { listUsers, CompanyUser } from '../../../api/companyAdmin';
+import { inventoryApi, InventoryWarehouseDTO } from '../../../api/inventoryApi';
+import { accountingApi, AccountDTO } from '../../../api/accountingApi';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
@@ -26,6 +28,8 @@ const PosRegistersPage: React.FC<Props> = () => {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<PosRegisterDTO> | null>(null);
   const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
+  const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
+  const [accounts, setAccounts] = useState<AccountDTO[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const { confirm: confirmDialog } = useConfirm();
@@ -33,12 +37,16 @@ const PosRegistersPage: React.FC<Props> = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const [result, usersResult] = await Promise.all([
+      const [result, usersResult, whResult, accResult] = await Promise.all([
         posApi.listRegisters(),
         listUsers().catch(() => [] as CompanyUser[]),
+        inventoryApi.listWarehouses().catch(() => []),
+        accountingApi.getAccounts().catch(() => []),
       ]);
       setList(unwrap<PosRegisterDTO[]>(result) || []);
       setCompanyUsers(usersResult || []);
+      setWarehouses(unwrap<InventoryWarehouseDTO[]>(whResult) || []);
+      setAccounts(unwrap<AccountDTO[]>(accResult) || []);
     } catch (err) {
       console.error('Failed to load registers', err);
       toast.error(t('pos.registers.loadError', { defaultValue: 'Failed to load POS registers.' }));
@@ -128,11 +136,17 @@ const PosRegistersPage: React.FC<Props> = () => {
     { key: 'code', label: t('pos.registers.col.code', { defaultValue: 'Code' }), width: '120px', priority: 1, accessor: (r) => r.code },
     { key: 'name', label: t('pos.registers.col.name', { defaultValue: 'Name' }), width: '180px', priority: 1, accessor: (r) => r.name },
     { key: 'branchId', label: t('pos.registers.col.branch', { defaultValue: 'Branch' }), width: '120px', priority: 2, accessor: (r) => r.branchId || '—' },
-    { key: 'warehouseId', label: t('pos.registers.col.warehouse', { defaultValue: 'Warehouse' }), width: '180px', priority: 2, accessor: (r) => r.warehouseId },
+    { key: 'warehouseId', label: t('pos.registers.col.warehouse', { defaultValue: 'Warehouse' }), width: '180px', priority: 2, accessor: (r) => {
+      const wh = warehouses.find(w => w.id === r.warehouseId);
+      return wh ? wh.name : r.warehouseId;
+    } },
     { key: 'defaultPriceListId', label: t('pos.registers.col.priceList', { defaultValue: 'Price list' }), width: '150px', priority: 3, accessor: (r) => r.defaultPriceListId || '—' },
     { key: 'allowedCashierUserIds', label: t('pos.registers.col.cashiers', { defaultValue: 'Cashiers' }), width: '100px', priority: 3, accessor: (r) => r.allowedCashierUserIds?.length || t('common.all', { defaultValue: 'All' }) },
     { key: 'hardwareProfileId', label: t('pos.registers.col.hardware', { defaultValue: 'Hardware' }), width: '130px', priority: 3, accessor: (r) => r.hardwareProfileId || '—' },
-    { key: 'cashDrawerAccountId', label: t('pos.registers.col.cashAccount', { defaultValue: 'Cash account' }), width: '180px', priority: 2, accessor: (r) => r.cashDrawerAccountId },
+    { key: 'cashDrawerAccountId', label: t('pos.registers.col.cashAccount', { defaultValue: 'Cash account' }), width: '180px', priority: 2, accessor: (r) => {
+      const acc = accounts.find(a => a.id === r.cashDrawerAccountId);
+      return acc ? `${acc.code} - ${acc.name}` : r.cashDrawerAccountId;
+    } },
     {
       key: 'settlementAccountIds',
       label: t('pos.registers.col.settlementAccounts', { defaultValue: 'Non-cash accounts' }),

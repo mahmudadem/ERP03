@@ -23,9 +23,17 @@ Each template stores:
 - canvas components: text, dynamic field, table, image/logo placeholder, box, line, barcode/QR placeholder
 - component bounds in paper units
 - style data: font size, bold, italic, colors, borders, and text alignment
-- bill-table column definitions
+- bill-table column definitions and table behavior
 
-The bill table is a first-class component. It binds to an approved table schema, then stores editable column labels, widths, and styles.
+The bill table is a first-class component. It binds to an approved table schema, then stores editable column labels, widths, styles, header colors, row height, overflow behavior, and whether headers repeat after page breaks.
+
+Table overflow behavior is explicit:
+
+- `continue` means rows continue to the next printed page, or the receipt length grows on roll paper.
+- `clip` means rows outside the frame are intentionally hidden.
+- `shrink` records that the renderer may compress rows to fit the fixed frame.
+
+The designer previews overflow pressure, but the runtime renderer is still responsible for applying these rules when POS/Sales printing is wired.
 
 ## Data Binding
 
@@ -49,6 +57,8 @@ Implemented in V1:
 - Drag and resize components
 - Styling controls for text, colors, borders, bold, italic, and alignment
 - Editable table columns
+- Table header background/text color
+- Table row height, preview row count, overflow mode, and repeat-header metadata
 
 Not implemented yet:
 

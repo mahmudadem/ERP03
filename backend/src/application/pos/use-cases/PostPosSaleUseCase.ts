@@ -10,8 +10,9 @@ import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCo
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IAccountingBridge, ICommercialCore, IInventoryCore, ITaxEngine, arePromotionsEnabledInProduction } from '../../system-core';
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
-import { PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
+import { PosPaymentMethodConfig, PosNegativeStockPolicy } from '../../../domain/pos/entities/PosSettings';
 import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
+import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -20,6 +21,7 @@ export interface PostPosSaleLineInput {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  manualTaxAmount?: number;
   warehouseId: string;
   approvedCostMarginOverride?: boolean;
   appliedPromotionId?: string;
@@ -47,6 +49,13 @@ export interface PostPosSaleInput {
   paymentMethods: PosPaymentMethodConfig[];
   cashRoundingAdjustmentBase?: number;
   cashRoundingAccountId?: string;
+  /**
+   * POS-specific negative-stock policy. `BLOCK` (the safe default applied by the
+   * caller) refuses any line that would drive on-hand below zero, independent of
+   * the company `allowNegativeStock` flag. `ALLOW` (or undefined) defers to the
+   * company flag enforced inside the inventory OUT.
+   */
+  negativeStockPolicy?: PosNegativeStockPolicy;
   createdBy: string;
   transaction?: unknown;
   dryRun?: boolean;
@@ -135,6 +144,7 @@ export class PostPosSaleUseCase {
       itemMap.set(item.id, item);
     }
     const saleLines = await this.applyPromotions(input, itemMap);
+    await this.assertNegativeStockAllowed(input, saleLines, itemMap);
     const postedLines: PostedPosSaleLine[] = [];
     const revenueCredits = new Map<string, number>();
     const taxCredits = new Map<string, number>();
@@ -157,6 +167,10 @@ export class PostPosSaleUseCase {
         discountValue: sourceLine.discountValue,
         currency: baseCurrency,
       });
+      const taxAmountBase = sourceLine.manualTaxAmount === undefined
+        ? taxAmounts.taxAmountBase
+        : roundMoney(Math.max(0, Number(sourceLine.manualTaxAmount) || 0), baseCurrency);
+
       const netDiscountBase = roundMoney(
         taxAmounts.grossLineTotalBase - taxAmounts.lineTotalBase - taxAmounts.taxAmountBase,
         baseCurrency,
@@ -220,11 +234,11 @@ export class PostPosSaleUseCase {
         // POS 250d keeps line-discount accounting conservative: net revenue is
         // posted, matching POS receipt totals without adding a Sales-settings dependency.
       }
-      if (taxAmounts.taxAmountBase > 0) {
+      if (taxAmountBase > 0) {
         if (!tax.salesTaxAccountId) {
           throw new Error(`Tax code ${tax.code || tax.id} has no Sales Tax Account configured.`);
         }
-        addToBucket(taxCredits, tax.salesTaxAccountId, taxAmounts.taxAmountBase, baseCurrency);
+        addToBucket(taxCredits, tax.salesTaxAccountId, taxAmountBase, baseCurrency);
       }
 
       postedLines.push({
@@ -238,12 +252,12 @@ export class PostPosSaleUseCase {
         lineDiscount: netDiscountBase,
         taxCodeId: tax.id,
         lineTotal: taxAmounts.lineTotalBase,
-        taxAmount: taxAmounts.taxAmountBase,
+        taxAmount: taxAmountBase,
         unitCostBase,
         lineCostBase,
         stockMovementId,
         revenueAccountId,
-        taxAccountId: taxAmounts.taxAmountBase > 0 ? tax.salesTaxAccountId : undefined,
+        taxAccountId: taxAmountBase > 0 ? tax.salesTaxAccountId : undefined,
         cogsAccountId,
         inventoryAccountId,
         appliedPromotionId: sourceLine.appliedPromotionId,
@@ -484,6 +498,60 @@ export class PostPosSaleUseCase {
     }
 
     return promotedLines;
+  }
+
+  /**
+   * POS-specific negative-stock guard.
+   *
+   * Runs before any stock is moved (in dry-run preview AND the real post) so the
+   * cashier is blocked at the terminal, not after tendering. When the policy is
+   * `BLOCK`, POS refuses a sale that would drive a tracked item's on-hand below
+   * zero in the selling warehouse — regardless of the company `allowNegativeStock`
+   * flag. When the policy is `ALLOW` (or absent) POS adds no extra block and the
+   * company flag still governs inside the inventory OUT.
+   *
+   * Quantities are aggregated per (item, warehouse) so multiple cart lines of the
+   * same item (e.g. a manual line + a promotion free-good) are checked together.
+   */
+  private async assertNegativeStockAllowed(
+    input: PostPosSaleInput,
+    saleLines: PostPosSaleLineInput[],
+    itemMap: Map<string, Item>
+  ): Promise<void> {
+    if (input.negativeStockPolicy !== 'BLOCK') return;
+
+    const requestedByKey = new Map<string, { itemId: string; warehouseId: string; qty: number }>();
+    for (const line of saleLines) {
+      const item = itemMap.get(line.itemId);
+      if (!item || !item.trackInventory) continue;
+      const key = `${line.itemId}::${line.warehouseId}`;
+      const existing = requestedByKey.get(key);
+      if (existing) {
+        existing.qty += line.qty;
+      } else {
+        requestedByKey.set(key, { itemId: line.itemId, warehouseId: line.warehouseId, qty: line.qty });
+      }
+    }
+
+    for (const { itemId, warehouseId, qty } of requestedByKey.values()) {
+      const level = await this.inventoryCore.preFetchStockLevel(input.companyId, itemId, warehouseId);
+      const qtyBefore = level?.qtyOnHand ?? 0;
+      const resultingQty = qtyBefore - qty;
+      // Tolerance guards against floating-point dust on fractional quantities.
+      if (resultingQty < -1e-9) {
+        const item = itemMap.get(itemId);
+        throw new NegativeStockError({
+          companyId: input.companyId,
+          itemId,
+          warehouseId,
+          qtyBefore,
+          requested: qty,
+          resultingQty,
+          itemCode: item?.code,
+          itemName: item?.name,
+        });
+      }
+    }
   }
 
   private async resolveTax(companyId: string, taxCodeId?: string): Promise<{

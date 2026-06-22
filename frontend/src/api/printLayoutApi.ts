@@ -26,6 +26,15 @@ export interface PrintLayoutStyle {
   textAlign?: 'left' | 'center' | 'right';
 }
 
+export interface PrintLayoutTableOptions {
+  headerBackgroundColor?: string;
+  headerTextColor?: string;
+  rowHeight?: number;
+  overflowMode?: 'continue' | 'clip' | 'shrink';
+  repeatHeaderOnPageBreak?: boolean;
+  maxPreviewRows?: number;
+}
+
 export interface PrintLayoutComponent {
   id: string;
   type: 'text' | 'field' | 'table' | 'image' | 'line' | 'box' | 'barcode' | 'qr';
@@ -37,6 +46,7 @@ export interface PrintLayoutComponent {
   value?: string;
   fieldPath?: string;
   tablePath?: string;
+  tableOptions?: PrintLayoutTableOptions;
   columns?: Array<{ id: string; label: string; fieldPath: string; width: number; style?: PrintLayoutStyle }>;
   style?: PrintLayoutStyle;
 }
