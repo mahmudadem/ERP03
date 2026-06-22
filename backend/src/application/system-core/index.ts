@@ -8,6 +8,8 @@ export * from './contracts/IApprovalEngine';
 export * from './contracts/IAccountingBridge';
 export * from './contracts/IAuditEngine';
 export * from './contracts/IInventoryCore';
+export * from './contracts/IPrintLayoutCore';
+export * from './print-layout/PrintLayoutCore';
 export * from './money/roundMoney';
 export * from './tax/TaxEngine';
 export * from './commercial/CommercialCore';

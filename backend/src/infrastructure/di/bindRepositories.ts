@@ -79,6 +79,7 @@ import { FirestorePromotionRuleRepository } from '../firestore/repositories/sale
 import { FirestoreRecurringInvoiceTemplateRepository } from '../firestore/repositories/sales/FirestoreRecurringInvoiceTemplateRepository';
 import { FirestoreEmployeeRepository, FirestoreAttendanceRepository } from '../firestore/repositories/hr/FirestoreHRRepositories';
 import { FirestoreFormDefinitionRepository, FirestoreVoucherTypeDefinitionRepository } from '../firestore/repositories/designer/FirestoreDesignerRepositories';
+import { FirestorePrintLayoutTemplateRepository } from '../firestore/repositories/print-layout/FirestorePrintLayoutTemplateRepository';
 import { FirestoreVoucherFormRepository } from '../firestore/repositories/designer/FirestoreVoucherFormRepository';
 import { FirestoreFormSettingsRepository } from '../firestore/repositories/designer/FirestoreFormSettingsRepository';
 import { FirestoreFieldLibraryRepository } from '../firestore/repositories/designer/FirestoreFieldLibraryRepository';
@@ -849,6 +850,9 @@ export const diContainer = {
   // follow when the Phase B super-admin authoring UI lands.
   get fieldLibraryRepository(): DesRepo.IFieldLibraryRepository {
     return new FirestoreFieldLibraryRepository(getDb());
+  },
+  get printLayoutTemplateRepository() {
+    return new FirestorePrintLayoutTemplateRepository(getDb());
   },
 
   // RBAC

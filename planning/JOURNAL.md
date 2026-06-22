@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (Task 256 — Shared Print Layout Engine and Designer)
+
+- **What was done:** Implemented V1 of a company-level, always-on Print Layout Engine rather than a POS-only receipt template. Added `IPrintLayoutCore`, layout validation, data schemas for `POS_RECEIPT` and `SALES_INVOICE`, company template persistence under `companies/{companyId}/core/Settings/print_layouts`, `/tenant/print-layouts` API routes, and a shared Tools page at `/tools/print-layout-designer`.
+- **Designer scope:** Paper presets, visible safe area, drag/resize components, text/field/table/box/logo/QR placeholders, style controls, editable bill-table columns, save/load defaults, and JSON import/export.
+- **Control decision:** No custom scripts/formulas in V1. Layouts bind only to approved schema fields and table columns; backend rejects unknown bindings and out-of-paper components.
+- **Accounting/ERP impact:** No posting, tax, COGS, settlement, AR/AP, inventory, approval, or period-lock behavior changed. This is a shared print-template engine and UI surface only.
+- **Verification:** Focused backend print-layout tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.
+- **Docs:** Added `docs/architecture/print-layout-engine.md`, `docs/user-guide/settings/print-layout-designer.md`, `planning/tasks/256-shared-print-layout-engine.md`, and `planning/done/256-shared-print-layout-engine.md`.
+- **Next:** Wire POS receipt runtime rendering as first consumer, then Sales Invoice.
+
 ### Session: 2026-06-22 (Engines-vs-Modules architecture rule + always-on tasks)
 
 - **No code changes — architecture clarification + planning.** Owner worked through the engine/module model and surfaced the core rule: **engines are always on (gated by permission, never by module-enabled); modules are windows + workflow + visibility.** Confirmed the consumer model (posting/stock/approval are engines; Accounting/Sales/POS are consumers) matches the decided architecture in `done/102-pr1` ("Accounting Engine mandatory; UI optional").
