@@ -1059,16 +1059,16 @@ const PosTerminalPage: React.FC<Props> = () => {
                           {isVoided ? (
                             <button
                               onClick={() => beginVoidLine(l.lineId)}
-                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-8 xl:w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer xl:border xl:border-slate-200 xl:bg-white xl:shadow-sm dark:xl:border-[var(--color-border)] dark:xl:bg-[var(--color-bg-primary)]"
                             >
-                              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-5 xl:w-5" />
+                              <RefreshCw className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-3.5 xl:w-3.5" />
                             </button>
                           ) : (
                             <button
                               onClick={() => beginVoidLine(l.lineId)}
-                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-10 xl:w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
+                              className="flex h-8 w-8 sm:h-9 sm:w-9 xl:h-8 xl:w-8 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer xl:border xl:border-slate-200 xl:bg-white xl:shadow-sm xl:hover:border-rose-200 dark:xl:border-[var(--color-border)] dark:xl:bg-[var(--color-bg-primary)]"
                             >
-                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-5 xl:w-5" />
+                              <Trash2 className="h-3.5 w-3.5 sm:h-4 sm:w-4 xl:h-3.5 xl:w-3.5" />
                             </button>
                           )}
                         </div>
@@ -1191,7 +1191,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         />
                       </div>
 
-                      <div className={`ml-auto flex items-center justify-end rounded-md px-2 py-1 min-w-[96px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
+                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[148px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
                         {money(l.lineTotal)}
                       </div>
                     </div>
