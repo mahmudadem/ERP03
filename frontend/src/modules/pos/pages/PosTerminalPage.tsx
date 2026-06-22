@@ -14,11 +14,14 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { posApi, PosHeldCartDTO, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
+import { sharedApi, TaxCodeDTO } from '../../../api/sharedApi';
 import { authApi } from '../../../api/auth';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { Modal } from '../../../components/ui/Modal';
 import { ManagerOverrideCapture, ManagerOverrideValue } from '../components/ManagerOverrideCapture';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
+import { UomSelector, UomSelectorHandle } from '../../../components/shared/selectors/UomSelector';
+import { TaxCodeSelector } from '../../../components/shared/selectors/TaxCodeSelector';
 import { errorHandler } from '../../../services/errorHandler';
 import { useAuth } from '../../../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -37,9 +40,12 @@ import {
   ScanLine,
   Archive,
   RotateCcw,
+  RefreshCw,
   XCircle,
   Tag,
   Pencil,
+  Maximize,
+  Minimize,
 } from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
@@ -138,12 +144,63 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [holdingCart, setHoldingCart] = useState(false);
   const [showHeldCarts, setShowHeldCarts] = useState(false);
 
+  const uomRefs = useRef<Record<string, UomSelectorHandle>>({});
+
+  const [numberEditModal, setNumberEditModal] = useState<{
+    lineId: string;
+    field: 'qty' | 'unitPrice' | 'manualTaxAmount' | 'discountPercent' | 'lineDiscount';
+    value: string;
+    title: string;
+  } | null>(null);
+
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
+  const toggleFullscreen = async () => {
+    try {
+      if (!document.fullscreenElement) {
+        if (containerRef.current?.requestFullscreen) {
+          await containerRef.current.requestFullscreen();
+        }
+      } else {
+        if (document.exitFullscreen) {
+          await document.exitFullscreen();
+        }
+      }
+    } catch (err) {
+      console.error('Failed to toggle fullscreen', err);
+    }
+  };
+
+  useEffect(() => {
+    const handleFullscreenChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+
   // Tender form (React state — no more getElementById)
   const [tenderMethod, setTenderMethod] = useState<PaymentMethod>('CASH');
   const [tenderAmount, setTenderAmount] = useState<string>('');
   const [tenderRef, setTenderRef] = useState<string>('');
 
   const searchRef = useRef<HTMLInputElement>(null);
+
+  // Sales-scoped tax codes for the line-edit tax selector (same source the Sales Invoice uses).
+  const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
+  const salesTaxCodeOptions = useMemo(
+    () =>
+      taxCodes
+        .filter((tc) => tc.scope === 'SALES' || tc.scope === 'BOTH')
+        .map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate })),
+    [taxCodes]
+  );
+  useEffect(() => {
+    sharedApi
+      .listTaxCodes({ active: true })
+      .then((list) => setTaxCodes(Array.isArray(list) ? list : []))
+      .catch(() => setTaxCodes([]));
+  }, []);
 
   useEffect(() => {
     const load = async () => {
@@ -368,6 +425,26 @@ const PosTerminalPage: React.FC<Props> = () => {
       prev.map((l) =>
         l.lineId === lineId && l.status !== 'VOIDED'
           ? { ...l, manualTaxAmount: Math.max(0, round2(taxAmount || 0)), taxOverride: true }
+          : l
+      )
+    );
+  };
+
+  const onUpdateUom = (lineId: string, uom: string) => {
+    setCart((prev) =>
+      prev.map((l) =>
+        l.lineId === lineId && l.status !== 'VOIDED'
+          ? { ...l, uom }
+          : l
+      )
+    );
+  };
+
+  const onUpdateTaxCode = (lineId: string, taxCodeId: string) => {
+    setCart((prev) =>
+      prev.map((l) =>
+        l.lineId === lineId && l.status !== 'VOIDED'
+          ? { ...l, taxCodeId }
           : l
       )
     );
@@ -683,7 +760,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   }
 
   return (
-    <div className="flex h-full flex-col bg-slate-50 dark:bg-[var(--color-bg-primary)]">
+    <div ref={containerRef} className="flex h-full flex-col bg-slate-50 dark:bg-[var(--color-bg-primary)]">
       {/* Context bar */}
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
         <div className="flex items-center gap-3">
@@ -741,6 +818,13 @@ const PosTerminalPage: React.FC<Props> = () => {
             )}
           </button>
           <button
+            onClick={toggleFullscreen}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+          >
+            {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
+          </button>
+          <button
             onClick={() => navigate('/pos/shift')}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
           >
@@ -755,7 +839,6 @@ const PosTerminalPage: React.FC<Props> = () => {
         <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-7">
           <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
             <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
               <input
                 ref={searchRef}
                 autoFocus
@@ -764,7 +847,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={onSearchKeyDown}
                 placeholder={t('pos.terminal.searchPlaceholder', { defaultValue: 'Scan barcode / search SKU or name' })}
-                className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-9 pr-9 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-4 pr-9 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
               />
               <ScanLine className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
             </div>
@@ -886,17 +969,19 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-[var(--color-border)]">
-                {cart.map((l) => {
+                {cart.map((l, index) => {
                   const isVoided = l.status === 'VOIDED';
                   const activeIndex = activeCart.findIndex((line) => line.lineId === l.lineId);
                   const quoteLine = activeIndex >= 0 ? quote?.lines?.[activeIndex] : undefined;
                   const taxName = quoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
                   return (
-                  <li key={l.lineId} className={`flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4 px-4 py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-50/50 dark:hover:bg-[var(--color-bg-tertiary)]/50 transition-colors'}`}>
-                    {/* Top/Left: Item Info */}
-                    <div className="flex min-w-0 flex-1 flex-col gap-1">
-                      <div className="flex items-center gap-2">
-                        <span className={`truncate text-sm font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
+                  <li key={l.lineId} className={`flex flex-col gap-3 px-4 py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'}`}>
+                    {/* ROW 1 */}
+                    <div className="flex items-center justify-between w-full gap-4">
+                      {/* Left Side: Name, Edit, Code, DefPrice, DefTax */}
+                      <div className="flex items-center gap-3 min-w-0 flex-1">
+                        <span className={`truncate text-[16px] font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
+                          <span className="mr-1.5 text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
                           {l.itemName}
                         </span>
                         {isVoided && (
@@ -904,107 +989,184 @@ const PosTerminalPage: React.FC<Props> = () => {
                             {t('pos.terminal.voided', { defaultValue: 'Voided' })}
                           </span>
                         )}
-                      </div>
-                      <div className="flex flex-wrap items-center gap-3 mt-1.5">
-                        <span className="font-mono text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">{l.itemCode}</span>
-                        
-                        <div className="flex items-center gap-1.5 rounded bg-slate-50 px-1.5 py-1 dark:bg-[var(--color-bg-primary)]/50">
-                          <label className="text-[10px] font-bold tracking-wider text-slate-400">PRICE</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={l.unitPrice}
-                            onChange={(e) => onUpdateUnitPrice(l.lineId, Number(e.target.value) || 0)}
-                            disabled={isVoided}
-                            className="h-6 w-16 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-1.5 rounded bg-slate-50 px-1.5 py-1 dark:bg-[var(--color-bg-primary)]/50">
-                          <label className="text-[10px] font-bold tracking-wider text-slate-400">DIS</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={l.lineDiscount}
-                            onChange={(e) => onUpdateLineDiscount(l.lineId, Number(e.target.value) || 0)}
-                            disabled={isVoided}
-                            className="h-6 w-16 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                        </div>
-
-                        <div className="flex items-center gap-1.5 rounded bg-slate-50 px-1.5 py-1 dark:bg-[var(--color-bg-primary)]/50" title={`${taxName}${quoteLine?.taxRate !== undefined ? ` ${(quoteLine.taxRate * 100).toFixed(2)}%` : ''}`}>
-                          <label className="text-[10px] font-bold tracking-wider text-slate-400">TAX</label>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.01"
-                            value={l.taxOverride ? (l.manualTaxAmount || 0) : (quoteLine?.taxAmount || 0)}
-                            onChange={(e) => onUpdateManualTax(l.lineId, Number(e.target.value) || 0)}
-                            disabled={isVoided}
-                            className={`h-6 w-16 rounded border bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none ${l.taxOverride ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-900/20' : 'border-slate-200 dark:border-[var(--color-border)]'}`}
-                          />
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Bottom/Right: Controls & Price */}
-                    <div className="flex w-full shrink-0 items-center justify-between sm:w-auto sm:justify-end gap-3 mt-1 sm:mt-0">
-                      {/* Quantity Controls */}
-                      {!isVoided && (
-                        <div className="flex h-9 sm:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
-                          <button
-                            onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
-                            aria-label={t('pos.terminal.decrease', { defaultValue: 'Decrease quantity' })}
-                            className="flex h-full w-10 sm:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
-                          >
-                            <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                          </button>
-                          <input
-                            type="number"
-                            min="0"
-                            step="0.001"
-                            value={l.qty}
-                            onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
-                            aria-label={t('pos.terminal.qty', { defaultValue: 'Qty' })}
-                            className="h-full w-12 sm:w-10 border-x border-slate-200 bg-transparent text-center text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
-                          />
-                          <button
-                            onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
-                            aria-label={t('pos.terminal.increase', { defaultValue: 'Increase quantity' })}
-                            className="flex h-full w-10 sm:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
-                          >
-                            <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
-                          </button>
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-3 sm:gap-4">
-                        {/* Total Price */}
-                        <div className={`flex sm:w-20 flex-col items-end justify-center font-mono text-[15px] sm:text-sm font-semibold ${isVoided ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
-                          {money(l.lineTotal)}
-                        </div>
-
-                        {/* Actions */}
                         {!isVoided && (
-                          <div className="flex items-center gap-1.5 sm:gap-1">
+                          <button
+                            onClick={() => setEditingLineId(l.lineId)}
+                            aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                          >
+                            <Pencil className="h-5 w-5" />
+                          </button>
+                        )}
+
+                        <div className="ml-2 flex items-center gap-2 text-slate-400 dark:text-[var(--color-text-secondary)] shrink-0">
+                          <span className="font-mono text-xs font-medium">{l.itemCode}</span>
+                          <span className="text-[10px] opacity-30">|</span>
+                          <span className="font-mono text-xs font-medium">{money(l.unitPrice)}</span>
+                          <span className="text-[10px] opacity-30">|</span>
+                          <span className="font-mono text-xs font-medium">{taxName}</span>
+                        </div>
+                      </div>
+
+                      {/* Right Side: Qty Control & Delete Icon */}
+                      <div className="flex items-center gap-3 shrink-0">
+                        {!isVoided && (
+                          <div className="flex h-9 sm:h-8 items-center rounded-md border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
                             <button
-                              onClick={() => setEditingLineId(l.lineId)}
-                              aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
-                              className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                              onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
+                              className="flex h-full w-10 sm:w-8 items-center justify-center rounded-l-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
                             >
-                              <Pencil className="h-4 w-4" />
+                              <Minus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                             </button>
+                            <input
+                              type="number"
+                              min="0"
+                              step="0.001"
+                              value={l.qty}
+                              onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
+                              onFocus={(e) => e.target.select()}
+                              className="h-full w-12 sm:w-10 border-x border-slate-200 bg-transparent text-center text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                            />
                             <button
-                              onClick={() => beginVoidLine(l.lineId)}
-                              aria-label={t('pos.terminal.remove', { defaultValue: 'Remove line' })}
-                              className="flex h-9 w-9 sm:h-8 sm:w-8 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
+                              onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
+                              className="flex h-full w-10 sm:w-8 items-center justify-center rounded-r-md text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-900 active:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] dark:hover:text-[var(--color-text-primary)] cursor-pointer"
                             >
-                              <Trash2 className="h-4 w-4" />
+                              <Plus className="h-4 w-4 sm:h-3.5 sm:w-3.5" />
                             </button>
                           </div>
                         )}
+
+                        {isVoided ? (
+                          <button
+                            onClick={() => beginVoidLine(l.lineId)}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
+                          >
+                            <RefreshCw className="h-5 w-5" />
+                          </button>
+                        ) : (
+                          <button
+                            onClick={() => beginVoidLine(l.lineId)}
+                            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 active:bg-rose-100 dark:hover:bg-rose-500/10 dark:hover:text-rose-400 cursor-pointer"
+                          >
+                            <Trash2 className="h-5 w-5" />
+                          </button>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* ROW 2: Unit, PRICE, TAX, DIS %, DIS $, Line Total */}
+                    <div className="flex items-center gap-3">
+                      <div
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
+                            uomRefs.current[l.lineId]?.openPicker();
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
+                      >
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">UNIT</label>
+                        <div className="w-16">
+                          <UomSelector
+                            ref={(el) => { if (el) uomRefs.current[l.lineId] = el; }}
+                            itemId={l.itemId}
+                            valueCode={l.uom || ''}
+                            usage="sales"
+                            hideIcon={true}
+                            noBorder={true}
+                            onChange={(uom) => onUpdateUom(l.lineId, uom?.code || '')}
+                            disabled={isVoided}
+                            className="h-6 w-full rounded border border-slate-200 bg-white px-1.5 text-center font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus-within:border-indigo-500 focus-within:ring-1 focus-within:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [&>input]:!h-full [&>input]:!min-h-0 [&>input]:!px-0 [&>input]:!text-xs [&>input]:!font-mono [&>input]:!font-semibold [&>input]:!bg-transparent [&>input]:!text-center"
+                          />
+                        </div>
+                      </div>
+
+                      <div
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
+                            setNumberEditModal({ lineId: l.lineId, field: 'unitPrice', value: String(l.unitPrice), title: 'Edit Price' });
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
+                      >
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">PRICE</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.unitPrice}
+                          onChange={(e) => onUpdateUnitPrice(l.lineId, Number(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
+                          disabled={isVoided}
+                          className="h-6 w-16 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+
+                      <div
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
+                            setNumberEditModal({ lineId: l.lineId, field: 'manualTaxAmount', value: String(l.taxOverride ? (l.manualTaxAmount || 0) : (quoteLine?.taxAmount || 0)), title: 'Edit Tax Amount' });
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
+                        title={`${taxName}${quoteLine?.taxRate !== undefined ? ` ${(quoteLine.taxRate * 100).toFixed(2)}%` : ''}`}
+                      >
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">TAX</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.taxOverride ? (l.manualTaxAmount || 0) : (quoteLine?.taxAmount || 0)}
+                          onChange={(e) => onUpdateManualTax(l.lineId, Number(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
+                          disabled={isVoided}
+                          className={`h-6 w-16 rounded border bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none ${l.taxOverride ? 'border-amber-300 bg-amber-50 dark:border-amber-500/50 dark:bg-amber-900/20' : 'border-slate-200 dark:border-[var(--color-border)]'}`}
+                        />
+                      </div>
+
+                      <div
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
+                            setNumberEditModal({ lineId: l.lineId, field: 'discountPercent', value: String(l.discountType === 'PERCENT' ? l.discountValue : 0), title: 'Edit Discount %' });
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
+                      >
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">DIS %</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.discountType === 'PERCENT' ? l.discountValue : ''}
+                          onChange={(e) => onUpdateDiscountPercent(l.lineId, Number(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
+                          disabled={isVoided}
+                          className="h-6 w-12 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+
+                      <div
+                        onClick={(e) => {
+                          if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
+                            setNumberEditModal({ lineId: l.lineId, field: 'lineDiscount', value: String(l.lineDiscount), title: 'Edit Discount $' });
+                          }
+                        }}
+                        className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
+                      >
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">DIS $</label>
+                        <input
+                          type="number"
+                          min="0"
+                          step="0.01"
+                          value={l.lineDiscount}
+                          onChange={(e) => onUpdateLineDiscount(l.lineId, Number(e.target.value) || 0)}
+                          onFocus={(e) => e.target.select()}
+                          disabled={isVoided}
+                          className="h-6 w-16 rounded border border-slate-200 bg-white px-1.5 text-right font-mono text-xs font-semibold text-slate-900 outline-none transition-colors focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 disabled:opacity-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                        />
+                      </div>
+
+                      <div className={`ml-auto flex items-center justify-end rounded-md px-2 py-1 min-w-[96px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
+                        {money(l.lineTotal)}
                       </div>
                     </div>
                   </li>
@@ -1060,6 +1222,79 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
         </aside>
       </div>
+
+      <Modal
+        isOpen={Boolean(numberEditModal)}
+        onClose={() => setNumberEditModal(null)}
+        title={numberEditModal?.title || 'Edit'}
+      >
+        {numberEditModal && (
+          <div className="space-y-4">
+            <input
+              type="text"
+              autoFocus
+              value={numberEditModal.value}
+              onChange={(e) => setNumberEditModal(prev => prev ? { ...prev, value: e.target.value } : null)}
+              onFocus={(e) => e.target.select()}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault();
+                  const val = Number(numberEditModal.value) || 0;
+                  if (numberEditModal.field === 'qty') onUpdateQty(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'unitPrice') onUpdateUnitPrice(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'manualTaxAmount') onUpdateManualTax(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'discountPercent') onUpdateDiscountPercent(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'lineDiscount') onUpdateLineDiscount(numberEditModal.lineId, val);
+                  setNumberEditModal(null);
+                }
+              }}
+              className="w-full text-right text-4xl font-mono p-4 rounded-xl border border-slate-300 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20"
+            />
+            <div className="grid grid-cols-3 gap-2">
+              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 'C', 0, '.'].map((key) => (
+                <button
+                  key={key}
+                  type="button"
+                  onClick={() => {
+                    if (key === 'C') {
+                      setNumberEditModal(prev => prev ? { ...prev, value: '' } : null);
+                    } else {
+                      setNumberEditModal(prev => prev ? { ...prev, value: prev.value + key } : null);
+                    }
+                  }}
+                  className="h-16 text-2xl font-bold bg-slate-100 hover:bg-slate-200 active:bg-slate-300 rounded-xl dark:bg-[var(--color-bg-tertiary)] dark:hover:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] transition-colors cursor-pointer"
+                >
+                  {key}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => setNumberEditModal(null)}
+                className="flex-1 rounded-xl bg-slate-100 py-4 text-lg font-bold text-slate-700 hover:bg-slate-200 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)] dark:hover:bg-[var(--color-bg-primary)] cursor-pointer"
+              >
+                {t('common.cancel', { defaultValue: 'Cancel' })}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const val = Number(numberEditModal.value) || 0;
+                  if (numberEditModal.field === 'qty') onUpdateQty(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'unitPrice') onUpdateUnitPrice(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'manualTaxAmount') onUpdateManualTax(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'discountPercent') onUpdateDiscountPercent(numberEditModal.lineId, val);
+                  else if (numberEditModal.field === 'lineDiscount') onUpdateLineDiscount(numberEditModal.lineId, val);
+                  setNumberEditModal(null);
+                }}
+                className="flex-1 rounded-xl bg-indigo-600 py-4 text-lg font-bold text-white hover:bg-indigo-700 cursor-pointer"
+              >
+                {t('common.save', { defaultValue: 'Save' })}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
 
       {/* Tender dialog */}
       <ConfirmDialog
@@ -1386,6 +1621,48 @@ const PosTerminalPage: React.FC<Props> = () => {
                   value={editingTaxAmount}
                   onChange={(e) => onUpdateManualTax(editingLine.lineId, Number(e.target.value) || 0)}
                   className="h-12 w-full rounded-lg border border-slate-300 px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.qty', { defaultValue: 'Quantity' })}
+                </span>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={editingLine.qty}
+                  onChange={(e) => onUpdateQty(editingLine.lineId, Number(e.target.value) || 0)}
+                  className="h-12 w-full rounded-lg border border-slate-300 px-3 text-right font-mono text-base text-slate-900 outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.uom', { defaultValue: 'Unit' })}
+                </span>
+                <UomSelector
+                  itemId={editingLine.itemId}
+                  valueCode={editingLine.uom || ''}
+                  usage="sales"
+                  noBorder={true}
+                  hideIcon={true}
+                  onChange={(uom) => onUpdateUom(editingLine.lineId, uom?.code || '')}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white font-mono text-base text-slate-900 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [&>input]:!h-12 [&>input]:!text-base [&>input]:!text-right [&>input]:!px-3"
+                />
+              </label>
+
+              <label className="block">
+                <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                  {t('pos.terminal.taxCode', { defaultValue: 'Tax code' })}
+                </span>
+                <TaxCodeSelector
+                  options={taxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
+                  valueId={editingLine.taxCodeId || ''}
+                  onChange={(tc) => onUpdateTaxCode(editingLine.lineId, tc?.id || '')}
+                  noBorder={true}
+                  className="h-12 w-full rounded-lg border border-slate-300 bg-white font-mono text-base text-slate-900 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)] [&>input]:!h-12 [&>input]:!text-base [&>input]:!text-right [&>input]:!px-3"
                 />
               </label>
             </div>
