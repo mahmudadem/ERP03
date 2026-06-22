@@ -1,6 +1,6 @@
 # Task 251 (FUP-5) — Route settlement/payment postings behind `IAccountingBridge`
 
-> **Status:** Not started. Carved out of FUP-3 on 2026-06-22.
+> **Status:** ✅ DONE (2026-06-22). Implemented via **Option A** — `IAccountingBridge.recordPreBuiltVoucher` added; SI/PI invoice settlement + sales/purchase `record-payment` PaymentSync paths routed through it. Full mode runs `PostingGateway.record` verbatim; minimal mode records a minimal journal (no GL voucher). Verified: parity tests in `AccountingBridge.test.ts`, full suite 1630 green, and a live emulator record-payment producing a balanced Dr Cash / Cr AR receipt voucher. Original scope below for reference.
 > **Blocking?** No. This is post-epic hardening, not a POS blocker. Document-voucher posting is already fully behind the bridge.
 > **Why separate from FUP-3:** FUP-3 was a *wiring* task (the document posters already used `SubledgerDocumentPoster`, which now routes through the bridge). Settlement uses a **different posting mechanism** and migrating it needs a design decision, not just wiring.
 

@@ -973,7 +973,9 @@ export class PurchaseController {
         diContainer.companyCurrencyRepository,
         diContainer.transactionManager,
         diContainer.accountRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        diContainer.numberingEngine,
+        PurchaseController.buildAccountingBridge()
       );
       const result = await useCase.execute(companyId, userId, id, {
         // Record-Payment is an inherently flexible payment: MULTI handles partial

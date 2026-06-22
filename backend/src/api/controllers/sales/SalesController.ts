@@ -1464,7 +1464,9 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.companyCurrencyRepository,
         diContainer.transactionManager,
         diContainer.accountRepository,
-        diContainer.partyRepository
+        diContainer.partyRepository,
+        diContainer.numberingEngine,
+        SalesController.buildAccountingBridge()
       );
       const result = await useCase.execute(companyId, userId, id, {
         // Record-Payment is an inherently flexible receipt: MULTI handles partial

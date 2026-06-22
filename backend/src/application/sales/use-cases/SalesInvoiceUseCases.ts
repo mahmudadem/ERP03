@@ -2002,18 +2002,37 @@ export class PostSalesInvoiceUseCase {
 
       // Single sanctioned ledger door. This system-generated settlement receipt is policy-exempt
       // (Stage 4b will fold settlement postings into the policy set).
-      const gateway = new PostingGateway(this.ledgerRepo!, this.voucherValidationService);
-      await gateway.record(
-        postedVoucher,
-        {
-          userId: si.createdBy,
-          enforcePolicies: false,
-          exemptionReason: 'system-generated settlement receipt for Sales Invoice (Stage 4b)',
-        },
-        transaction
-      );
-      await this.voucherRepo!.save(postedVoucher, transaction);
-      receiptVoucherIds.push(voucherId);
+      const postFull = async () => {
+        const gateway = new PostingGateway(this.ledgerRepo!, this.voucherValidationService);
+        await gateway.record(
+          postedVoucher,
+          {
+            userId: si.createdBy,
+            enforcePolicies: false,
+            exemptionReason: 'system-generated settlement receipt for Sales Invoice (Stage 4b)',
+          },
+          transaction
+        );
+        await this.voucherRepo!.save(postedVoucher, transaction);
+      };
+
+      // FUP-5: route the receipt through the accounting bridge (full-vs-minimal). Full mode posts the
+      // identical voucher via the gateway; minimal mode (Accounting App disabled) records a minimal
+      // journal and posts no GL voucher. Without a bridge, post directly (legacy behavior preserved).
+      let settlementPosted = true;
+      if (this.accountingBridge) {
+        const result = await this.accountingBridge.recordPreBuiltVoucher({
+          companyId,
+          kind: 'SALES_RECEIPT',
+          voucher: postedVoucher,
+          postFull,
+          transaction,
+        });
+        settlementPosted = result.mode === 'full';
+      } else {
+        await postFull();
+      }
+      if (settlementPosted) receiptVoucherIds.push(voucherId);
 
       const paymentId = `pay_${randomUUID()}`;
       const payment = new PaymentHistory({
@@ -2030,7 +2049,7 @@ export class PostSalesInvoiceUseCase {
         paymentMethod: settlementMethod,
         reference: settlement.reference || undefined,
         notes: settlement.notes || undefined,
-        voucherId,
+        voucherId: settlementPosted ? voucherId : null,
         createdBy: si.createdBy,
         createdAt: now,
       });

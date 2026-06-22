@@ -205,12 +205,12 @@ describe('SubledgerDocumentPoster.post — FUP-3 bridge routing', () => {
 
     // Now route the same plan through a bridge in FULL mode.
     const bridgeCalls: any[] = [];
-    const bridge: IAccountingBridge = {
-      async recordFinancialEvent(ev) {
+    const bridge = {
+      async recordFinancialEvent(ev: any) {
         bridgeCalls.push(ev);
         return { mode: 'full', voucher: { id: 'bridged-v' } } as any;
       },
-    };
+    } as unknown as IAccountingBridge;
     const result = await new SubledgerDocumentPoster({} as ISubledgerPostingService, bridge).post(plan, transaction);
 
     expect(result).toEqual({ id: 'bridged-v' });
@@ -227,11 +227,11 @@ describe('SubledgerDocumentPoster.post — FUP-3 bridge routing', () => {
   });
 
   it('minimal mode: bridge records the event, poster returns null (no GL voucher)', async () => {
-    const bridge: IAccountingBridge = {
+    const bridge = {
       async recordFinancialEvent() {
         return { mode: 'minimal', voucher: null, eventLogId: 'fj_x' } as any;
       },
-    };
+    } as unknown as IAccountingBridge;
     const result = await new SubledgerDocumentPoster({} as ISubledgerPostingService, bridge).post(plan, transaction);
     expect(result).toBeNull();
   });

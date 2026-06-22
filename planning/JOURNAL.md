@@ -2,6 +2,14 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (FUP-5 settlement bridging + live QA + tenant-header finding)
+
+- **FUP-5 — DONE.** Routed the settlement/payment receipt postings (which post a pre-assembled `VoucherEntity` via `PostingGateway`, not the subledger assembler) through the accounting bridge. Implemented **Option A**: added `IAccountingBridge.recordPreBuiltVoucher(event)` — the caller passes its real posting action as `postFull`; the bridge decides full-vs-minimal, invokes `postFull` verbatim in full mode, or records a minimal journal (no GL voucher) in minimal mode. Wired all 4 settlement sites: SI invoice settlement (`SalesInvoiceUseCases`), PI invoice settlement (`PurchaseInvoiceUseCases`), and the `record-payment` paths (`Post{Sales,Purchase}InvoiceWithSettlementUseCase` via `Record{Sales,Purchase}InvoicePaymentUseCase`), plus their controller construction sites. Payment-history `voucherId` is null in minimal mode.
+- **Verification (three levels):** parity tests added to `AccountingBridge.test.ts` (full = runs postFull, minimal = skips + logs); full backend suite **1630 passed / 18 skipped / 0 failed**; backend typecheck + build clean. **Live emulator round-trip:** recorded a payment on a posted SI → balanced receipt voucher **RV-0001: Dr Cash 100 / Cr AR 100**. (Also re-confirmed FUP-3 live: SI post → Dr AR/Cr Revenue + Dr COGS/Cr Inventory; PI unpost/repost → Dr Inventory/Cr AP — all balanced.)
+- **Tenant-header finding (Task 252, NOT fixed):** live QA showed the `x-company-id` header is ignored on tenant module routes (active company wins) while `/auth/*` enforces it. Verified **not a data leak** — data stays within the user's own memberships. Root cause not statically determinable (same `authMiddleware`, divergent behavior); needs runtime instrumentation of security-critical auth middleware. Deliberately NOT blind-patched; captured with full findings + next diagnostic step in `planning/tasks/252-tenant-company-header-precedence.md`.
+- **Accounting/ERP impact:** behavior-preserving for accounting-enabled tenants (full mode = byte-identical settlement vouchers). Minimal mode (Accounting App disabled) is the only intended delta — no settlement GL voucher, operational payment-history still recorded. Pre-alpha, safe.
+- **Shipped:** merged to `main` and pushed to `origin/main`.
+
 ### Session: 2026-06-22 (Containment-audit follow-ups — FUP-1..4 + approval item-4, all green before resuming POS)
 
 - **Context:** After the Epic-250 containment audit, the owner directed "fix both / all must be clean before continuing the POS module." Closed the open post-epic follow-ups in risk order, behavior-preserving throughout.
