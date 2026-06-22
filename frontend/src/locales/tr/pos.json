@@ -107,6 +107,12 @@
       "nearest_05": "En yakın 0,05",
       "nearest_1": "En yakın 1"
     },
+    "negativeStockPolicy": "Kasada negatif stok",
+    "negativeStock": {
+      "block": "Engelle — sıfır stoğun altında satma",
+      "allow": "İzin ver — şirket envanter ayarına uy"
+    },
+    "negativeStockPolicyHelp": "Engelle, şirket arka ofis satışları için negatif stoğa izin verse bile kasanın fazla satmasını önler. İzin ver, şirket envanter ayarına uyar.",
     "paymentMethods": {
       "title": "Ödeme yöntemleri"
     },

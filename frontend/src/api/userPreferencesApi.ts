@@ -6,6 +6,7 @@ export interface UserPreferencesDTO {
   theme: 'light' | 'dark';
   sidebarMode: 'classic' | 'submenus';
   sidebarPinned: boolean;
+  layoutMode?: 'legacy' | 'compact';
   appearanceSettings?: Record<string, any>;
   disabledNotificationCategories?: string[];
   notificationCategoryOverrides?: Record<string, boolean>;

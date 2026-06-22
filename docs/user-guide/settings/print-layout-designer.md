@@ -12,6 +12,9 @@ Open **Tools -> Print Layout Designer**.
 - Drag and resize components on the paper canvas.
 - Edit font size, color, background, borders, bold, italic, and alignment.
 - Edit bill-table column labels and widths.
+- Set bill-table header background and text color.
+- Choose what happens when a bill has many rows: continue to another page or longer receipt, clip extra rows, or shrink rows to fit.
+- Repeat table headers after page breaks.
 - Save a layout as the default for that document type.
 - Export a layout as JSON and import it into another company or environment.
 

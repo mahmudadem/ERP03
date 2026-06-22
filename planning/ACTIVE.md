@@ -1,5 +1,26 @@
 # 🎯 Current Focus
 
+## Task 257 — POS manager overrides via the Approval Engine (2026-06-22)
+
+**Status:** ✅ Implemented on branch `feat/pos-readiness-and-negative-stock` (on top of the 251/256/258 bundle).
+
+- **Why:** Closed the gate-#8 deviation — POS manager overrides only checked that an approval *token* was present (trust-the-screen). No real approver-identity, authority, or self-approval check; couldn't hold PENDING.
+- **What changed:** Overrides route through `IApprovalEngine.evaluate(...)`. New `PosManagerOverrideApprovalPlugin` → PENDING (no approver) / REJECTED (self-approval or approver lacking `pos.override.approve`) / APPROVED (distinct authorised manager). `CreatePosManagerOverrideUseCase` mints `approvedOverrideId` **only on APPROVED**. New `pos.override.approve` permission; plugin wired in DI with authority via `PermissionChecker`. Policy Engine still decides *whether*; Approval Engine decides *who* + outcome. `below_cost_sale` unchanged.
+- **Docs:** [planning/tasks/257-...](./tasks/257-pos-manager-override-via-approval-engine.md), [planning/done/257-...](./done/257-pos-manager-override-via-approval-engine.md), `docs/architecture/pos.md` §6a.
+- **Verification:** 23 suites / 144 tests green (pos + system-core + permission-catalog); backend typecheck + build clean.
+- **Accounting impact:** Control hardening only.
+
+## Task 258 — POS-specific negative-stock policy (2026-06-22)
+
+**Status:** ✅ Implemented on the POS readiness working tree.
+
+- **Why:** "The remaining backend safety gap" from the POS commercial-rules audit — POS inherited the company-wide `InventorySettings.allowNegativeStock` flag, so a company allowing negative stock for back-office invoicing would let the physical till oversell.
+- **What changed:** New `PosSettings.negativeStockPolicy` (`BLOCK` default | `ALLOW`). `PostPosSaleUseCase` pre-checks the selling-warehouse level (`IInventoryCore.preFetchStockLevel`, aggregated per item/warehouse) and throws `NegativeStockError` before any write and on the dry-run preview when `BLOCK`; `ALLOW`/absent defers to the company flag. POS can only be stricter than the company flag, never looser. Threaded through `CompletePosSaleUseCase`, update use-case, validator, DTO, settings UI, en/ar/tr i18n.
+- **Docs:** [planning/tasks/258-pos-negative-stock-policy.md](./tasks/258-pos-negative-stock-policy.md), [planning/done/258-pos-negative-stock-policy.md](./done/258-pos-negative-stock-policy.md), `docs/architecture/pos.md` §4a, `docs/user-guide/pos/setup.md`.
+- **Verification:** `PostPosSale.test.ts` 18/18 (+5 new); full POS suite 14 suites / 97 tests green; backend typecheck/build clean; POS frontend files typecheck clean (pre-existing unrelated `UserPreferencesContext.tsx` errors remain in the dirty tree); en/ar/tr `pos.json` valid.
+- **Accounting impact:** Control hardening only. No posting/tax/COGS/valuation/settlement/period-lock/approval-semantics change.
+- **Deferred:** `ALLOW_WITH_APPROVAL` → Task 257 (Approval Engine).
+
 ## Task 251 — POS QA readiness and settlement routing (2026-06-22)
 
 **Status:** ✅ Slices 1-16 updated locally on branch/worktree `codex/pos-qa-readiness` / `D:\DEV2026\ERP03-pos-readiness`; `origin/main` merged locally on 2026-06-22 and validation is in progress.
@@ -17,7 +38,7 @@
 **Status:** ✅ V1 implemented locally on branch/worktree `feat/engines-always-on` / `D:\DEV2026\ERP03`.
 
 - **Why:** Owner clarified the print designer must be a company-level always-on engine consumed by POS, Sales, and other modules, not a static POS receipt template.
-- **What changed:** Added `IPrintLayoutCore`, `PrintLayoutCore`, company print-layout template persistence, `/tenant/print-layouts` API routes, and `/tools/print-layout-designer`. The designer supports paper presets, visible safe area, dynamic field binding, bill-table component editing, drag/resize, styling, save/load, and JSON import/export.
+- **What changed:** Added `IPrintLayoutCore`, `PrintLayoutCore`, company print-layout template persistence, `/tenant/print-layouts` API routes, and `/tools/print-layout-designer`. The designer supports paper presets, visible safe area, dynamic field binding, bill-table component editing, long-bill overflow behavior, table header colors, drag/resize, styling, save/load, and JSON import/export.
 - **Docs:** [docs/architecture/print-layout-engine.md](../docs/architecture/print-layout-engine.md), [docs/user-guide/settings/print-layout-designer.md](../docs/user-guide/settings/print-layout-designer.md), [planning/tasks/256-shared-print-layout-engine.md](./tasks/256-shared-print-layout-engine.md), [planning/done/256-shared-print-layout-engine.md](./done/256-shared-print-layout-engine.md).
 - **Verification:** Focused backend tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.
 - **Accounting impact:** UI/template engine only. No posting, tax, COGS, AR/AP, inventory valuation, payment, period-lock, or approval behavior changed. Layout scripts are intentionally blocked; layouts can bind only to approved schemas.

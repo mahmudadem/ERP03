@@ -9,6 +9,7 @@
 import { NextFunction, Request, Response } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { PosDTOMapper, PosCashMovementDTO, PosXReportDTO, PosReceiptDTO, PosPaymentDTO, PosReturnDTO, PosHeldCartDTO } from '../../dtos/PosDTOs';
+import { POSPolicy } from '../../../domain/pos/entities/POSPolicy';
 import {
   CreatePosRegisterUseCase,
   GetPosRegisterUseCase,
@@ -62,6 +63,7 @@ import {
 } from '../../../application/pos/use-cases/PosReportingUseCases';
 import {
   validateUpdatePosSettingsInput,
+  validateUpdatePosPolicyInput,
   validateUpsertPosRegisterInput,
 } from '../../validators/pos.validators';
 
@@ -127,6 +129,44 @@ export class PosController {
         actor: { userId: PosController.getUserId(req), userEmail: PosController.getUserEmail(req) },
       });
       (res as any).json({ success: true, data: PosDTOMapper.toSettingsDTO(settings) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getPolicy(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const policy = (await diContainer.posPolicyRepository.getPolicy(companyId)) || POSPolicy.createDefault(companyId);
+      (res as any).json({ success: true, data: policy.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePolicy(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdatePosPolicyInput((req as any).body);
+      const companyId = PosController.getCompanyId(req);
+      const existing = (await diContainer.posPolicyRepository.getPolicy(companyId)) || POSPolicy.createDefault(companyId);
+      const policy = new POSPolicy({
+        companyId,
+        allowPosDirectSales: existing.allowPosDirectSales,
+        terminalPolicies: existing.terminalPolicies.map((p) => p.toJSON()),
+        cashierRolePolicies: ((req as any).body?.cashierRolePolicies || []).map((p: any) => ({
+          roleId: String(p.roleId || '').trim(),
+          requireApprovalForDirectSales: p.requireApprovalForDirectSales === true,
+          managerOverrideActions: Array.isArray(p.managerOverrideActions) ? p.managerOverrideActions : [],
+          maxLineDiscountPercent: p.maxLineDiscountPercent,
+          maxLineDiscountAmount: p.maxLineDiscountAmount,
+          allowPriceOverride: p.allowPriceOverride !== false,
+          allowTaxOverride: p.allowTaxOverride !== false,
+        })),
+        createdAt: existing.createdAt,
+        updatedAt: new Date(),
+      });
+      await diContainer.posPolicyRepository.savePolicy(policy);
+      (res as any).json({ success: true, data: policy.toJSON() });
     } catch (error) {
       next(error);
     }
@@ -563,7 +603,7 @@ export class PosController {
       const companyId = PosController.getCompanyId(req);
       const userId = PosController.getUserId(req);
       const userEmail = PosController.getUserEmail(req);
-      const useCase = new CreatePosManagerOverrideUseCase(diContainer.auditEngine);
+      const useCase = new CreatePosManagerOverrideUseCase(diContainer.auditEngine, diContainer.approvalEngine);
       const result = await useCase.execute({
         companyId,
         action: String((req as any).body?.action) as any,

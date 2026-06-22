@@ -16,6 +16,7 @@ This is a shared engine, not a POS or Sales feature. Modules consume it by docum
 - Tenant API under `/tenant/print-layouts`.
 - Tools route `/tools/print-layout-designer`.
 - Canvas editor with paper area, safe area, drag/resize, fields, tables, style controls, save/load, import/export.
+- Bill-table controls for header colors, row height, preview row count, overflow behavior, and repeat headers after page breaks.
 - POS Receipt and Sales Invoice schemas.
 
 ## Guardrails
@@ -23,6 +24,7 @@ This is a shared engine, not a POS or Sales feature. Modules consume it by docum
 - No custom scripts in layouts.
 - Backend rejects unknown field/table bindings.
 - Backend rejects components outside the paper area.
+- Backend rejects invalid table overflow options and unsafe row/preview counts.
 - Layout JSON is versioned.
 
 ## Remaining Follow-Ups
@@ -31,6 +33,7 @@ This is a shared engine, not a POS or Sales feature. Modules consume it by docum
 - Runtime renderer and print button integration for Sales Invoice.
 - PDF export/rendering path.
 - QR/barcode value rendering.
+- Runtime implementation of `continue`, `clip`, and `shrink` table overflow behavior.
 - Optional richer permission model for who can edit layouts.
 
 ## Verification

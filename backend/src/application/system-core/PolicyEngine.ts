@@ -87,6 +87,11 @@ export class PolicyEngine implements IPolicyEngine {
     return { allowed, requiresApproval: requiresApproval && !approvedOverride, resolvedBy };
   }
 
+  // Seam (Task 257): the Policy Engine decides *whether* an override needs approval
+  // (CashierRolePolicy.managerOverrideActions). *Who* may approve and the outcome are
+  // owned by the Approval Engine (PosManagerOverrideApprovalPlugin), which mints the
+  // approvedOverrideId only after a real, authorised, non-self approval. Here we then
+  // confirm such a token is present for the actions that require approval.
   private async resolvePosManagerOverride(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
     if (!request.companyId) {
       return { allowed: false, requiresApproval: false, resolvedBy: ['POSPolicy.missingCompany'] };

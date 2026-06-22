@@ -108,7 +108,7 @@ export const ConfirmDialog: React.FC<ConfirmDialogProps> = ({
         </div>
       </div>
     </div>,
-    document.body
+    document.fullscreenElement || document.body
   );
 };
 

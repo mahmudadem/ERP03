@@ -111,6 +111,17 @@ Item selling-policy guards run in `PostPosSaleUseCase`, not only in the terminal
 - `allowPosDirectSales` toggle writes POS policy and is the **only** way to let POS post direct sales. `workflowMode` is never touched.
 - Cash math: `expectedCash = openingFloat + SALE_CASH − REFUND_CASH + PAYIN − PAYOUT − DROP`.
 
+### 4a. POS-specific negative-stock policy
+
+The company-wide `InventorySettings.allowNegativeStock` flag governs every stock OUT inside `RecordStockMovementUseCase` (throwing `NegativeStockError` when off). That flag is correct for back-office, invoice-driven sales — where invoicing ahead of a goods receipt is legitimate — but a POS sale is a physical hand-over at the till, so it must be able to refuse overselling **even when the company allows negative stock**.
+
+`PosSettings.negativeStockPolicy` (`BLOCK` | `ALLOW`, default **`BLOCK`**) is that independent control:
+
+- **`BLOCK`** — `PostPosSaleUseCase.assertNegativeStockAllowed` pre-fetches the selling-warehouse level (`IInventoryCore.preFetchStockLevel`) for every tracked line, aggregates requested quantity per (item, warehouse) — so a manual line plus a promotion free-good of the same item are checked together — and throws `NegativeStockError` if the result would fall below zero. The check runs **before any stock or ledger write** and also on the **dry-run preview**, so the terminal blocks before the cashier tenders.
+- **`ALLOW`** — POS adds no extra block and defers to the company flag enforced inside the inventory OUT.
+
+POS can therefore only be the **same as or stricter than** the company flag, never looser. The policy is threaded from `CompletePosSaleUseCase` into both the preview and the real post; `PostPosSaleUseCase` treats an absent policy as `ALLOW` so its use-case contract stays backward compatible (the safe `BLOCK` default lives in `PosSettings`). "Allow with manager approval" is a reserved future value that will land with the Approval-Engine override work (Task 257) — the Policy Engine decides *whether* approval is required, the Approval Engine *who* approves.
+
 ## 5. Tenant isolation
 
 Every read is `(companyId, id)`-scoped. Settings is keyed on `companyId`. The `companyModuleGuard('pos')` runs at the tenant router mount before any of the POS routes.
@@ -124,6 +135,7 @@ pos.terminal.access  Access POS Terminal (sell)
 pos.shift.open       Open POS Shift
 pos.shift.close      Close own POS Shift
 pos.shift.forceClose Force-close any POS Shift (manager)
+pos.override.approve Approve POS manager overrides (manager)
 pos.cash.movement    Record POS Cash Movement
 pos.return.create    Process POS Returns
 pos.receipt.reprint  Reprint POS Receipts
@@ -131,6 +143,31 @@ pos.registers.manage Manage POS Registers
 pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
+
+## 6a. Manager-override approval seam (Policy Engine vs Approval Engine)
+
+Sensitive POS actions — void a paid line, price/discount/tax override, return, reprint —
+can require a manager's approval. Two engines split the decision:
+
+- **Policy Engine decides *whether* approval is required.** `IPolicyEngine.resolve(scope:'pos',
+  action:'managerOverride' | 'saleLineControls')` reads `CashierRolePolicy.managerOverrideActions`
+  / discount-and-override limits and answers "does this action need a manager?" plus "is an
+  approval token present?".
+- **Approval Engine decides *who* may approve and the outcome.** `CreatePosManagerOverrideUseCase`
+  routes the action through `IApprovalEngine.evaluate(...)` using the reserved subject types
+  (`pos_manager_override`, `price_override`, `discount_override`, `tax_override`).
+  `PosManagerOverrideApprovalPlugin` returns:
+  - **PENDING** — approval required but no approver yet,
+  - **REJECTED** — the approver is the acting cashier (no self-approval), or the approver does
+    not hold `pos.override.approve` authority (verified server-side via the RBAC permission
+    resolver, **not** a client token),
+  - **APPROVED** — a distinct, authorised manager.
+
+  The `approvedOverrideId` token is **only minted on APPROVED** and is what the Policy Engine
+  later checks at sale/return/reprint time. This replaces the previous trust-the-screen gate
+  (token presence) with a real workflow. `below_cost_sale` continues to route through the
+  Approval Engine unchanged (it has no plugin and keeps the generic `requiresApproval → PENDING`
+  fallback). See [Task 257](../../planning/tasks/257-pos-manager-override-via-approval-engine.md).
 
 ## 7. Reports (10 POS + 1 link)
 

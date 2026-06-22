@@ -175,7 +175,12 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   const setTheme = (t: Theme) => setThemeState(t);
   const setLayoutMode = (mode: LayoutMode) => setLayoutModeState(mode);
   const setAppearanceSettings = (settings: UserAppearanceSettings) => setAppearanceSettingsState(normalizeUserAppearance(settings));
-  const setSidebarPinned = (pinned: boolean) => setSidebarPinnedState(pinned);
+  const setSidebarPinned = (pinned: boolean) => {
+    setSidebarPinnedState(pinned);
+    if (user) {
+      userPreferencesApi.upsert({ language, uiMode, theme, sidebarMode, sidebarPinned: pinned, appearanceSettings, showWidgetsOnMobile, showTopbarActionsOnMobile, layoutMode }).catch(console.error);
+    }
+  };
   const setShowWidgetsOnMobile = (show: boolean) => setShowWidgetsOnMobileState(show);
   const setShowTopbarActionsOnMobile = (show: boolean) => setShowTopbarActionsOnMobileState(show);
   const setLanguagePref = (lang: string) => setLanguage(lang);
@@ -228,7 +233,11 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
   };
 
   const toggleSidebarPinned = () => {
-    setSidebarPinnedState(prev => !prev);
+    const newVal = !sidebarPinned;
+    setSidebarPinnedState(newVal);
+    if (user) {
+      userPreferencesApi.upsert({ language, uiMode, theme, sidebarMode, sidebarPinned: newVal, appearanceSettings, showWidgetsOnMobile, showTopbarActionsOnMobile, layoutMode }).catch(console.error);
+    }
   };
 
   const toggleLayoutMode = () => {

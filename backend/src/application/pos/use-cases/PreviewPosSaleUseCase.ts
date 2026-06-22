@@ -10,6 +10,7 @@ export interface PreviewPosSaleLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  manualTaxAmount?: number;
 }
 
 export interface PreviewPosSaleInput {
@@ -28,6 +29,10 @@ export interface PreviewPosSaleResult {
     unitPrice: number;
     lineTotal: number;
     taxAmount: number;
+    taxCodeId?: string;
+    taxCodeName?: string;
+    taxRate: number;
+    priceIsInclusive: boolean;
   }>;
 }
 
@@ -55,9 +60,13 @@ export class PreviewPosSaleUseCase {
       const taxCodeId = l.taxCodeId || item.defaultSalesTaxCodeId;
       let taxRate = 0;
       let priceIsInclusive = false;
+      let taxCodeName: string | undefined;
+      let resolvedTaxCodeId: string | undefined;
       if (taxCodeId) {
         const tc = await this.taxCodeRepo.getById(input.companyId, taxCodeId);
         if (tc && tc.active && (tc.scope === 'SALES' || tc.scope === 'BOTH')) {
+          resolvedTaxCodeId = tc.id;
+          taxCodeName = `${tc.code} - ${tc.name}`;
           taxRate = tc.rate;
           priceIsInclusive = tc.priceIsInclusive === true;
         }
@@ -74,9 +83,13 @@ export class PreviewPosSaleUseCase {
         currency: 'USD',
       });
 
+      const taxAmountBase = l.manualTaxAmount === undefined
+        ? amounts.taxAmountBase
+        : roundMoney(Math.max(0, Number(l.manualTaxAmount) || 0));
+
       calcLines.push({
         lineTotalBase: amounts.lineTotalBase,
-        taxAmountBase: amounts.taxAmountBase,
+        taxAmountBase,
       });
       outLines.push({
         itemId: item.id,
@@ -84,7 +97,11 @@ export class PreviewPosSaleUseCase {
         qty: l.qty,
         unitPrice: l.unitPrice,
         lineTotal: amounts.lineTotalBase,
-        taxAmount: amounts.taxAmountBase,
+        taxAmount: taxAmountBase,
+        taxCodeId: resolvedTaxCodeId,
+        taxCodeName,
+        taxRate,
+        priceIsInclusive,
       });
     }
 

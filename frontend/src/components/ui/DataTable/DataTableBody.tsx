@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { clsx } from 'clsx';
 import { ChevronRight, ChevronDown, MoreVertical } from 'lucide-react';
 import { ResponsiveColumn, RowAction, BadgeVariant, Density } from './types';
@@ -319,23 +320,49 @@ function RowActionsMenu<T>({ primaryActions, secondaryActions, row }: {
 }) {
   const [open, setOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+  const [coords, setCoords] = useState({ top: 0, right: 0 });
 
   useEffect(() => {
     if (!open) return;
     const handleClickOutside = (e: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(e.target as Node)) {
         setOpen(false);
       }
     };
+    const handleScroll = (e: Event) => {
+      if (menuRef.current && menuRef.current.contains(e.target as Node)) return;
+      setOpen(false);
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('scroll', handleScroll, true);
+    window.addEventListener('resize', handleScroll);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('scroll', handleScroll, true);
+      window.removeEventListener('resize', handleScroll);
+    };
   }, [open]);
+
+  const handleToggle = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!open && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setCoords({
+        top: rect.bottom + 4,
+        right: window.innerWidth - rect.right,
+      });
+    }
+    setOpen(!open);
+  };
 
   const allEnabledActions = secondaryActions.filter(a => a.isEnabled ? a.isEnabled(row) : true);
   const maxPrimary = 2;
 
   return (
-    <div className="relative inline-flex items-center gap-0.5" ref={menuRef}>
+    <div className="relative inline-flex items-center gap-0.5">
       {primaryActions.slice(0, maxPrimary).map(action => {
         const enabled = action.isEnabled ? action.isEnabled(row) : true;
         const Icon = action.icon;
@@ -359,15 +386,20 @@ function RowActionsMenu<T>({ primaryActions, secondaryActions, row }: {
       {allEnabledActions.length > 0 && (
         <>
           <button
-            onClick={(e) => { e.stopPropagation(); setOpen(!open); }}
+            ref={buttonRef}
+            onClick={handleToggle}
             className="p-1.5 rounded hover:bg-[var(--color-bg-tertiary)] text-[var(--color-text-muted)] hover:text-[var(--color-text-primary)] transition-colors"
             title="More actions"
           >
             <MoreVertical className="w-4 h-4" />
           </button>
 
-          {open && (
-            <div className="absolute right-0 top-full mt-1 w-44 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[200] py-1">
+          {open && createPortal(
+            <div
+              ref={menuRef}
+              className="fixed w-44 bg-[var(--color-bg-primary)] border border-[var(--color-border)] shadow-xl rounded-lg z-[9999] py-1"
+              style={{ top: coords.top, right: coords.right }}
+            >
               {allEnabledActions.map(action => {
                 const Icon = action.icon;
                 return (
@@ -384,7 +416,8 @@ function RowActionsMenu<T>({ primaryActions, secondaryActions, row }: {
                   </button>
                 );
               })}
-            </div>
+            </div>,
+            document.body
           )}
         </>
       )}

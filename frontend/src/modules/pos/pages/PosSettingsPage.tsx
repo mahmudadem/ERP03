@@ -9,20 +9,31 @@ import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { ModuleSettingsLayout } from '../../../components/shared/ModuleSettingsLayout';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { AccountSelector } from '../../../modules/accounting/components/shared/AccountSelector';
-import { posApi, PosSettingsDTO, PosPaymentMethodDTO, PosPaymentMethodCode } from '../../../api/posApi';
+import { listRoles, CompanyRole } from '../../../api/companyAdmin';
+import { posApi, PosSettingsDTO, PosPaymentMethodDTO, PosPaymentMethodCode, PosPolicyDTO, PosCashierRolePolicyDTO, PosManagerOverrideAction } from '../../../api/posApi';
 import { errorHandler } from '../../../services/errorHandler';
-import { Info, Save, Shield, ShieldCheck } from 'lucide-react';
+import { Info, Save, Shield, ShieldCheck, UserCog } from 'lucide-react';
 
 interface Props { isWindow?: boolean }
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
 const ALL_METHOD_CODES: PosPaymentMethodCode[] = ['CASH', 'CARD', 'BANK_TRANSFER', 'CUSTOM'];
+const OVERRIDE_ACTIONS: PosManagerOverrideAction[] = ['VOID_LINE', 'PRICE_OVERRIDE', 'DISCOUNT_OVERRIDE', 'TAX_OVERRIDE', 'RETURN', 'REPRINT'];
+
+const createDefaultPolicy = (companyId = ''): PosPolicyDTO => ({
+  companyId,
+  allowPosDirectSales: false,
+  cashierRolePolicies: [],
+});
 
 const PosSettingsPage: React.FC<Props> = () => {
   const { t } = useTranslation();
   const [settings, setSettings] = useState<PosSettingsDTO | null>(null);
   const [original, setOriginal] = useState<PosSettingsDTO | null>(null);
+  const [policy, setPolicy] = useState<PosPolicyDTO | null>(null);
+  const [originalPolicy, setOriginalPolicy] = useState<PosPolicyDTO | null>(null);
+  const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [activeTab, setActiveTab] = useState<string>('general');
@@ -37,6 +48,7 @@ const PosSettingsPage: React.FC<Props> = () => {
       receiptNextSeq: 1,
       cashRounding: 'none',
       allowPosDirectSales: false,
+      negativeStockPolicy: 'BLOCK',
       paymentMethods: [],
     };
     const existing = new Map(base.paymentMethods.map((m) => [m.code, m]));
@@ -63,13 +75,27 @@ const PosSettingsPage: React.FC<Props> = () => {
     return normalizeSettings(data);
   };
 
+  const normalizePolicy = (data: PosPolicyDTO | null, companyId = ''): PosPolicyDTO => ({
+    ...createDefaultPolicy(companyId),
+    ...(data || {}),
+    cashierRolePolicies: Array.isArray(data?.cashierRolePolicies) ? data.cashierRolePolicies : [],
+  });
+
   useEffect(() => {
     const load = async () => {
       try {
         setLoading(true);
-        const normalized = await loadSettings();
+        const [normalized, loadedPolicy, loadedRoles] = await Promise.all([
+          loadSettings(),
+          posApi.getPolicy().catch(() => null),
+          listRoles().catch(() => [] as CompanyRole[]),
+        ]);
+        const normalizedPolicy = normalizePolicy(loadedPolicy, normalized.companyId);
         setSettings(normalized);
         setOriginal(normalized);
+        setPolicy(normalizedPolicy);
+        setOriginalPolicy(normalizedPolicy);
+        setRoles(loadedRoles || []);
       } catch (err) {
         console.error('Failed to load POS settings', err);
         toast.error(t('pos.settings.loadError', { defaultValue: 'Failed to load POS settings.' }));
@@ -96,7 +122,33 @@ const PosSettingsPage: React.FC<Props> = () => {
     });
   };
 
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(original);
+  const upsertRolePolicy = (roleId: string, patch: Partial<PosCashierRolePolicyDTO>) => {
+    setPolicy((prev) => {
+      if (!prev) return prev;
+      const current = prev.cashierRolePolicies.find((p) => p.roleId === roleId) || {
+        roleId,
+        requireApprovalForDirectSales: false,
+        managerOverrideActions: [],
+        allowPriceOverride: true,
+        allowTaxOverride: true,
+      };
+      const next = { ...current, ...patch, roleId };
+      return {
+        ...prev,
+        cashierRolePolicies: prev.cashierRolePolicies.some((p) => p.roleId === roleId)
+          ? prev.cashierRolePolicies.map((p) => (p.roleId === roleId ? next : p))
+          : [...prev.cashierRolePolicies, next],
+      };
+    });
+  };
+
+  const toggleRoleAction = (roleId: string, action: PosManagerOverrideAction, checked: boolean) => {
+    const current = policy?.cashierRolePolicies.find((p) => p.roleId === roleId)?.managerOverrideActions || [];
+    const next = checked ? Array.from(new Set([...current, action])) : current.filter((a) => a !== action);
+    upsertRolePolicy(roleId, { managerOverrideActions: next });
+  };
+
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(original) || JSON.stringify(policy) !== JSON.stringify(originalPolicy);
 
   const onToggleAllowDirect = (next: boolean) => {
     setPendingAllowDirect(next);
@@ -114,9 +166,21 @@ const PosSettingsPage: React.FC<Props> = () => {
     try {
       setSaving(true);
       await posApi.updateSettings(settings);
-      const next = await loadSettings();
+      if (policy) {
+        await posApi.updatePolicy({
+          cashierRolePolicies: policy.cashierRolePolicies.map((p) => ({
+            ...p,
+            maxLineDiscountPercent: p.maxLineDiscountPercent === undefined ? undefined : Number(p.maxLineDiscountPercent),
+            maxLineDiscountAmount: p.maxLineDiscountAmount === undefined ? undefined : Number(p.maxLineDiscountAmount),
+          })),
+        });
+      }
+      const [next, nextPolicy] = await Promise.all([loadSettings(), posApi.getPolicy().catch(() => policy)]);
       setSettings(next);
       setOriginal(next);
+      const normalizedPolicy = normalizePolicy(nextPolicy || null, next.companyId);
+      setPolicy(normalizedPolicy);
+      setOriginalPolicy(normalizedPolicy);
       toast.success(t('pos.settings.saved', { defaultValue: 'POS settings saved and reloaded.' }));
     } catch (err: any) {
       console.error('Failed to save POS settings', err);
@@ -138,6 +202,7 @@ const PosSettingsPage: React.FC<Props> = () => {
     { id: 'general', label: t('pos.settings.general.title', { defaultValue: 'General' }), icon: Info },
     { id: 'payments', label: t('pos.settings.paymentMethods.title', { defaultValue: 'Payment Methods' }), icon: Shield },
     { id: 'overShort', label: t('pos.settings.overShort.title', { defaultValue: 'Cash Over/Short' }), icon: ShieldCheck },
+    { id: 'cashierPolicies', label: t('pos.settings.cashierPolicies.title', { defaultValue: 'Cashier Policies' }), icon: UserCog },
   ];
 
   return (
@@ -162,7 +227,10 @@ const PosSettingsPage: React.FC<Props> = () => {
           </button>
         }
         onSave={onSave}
-        onDiscard={() => setSettings(original)}
+        onDiscard={() => {
+          setSettings(original);
+          setPolicy(originalPolicy);
+        }}
         saving={saving}
         hasChanges={hasChanges}
       >
@@ -239,6 +307,26 @@ const PosSettingsPage: React.FC<Props> = () => {
                 </select>
                 <div className="text-xs text-slate-500 mt-1">
                   {t('pos.settings.cashRoundingHelp', { defaultValue: 'V1 reserves this field; "none" is applied at the till.' })}
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium mb-1">
+                  {t('pos.settings.negativeStockPolicy', { defaultValue: 'Negative stock at the till' })}
+                </label>
+                <select
+                  value={settings.negativeStockPolicy}
+                  onChange={(e) => update('negativeStockPolicy', e.target.value as any)}
+                  className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                >
+                  <option value="BLOCK">{t('pos.settings.negativeStock.block', { defaultValue: 'Block — never sell below zero stock' })}</option>
+                  <option value="ALLOW">{t('pos.settings.negativeStock.allow', { defaultValue: 'Allow — defer to company inventory setting' })}</option>
+                </select>
+                <div className="text-xs text-slate-500 mt-1">
+                  {t('pos.settings.negativeStockPolicyHelp', {
+                    defaultValue:
+                      'Block keeps the till from overselling even when the company allows negative stock for back-office sales. Allow defers to the company inventory setting.',
+                  })}
                 </div>
               </div>
             </div>
@@ -338,6 +426,116 @@ const PosSettingsPage: React.FC<Props> = () => {
                   {t('pos.settings.cashShortHelp', { defaultValue: 'Debit account for short-counts at shift close. Required to close a shift that has a non-zero over/short.' })}
                 </div>
               </div>
+            </div>
+          </Card>
+        )}
+
+        {activeTab === 'cashierPolicies' && (
+          <Card>
+            <div className="space-y-4 p-4">
+              {roles.length === 0 ? (
+                <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                  {t('pos.settings.cashierPolicies.noRoles', { defaultValue: 'No company roles loaded. Create roles first, then return here to configure POS cashier limits.' })}
+                </div>
+              ) : (
+                roles.map((role) => {
+                  const rolePolicy = policy?.cashierRolePolicies.find((p) => p.roleId === role.id) || {
+                    roleId: role.id,
+                    requireApprovalForDirectSales: false,
+                    managerOverrideActions: [],
+                    allowPriceOverride: true,
+                    allowTaxOverride: true,
+                  };
+                  return (
+                    <div key={role.id} className="rounded border border-slate-200 p-3">
+                      <div className="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                        <div>
+                          <div className="text-sm font-semibold text-slate-900">{role.name}</div>
+                          <div className="font-mono text-xs text-slate-500">{role.id}</div>
+                        </div>
+                        <label className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={rolePolicy.requireApprovalForDirectSales === true}
+                            onChange={(e) => upsertRolePolicy(role.id, { requireApprovalForDirectSales: e.target.checked })}
+                            className="rounded border-slate-300"
+                          />
+                          <span>{t('pos.settings.cashierPolicies.directApproval', { defaultValue: 'Approve direct sale' })}</span>
+                        </label>
+                      </div>
+
+                      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+                        <div className="rounded border border-slate-100 p-3">
+                          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {t('pos.settings.cashierPolicies.overrideActions', { defaultValue: 'Manager approval actions' })}
+                          </div>
+                          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                            {OVERRIDE_ACTIONS.map((action) => (
+                              <label key={action} className="flex items-center gap-2 text-sm">
+                                <input
+                                  type="checkbox"
+                                  checked={(rolePolicy.managerOverrideActions || []).includes(action)}
+                                  onChange={(e) => toggleRoleAction(role.id, action, e.target.checked)}
+                                  className="rounded border-slate-300"
+                                />
+                                <span>{action.replace(/_/g, ' ')}</span>
+                              </label>
+                            ))}
+                          </div>
+                        </div>
+
+                        <div className="rounded border border-slate-100 p-3">
+                          <div className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                            {t('pos.settings.cashierPolicies.saleLimits', { defaultValue: 'Sale-line limits' })}
+                          </div>
+                          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <label className="text-sm">
+                              <span className="mb-1 block text-xs text-slate-500">{t('pos.settings.cashierPolicies.maxDiscountPercent', { defaultValue: 'Max discount %' })}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={rolePolicy.maxLineDiscountPercent ?? ''}
+                                onChange={(e) => upsertRolePolicy(role.id, { maxLineDiscountPercent: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                              />
+                            </label>
+                            <label className="text-sm">
+                              <span className="mb-1 block text-xs text-slate-500">{t('pos.settings.cashierPolicies.maxDiscountAmount', { defaultValue: 'Max discount amount' })}</span>
+                              <input
+                                type="number"
+                                min="0"
+                                step="0.01"
+                                value={rolePolicy.maxLineDiscountAmount ?? ''}
+                                onChange={(e) => upsertRolePolicy(role.id, { maxLineDiscountAmount: e.target.value === '' ? undefined : Number(e.target.value) })}
+                                className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                              />
+                            </label>
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={rolePolicy.allowPriceOverride !== false}
+                                onChange={(e) => upsertRolePolicy(role.id, { allowPriceOverride: e.target.checked })}
+                                className="rounded border-slate-300"
+                              />
+                              <span>{t('pos.settings.cashierPolicies.allowPriceOverride', { defaultValue: 'Allow price override' })}</span>
+                            </label>
+                            <label className="flex items-center gap-2 text-sm">
+                              <input
+                                type="checkbox"
+                                checked={rolePolicy.allowTaxOverride !== false}
+                                onChange={(e) => upsertRolePolicy(role.id, { allowTaxOverride: e.target.checked })}
+                                className="rounded border-slate-300"
+                              />
+                              <span>{t('pos.settings.cashierPolicies.allowTaxOverride', { defaultValue: 'Allow tax override' })}</span>
+                            </label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </Card>
         )}

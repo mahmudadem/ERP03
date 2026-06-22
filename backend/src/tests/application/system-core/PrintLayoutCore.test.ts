@@ -8,6 +8,7 @@ describe('PrintLayoutCore', () => {
 
     expect(layout.paper.type).toBe('RECEIPT_80');
     expect(layout.components.some((component) => component.type === 'table')).toBe(true);
+    expect(layout.components.find((component) => component.type === 'table')?.tableOptions?.overflowMode).toBe('continue');
     expect(() => core.validateLayout(layout, schema)).not.toThrow();
   });
 
@@ -25,5 +26,29 @@ describe('PrintLayoutCore', () => {
       ...layout,
       components: [{ ...layout.components[0], x: 999 }],
     }, schema)).toThrow(/outside the paper area/);
+  });
+
+  it('rejects invalid table overflow settings', () => {
+    const core = new PrintLayoutCore();
+    const schema = core.getDataSchema('POS_RECEIPT');
+    const layout = core.createDefaultLayout('POS_RECEIPT');
+    const table = layout.components.find((component) => component.type === 'table');
+    expect(table).toBeTruthy();
+
+    expect(() => core.validateLayout({
+      ...layout,
+      components: [{
+        ...table!,
+        tableOptions: { ...table!.tableOptions, rowHeight: 0 },
+      }],
+    }, schema)).toThrow(/row height/);
+
+    expect(() => core.validateLayout({
+      ...layout,
+      components: [{
+        ...table!,
+        tableOptions: { ...table!.tableOptions, overflowMode: 'scroll' as any },
+      }],
+    }, schema)).toThrow(/invalid overflow mode/);
   });
 });

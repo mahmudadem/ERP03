@@ -23,13 +23,15 @@ Files added/changed:
 - `frontend/src/router/routes.config.ts`
 - `frontend/src/config/moduleMenuMap.ts`
 
-The engine validates layout JSON, paper bounds, and allowed data bindings. The designer supports paper presets, safe-area display, drag/resize, dynamic fields, a bill-table component, styling, save/load, and import/export.
+The engine validates layout JSON, paper bounds, allowed data bindings, and table behavior settings. The designer supports paper presets, safe-area display, drag/resize, dynamic fields, a bill-table component, table header colors, row height, long-bill overflow behavior, styling, save/load, and import/export.
 
 ## End-User View
 
 Company admins can open **Tools -> Print Layout Designer** and build print layouts visually. They can choose paper type, place fields and bill tables, resize components, change styling, save defaults, and export/import layout JSON.
 
 The layout designer is shared. It is intended for POS receipts, Sales Invoices, and future module documents.
+
+For long bills, admins can choose whether the table continues to another page or longer receipt, clips extra rows, or shrinks rows to fit. They can also repeat table headers after page breaks.
 
 ## Verification
 

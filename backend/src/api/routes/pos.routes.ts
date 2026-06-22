@@ -14,6 +14,8 @@ router.post('/initialize', PosController.initializePos);
 // Settings
 router.get('/settings', permissionGuard('pos.settings.manage'), PosController.getSettings);
 router.put('/settings', permissionGuard('pos.settings.manage'), PosController.updateSettings);
+router.get('/policy', permissionGuard('pos.settings.manage'), PosController.getPolicy);
+router.put('/policy', permissionGuard('pos.settings.manage'), PosController.updatePolicy);
 
 // Registers
 router.get('/registers', permissionGuard('pos.registers.manage'), PosController.listRegisters);
