@@ -4593,3 +4593,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused backend exchange test passed (`CompletePosExchange`: 1 suite / 3 tests), frontend report guard passed, frontend typecheck passed, and frontend build passed.
 - **Time spent:** ~0.8h for this slice; Task 251 total ~12.4h so far.
 - **Next:** Cashier-facing manager approval capture UI, item selling-policy guards, or remaining POS report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 11 item selling-policy guards)
+
+- **Goal:** Reduce pilot risk by preventing POS from selling inactive or POS-blocked items and discounting non-discountable items.
+- **What was done:** Added backend sale-boundary guards in `PostPosSaleUseCase` for inactive items, `metadata.pos.enabled === false`, `metadata.pos.blocked === true`, and `metadata.pos.discountable === false`. Added focused tests proving the guard blocks before stock or ledger writes.
+- **Accounting/ERP impact:** Control hardening only. Valid sale posting math is unchanged; invalid item attempts now fail before receipt, payment, stock movement, revenue, tax, COGS, settlement, or audit rows are created.
+- **Verification:** Focused backend POS sale-posting test passed (`PostPosSale`: 1 suite / 10 tests); backend typecheck/build passed.
+- **Time spent:** ~0.5h for this slice; Task 251 total ~12.9h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.

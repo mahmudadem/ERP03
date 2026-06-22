@@ -27,6 +27,7 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 - POS override audit report returns void, discount, price override, and tax override exception rows from receipt snapshots.
 - POS posted receipt void creates a POS return for remaining active quantities before marking the receipt `VOIDED`.
 - POS exchange creates a linked POS return and replacement POS sale with one `exchangeId`.
+- POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
 
 1. Open **POS → Settings**.
 2. Enable **Allow POS direct sales** and save.
@@ -62,6 +63,10 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 14. Expected: return is blocked because voided lines are not sold quantity.
 15. Try a CARD sale on a register with no CARD settlement account.
 16. Expected: sale is blocked before any receipt or posting is created.
+16a. Try selling an inactive item or an item with `metadata.pos.enabled = false`.
+16b. Expected: sale is blocked before receipt, payment, stock, or ledger writes.
+16c. Try applying a manual discount to an item with `metadata.pos.discountable = false`.
+16d. Expected: sale is blocked before receipt, payment, stock, or ledger writes.
 17. Process a CASH return from a completed receipt active line.
 18. Confirm:
     - return posts through POS return flow
@@ -104,6 +109,8 @@ Stop and log the failure in `planning/qa/findings.md` if any of these happen:
 - POS sale posts without an open shift.
 - A cashier outside a register's allowed-cashier list can open a shift on that register.
 - CARD sale posts without a register CARD settlement account.
+- Inactive, POS-disabled, or POS-blocked items can be sold.
+- A non-discountable POS item accepts a manual or promotion discount.
 - Payment Methods report shows zero totals after completed receipts.
 - A voided cart line disappears completely instead of staying on the receipt audit trail.
 - A voided line changes stock, ledger, tax, cash, or returnable quantity.

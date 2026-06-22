@@ -131,6 +131,7 @@ export class PostPosSaleUseCase {
       if (!item || item.companyId !== input.companyId) {
         throw new Error(`Item not found: ${line.itemId}`);
       }
+      assertItemAllowedForPosSale(item);
       itemMap.set(item.id, item);
     }
     const saleLines = await this.applyPromotions(input, itemMap);
@@ -143,6 +144,7 @@ export class PostPosSaleUseCase {
     for (const [idx, sourceLine] of saleLines.entries()) {
       const item = itemMap.get(sourceLine.itemId);
       if (!item) throw new Error(`Item not found: ${sourceLine.itemId}`);
+      assertLineDiscountAllowedForPosSale(item, sourceLine);
 
       const tax = await this.resolveTax(input.companyId, sourceLine.taxCodeId || item.defaultSalesTaxCodeId);
       const taxAmounts = this.taxEngine.calcLine({
@@ -464,6 +466,7 @@ export class PostPosSaleUseCase {
       if (!itemMap.has(freeGood.itemId)) {
         const item = await this.itemRepo.getItem(freeGood.itemId);
         if (!item || item.companyId !== input.companyId) continue;
+        assertItemAllowedForPosSale(item);
         itemMap.set(item.id, item);
       }
       const sourceIndex = lineIds.findIndex((id) => id === freeGood.sourceLineId);
@@ -529,4 +532,35 @@ function mapBucket(bucket: Map<string, number>, side: 'Debit' | 'Credit', curren
     baseAmount: roundMoney(amount, currency),
     docAmount: roundMoney(amount, currency),
   }));
+}
+
+function assertItemAllowedForPosSale(item: Item): void {
+  if (item.active === false) {
+    throw new Error(`Item ${item.code || item.id} is inactive and cannot be sold in POS.`);
+  }
+
+  const metadata = item.metadata || {};
+  const posMetadata = (metadata.pos || {}) as Record<string, unknown>;
+  if (posMetadata.enabled === false || metadata.posEnabled === false || metadata.isPosEnabled === false) {
+    throw new Error(`Item ${item.code || item.id} is not enabled for POS sale.`);
+  }
+  if (posMetadata.blocked === true || metadata.blockedInPos === true) {
+    throw new Error(`Item ${item.code || item.id} is blocked for POS sale.`);
+  }
+}
+
+function assertLineDiscountAllowedForPosSale(item: Item, line: PostPosSaleLineInput): void {
+  const metadata = item.metadata || {};
+  const posMetadata = (metadata.pos || {}) as Record<string, unknown>;
+  const discountable =
+    posMetadata.discountable !== false &&
+    metadata.discountable !== false &&
+    metadata.nonDiscountable !== true;
+  if (discountable) return;
+
+  const hasManualDiscount = (line.discountValue || 0) > 0;
+  const hasPromotionDiscount = Boolean(line.appliedPromotionId);
+  if (hasManualDiscount || hasPromotionDiscount) {
+    throw new Error(`Item ${item.code || item.id} is not discountable in POS.`);
+  }
 }

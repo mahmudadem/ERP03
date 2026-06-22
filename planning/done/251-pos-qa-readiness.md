@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-10 green
-**Actual time:** ~12.4h so far
+**Status:** in progress locally; slices 1-11 green
+**Actual time:** ~12.9h so far
 
 ## Technical Developer View
 
@@ -30,6 +30,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS hold/recall now stores suspended carts as `PosHeldCart` records with `HELD`, `RECALLED`, and `CANCELLED` status. Holding a cart does not reserve stock, consume receipt numbers, create payments, or post accounting; recall restores the cart for later payment.
 - POS Override Audit now has a dedicated ReportContainer page under POS Reports.
 - POS Returns now has a cashier-facing **Exchange** mode that collects returned receipt lines, replacement POS item lines, replacement payment method/reference, and posts through the existing exchange API.
+- POS sale posting now blocks inactive items, POS-disabled/POS-blocked item metadata, and manual/promotion discounts on non-discountable POS items before stock or ledger writes.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -39,6 +40,7 @@ Files changed:
 - `backend/src/application/pos/use-cases/PosRegisterUseCases.ts`
 - `backend/src/application/pos/use-cases/PosHeldCartUseCases.ts`
 - `backend/src/application/pos/use-cases/PosShiftUseCases.ts`
+- `backend/src/application/pos/use-cases/PostPosSaleUseCase.ts`
 - `backend/prisma/schema.prisma`
 - `backend/src/application/pos/use-cases/PosReportingUseCases.ts`
 - `backend/src/application/pos/use-cases/PosSettingsUseCases.ts`
@@ -95,6 +97,8 @@ Managers now have a POS **Override Audit** report page for voided lines, manual 
 
 Cashiers can now process exchanges from **POS → Returns** by switching to **Exchange**, selecting returned receipt quantities, adding replacement POS items, and posting the linked return plus replacement sale. The screen shows the return value, replacement value, and net due/refund before posting.
 
+POS now blocks unsafe item sale attempts at the backend posting boundary. Inactive items cannot be sold. Items can also be marked in metadata as disabled for POS, blocked for POS, or non-discountable; those rules are enforced before stock, receipt, payment, or ledger activity is created.
+
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
 Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
@@ -124,12 +128,17 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm --prefix frontend run typecheck` — passed after cashier-facing exchange UI slice.
 - `npm test -- --runInBand src/tests/application/pos/CompletePosExchange.test.ts` — passed, 1 suite / 3 tests after cashier-facing exchange UI slice.
 - `npm --prefix frontend run build` — passed after cashier-facing exchange UI slice.
+- `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` — passed, 1 suite / 10 tests after item selling-policy guard slice.
+- `npm run typecheck` from `backend/` — passed after item selling-policy guard slice.
+- `npm run build` from `backend/` — passed after item selling-policy guard slice.
 
 ## Known Follow-Ups
 
 - Promotions remain production-gated until the stacking/cap model is implemented.
 - Cashier-facing manager approval capture UI is still required; this slice added backend policy hooks and enforcement.
 - Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
+- POS item enabled/blocked/discountable flags are currently metadata-enforced; a first-class item-master UI for these flags is still a follow-up.
+- Expiry/batch-aware item guards are still a follow-up because current item master does not model POS batch expiry at sale-line level.
 - SQL deployments need a Prisma migration for the new POS shift reconciliation and held-cart fields before using them in SQL mode.
 - Held carts do not reserve stock in V1; stock availability is rechecked when the recalled sale is completed.
 - Accounting voucher enum still uses existing Sales Invoice / Sales Return voucher types for GL classification while POS metadata and stock refs preserve POS identity. Adding separate POS voucher types needs an accounting-policy review.

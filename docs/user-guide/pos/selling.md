@@ -20,6 +20,18 @@ Voided lines do not post stock movement, revenue, tax, COGS, cash, or payment am
 
 If the cashier's role requires manager approval for voids, discounts, price overrides, or tax overrides, the backend blocks completion unless an approved manager override is supplied. Cashier roles can also set maximum line discount percent/amount and can block manual price or tax edits unless a manager approves.
 
+## Item selling guards
+
+POS blocks inactive inventory items before stock, receipt, payment, or accounting is posted. Product search only returns active items, and sale completion re-checks the item in the backend in case a stale screen or API payload tries to sell it.
+
+Until POS-specific item fields are added to the item master screen, advanced flags can be stored in item metadata:
+
+- `metadata.pos.enabled = false` blocks the item from POS.
+- `metadata.pos.blocked = true` blocks the item from POS.
+- `metadata.pos.discountable = false` blocks manual or promotion discounts for that item.
+
+These flags are enforced by the sale posting path, including exchanges.
+
 ## Hold and recall a sale
 
 Use **Hold** when the customer needs to pause before payment. The current active cart lines are saved to the server for the open shift, then the terminal clears so the cashier can serve the next customer.

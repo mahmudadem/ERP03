@@ -92,6 +92,8 @@ Shift close stores reconciliation by payment method. `PosShift` persists expecte
 
 Promotions are hard-disabled by default. `PostPosSaleUseCase` does not read promotion rules unless the explicit test hook opens the gate; production must keep flash sales, BXGY, coupons, free gifts, and auto-promotions disabled until stacking/cap/conflict/return rules are implemented.
 
+Item selling-policy guards run in `PostPosSaleUseCase`, not only in the terminal UI. Inactive items are blocked before stock, receipt, payment, or ledger writes. Migration-free POS metadata flags are also honored: `metadata.pos.enabled === false` and `metadata.pos.blocked === true` block sale; `metadata.pos.discountable === false` blocks manual and promotion discounts. Because exchange replacement sales use the same POS sale use case, exchanges inherit the same guards.
+
 ### 3a. Cashier screen, bootstrap, and frontend data contract
 
 - **Bootstrap (`GetPosBootstrapUseCase`)** hydrates the terminal in one call. The cashier screen calls it with only `cashierUserId` (no register picker), so the use case resolves the **active register itself**: an explicit `registerId` wins, else a lone `ACTIVE` register (else a lone register of any status). The open shift is then read for that register, with a fallback to the cashier's own open shift (whose register is hydrated if none was picked). Without this resolution the terminal wrongly shows "No open shift for this register."
