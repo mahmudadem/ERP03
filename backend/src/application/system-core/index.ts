@@ -8,6 +8,9 @@ export * from './contracts/IApprovalEngine';
 export * from './contracts/IAccountingBridge';
 export * from './contracts/IAuditEngine';
 export * from './contracts/IInventoryCore';
+export * from './contracts/IFxEngine';
+export * from './contracts/IPrintLayoutCore';
+export * from './print-layout/PrintLayoutCore';
 export * from './money/roundMoney';
 export * from './tax/TaxEngine';
 export * from './commercial/CommercialCore';
@@ -21,6 +24,7 @@ export * from './adapters/LegacyPolicyEngineAdapter';
 export * from './adapters/LegacyApprovalEngineAdapter';
 export * from './adapters/LegacyAccountingBridgeAdapter';
 export * from './adapters/LegacyAuditEngineAdapter';
+export * from './adapters/LegacyFxAdapter';
 
 export * from './PolicyEngine';
 export * from './approval/ApprovalEngine';

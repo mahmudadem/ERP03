@@ -16,6 +16,7 @@ import { IDeliveryNoteRepository } from '../../../repository/interfaces/sales/ID
 import { BusinessError } from '../../../errors/AppError';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { EnsureAccountingEngineInitialized } from '../../accounting/use-cases/EnsureAccountingEngineInitialized';
+import { EnsureInventoryEngineInitialized } from '../../inventory/use-cases/EnsureInventoryEngineInitialized';
 import { ICredentialCipher } from '../services/ICredentialCipher';
 import { validatePartyAccountCodeFormat } from '../../shared/services/PartyAccountCodeRenderer';
 import { syncCompanyVoucherTemplatesFromSystem } from '../../system/services/CompanyVoucherTemplateSyncService';
@@ -171,11 +172,14 @@ export class InitializeSalesUseCase {
     private readonly voucherFormRepo: IVoucherFormRepository,
     private readonly ensureAccountingEngine: EnsureAccountingEngineInitialized,
     private readonly inventorySettingsRepo?: IInventorySettingsRepository,
-    private readonly credentialCipher?: ICredentialCipher
+    private readonly credentialCipher?: ICredentialCipher,
+    private readonly ensureInventoryEngine?: EnsureInventoryEngineInitialized
   ) {}
 
   async execute(input: InitializeSalesInput): Promise<SalesSettings> {
     await this.ensureAccountingEngine.execute(input.companyId);
+    // Task 254: Sales consumes items + stock — guarantee the inventory engine is ready too.
+    if (this.ensureInventoryEngine) await this.ensureInventoryEngine.execute(input.companyId, input.userId);
 
     const [revenueAccount, inventoryAccount, arAccount] = await Promise.all([
       this.accountRepo.getById(input.companyId, input.defaultRevenueAccountId),

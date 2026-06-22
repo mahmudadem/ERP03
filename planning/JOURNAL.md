@@ -2,6 +2,33 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (Engines-always-on trio — Tasks 253 / 254 / 255 implemented)
+
+- **Context:** Following the engines-vs-modules clarification, the owner directed "do all the fixing." Implemented all three tasks on branch `feat/engines-always-on`, behaviour-preserving, each committed separately.
+- **253 — posting engine always acts (DONE).** `LegacyAccountingBridgeAdapter.shouldUseFullPosting` now gates on `initialized` (engine ready), not `isEnabled` (cosmetic module toggle) — restores PR1's engine-mandatory rule that Epic 250 had regressed. Minimal-mode warnings reworded to "Not linked to accounting (accounting engine not initialized)" — kept as the loud fallback per owner decision. Frontend `AccountForm` gained `allowedClassifications` (restricts + locks the classification dropdown for inline "+ add account"); `AccountSelector` passes its constraint through, so a non-accountant can't misclassify an account. Tests updated; full suite green; frontend typecheck clean. Commit `c9142cd0`.
+- **254 — inventory/catalog/stock engine always-on (BACKEND DONE).** Found item management already survives a module *disable* (guard checks `initialized`, not `isEnabled`) and item permissions are permission-derived (not module-locked). The real gap was no guaranteed inventory auto-init. Added idempotent `EnsureInventoryEngineInitialized` (mirror of the accounting guard; safe defaults, no GL accounts needed) wired into POS init + Sales/Purchase init. Commit `a8570a21`. **Frontend item-management surface for the POS persona remains (UX decision).**
+- **255 — IFxEngine shared seam (DONE).** The feared FX "duplication" was actually one canonical `application/core` implementation + a re-export shim in accounting. Added `IFxEngine` (resolveRate/detectDeviations/saveReferenceRate) + `LegacyFxAdapter` (pure delegation), DI `fxEngine`, barrel export, boundary guard. `IMoneyCore` stays pure. Commit `ca72b780`. **Optional follow-up:** migrate Currency/FXRevaluation controllers to consume the engine.
+- **Process note:** a concurrent session/device had written a complete Print Layout engine (Task 256) into the working tree; my initial broad `git add -A` bundled it into the 254 commit. Caught it, soft-reset, and split into clean commits (254 inventory `a8570a21`, 256 print-layout `0a695e20`) — only `bindRepositories.ts` was shared and was carved cleanly. Build verified after the split.
+- **Verification:** full backend suite **1643 green** (0 fail), backend build + frontend typecheck clean across all changes. **Not pushed/merged** — branch `feat/engines-always-on` awaiting owner go-ahead (note: it also carries the concurrent 256 work).
+
+### Session: 2026-06-22 (Task 256 — Shared Print Layout Engine and Designer)
+
+- **What was done:** Implemented V1 of a company-level, always-on Print Layout Engine rather than a POS-only receipt template. Added `IPrintLayoutCore`, layout validation, data schemas for `POS_RECEIPT` and `SALES_INVOICE`, company template persistence under `companies/{companyId}/core/Settings/print_layouts`, `/tenant/print-layouts` API routes, and a shared Tools page at `/tools/print-layout-designer`.
+- **Designer scope:** Paper presets, visible safe area, drag/resize components, text/field/table/box/logo/QR placeholders, style controls, editable bill-table columns, save/load defaults, and JSON import/export.
+- **Control decision:** No custom scripts/formulas in V1. Layouts bind only to approved schema fields and table columns; backend rejects unknown bindings and out-of-paper components.
+- **Accounting/ERP impact:** No posting, tax, COGS, settlement, AR/AP, inventory, approval, or period-lock behavior changed. This is a shared print-template engine and UI surface only.
+- **Verification:** Focused backend print-layout tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.
+- **Docs:** Added `docs/architecture/print-layout-engine.md`, `docs/user-guide/settings/print-layout-designer.md`, `planning/tasks/256-shared-print-layout-engine.md`, and `planning/done/256-shared-print-layout-engine.md`.
+- **Next:** Wire POS receipt runtime rendering as first consumer, then Sales Invoice.
+
+### Session: 2026-06-22 (Engines-vs-Modules architecture rule + always-on tasks)
+
+- **No code changes — architecture clarification + planning.** Owner worked through the engine/module model and surfaced the core rule: **engines are always on (gated by permission, never by module-enabled); modules are windows + workflow + visibility.** Confirmed the consumer model (posting/stock/approval are engines; Accounting/Sales/POS are consumers) matches the decided architecture in `done/102-pr1` ("Accounting Engine mandatory; UI optional").
+- **Key finding (regression vs PR1):** `LegacyAccountingBridgeAdapter.shouldUseFullPosting` gates GL posting on `isEnabled` (the cosmetic module toggle) instead of `initialized` (engine ready) — re-introducing the exact conflation PR1 fixed. Disabling the Accounting module silently stops GL posting (minimal mode). Contradicts the owner's "post under the hood, reveal accounting later" vision.
+- **Also mapped:** item management is locked behind `moduleInitializedGuard('inventory')` (a POS/Sales-only user can't add items/prices), though the stock engine + oversell protection are already always-on; and Currency/FX is duplicated across `core` + `accounting` (no shared engine).
+- **Produced:** `docs/architecture/engines-vs-modules.md` (principle + two-flag rule + four litmus tests + signals-are-engine-owned + full engine/module classification table + forward rule). Distilled an "Engines vs Modules — the always-on rule" block into `AGENTS.md`. Captured three tasks: **253** posting-engine-always-acts (flip `isEnabled`→`initialized` + account-selector constrained inline-add check; HIGH/smallest), **254** items-stock-catalog-always-on, **255** currency-fx-shared-engine.
+- **Next:** owner to pick the starting task (253 recommended first — smallest, unlocks always-on posting + populated customer statements without the Accounting module). No implementation started yet.
+
 ### Session: 2026-06-22 (FUP-5 settlement bridging + live QA + tenant-header finding)
 
 - **FUP-5 — DONE.** Routed the settlement/payment receipt postings (which post a pre-assembled `VoucherEntity` via `PostingGateway`, not the subledger assembler) through the accounting bridge. Implemented **Option A**: added `IAccountingBridge.recordPreBuiltVoucher(event)` — the caller passes its real posting action as `postFull`; the bridge decides full-vs-minimal, invokes `postFull` verbatim in full mode, or records a minimal journal (no GL voucher) in minimal mode. Wired all 4 settlement sites: SI invoice settlement (`SalesInvoiceUseCases`), PI invoice settlement (`PurchaseInvoiceUseCases`), and the `record-payment` paths (`Post{Sales,Purchase}InvoiceWithSettlementUseCase` via `Record{Sales,Purchase}InvoicePaymentUseCase`), plus their controller construction sites. Payment-history `voucherId` is null in minimal mode.
@@ -4649,3 +4676,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated POS architecture, selling user guide, owner test guide, Golden Path 06, Task 251 gap plan, completion report, and ACTIVE.
 - **Time spent:** ~0.4h for this slice; Task 251 total ~16.2h so far.
 - **Next:** Remaining POS report gaps or printable receipt template decision.
+
+### Session: 2026-06-22 (Task 251 — merge current main into POS readiness)
+
+- **Goal:** Prepare `codex/pos-qa-readiness` for merge by reconciling it with current `origin/main`.
+- **What was done:** Merged `origin/main` into the POS readiness worktree. The only textual conflict was `planning/ACTIVE.md`; resolved by preserving both the Task 251 POS readiness summary and the Task 256 shared print-layout engine summary. Audited merge hotspots: POS initialization now keeps `ensureInventoryEngine`, POS held-cart/manager-override/exchange routes remain wired, DI keeps both POS repositories and the new FX/print-layout/inventory-init registrations, and `SystemCoreBoundaries.test.ts` keeps the POS guards plus the new FX contract guard.
+- **Accounting/ERP impact:** Merge reconciliation only. The important combined behavior is that POS readiness controls now sit on top of the latest always-on posting/inventory/FX engine changes. No new posting math, tax, COGS, inventory valuation, settlement routing, period-lock, or approval behavior was added in this merge step.
+- **Verification:** `npx prisma generate` passed. Backend build passed. Focused backend merge suite passed: POS + System Core boundaries + AccountingBridge + FX + inventory init + print-layout, 19 suites / 121 tests. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests. Frontend `check:reports`, `typecheck`, and production build passed; existing bundle/browser-data warnings remain.
+- **Time spent:** ~0.8h for merge reconciliation and focused validation.
+- **Next:** Commit/push `codex/pos-qa-readiness` for PR/merge to `main`.

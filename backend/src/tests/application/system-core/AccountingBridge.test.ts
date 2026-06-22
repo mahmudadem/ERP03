@@ -22,7 +22,7 @@ describe('Accounting Bridge', () => {
   it('250k full mode preserves the existing subledger voucher posting path', async () => {
     const voucher = { id: 'v_1' };
     const postingService = { postInTransaction: jest.fn().mockResolvedValue(voucher) };
-    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: true }) };
+    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: false, initialized: true }) };
     const postingLogRepo = { create: jest.fn() };
     const bridge = new LegacyAccountingBridgeAdapter(postingService as any, companyModuleRepo as any, postingLogRepo as any);
 
@@ -34,9 +34,9 @@ describe('Accounting Bridge', () => {
     expect(postingLogRepo.create).not.toHaveBeenCalled();
   });
 
-  it('250k minimal mode records a durable journal event when Accounting App is disabled', async () => {
+  it('250k minimal mode records a durable journal event when not linked to accounting (engine not initialized)', async () => {
     const postingService = { postInTransaction: jest.fn() };
-    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: false }) };
+    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: true, initialized: false }) };
     const postingLogRepo = { create: jest.fn() };
     const bridge = new LegacyAccountingBridgeAdapter(postingService as any, companyModuleRepo as any, postingLogRepo as any);
 
@@ -75,9 +75,9 @@ describe('Accounting Bridge — FUP-5 recordPreBuiltVoucher', () => {
     metadata: { sourceModule: 'sales', sourceType: 'SALES_RECEIPT', sourceInvoiceId: 'si_1' },
   } as any;
 
-  it('full mode (App enabled): runs the real postFull verbatim and returns the voucher', async () => {
+  it('full mode (engine initialized — posts even with the App/UI toggle OFF): runs the real postFull verbatim and returns the voucher', async () => {
     const postFull = jest.fn().mockResolvedValue(undefined);
-    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: true }) };
+    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: false, initialized: true }) };
     const postingLogRepo = { create: jest.fn() };
     const bridge = new LegacyAccountingBridgeAdapter({} as any, companyModuleRepo as any, postingLogRepo as any);
 
@@ -90,9 +90,9 @@ describe('Accounting Bridge — FUP-5 recordPreBuiltVoucher', () => {
     expect(postingLogRepo.create).not.toHaveBeenCalled();
   });
 
-  it('minimal mode (App disabled): skips postFull and records a minimal journal (no GL voucher)', async () => {
+  it('minimal mode (engine NOT initialized — not linked to accounting): skips postFull and records a minimal journal (no GL voucher)', async () => {
     const postFull = jest.fn().mockResolvedValue(undefined);
-    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: false }) };
+    const companyModuleRepo = { get: jest.fn().mockResolvedValue({ moduleCode: 'accounting', isEnabled: true, initialized: false }) };
     const postingLogRepo = { create: jest.fn() };
     const bridge = new LegacyAccountingBridgeAdapter({} as any, companyModuleRepo as any, postingLogRepo as any);
 

@@ -452,6 +452,7 @@ export const routesConfig: AppRoute[] = [
   
   // TOOLS
   { path: '/tools/forms-designer', label: 'Forms Designer Builder', component: lazy(() => import('../modules/tools/pages/ToolsFormsDesignerPage')), section: 'TOOLS', hideInMenu: false },
+  { path: '/tools/print-layout-designer', label: 'Print Layout Designer', component: lazy(() => import('../modules/tools/print-layout/PrintLayoutDesignerPage')), section: 'TOOLS', hideInMenu: false, requiredPermission: 'system.company.settings.manage' },
   { path: '/canvas-dev', label: 'Canvas Dev', component: CanvasDevPage, section: 'TOOLS', hideInMenu: true },
   { path: '/dev/data-table', label: 'DataTable Demo', component: lazy(() => import('../pages/dev/DataTableDemoPage').then(m => ({ default: m.default }))), section: 'TOOLS', hideInMenu: true },
   { path: '/dev/report-table-demo', label: 'Report Table Demo', component: lazy(() => import('../pages/dev/ReportTableDemoPage')), section: 'TOOLS', hideInMenu: false },
