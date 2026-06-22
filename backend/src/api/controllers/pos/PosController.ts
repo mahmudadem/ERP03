@@ -50,6 +50,7 @@ import { PostPosReturnUseCase } from '../../../application/pos/use-cases/PostPos
 import {
   GetCashierSalesSummaryUseCase,
   GetCashOverShortReportUseCase,
+  GetCancelledReceiptsUseCase,
   GetDailyPosSummaryUseCase,
   GetPaymentMethodSummaryUseCase,
   GetPosOverrideAuditReportUseCase,
@@ -978,6 +979,23 @@ export class PosController {
         dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
         registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
         customerId: (req as any).query?.customerId ? String((req as any).query.customerId) : undefined,
+        limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
+      });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getCancelledReceipts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new GetCancelledReceiptsUseCase(diContainer.posReceiptRepository);
+      const data = await useCase.execute({
+        companyId,
+        dateFrom: (req as any).query?.dateFrom ? String((req as any).query.dateFrom) : undefined,
+        dateTo: (req as any).query?.dateTo ? String((req as any).query.dateTo) : undefined,
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
         limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
       });
       (res as any).json({ success: true, data });

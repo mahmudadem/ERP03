@@ -320,7 +320,59 @@ export class GetReceiptHistoryUseCase {
   }
 }
 
-// ───────── 7. Top selling items report ─────────
+// ───────── 7. Cancelled / voided receipts report ─────────
+
+export interface GetCancelledReceiptsInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  registerId?: string;
+  limit?: number;
+}
+
+export interface CancelledReceiptRow {
+  id: string;
+  receiptNumber: string;
+  registerId: string;
+  shiftId: string;
+  customerId: string;
+  grandTotal: number;
+  salesInvoiceId?: string;
+  salesInvoiceNumber?: string;
+  createdBy: string;
+  createdAt: string;
+  status: 'VOIDED';
+}
+
+export class GetCancelledReceiptsUseCase {
+  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+
+  async execute(input: GetCancelledReceiptsInput): Promise<CancelledReceiptRow[]> {
+    const receipts = await this.receiptRepo.list(input.companyId, {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      registerId: input.registerId,
+      limit: input.limit ?? 1000,
+    });
+    return receipts
+      .filter((receipt) => receipt.status === 'VOIDED')
+      .map((receipt) => ({
+        id: receipt.id,
+        receiptNumber: receipt.receiptNumber,
+        registerId: receipt.registerId,
+        shiftId: receipt.shiftId,
+        customerId: receipt.customerId,
+        grandTotal: receipt.grandTotal,
+        salesInvoiceId: receipt.salesInvoiceId,
+        salesInvoiceNumber: receipt.salesInvoiceNumber,
+        createdBy: receipt.createdBy,
+        createdAt: receipt.createdAt.toISOString(),
+        status: 'VOIDED' as const,
+      }));
+  }
+}
+
+// ───────── 8. Top selling items report ─────────
 
 export interface GetTopSellingItemsInput {
   companyId: string;
@@ -378,7 +430,7 @@ export class GetTopSellingItemsUseCase {
   }
 }
 
-// ───────── 8. Override and void audit report ─────────
+// ───────── 9. Override and void audit report ─────────
 
 export interface GetPosOverrideAuditReportInput {
   companyId: string;
@@ -471,7 +523,7 @@ function auditEventTypesForLine(line: {
   return eventTypes;
 }
 
-// ───────── 9. Receipt reprint audit report ─────────
+// ───────── 10. Receipt reprint audit report ─────────
 
 export interface GetPosReprintAuditReportInput {
   companyId: string;

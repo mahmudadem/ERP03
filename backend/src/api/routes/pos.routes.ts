@@ -58,6 +58,7 @@ router.get('/reports/payment-methods', permissionGuard('pos.reports.view'), PosC
 router.get('/reports/cashier-sales', permissionGuard('pos.reports.view'), PosController.getCashierSales);
 router.get('/reports/cash-over-short', permissionGuard('pos.reports.view'), PosController.getCashOverShort);
 router.get('/reports/receipt-history', permissionGuard('pos.reports.view'), PosController.getReceiptHistory);
+router.get('/reports/cancelled-receipts', permissionGuard('pos.reports.view'), PosController.getCancelledReceipts);
 router.get('/reports/top-selling-items', permissionGuard('pos.reports.view'), PosController.getTopSellingItems);
 router.get('/reports/override-audit', permissionGuard('pos.reports.view'), PosController.getOverrideAuditReport);
 router.get('/reports/reprint-audit', permissionGuard('pos.reports.view'), PosController.getReprintAuditReport);

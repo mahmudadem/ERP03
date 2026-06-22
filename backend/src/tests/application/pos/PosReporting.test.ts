@@ -4,6 +4,7 @@ import {
   GetCashierSalesSummaryUseCase,
   GetCashOverShortReportUseCase,
   GetReceiptHistoryUseCase,
+  GetCancelledReceiptsUseCase,
   GetPosOverrideAuditReportUseCase,
   GetTopSellingItemsUseCase,
   GetPosReprintAuditReportUseCase,
@@ -193,6 +194,28 @@ describe('PosReportingUseCases', () => {
         { itemId: 'i3', itemCode: 'C', itemName: 'C', qtySold: 5, grossSales: 10, receiptCount: 1 },
         { itemId: 'i1', itemCode: 'A', itemName: 'A', qtySold: 3, grossSales: 30, receiptCount: 2 },
       ]);
+    });
+  });
+
+  describe('GetCancelledReceiptsUseCase', () => {
+    it('lists only voided POS receipts for cancellation review', async () => {
+      const receiptRepo = {
+        list: jest.fn().mockResolvedValue([
+          makeReceipt({ id: 'rcp_1', status: 'COMPLETED' }),
+          makeReceipt({ id: 'rcp_void', receiptNumber: 'R-VOID-1', status: 'VOIDED', grandTotal: 35 }),
+        ]),
+      };
+      const useCase = new GetCancelledReceiptsUseCase(receiptRepo as any);
+
+      const rows = await useCase.execute({ companyId: 'cmp_test', registerId: 'reg_1' });
+
+      expect(receiptRepo.list).toHaveBeenCalledWith('cmp_test', expect.objectContaining({ registerId: 'reg_1' }));
+      expect(rows).toEqual([expect.objectContaining({
+        id: 'rcp_void',
+        receiptNumber: 'R-VOID-1',
+        grandTotal: 35,
+        status: 'VOIDED',
+      })]);
     });
   });
 
