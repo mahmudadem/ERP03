@@ -10,6 +10,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PostDeliveryNoteUseCase } from '../../../application/sales/use-cases/DeliveryNoteUseCases';
 import { PostSalesInvoiceUseCase, ApproveSalesInvoiceUseCase } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 
 const COMPANY_ID = 'cmp-1';
 const USER_ID = 'u-1';
@@ -1856,6 +1857,149 @@ describe('Sales posting use-cases (Phase 2)', () => {
     await expect(useCase.execute(COMPANY_ID, si.id)).rejects.toThrow('Missing positive inventory cost');
     expect(voucherRepo.save).not.toHaveBeenCalled();
     expect(invoiceRepo.update).not.toHaveBeenCalled();
+  });
+});
+
+/**
+ * FUP-3 production-wiring parity (the merge gate).
+ *
+ * The controllers now pass a real `LegacyAccountingBridgeAdapter` into PostSI/PI/SR.
+ * Unit tests prove the assembler; these prove the *whole use-case* behaves identically
+ * when posting through the real bridge in full mode (Accounting App enabled), and
+ * degrades to minimal mode (no GL voucher) when the App is disabled — the only intended
+ * behavior change. Scenario mirrors test #7 (SIMPLE standalone stock SI → Revenue + COGS).
+ */
+describe('PostSI — FUP-3 production bridge parity (full == legacy) + minimal mode', () => {
+  const buildScenario = () => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const stockItem = makeItem('stock-bridge', {
+      trackInventory: true,
+      cogsAccountId: 'COGS-700',
+      inventoryAssetAccountId: 'INV-700',
+      revenueAccountId: 'REV-700',
+    });
+    const si = makeSI({ id: 'si-bridge', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
+    return { settings, customer, stockItem, si };
+  };
+
+  /** Build the use-case for a scenario. `bridge` is the new LAST constructor param. */
+  const buildUseCase = (
+    scenario: ReturnType<typeof buildScenario>,
+    captureRepo: { save: any },
+    bridge?: any
+  ) => {
+    const { settings, customer, stockItem, si } = scenario;
+    const invoiceStore = new Map([[si.id, si]]);
+    const postingService = new SubledgerVoucherPostingService(
+      captureRepo as any,
+      { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any
+    );
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_c: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (e: SalesInvoice) => { invoiceStore.set(e.id, e); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      makeItemRepo(stockItem) as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      postingService,
+      undefined,
+      makeTransactionManager() as any,
+      undefined, // paymentHistoryRepo
+      undefined, // voucherRepo
+      undefined, // voucherSequenceRepo
+      undefined, // ledgerRepo
+      undefined, // postingLogRepo
+      undefined, // auditEngine
+      undefined, // partyItemPriceRepo
+      undefined, // profitFactRecorder
+      undefined, // numberingEngine
+      bridge,    // accountingBridge (LAST param)
+    );
+    return { useCase, si };
+  };
+
+  /** The accounting truth that must not drift: voucher type + per-line Dr/Cr accounts/amounts. */
+  const normalize = (vouchers: any[]) =>
+    vouchers.map((v) => ({
+      voucherType: v.voucherType,
+      sourceType: v.metadata?.sourceType,
+      voucherPart: v.metadata?.voucherPart,
+      lines: v.lines
+        .map((l: any) => ({ accountId: l.accountId, side: l.side, baseAmount: l.baseAmount, docAmount: l.docAmount }))
+        .sort((a: any, b: any) => `${a.side}${a.accountId}`.localeCompare(`${b.side}${b.accountId}`)),
+    }));
+
+  it('full mode (App enabled) through the real adapter posts vouchers IDENTICAL to the legacy path', async () => {
+    // Legacy path — no bridge, use-case posts directly.
+    const legacyRepo = { save: jest.fn(async (v: any) => v) };
+    const legacy = buildUseCase(buildScenario(), legacyRepo);
+    const legacyPosted = await legacy.useCase.execute(COMPANY_ID, legacy.si.id);
+
+    // Production path — real LegacyAccountingBridgeAdapter, Accounting App ENABLED → full mode.
+    // The bridge owns its OWN posting service, so capture vouchers from the bridge's repo.
+    const bridgeRepo = { save: jest.fn(async (v: any) => v) };
+    const bridgePostingService = new SubledgerVoucherPostingService(
+      bridgeRepo as any,
+      { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any
+    );
+    const moduleEnabled = { get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleCode: 'accounting', isEnabled: true })) };
+    const postingLogRepo = { create: jest.fn(async () => undefined) };
+    const bridge = new LegacyAccountingBridgeAdapter(bridgePostingService, moduleEnabled as any, postingLogRepo as any);
+
+    const prodRepo = { save: jest.fn(async (v: any) => v) }; // use-case's own repo — should stay UNUSED in full mode
+    const prod = buildUseCase(buildScenario(), prodRepo, bridge);
+    const prodPosted = await prod.useCase.execute(COMPANY_ID, prod.si.id);
+
+    // Same number of vouchers, same Dr/Cr truth.
+    expect(bridgeRepo.save).toHaveBeenCalledTimes(legacyRepo.save.mock.calls.length);
+    expect(bridgeRepo.save).toHaveBeenCalledTimes(2); // Revenue + COGS
+    expect(normalize(bridgeRepo.save.mock.calls.map((c: any) => c[0])))
+      .toEqual(normalize(legacyRepo.save.mock.calls.map((c: any) => c[0])));
+
+    // The bridge intercepted: the use-case's own posting service was never touched.
+    expect(prodRepo.save).not.toHaveBeenCalled();
+    // No minimal-journal log in full mode.
+    expect(postingLogRepo.create).not.toHaveBeenCalled();
+    // Same end state.
+    expect(prodPosted.status).toBe('POSTED');
+    expect(legacyPosted.status).toBe('POSTED');
+    expect(prodPosted.voucherId).toBeTruthy();
+    expect(prodPosted.cogsVoucherId).toBeTruthy();
+  });
+
+  it('minimal mode (App disabled) posts NO GL voucher, records a minimal journal, still marks POSTED', async () => {
+    const bridgeRepo = { save: jest.fn(async (v: any) => v) };
+    const bridgePostingService = new SubledgerVoucherPostingService(
+      bridgeRepo as any,
+      { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any
+    );
+    const moduleDisabled = { get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleCode: 'accounting', isEnabled: false })) };
+    const postingLogRepo = { create: jest.fn(async () => undefined) };
+    const bridge = new LegacyAccountingBridgeAdapter(bridgePostingService, moduleDisabled as any, postingLogRepo as any);
+
+    const prod = buildUseCase(buildScenario(), { save: jest.fn(async (v: any) => v) }, bridge);
+    const posted = await prod.useCase.execute(COMPANY_ID, prod.si.id);
+
+    expect(bridgeRepo.save).not.toHaveBeenCalled();          // no GL voucher
+    expect(postingLogRepo.create).toHaveBeenCalled();        // minimal journal recorded instead
+    expect(posted.status).toBe('POSTED');                    // document still posts
+    expect(posted.voucherId).toBeNull();                     // no revenue voucher id
+    expect(posted.cogsVoucherId).toBeNull();                 // no COGS voucher id
   });
 });
 
