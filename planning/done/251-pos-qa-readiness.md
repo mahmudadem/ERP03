@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-15 green
-**Actual time:** ~15.8h so far
+**Status:** in progress locally; slices 1-16 green
+**Actual time:** ~16.2h so far
 
 ## Technical Developer View
 
@@ -31,6 +31,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS Override Audit now has a dedicated ReportContainer page under POS Reports.
 - POS Returns now has a cashier-facing **Exchange** mode that collects returned receipt lines, replacement POS item lines, replacement payment method/reference, and posts through the existing exchange API.
 - POS sale posting now blocks inactive items, POS-disabled/POS-blocked item metadata, and manual/promotion discounts on non-discountable POS items before stock or ledger writes.
+- POS sale posting now also blocks expired items, expiry-tracked items without a selected valid expiry, and batch/lot/serial-controlled items until POS can capture the selected batch or serial on the sale line.
 - POS Top Selling Items report now ranks completed receipt lines by item, excluding voided lines.
 - POS receipt reprint now checks `REPRINT` manager-override policy, writes a `POS_RECEIPT` record-change audit row, and exposes `/tenant/pos/reports/reprint-audit`.
 - POS Cancelled Receipts report now lists only POS receipts already marked `VOIDED` after the reversal/return flow.
@@ -47,6 +48,7 @@ Files changed:
 - `backend/src/application/pos/use-cases/PosHeldCartUseCases.ts`
 - `backend/src/application/pos/use-cases/PosShiftUseCases.ts`
 - `backend/src/application/pos/use-cases/PostPosSaleUseCase.ts`
+- `backend/src/tests/application/pos/PostPosSale.test.ts`
 - `backend/prisma/schema.prisma`
 - `backend/src/application/pos/use-cases/PosReportingUseCases.ts`
 - `backend/src/application/pos/use-cases/PosSettingsUseCases.ts`
@@ -152,6 +154,8 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm run build` from `backend/` — passed after manager approval capture UI slice.
 - `npm --prefix frontend run check:reports` — passed with 34 report routes after manager approval capture UI slice.
 - `npm --prefix frontend run build` — passed after manager approval capture UI slice; existing bundle-size/Browserslist/baseline-data warnings remain.
+- `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` — passed, 1 suite / 13 tests after expiry/batch-aware item guard slice.
+- `npm run build` from `backend/` — passed after expiry/batch-aware item guard slice.
 - `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` — passed, 1 suite / 10 tests after item selling-policy guard slice.
 - `npm run typecheck` from `backend/` — passed after item selling-policy guard slice.
 - `npm run build` from `backend/` — passed after item selling-policy guard slice.
@@ -180,7 +184,7 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - Cashier-facing manager approval capture is now available for terminal voids, sale-line overrides, returns, and exchanges. A future hardening slice should add manager PIN/password authentication.
 - Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
 - POS item enabled/blocked/discountable flags are currently metadata-enforced; a first-class item-master UI for these flags is still a follow-up.
-- Expiry/batch-aware item guards are still a follow-up because current item master does not model POS batch expiry at sale-line level.
+- True batch/lot/serial selling remains a follow-up because POS sale lines do not yet capture selected batch, lot, serial, or batch-level expiry identity. Current behavior blocks those items before posting.
 - SQL deployments need a Prisma migration for the new POS shift reconciliation and held-cart fields before using them in SQL mode.
 - Held carts do not reserve stock in V1; stock availability is rechecked when the recalled sale is completed.
 - Accounting voucher enum still uses existing Sales Invoice / Sales Return voucher types for GL classification while POS metadata and stock refs preserve POS identity. Adding separate POS voucher types needs an accounting-policy review.

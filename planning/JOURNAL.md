@@ -4639,3 +4639,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated POS architecture, selling/returns user guides, owner test guide, Golden Path 06, Task 251 gap plan, completion report, and ACTIVE.
 - **Time spent:** ~1.1h for this slice; Task 251 total ~15.8h so far.
 - **Next:** Expiry/batch-aware item guards or remaining POS report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P0/P1 slice 16 Expiry/Batch Protective Guards)
+
+- **Goal:** Close the expiry/batch-aware POS guard gap without inventing a batch-level stock model that the current inventory core does not support.
+- **What was done:** Extended `PostPosSaleUseCase` item guards so POS posting blocks expired items, expiry-tracked items without a selected valid expiry, batch/lot-required items, and serial-required items before stock movement, receipt, payment, or ledger writes. The supported V1 metadata flags are documented under POS architecture; true batch/lot/serial selling remains a future slice because POS lines do not yet carry selected lot/serial identity.
+- **Accounting/ERP impact:** Control hardening only. No tax, COGS, costing, inventory valuation, settlement routing, voucher posting, period-lock, or approval-engine math changed. The important accounting protection is avoiding anonymous stock depletion for controlled items.
+- **Verification:** Focused POS sale posting test passed (`PostPosSale`: 1 suite / 13 tests). Backend build passed.
+- **Docs:** Updated POS architecture, selling user guide, owner test guide, Golden Path 06, Task 251 gap plan, completion report, and ACTIVE.
+- **Time spent:** ~0.4h for this slice; Task 251 total ~16.2h so far.
+- **Next:** Remaining POS report gaps or printable receipt template decision.

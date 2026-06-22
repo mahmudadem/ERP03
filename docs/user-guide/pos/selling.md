@@ -69,6 +69,8 @@ When the applied amount equals the payable total, click **Complete sale**. The s
 
 Manual discounts, price override flags, tax override flags, voided lines, and manager approval ids are stored on the receipt audit trail. Managers can review those exceptions from the POS override audit report endpoint.
 
+The POS terminal also blocks restricted items before a receipt is posted. Inactive, POS-disabled, POS-blocked, expired, expiry-tracked-without-selected-expiry, batch/lot-required, serial-required, and non-discountable item violations stop before stock, payment, or ledger entries are written. Batch/serial selling needs a future POS selector before those items can be sold safely.
+
 ## Why "Allow POS direct sales" matters
 
 The first time you use the terminal, if the Settings page has not enabled **Allow POS direct sales**, the backend blocks the sale through POS policy. The cashier screen surfaces this as a toast. Go to **POS → Settings**, enable the toggle, save, and try again.

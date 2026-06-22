@@ -194,6 +194,80 @@ describe('PostPosSaleUseCase', () => {
     expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
   });
 
+  it('blocks expired POS items before stock or ledger writes', async () => {
+    const { useCase, inventoryCore, accountingBridge } = setup({
+      item: makeItem({ metadata: { pos: { expiryDate: '2026-06-20' } } }),
+    });
+
+    await expect(useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/expired and cannot be sold in POS/);
+
+    expect(inventoryCore.processOUT).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+  });
+
+  it('blocks expiry-tracked POS items without selected batch expiry before stock or ledger writes', async () => {
+    const { useCase, inventoryCore, accountingBridge } = setup({
+      item: makeItem({ metadata: { pos: { expiryTracked: true } } }),
+    });
+
+    await expect(useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/expiry-tracked and cannot be sold in POS/);
+
+    expect(inventoryCore.processOUT).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+  });
+
+  it('blocks batch and serial controlled POS items until POS captures the selected lot or serial', async () => {
+    const batchScenario = setup({ item: makeItem({ metadata: { pos: { requiresBatch: true } } }) });
+
+    await expect(batchScenario.useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/requires batch\/lot selection/);
+
+    expect(batchScenario.inventoryCore.processOUT).not.toHaveBeenCalled();
+    expect(batchScenario.accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+
+    const serialScenario = setup({ item: makeItem({ metadata: { pos: { serialRequired: true } } }) });
+
+    await expect(serialScenario.useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentNumber: 'R-000002',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 1, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 10 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/requires serial selection/);
+
+    expect(serialScenario.inventoryCore.processOUT).not.toHaveBeenCalled();
+    expect(serialScenario.accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+  });
+
   it('250l-2 blocks a below-cost POS sale when approval is pending', async () => {
     const commercialCore = {
       validateCostMargin: jest.fn().mockResolvedValue({

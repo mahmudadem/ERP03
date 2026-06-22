@@ -103,6 +103,7 @@ Estimated manual run time: **60–90 minutes** on a fresh tenant if master data 
 | 33b | Try a POS sale with an over-limit manual line discount and no captured manager approval | Blocked before receipt, stock, ledger, payment, or cash movement persistence |
 | 33c | Repeat the same sale, click **Capture approval** in the Tender dialog, select a manager, enter the reason, and complete the sale | Sale completes; receipt line carries the generated manager override id and discount metadata |
 | 33d | Create or inspect a receipt containing a voided line, price override flag, tax override flag, and/or manual discount | Receipt snapshot keeps the exception metadata for audit review |
+| 33e | Try selling an item whose POS metadata marks it expired, expiry-tracked without selected expiry, batch/lot-required, or serial-required | Blocked before receipt, stock, ledger, payment, or cash movement persistence |
 
 ## H. Reports
 

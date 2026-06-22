@@ -61,7 +61,7 @@
 | Manager override | ✅ Capture + hooks done | Below-cost uses approval via Commercial Core/Approval Engine. POS policy can require manager approval for void, price override, discount override, return, tax override, and reprint; sale/return/reprint use cases enforce available hooks. Cashier role limits also require approval when configured. Cashiers can now capture an audited `mgr_override_*` id from Terminal/Returns and attach it to voids, sale overrides, returns, and exchanges. Future hardening: manager PIN/password validation. |
 | Return/exchange | ✅ P0 done | Receipt-based selected-line returns, refunds, duplicate-return prevention, posted receipt void via full POS return, and exchange as linked POS return + replacement POS sale exist. Cashiers can process exchanges from POS → Returns → Exchange. |
 | Price/discount/tax edit policies | ✅ Backend controls + capture done | Cashier role limits exist for max line discount percent/amount and price/tax override permission; sale completion blocks over-limit lines unless a manager override id is supplied. Receipt snapshots and the override audit report expose void/discount/price/tax exceptions. Terminal Tender can capture and attach the override id before completion. |
-| Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Inactive, POS-disabled/POS-blocked metadata, and non-discountable item guards are enforced in POS sale posting. Missing richer item-master UI fields and expiry/batch-aware guards. |
+| Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Inactive, POS-disabled/POS-blocked, expired, expiry-tracked-without-selected-expiry, batch/lot/serial-controlled, and non-discountable item guards are enforced in POS sale posting. Missing richer item-master UI fields and true POS batch/serial selector support. |
 | Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
 | Promotions/offers | ⏸ Deferred | Must stay disabled until stacking/cap/conflict/return model lands. |
 | POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history, cancelled receipts, top-selling items, override audit, and reprint audit exist. Missing promotion performance, which stays deferred while promotions are production-gated. |
@@ -105,7 +105,8 @@
 - **P1 slice 13 complete:** POS receipt reprint enforces reprint manager-override policy, records an audit event, and exposes Reprint Audit under POS Reports.
 - **P1 slice 14 complete:** Cancelled Receipts report added for POS receipts marked `VOIDED` after reversal.
 - **P0/P1 slice 15 complete:** Cashier-facing manager approval capture UI plus audited manager override endpoint; exchange forwards the same approval id to both return and replacement sale legs.
-- **P0/P1 next slice:** Expiry/batch-aware item guards or remaining report gaps.
+- **P0/P1 slice 16 complete:** Expiry/batch-aware protective guards block expired, expiry-tracked-without-selected-expiry, batch/lot-required, and serial-required POS items before stock or ledger writes. This is a control block, not full batch/serial selling support.
+- **P0/P1 next slice:** Remaining report gaps or printable receipt template decision.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
 - Decide whether branch should remain free text or wait for a first-class Branch entity.
@@ -134,6 +135,7 @@ This is a cash-control and settlement-routing fix. It does not change tax math, 
 - POS exchange creates a linked return and replacement sale with one exchange id and reports net due/refund.
 - POS held carts can be held, listed, recalled once, and cancelled without posting stock, receipt, payment, or ledger activity.
 - POS sale posting blocks inactive, POS-disabled, POS-blocked, and non-discountable item violations before stock/ledger writes.
+- POS sale posting blocks expired, expiry-tracked-without-selected-expiry, batch/lot-required, and serial-required item violations before stock/ledger writes.
 - Top Selling Items report ranks completed POS receipt lines by item and excludes voided lines.
 - POS receipt reprint enforces configured manager approval, records a receipt audit row, and appears in the Reprint Audit report.
 - Cancelled Receipts report lists only POS receipts with status `VOIDED`.

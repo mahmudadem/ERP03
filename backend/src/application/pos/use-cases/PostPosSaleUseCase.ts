@@ -131,7 +131,7 @@ export class PostPosSaleUseCase {
       if (!item || item.companyId !== input.companyId) {
         throw new Error(`Item not found: ${line.itemId}`);
       }
-      assertItemAllowedForPosSale(item);
+      assertItemAllowedForPosSale(item, input.date);
       itemMap.set(item.id, item);
     }
     const saleLines = await this.applyPromotions(input, itemMap);
@@ -466,7 +466,7 @@ export class PostPosSaleUseCase {
       if (!itemMap.has(freeGood.itemId)) {
         const item = await this.itemRepo.getItem(freeGood.itemId);
         if (!item || item.companyId !== input.companyId) continue;
-        assertItemAllowedForPosSale(item);
+        assertItemAllowedForPosSale(item, input.date);
         itemMap.set(item.id, item);
       }
       const sourceIndex = lineIds.findIndex((id) => id === freeGood.sourceLineId);
@@ -534,7 +534,7 @@ function mapBucket(bucket: Map<string, number>, side: 'Debit' | 'Credit', curren
   }));
 }
 
-function assertItemAllowedForPosSale(item: Item): void {
+function assertItemAllowedForPosSale(item: Item, saleDate: string): void {
   if (item.active === false) {
     throw new Error(`Item ${item.code || item.id} is inactive and cannot be sold in POS.`);
   }
@@ -546,6 +546,31 @@ function assertItemAllowedForPosSale(item: Item): void {
   }
   if (posMetadata.blocked === true || metadata.blockedInPos === true) {
     throw new Error(`Item ${item.code || item.id} is blocked for POS sale.`);
+  }
+  if (
+    readBooleanFlag(posMetadata, ['requiresBatch', 'batchRequired', 'requiresLot', 'lotRequired'])
+    || readBooleanFlag(metadata, ['requiresBatch', 'batchRequired', 'requiresLot', 'lotRequired'])
+  ) {
+    throw new Error(`Item ${item.code || item.id} requires batch/lot selection before it can be sold in POS.`);
+  }
+  if (
+    readBooleanFlag(posMetadata, ['requiresSerial', 'serialRequired', 'serialized'])
+    || readBooleanFlag(metadata, ['requiresSerial', 'serialRequired', 'serialized'])
+  ) {
+    throw new Error(`Item ${item.code || item.id} requires serial selection before it can be sold in POS.`);
+  }
+
+  const expiryDate = readFirstString(posMetadata, ['expiryDate', 'expirationDate', 'expiresOn'])
+    || readFirstString(metadata, ['expiryDate', 'expirationDate', 'expiresOn']);
+  const expiryTracked =
+    readBooleanFlag(posMetadata, ['expiryTracked', 'expirationTracked', 'perishable'])
+    || readBooleanFlag(metadata, ['expiryTracked', 'expirationTracked', 'perishable']);
+
+  if (expiryTracked && !expiryDate) {
+    throw new Error(`Item ${item.code || item.id} is expiry-tracked and cannot be sold in POS without a selected valid batch/expiry date.`);
+  }
+  if (expiryDate && isBusinessDateBefore(expiryDate, saleDate)) {
+    throw new Error(`Item ${item.code || item.id} is expired and cannot be sold in POS.`);
   }
 }
 
@@ -563,4 +588,25 @@ function assertLineDiscountAllowedForPosSale(item: Item, line: PostPosSaleLineIn
   if (hasManualDiscount || hasPromotionDiscount) {
     throw new Error(`Item ${item.code || item.id} is not discountable in POS.`);
   }
+}
+
+function readBooleanFlag(source: Record<string, unknown>, keys: string[]): boolean {
+  return keys.some((key) => source[key] === true);
+}
+
+function readFirstString(source: Record<string, unknown>, keys: string[]): string | undefined {
+  for (const key of keys) {
+    const value = source[key];
+    if (typeof value === 'string' && value.trim()) return value.trim();
+  }
+  return undefined;
+}
+
+function isBusinessDateBefore(candidate: string, reference: string): boolean {
+  const candidateDate = candidate.slice(0, 10);
+  const referenceDate = reference.slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(candidateDate) || !/^\d{4}-\d{2}-\d{2}$/.test(referenceDate)) {
+    return false;
+  }
+  return candidateDate < referenceDate;
 }

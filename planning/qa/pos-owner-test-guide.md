@@ -94,16 +94,20 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 26. Expected: sale is blocked before receipt/posting.
 27. Repeat after clicking **Capture approval** in the Tender dialog, selecting a manager, and entering a reason.
 28. Expected: sale completes and the receipt line carries the generated manager override id.
-29. Open **POS → Reports → Override Audit** or query `/tenant/pos/reports/override-audit` for the same date/register.
-30. Confirm rows appear for manual discount, price override, tax override, and any voided lines.
-31. Reprint a receipt through `/tenant/pos/receipts/:id/reprint`.
-32. If the cashier role requires `REPRINT` approval, confirm the call is blocked without `managerOverrideId` and allowed with one.
-33. Open **POS → Reports → Reprint Audit** or query `/tenant/pos/reports/reprint-audit`.
-34. Confirm the receipt reprint row appears with cashier and manager override id.
-35. Void a posted receipt that has no prior returns.
-36. Expected: a POS return is created for all active lines, stock and settlement reverse, and the original receipt status becomes `VOIDED`.
-37. Open **POS → Reports → Cancelled Receipts**.
-38. Expected: the voided receipt appears with status `VOIDED`; non-voided receipts do not appear.
+29. Seed or edit a test item with `metadata.pos.expiryDate` before today's sale date, then try to sell it.
+30. Expected: sale is blocked before receipt, stock, payment, or ledger writes.
+31. Seed or edit a test item with `metadata.pos.requiresBatch = true` or `metadata.pos.serialRequired = true`, then try to sell it.
+32. Expected: sale is blocked until POS has future batch/serial capture support.
+33. Open **POS → Reports → Override Audit** or query `/tenant/pos/reports/override-audit` for the same date/register.
+34. Confirm rows appear for manual discount, price override, tax override, and any voided lines.
+35. Reprint a receipt through `/tenant/pos/receipts/:id/reprint`.
+36. If the cashier role requires `REPRINT` approval, confirm the call is blocked without `managerOverrideId` and allowed with one.
+37. Open **POS → Reports → Reprint Audit** or query `/tenant/pos/reports/reprint-audit`.
+38. Confirm the receipt reprint row appears with cashier and manager override id.
+39. Void a posted receipt that has no prior returns.
+40. Expected: a POS return is created for all active lines, stock and settlement reverse, and the original receipt status becomes `VOIDED`.
+41. Open **POS → Reports → Cancelled Receipts**.
+42. Expected: the voided receipt appears with status `VOIDED`; non-voided receipts do not appear.
 39. Try returning the same receipt again.
 40. Expected: return is blocked because there is no remaining returnable quantity.
 41. On another receipt, process a partial return, then void the receipt.
@@ -129,6 +133,7 @@ Stop and log the failure in `planning/qa/findings.md` if any of these happen:
 - Trial Balance is not balanced after sales, returns, and over/short vouchers.
 - Non-cash settlement variance auto-posts to GL without a separate clearing/reconciliation workflow.
 - Over-limit discount or blocked price/tax override posts without manager approval.
+- Expired, expiry-tracked-without-selected-expiry, batch/lot-required, or serial-required items post through POS before batch/serial capture exists.
 - The **Capture approval** dialog creates no approval id or the posted receipt/return/exchange does not carry the generated approval id.
 - Override audit report is empty after receipts with voids/manual discounts/price or tax override flags.
 - Receipt reprint succeeds without required manager approval, or Reprint Audit misses a reprinted receipt.
