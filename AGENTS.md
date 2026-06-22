@@ -186,6 +186,38 @@ This project uses an OpenCode multi-agent workflow defined in `opencode.json`. T
 - Dynamic Engine: postponed unless explicitly requested
 - Only ONE builder edits a file area at a time
 
+### System Core / Engine Red Lines (Epic 250 + follow-ups — enforced, not optional)
+
+- **Modules orchestrate; engines own shared logic.** Application modules (sales/purchases/inventory/pos) must NOT embed or re-implement shared logic. It lives in `application/system-core/*`.
+- **All GL posting goes through `IAccountingBridge`.** Never call `SubledgerVoucherPostingService.postInTransaction` or `PostingGateway.record` directly in new code.
+  - Document vouchers → `SubledgerDocumentPoster` (constructed with the bridge).
+  - Settlement/payment receipts → `bridge.recordPreBuiltVoucher(...)`.
+  - The bridge owns the **full-vs-minimal** decision (no GL voucher when the Accounting App is disabled). The Accounting **Engine is mandatory**; the Accounting **App/UI is optional** — never conflate them.
+- **New posting use-cases** accept `accountingBridge?: IAccountingBridge` as the **last** constructor param; the controller passes it via its `buildAccountingBridge(...)` helper.
+- **Never construct `StockMovement` / `StockLevel` outside the inventory core.** Use `IInventoryCore` (`computeStockOutMovement` / `computeStockReturnInMovement`).
+- **Line discount/amount math** → `CommercialCore.resolveLineDiscountAmount`. No new local discount helpers in entities.
+- **Use the engines, don't re-derive:** tax → `TaxEngine`; money rounding → `system-core/money/roundMoney`; numbering → `INumberingEngine`; voucher-approval requirement → `IApprovalEngine`.
+- **Promotions stay OFF in production.** Never remove or bypass `arePromotionsEnabledInProduction()`; do not enable until the stacking/cap model lands and is audited.
+- **`SystemCoreBoundaries.test.ts` is the enforcement.** Run it. Never weaken, skip, or delete a guard to make a change pass — if it fails, your change is in the wrong layer.
+
+### New Feature — "Where does this logic go?" (decide BEFORE coding)
+
+Before implementing any feature, classify each piece of logic:
+
+1. **Is it shared / cross-cutting?** Ask: *"Would any other module ever need this?"* and *"Is it a calculation, policy, posting rule, or lifecycle rule — rather than orchestration?"* The cross-cutting concerns are: document lifecycle, numbering, money/rounding, tax, pricing/discounts/promotions, policy, approval, inventory costing/movements, GL posting (accounting bridge), audit.
+   - **Yes → it belongs in System Core**, behind an interface — never inline in the module.
+2. **Does an existing engine already own it?** (`IDocumentCore`, `INumberingEngine`, `IMoneyCore`, `ITaxEngine`, `ICommercialCore`, `IPolicyEngine`, `IApprovalEngine`, `IInventoryCore`, `IAccountingBridge`, `IAuditEngine`.)
+   - **Yes → extend that engine** (interface + implementation + tests). Do not fork a local copy.
+3. **A genuinely new shared concern no engine covers → create a new isolated engine:**
+   - Define `I<Name>Core` in `application/system-core/contracts/`.
+   - Implement in `application/system-core/<name>/`.
+   - If it wraps working legacy code, add a `Legacy<Name>Adapter` (wrap it, don't rewrite — like `LegacyAccountingBridgeAdapter`).
+   - Register in `bindRepositories.ts`; modules receive it by interface (optional param + fallback for behavior-preserving rollout).
+   - **Add a guard to `SystemCoreBoundaries.test.ts`** so the boundary is enforced, not just documented.
+   - Document it in `docs/architecture/system-core.md`.
+4. **Module-specific orchestration only** (wiring engines together, request/response shaping, status transitions) → stays in the module's use-case. That's what modules are *for*.
+5. **Unsure which bucket?** STOP and ask. Misplacing shared logic is the exact mistake Epic 250 existed to fix — guessing wrong is expensive to undo.
+
 ### Shared UI Components — MANDATORY REUSE
 
 **Rule:** Whenever a form needs to capture a reference to existing master data (customer, item, warehouse, account, party, etc.), you MUST use the project's shared selector components. Free-text inputs for IDs are a data-integrity bug — they let users save garbage that breaks downstream posting.
