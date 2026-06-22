@@ -4685,3 +4685,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** `npx prisma generate` passed. Backend build passed. Focused backend merge suite passed: POS + System Core boundaries + AccountingBridge + FX + inventory init + print-layout, 19 suites / 121 tests. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests. Frontend `check:reports`, `typecheck`, and production build passed; existing bundle/browser-data warnings remain.
 - **Time spent:** ~0.8h for merge reconciliation and focused validation.
 - **Next:** Commit/push `codex/pos-qa-readiness` for PR/merge to `main`.
+
+### Session: 2026-06-22 (Task 251 — CI lockfile fix)
+
+- **Goal:** Clear the backend GitHub Actions blocker on PR #35.
+- **What was done:** Backend CI failed during `npm ci` because `backend/package-lock.json` was missing npm 10 metadata for transitive optional packages `@types/markdown-it@14.1.2` and `picomatch@4.0.4`. Regenerated the backend lockfile with npm 10.8.2 from inside `backend/`, keeping the change scoped to the lockfile.
+- **Accounting/ERP impact:** Dependency metadata only. No runtime code, posting, tax, stock, settlement, approval, period-lock, or report behavior changed.
+- **Verification:** `npx npm@10.8.2 ci` passed. Backend build passed. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests.
+- **Time spent:** ~0.4h.
+- **Next:** Push the lockfile fix and wait for PR #35 CI to turn green before merging.
