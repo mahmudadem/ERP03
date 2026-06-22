@@ -603,7 +603,7 @@ export class PosController {
       const companyId = PosController.getCompanyId(req);
       const userId = PosController.getUserId(req);
       const userEmail = PosController.getUserEmail(req);
-      const useCase = new CreatePosManagerOverrideUseCase(diContainer.auditEngine);
+      const useCase = new CreatePosManagerOverrideUseCase(diContainer.auditEngine, diContainer.approvalEngine);
       const result = await useCase.execute({
         companyId,
         action: String((req as any).body?.action) as any,

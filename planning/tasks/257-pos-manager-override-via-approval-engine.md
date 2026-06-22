@@ -1,8 +1,9 @@
 # Task 257 — Route POS manager overrides through the Approval Engine
 
-**Status:** 📋 OPEN — tracked follow-up. Do NOT start until the in-flight POS Terminal
-price/discount-edit + Cashier Policy tab + `cashierRoleId`/override-flag plumbing work
-has merged (it threads the same override flags this path consumes; concurrent edits will collide).
+**Status:** ✅ IMPLEMENTED (2026-06-22) on branch `feat/pos-readiness-and-negative-stock`.
+Implemented directly on top of the in-flight Task 251 override-flag work (which is present,
+uncommitted, in the same working tree) per owner direction — there was no *concurrent*
+diverging edit to collide with, so the original "wait until 251 merges" caveat was waived.
 
 **Origin:** CTO audit of merged POS work (PR #35 / Task 251) against the owner's full POS
 requirements spec (2026-06-22). This is the gate-#8 deviation from the owner's confirmation list.
@@ -44,19 +45,38 @@ The required behavior is a real approval workflow, not a trust-the-token gate.
 - The fix edits the exact override-flag path the other agent is currently wiring; doing both at
   once guarantees a merge conflict.
 
-## Acceptance criteria (when picked up)
+## Acceptance criteria
 
-- [ ] POS sale/return manager overrides (`VOID_LINE`, `PRICE_OVERRIDE`, `DISCOUNT_OVERRIDE`,
+- [x] POS manager overrides (`VOID_LINE`, `PRICE_OVERRIDE`, `DISCOUNT_OVERRIDE`,
       `TAX_OVERRIDE`, `RETURN`, `REPRINT`) route through `IApprovalEngine.evaluate(...)` with the
-      already-reserved subject types — not a token-presence check.
-- [ ] Self-approval is rejected (approver must differ from the acting cashier).
-- [ ] Approver authority is enforced by the engine, not assumed from a client token.
-- [ ] A required-but-unapproved override yields a blocking/PENDING decision (no silent allow).
-- [ ] `below_cost_sale` continues to work unchanged (already on the Approval Engine).
-- [ ] Policy Engine remains the place that decides **whether** approval is required; the Approval
-      Engine decides **who** approves and the outcome. (Clarify the seam in the architecture doc.)
-- [ ] Tests: required→PENDING when unapproved; APPROVED by a valid manager allows; self-approval REJECTED.
-- [ ] Architecture/user docs + completion report + JOURNAL/ACTIVE updated (Definition of Done).
+      already-reserved subject types — not a token-presence check. The `approvedOverrideId`
+      token is now minted by `CreatePosManagerOverrideUseCase` **only on an APPROVED decision**.
+- [x] Self-approval is rejected (approver ≠ acting cashier), via `PosManagerOverrideApprovalPlugin`.
+- [x] Approver authority is enforced by the engine — the plugin checks `pos.override.approve`
+      against the server-side RBAC permission resolver, not a client token.
+- [x] A required-but-unapproved override yields PENDING (no approver) / REJECTED — no silent allow;
+      the use-case throws and mints no token.
+- [x] `below_cost_sale` unchanged (no plugin; keeps the generic `requiresApproval → PENDING` fallback).
+- [x] Policy Engine still decides **whether** approval is required; the Approval Engine decides
+      **who** approves and the outcome. Seam documented in `docs/architecture/pos.md` §6a + a
+      `PolicyEngine.resolvePosManagerOverride` comment.
+- [x] Tests: required→PENDING; APPROVED by a valid manager allows + mints token; self-approval REJECTED;
+      unauthorized approver REJECTED; plugin subject-type ownership.
+- [x] Architecture doc + completion report + JOURNAL/ACTIVE updated.
+
+## Delivered scope / notes
+
+- New permission `pos.override.approve` ("Approve POS manager overrides (manager)") in
+  `PermissionCatalog.ts`. Owners/admins (`*`) and any role granted this permission can approve.
+- `PosManagerOverrideApprovalPlugin` registered on the shared `ApprovalEngine` in DI with an
+  authority resolver bound to `PermissionChecker.hasPermission(approverUserId, companyId,
+  'pos.override.approve')`.
+- The use-case takes the Approval Engine as an **optional** collaborator (enforces when present;
+  the production controller always passes it). This preserves the existing constructor for
+  callers/tests that don't exercise approval.
+- **Not in scope (follow-up):** persisting REJECTED/PENDING attempts as their own audit rows
+  (today a blocked attempt throws before any token/audit-create); surfacing PENDING as a held
+  approval the manager later resolves asynchronously (current flow is synchronous at the till).
 
 ## Accounting/ERP impact
 

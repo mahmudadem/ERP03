@@ -2,6 +2,14 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (Task 257 — POS manager overrides via the Approval Engine)
+
+- **Context:** Owner said "do it all" after Task 258. Committed the 258 + POS readiness WIP bundle on branch `feat/pos-readiness-and-negative-stock`, then implemented Task 257 directly on top (the 251 override-flag work it depends on is present uncommitted in the same tree, so no concurrent-edit collision; the original "wait for 251 merge" caveat was waived by owner direction).
+- **What changed:** POS manager overrides now route through `IApprovalEngine.evaluate(...)` instead of a token-presence check. New `PosManagerOverrideApprovalPlugin` (subjects `pos_manager_override`/`price_override`/`discount_override`/`tax_override`) returns PENDING (no approver) / REJECTED (self-approval, or approver lacking `pos.override.approve`) / APPROVED (distinct authorised manager). `CreatePosManagerOverrideUseCase` mints the `approvedOverrideId` token **only on APPROVED**. New permission `pos.override.approve`; plugin registered on the shared `ApprovalEngine` in DI with authority bound to `PermissionChecker.hasPermission`. Policy Engine still owns *whether* approval is required; Approval Engine owns *who* + outcome (seam documented). `below_cost_sale` unchanged.
+- **Verification:** 23 suites / 144 tests green (pos + system-core + permission-catalog); backend typecheck + build clean.
+- **Accounting/ERP impact:** Control hardening only — no GL/tax/COGS/valuation/settlement/period-lock change.
+- **Docs:** [tasks/257](./tasks/257-pos-manager-override-via-approval-engine.md), [done/257](./done/257-pos-manager-override-via-approval-engine.md), `docs/architecture/pos.md` §6a.
+
 ### Session: 2026-06-22 (Task 258 — POS-specific negative-stock policy)
 
 - **Context:** Closed "the remaining backend safety gap" from the POS commercial-rules audit (§C rows 70–71, §J answer 6). POS was inheriting the company-wide `InventorySettings.allowNegativeStock` flag, so a company allowing negative stock for back-office invoicing would let the physical till oversell.

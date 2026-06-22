@@ -1,5 +1,15 @@
 # 🎯 Current Focus
 
+## Task 257 — POS manager overrides via the Approval Engine (2026-06-22)
+
+**Status:** ✅ Implemented on branch `feat/pos-readiness-and-negative-stock` (on top of the 251/256/258 bundle).
+
+- **Why:** Closed the gate-#8 deviation — POS manager overrides only checked that an approval *token* was present (trust-the-screen). No real approver-identity, authority, or self-approval check; couldn't hold PENDING.
+- **What changed:** Overrides route through `IApprovalEngine.evaluate(...)`. New `PosManagerOverrideApprovalPlugin` → PENDING (no approver) / REJECTED (self-approval or approver lacking `pos.override.approve`) / APPROVED (distinct authorised manager). `CreatePosManagerOverrideUseCase` mints `approvedOverrideId` **only on APPROVED**. New `pos.override.approve` permission; plugin wired in DI with authority via `PermissionChecker`. Policy Engine still decides *whether*; Approval Engine decides *who* + outcome. `below_cost_sale` unchanged.
+- **Docs:** [planning/tasks/257-...](./tasks/257-pos-manager-override-via-approval-engine.md), [planning/done/257-...](./done/257-pos-manager-override-via-approval-engine.md), `docs/architecture/pos.md` §6a.
+- **Verification:** 23 suites / 144 tests green (pos + system-core + permission-catalog); backend typecheck + build clean.
+- **Accounting impact:** Control hardening only.
+
 ## Task 258 — POS-specific negative-stock policy (2026-06-22)
 
 **Status:** ✅ Implemented on the POS readiness working tree.

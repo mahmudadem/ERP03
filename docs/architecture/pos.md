@@ -135,6 +135,7 @@ pos.terminal.access  Access POS Terminal (sell)
 pos.shift.open       Open POS Shift
 pos.shift.close      Close own POS Shift
 pos.shift.forceClose Force-close any POS Shift (manager)
+pos.override.approve Approve POS manager overrides (manager)
 pos.cash.movement    Record POS Cash Movement
 pos.return.create    Process POS Returns
 pos.receipt.reprint  Reprint POS Receipts
@@ -142,6 +143,31 @@ pos.registers.manage Manage POS Registers
 pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
+
+## 6a. Manager-override approval seam (Policy Engine vs Approval Engine)
+
+Sensitive POS actions — void a paid line, price/discount/tax override, return, reprint —
+can require a manager's approval. Two engines split the decision:
+
+- **Policy Engine decides *whether* approval is required.** `IPolicyEngine.resolve(scope:'pos',
+  action:'managerOverride' | 'saleLineControls')` reads `CashierRolePolicy.managerOverrideActions`
+  / discount-and-override limits and answers "does this action need a manager?" plus "is an
+  approval token present?".
+- **Approval Engine decides *who* may approve and the outcome.** `CreatePosManagerOverrideUseCase`
+  routes the action through `IApprovalEngine.evaluate(...)` using the reserved subject types
+  (`pos_manager_override`, `price_override`, `discount_override`, `tax_override`).
+  `PosManagerOverrideApprovalPlugin` returns:
+  - **PENDING** — approval required but no approver yet,
+  - **REJECTED** — the approver is the acting cashier (no self-approval), or the approver does
+    not hold `pos.override.approve` authority (verified server-side via the RBAC permission
+    resolver, **not** a client token),
+  - **APPROVED** — a distinct, authorised manager.
+
+  The `approvedOverrideId` token is **only minted on APPROVED** and is what the Policy Engine
+  later checks at sale/return/reprint time. This replaces the previous trust-the-screen gate
+  (token presence) with a real workflow. `below_cost_sale` continues to route through the
+  Approval Engine unchanged (it has no plugin and keeps the generic `requiresApproval → PENDING`
+  fallback). See [Task 257](../../planning/tasks/257-pos-manager-override-via-approval-engine.md).
 
 ## 7. Reports (10 POS + 1 link)
 

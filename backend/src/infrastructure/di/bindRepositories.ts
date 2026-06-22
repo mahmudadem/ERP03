@@ -1050,7 +1050,18 @@ export const diContainer = {
     return new PolicyEngine(this.posPolicyRepository, this.policyRegistry);
   },
   get approvalEngine(): IApprovalEngine {
-    return new ApprovalEngine(new ApprovalSubjectRegistry());
+    const { PosManagerOverrideApprovalPlugin } = require('../../application/system-core/approval/plugins/PosManagerOverrideApprovalPlugin');
+    const registry = new ApprovalSubjectRegistry();
+    // Task 257: POS manager overrides get a real approver-identity/authority gate
+    // (self-approval rejected; approver must hold pos.override.approve). below_cost_sale
+    // has no plugin and keeps the generic requiresApproval→PENDING fallback unchanged.
+    registry.register(
+      new PosManagerOverrideApprovalPlugin(
+        (companyId: string, userId: string) =>
+          this.permissionChecker.hasPermission(userId, companyId, 'pos.override.approve')
+      )
+    );
+    return new ApprovalEngine(registry);
   },
   get accountingBridge(): IAccountingBridge {
     return new LegacyAccountingBridgeAdapter(
