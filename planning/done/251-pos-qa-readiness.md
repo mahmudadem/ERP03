@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-7 green
-**Actual time:** ~9.8h so far
+**Status:** in progress locally; slices 1-8 green
+**Actual time:** ~11.1h so far
 
 ## Technical Developer View
 
@@ -27,6 +27,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS returns now subtract prior POS returns before validating remaining returnable quantity.
 - Posted receipt void now creates a POS return for all remaining active receipt quantities and marks the receipt `VOIDED` inside the same transaction after the return is persisted.
 - POS exchange now creates one linked POS return and one linked replacement POS sale with the same `exchangeId`, and reports net due/refund for the cashier.
+- POS hold/recall now stores suspended carts as `PosHeldCart` records with `HELD`, `RECALLED`, and `CANCELLED` status. Holding a cart does not reserve stock, consume receipt numbers, create payments, or post accounting; recall restores the cart for later payment.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -34,6 +35,7 @@ Files changed:
 - `backend/src/application/pos/use-cases/CompletePosSaleUseCase.ts`
 - `backend/src/application/pos/use-cases/CompletePosReturnUseCase.ts`
 - `backend/src/application/pos/use-cases/PosRegisterUseCases.ts`
+- `backend/src/application/pos/use-cases/PosHeldCartUseCases.ts`
 - `backend/src/application/pos/use-cases/PosShiftUseCases.ts`
 - `backend/prisma/schema.prisma`
 - `backend/src/application/pos/use-cases/PosReportingUseCases.ts`
@@ -46,6 +48,7 @@ Files changed:
 - `backend/src/domain/pos/entities/PosReceipt.ts`
 - `backend/src/domain/pos/entities/PosReturn.ts`
 - `backend/src/domain/pos/entities/PosRegister.ts`
+- `backend/src/domain/pos/entities/PosHeldCart.ts`
 - `backend/src/domain/pos/entities/PosShift.ts`
 - `backend/src/domain/pos/entities/POSPolicy.ts`
 - `frontend/src/api/posApi.ts`
@@ -56,6 +59,7 @@ Files changed:
 - `backend/src/tests/application/pos/PostPosSale.test.ts`
 - `backend/src/tests/application/pos/PostPosReturn.test.ts`
 - `backend/src/tests/application/pos/PosReporting.test.ts`
+- `backend/src/tests/application/pos/PosHeldCartUseCases.test.ts`
 - `backend/src/tests/application/pos/PosSettingsUseCases.test.ts`
 - `backend/src/tests/architecture/SystemCoreBoundaries.test.ts`
 - `docs/architecture/pos.md`
@@ -81,6 +85,8 @@ Posted receipt cancellation now behaves like a real POS financial reversal. The 
 
 Exchange now uses the same safe return and sale paths. The returned item comes back through POS return, the replacement item goes out through POS sale, and both records share an exchange id. The response shows whether the customer owes extra or should receive a net refund.
 
+Cashiers can now hold and recall sales. Holding saves the active cart on the server and clears the terminal for the next customer. Recalling restores the held cart. Cancelling a held sale removes it from the active held list. None of those actions posts inventory, payment, receipt, or ledger activity until the cashier completes payment.
+
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
 Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
@@ -99,6 +105,7 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm test -- --runInBand src/tests/application/pos/CompletePosSale.test.ts src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/pos/PosReporting.test.ts` — passed, 3 suites / 29 tests after price/discount/tax policy slice.
 - `npm test -- --runInBand src/tests/application/pos/CompletePosReturn.test.ts` — passed, 1 suite / 10 tests after posted-receipt void slice.
 - `npm test -- --runInBand src/tests/application/pos/CompletePosExchange.test.ts` — passed, 1 suite / 3 tests after exchange slice.
+- `npm test -- --runInBand src/tests/application/pos/PosHeldCartUseCases.test.ts` — passed, 1 suite / 5 tests after hold/recall slice.
 - `npm test -- --runInBand src/tests/application/pos` — passed, 10 suites / 71 tests.
 - `npm test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — passed, 13 tests.
 - `npm run typecheck` from `backend/` — passed.
@@ -113,8 +120,8 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - Override audit report has backend/API coverage; a dedicated ReportContainer UI page is still a follow-up.
 - Exchange has backend/API coverage; cashier-facing exchange UI polish is still a follow-up.
 - Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
-- SQL deployments need a Prisma migration for the new `pos_shifts` JSON/date fields before using the payment-method reconciliation columns.
-- Posted-receipt void/cancel is not implemented yet; this slice covers pre-payment cart line void audit.
+- SQL deployments need a Prisma migration for the new POS shift reconciliation and held-cart fields before using them in SQL mode.
+- Held carts do not reserve stock in V1; stock availability is rechecked when the recalled sale is completed.
 - Accounting voucher enum still uses existing Sales Invoice / Sales Return voucher types for GL classification while POS metadata and stock refs preserve POS identity. Adding separate POS voucher types needs an accounting-policy review.
 - Branch is still free text on POS registers; a first-class Branch entity is a later product decision.
 - Owner still needs to run the POS golden path in the browser/API on a fresh tenant.

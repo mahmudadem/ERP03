@@ -68,6 +68,7 @@ model Company {
   posCashMovements PosCashMovement[]
   posReceipts     PosReceipt[]
   posPayments     PosPayment[]
+  posHeldCarts    PosHeldCart[]
   posReturns      PosReturn[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
@@ -1806,6 +1807,40 @@ model PosPayment {
 
   @@index([companyId, receiptId])
   @@map("pos_payments")
+}
+
+model PosHeldCart {
+  id             String   @id @default(uuid())
+  companyId      String
+  registerId     String
+  shiftId        String
+  cashierUserId  String
+  customerId     String?
+  note           String?
+  status         String   @default("HELD")
+  lines          Json
+  subtotal       Float    @default(0)
+  discountTotal  Float    @default(0)
+  taxTotal       Float    @default(0)
+  grandTotal     Float    @default(0)
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  recalledAt     DateTime?
+  recalledBy     String?
+  cancelledAt    DateTime?
+  cancelledBy    String?
+  cancelReason   String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, registerId])
+  @@index([companyId, shiftId])
+  @@index([companyId, cashierUserId])
+  @@index([companyId, status])
+  @@index([companyId, updatedAt])
+  @@map("pos_held_carts")
 }
 
 model PosReturn {

@@ -62,7 +62,7 @@
 | Return/exchange | ✅ P0 backend done | Receipt-based selected-line returns, refunds, duplicate-return prevention, posted receipt void via full POS return, and exchange as linked POS return + replacement POS sale exist. Remaining follow-up: cashier-facing exchange UI polish. |
 | Price/discount/tax edit policies | 🟡 Backend controls done | Cashier role limits exist for max line discount percent/amount and price/tax override permission; sale completion blocks over-limit lines unless a manager override id is supplied. Receipt snapshots and the override audit report expose void/discount/price/tax exceptions. Missing: manager approval capture UI and a dedicated override-audit report page. |
 | Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Missing inactive/blocked/expired/non-POS-enabled/non-discountable item guards as POS policy. |
-| Touch layout/quick actions | 🟡 Partial | Basic product search/cart exists and line void workflow now exists. Missing favorites, category buttons, per-terminal layout, hold/recall, serial number, and line note. |
+| Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
 | Promotions/offers | ⏸ Deferred | Must stay disabled until stacking/cap/conflict/return model lands. |
 | POS reports | 🟡 Partial | Z, daily, payment, cashier, over/short, receipt history exist. Missing voided lines, cancelled receipts, manual discounts, price/tax overrides, reprints, top-selling items, promotion performance. |
 | Hardware/offline | ⏸ Deferred | No hardware abstraction or offline queue yet; should be placeholders/plans only for V1 unless owner prioritizes. |
@@ -97,7 +97,8 @@
 - **P0 slice 5 complete:** Cashier price/discount/tax policy limits, receipt audit fields, and override audit report API.
 - **P0 slice 6 complete:** Posted receipt void/cancel through full remaining POS return plus duplicate-return guard.
 - **P0 slice 7 complete:** Exchange workflow as linked POS return + replacement POS sale sharing `exchangeId`.
-- **P0 next slice:** Cashier-facing exchange UI polish or hold/recall.
+- **P1 slice 8 complete:** Hold/recall sale stores held carts server-side with `HELD` / `RECALLED` / `CANCELLED` status and terminal controls.
+- **P0/P1 next slice:** Cashier-facing exchange UI polish or dedicated override-audit report page.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
 - Decide whether branch should remain free text or wait for a first-class Branch entity.
@@ -124,3 +125,4 @@ This is a cash-control and settlement-routing fix. It does not change tax math, 
 - POS returns subtract prior returns from remaining returnable quantity.
 - Posted receipt void creates a POS return for all remaining active quantities before marking the receipt `VOIDED`.
 - POS exchange creates a linked return and replacement sale with one exchange id and reports net due/refund.
+- POS held carts can be held, listed, recalled once, and cancelled without posting stock, receipt, payment, or ledger activity.

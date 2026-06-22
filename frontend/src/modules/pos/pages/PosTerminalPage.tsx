@@ -13,7 +13,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { posApi, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
+import { posApi, PosHeldCartDTO, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { errorHandler } from '../../../services/errorHandler';
@@ -32,6 +32,9 @@ import {
   Landmark,
   Wallet,
   ScanLine,
+  Archive,
+  RotateCcw,
+  XCircle,
 } from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
@@ -105,6 +108,10 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [lastReceipt, setLastReceipt] = useState<any | null>(null);
   const [voidTarget, setVoidTarget] = useState<{ lineId?: string; all?: boolean } | null>(null);
   const [voidReason, setVoidReason] = useState('');
+  const [heldCarts, setHeldCarts] = useState<PosHeldCartDTO[]>([]);
+  const [heldLoading, setHeldLoading] = useState(false);
+  const [holdingCart, setHoldingCart] = useState(false);
+  const [showHeldCarts, setShowHeldCarts] = useState(false);
 
   // Tender form (React state — no more getElementById)
   const [tenderMethod, setTenderMethod] = useState<PaymentMethod>('CASH');
@@ -130,6 +137,11 @@ const PosTerminalPage: React.FC<Props> = () => {
     };
     void load();
   }, [userId]);
+
+  useEffect(() => {
+    if (!bootstrap?.register || !bootstrap.openShift) return;
+    void loadHeldCarts();
+  }, [bootstrap?.register?.id, bootstrap?.openShift?.id]);
 
   useEffect(() => {
     const q = searchQuery.trim();
@@ -283,6 +295,119 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   const onAddPayment = (p: Payment) => setPayments((prev) => [...prev, p]);
   const onRemovePayment = (idx: number) => setPayments((prev) => prev.filter((_, i) => i !== idx));
+
+  const loadHeldCarts = async () => {
+    const register = bootstrap?.register;
+    const shift = bootstrap?.openShift;
+    if (!register || !shift) return;
+    try {
+      setHeldLoading(true);
+      const list = await posApi.listHeldCarts({
+        registerId: register.id,
+        shiftId: shift.id,
+        status: 'HELD',
+        limit: 25,
+      });
+      setHeldCarts(list);
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to load held carts.');
+    } finally {
+      setHeldLoading(false);
+    }
+  };
+
+  const openHeldCarts = async () => {
+    setShowHeldCarts(true);
+    await loadHeldCarts();
+  };
+
+  const onHoldCart = async () => {
+    const register = bootstrap?.register;
+    const shift = bootstrap?.openShift;
+    if (!register || !shift) {
+      toast.error(t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      return;
+    }
+    if (activeCart.length === 0) {
+      toast.error(t('pos.terminal.noActiveLines', { defaultValue: 'Add at least one active line before holding the sale.' }));
+      return;
+    }
+    try {
+      setHoldingCart(true);
+      await posApi.holdCart({
+        registerId: register.id,
+        shiftId: shift.id,
+        cashierUserId: userId,
+        customerId,
+        lines: activeCart.map((l) => ({
+          lineId: l.lineId,
+          itemId: l.itemId,
+          itemCode: l.itemCode,
+          itemName: l.itemName,
+          uom: l.uom,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+          lineDiscount: l.lineDiscount,
+          lineTotal: l.lineTotal,
+          managerOverrideId: l.managerOverrideId,
+        })),
+        subtotal,
+        discountTotal,
+        taxTotal,
+        grandTotal,
+      });
+      setCart([]);
+      setPayments([]);
+      setSearchQuery('');
+      toast.success(t('pos.terminal.held', { defaultValue: 'Sale held.' }));
+      await loadHeldCarts();
+      searchRef.current?.focus();
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to hold sale.');
+    } finally {
+      setHoldingCart(false);
+    }
+  };
+
+  const onRecallHeldCart = async (held: PosHeldCartDTO) => {
+    if (activeCart.length > 0) {
+      toast.error(t('pos.terminal.recallNeedsEmptyCart', { defaultValue: 'Complete, hold, or void the current sale before recalling another one.' }));
+      return;
+    }
+    try {
+      const recalled = await posApi.recallHeldCart(held.id);
+      setCart(recalled.lines.map((line) => ({
+        lineId: line.lineId || makeLineId(),
+        itemId: line.itemId,
+        itemCode: line.itemCode || '',
+        itemName: line.itemName || '',
+        uom: line.uom || '',
+        qty: Number(line.qty) || 0,
+        unitPrice: Number(line.unitPrice) || 0,
+        lineDiscount: Number(line.lineDiscount) || 0,
+        lineTotal: Number(line.lineTotal) || round2((Number(line.qty) || 0) * (Number(line.unitPrice) || 0) - (Number(line.lineDiscount) || 0)),
+        status: 'ACTIVE',
+        managerOverrideId: line.managerOverrideId,
+      })));
+      setCustomerId(recalled.customerId || settings?.walkInCustomerId);
+      setPayments([]);
+      toast.success(t('pos.terminal.recalled', { defaultValue: 'Held sale recalled.' }));
+      await loadHeldCarts();
+      setShowHeldCarts(false);
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to recall held sale.');
+    }
+  };
+
+  const onCancelHeldCart = async (held: PosHeldCartDTO) => {
+    try {
+      await posApi.cancelHeldCart(held.id, { reason: 'Cancelled from POS terminal' });
+      toast.success(t('pos.terminal.heldCancelled', { defaultValue: 'Held sale cancelled.' }));
+      await loadHeldCarts();
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to cancel held sale.');
+    }
+  };
 
   // Scan flow: pressing Enter adds the top match and clears the box for the next scan.
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -438,6 +563,28 @@ const PosTerminalPage: React.FC<Props> = () => {
               </span>
             </div>
           )}
+          <button
+            onClick={onHoldCart}
+            disabled={activeCart.length === 0 || holdingCart}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            {holdingCart
+              ? t('common.processing', { defaultValue: 'Processing…' })
+              : t('pos.terminal.hold', { defaultValue: 'Hold' })}
+          </button>
+          <button
+            onClick={openHeldCarts}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            {t('pos.terminal.recall', { defaultValue: 'Recall' })}
+            {heldCarts.length > 0 && (
+              <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                {heldCarts.length}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => navigate('/pos/shift')}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
@@ -620,7 +767,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         className="h-8 w-12 border-x border-slate-200 bg-transparent text-center text-sm text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <button
-                        onClick={() => onUpdateQty(l.itemId, round2(l.qty + 1))}
+                        onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
                         aria-label={t('pos.terminal.increase', { defaultValue: 'Increase quantity' })}
                         className="flex h-8 w-8 items-center justify-center rounded-r-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
                       >
@@ -877,6 +1024,70 @@ const PosTerminalPage: React.FC<Props> = () => {
         confirmLabel={voidTarget?.all
           ? t('pos.terminal.voidAll', { defaultValue: 'Void all' })
           : t('pos.terminal.voidLine', { defaultValue: 'Void line' })}
+      />
+
+      <ConfirmDialog
+        isOpen={showHeldCarts}
+        title={t('pos.terminal.heldCartsTitle', { defaultValue: 'Held sales' })}
+        message={
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+            {heldLoading ? (
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-[var(--color-text-secondary)]">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+                {t('common.loading', { defaultValue: 'Loading…' })}
+              </div>
+            ) : heldCarts.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-[var(--color-text-secondary)]">
+                {t('pos.terminal.noHeldCarts', { defaultValue: 'No held sales for this shift.' })}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {heldCarts.map((held) => (
+                  <li
+                    key={held.id}
+                    className="rounded-xl border border-slate-200 p-3 dark:border-[var(--color-border)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+                          {held.lines.length} {t('pos.terminal.lines', { defaultValue: 'lines' })}
+                        </div>
+                        <div className="mt-0.5 font-mono text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+                          {new Date(held.createdAt).toLocaleString()} · {money(held.grandTotal)}
+                        </div>
+                      </div>
+                      <div className="flex flex-none items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onRecallHeldCart(held)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 cursor-pointer"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {t('pos.terminal.recall', { defaultValue: 'Recall' })}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCancelHeldCart(held)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          {t('common.cancel', { defaultValue: 'Cancel' })}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-2 line-clamp-2 text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+                      {held.lines.map((line) => line.itemName || line.itemCode || line.itemId).join(', ')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        }
+        tone="info"
+        onConfirm={() => setShowHeldCarts(false)}
+        onCancel={() => setShowHeldCarts(false)}
+        confirmLabel={t('common.close', { defaultValue: 'Close' })}
       />
     </div>
   );

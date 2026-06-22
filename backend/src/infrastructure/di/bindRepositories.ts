@@ -333,6 +333,7 @@ import { PrismaPosCashMovementRepository } from '../prisma/repositories/pos/Pris
 import { PrismaPosReceiptRepository } from '../prisma/repositories/pos/PrismaPosReceiptRepository';
 import { PrismaPosPaymentRepository } from '../prisma/repositories/pos/PrismaPosPaymentRepository';
 import { PrismaPosReturnRepository } from '../prisma/repositories/pos/PrismaPosReturnRepository';
+import { PrismaPosHeldCartRepository } from '../prisma/repositories/pos/PrismaPosHeldCartRepository';
 import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
 import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
 import { FirestorePosPolicyRepository } from '../firestore/repositories/pos/FirestorePosPolicyRepository';
@@ -341,6 +342,7 @@ import { FirestorePosCashMovementRepository } from '../firestore/repositories/po
 import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
 import { FirestorePosPaymentRepository } from '../firestore/repositories/pos/FirestorePosPaymentRepository';
 import { FirestorePosReturnRepository } from '../firestore/repositories/pos/FirestorePosReturnRepository';
+import { FirestorePosHeldCartRepository } from '../firestore/repositories/pos/FirestorePosHeldCartRepository';
 
 import { PrismaGoodsReceiptRepository } from '../prisma/repositories/purchases/PrismaGoodsReceiptRepository';
 import { PrismaPurchaseInvoiceRepository } from '../prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
@@ -819,6 +821,11 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaPosReturnRepository(getPrismaClient())
       : new FirestorePosReturnRepository(getDb());
+  },
+  get posHeldCartRepository(): PosRepo.IPosHeldCartRepository {
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosHeldCartRepository(getPrismaClient())
+      : new FirestorePosHeldCartRepository(getDb());
   },
 
 

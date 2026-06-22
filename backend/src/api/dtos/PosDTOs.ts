@@ -9,6 +9,7 @@ import { PosCashMovement } from '../../domain/pos/entities/PosCashMovement';
 import { PosReceipt, PosReceiptLineSnapshot } from '../../domain/pos/entities/PosReceipt';
 import { PosPayment } from '../../domain/pos/entities/PosPayment';
 import { PosReturn, PosReturnLine } from '../../domain/pos/entities/PosReturn';
+import { PosHeldCart, PosHeldCartLine } from '../../domain/pos/entities/PosHeldCart';
 import { PosCashMovementTotals } from '../../repository/interfaces/pos/IPosCashMovementRepository';
 
 export interface PosRegisterDTO {
@@ -333,6 +334,60 @@ export const PosReturnDTO = {
       exchangeId: r.exchangeId,
       createdBy: r.createdBy,
       createdAt: r.createdAt.toISOString(),
+    };
+  },
+};
+
+export interface PosHeldCartLineDTO extends PosHeldCartLine {}
+
+export interface PosHeldCartDTO {
+  id: string;
+  companyId: string;
+  registerId: string;
+  shiftId: string;
+  cashierUserId: string;
+  customerId?: string;
+  note?: string;
+  status: 'HELD' | 'RECALLED' | 'CANCELLED';
+  lines: PosHeldCartLineDTO[];
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  recalledAt?: string;
+  recalledBy?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+}
+
+export const PosHeldCartDTO = {
+  fromDomain(cart: PosHeldCart): PosHeldCartDTO {
+    return {
+      id: cart.id,
+      companyId: cart.companyId,
+      registerId: cart.registerId,
+      shiftId: cart.shiftId,
+      cashierUserId: cart.cashierUserId,
+      customerId: cart.customerId,
+      note: cart.note,
+      status: cart.status,
+      lines: cart.lines,
+      subtotal: cart.subtotal,
+      discountTotal: cart.discountTotal,
+      taxTotal: cart.taxTotal,
+      grandTotal: cart.grandTotal,
+      createdBy: cart.createdBy,
+      createdAt: cart.createdAt.toISOString(),
+      updatedAt: cart.updatedAt.toISOString(),
+      recalledAt: cart.recalledAt?.toISOString(),
+      recalledBy: cart.recalledBy,
+      cancelledAt: cart.cancelledAt?.toISOString(),
+      cancelledBy: cart.cancelledBy,
+      cancelReason: cart.cancelReason,
     };
   },
 };

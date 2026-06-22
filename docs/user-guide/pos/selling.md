@@ -20,6 +20,14 @@ Voided lines do not post stock movement, revenue, tax, COGS, cash, or payment am
 
 If the cashier's role requires manager approval for voids, discounts, price overrides, or tax overrides, the backend blocks completion unless an approved manager override is supplied. Cashier roles can also set maximum line discount percent/amount and can block manual price or tax edits unless a manager approves.
 
+## Hold and recall a sale
+
+Use **Hold** when the customer needs to pause before payment. The current active cart lines are saved to the server for the open shift, then the terminal clears so the cashier can serve the next customer.
+
+Use **Recall** to list held sales for the current register and shift. Recalling a held sale restores its lines and customer to the cart and marks the held record as recalled. Cancelling a held sale marks it cancelled and removes it from the held list.
+
+Holding a sale is operational only. It does not reduce stock, create a receipt, take payment, or post to accounting. Those actions happen only when the recalled cart is completed through **Pay**.
+
 ## Tender
 
 Click **Pay** to open the Tender dialog. Add one or more payment rows:

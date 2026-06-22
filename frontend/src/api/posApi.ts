@@ -10,6 +10,7 @@ export type PosPaymentMethodCode = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
 export type PosCashRounding = 'none' | 'nearest_05' | 'nearest_1';
 export type PosRegisterStatus = 'ACTIVE' | 'INACTIVE';
 export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
+export type PosHeldCartStatus = 'HELD' | 'RECALLED' | 'CANCELLED';
 export type PosShiftPaymentTotals = Record<PosPaymentMethodCode, number>;
 
 export interface PosPaymentMethodDTO {
@@ -71,6 +72,49 @@ export interface PosShiftDTO {
   reconciledBy?: string;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface PosHeldCartLineDTO {
+  lineId?: string;
+  itemId: string;
+  itemCode?: string;
+  itemName?: string;
+  uom?: string;
+  qty: number;
+  unitPrice: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  lineDiscount?: number;
+  lineTotal?: number;
+  taxCodeId?: string;
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  managerOverrideId?: string;
+  note?: string;
+}
+
+export interface PosHeldCartDTO {
+  id: string;
+  companyId: string;
+  registerId: string;
+  shiftId: string;
+  cashierUserId: string;
+  customerId?: string;
+  note?: string;
+  status: PosHeldCartStatus;
+  lines: PosHeldCartLineDTO[];
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  recalledAt?: string;
+  recalledBy?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
 }
 
 // The global response interceptor (setupErrorInterceptor) already unwraps the
@@ -165,6 +209,38 @@ export const posApi = {
     payments: Array<{ method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM'; amount: number; reference?: string }>;
   }): Promise<any> =>
     ok(client.post('/tenant/pos/sales', payload)),
+
+  holdCart: async (payload: {
+    registerId: string;
+    shiftId: string;
+    cashierUserId?: string;
+    customerId?: string;
+    note?: string;
+    lines: PosHeldCartLineDTO[];
+    subtotal?: number;
+    discountTotal?: number;
+    taxTotal?: number;
+    grandTotal?: number;
+  }): Promise<PosHeldCartDTO> =>
+    ok(client.post('/tenant/pos/held-carts', payload)),
+
+  listHeldCarts: async (params?: {
+    registerId?: string;
+    shiftId?: string;
+    cashierUserId?: string;
+    status?: PosHeldCartStatus;
+    limit?: number;
+  }): Promise<PosHeldCartDTO[]> =>
+    ok(client.get('/tenant/pos/held-carts', { params: params || {} })),
+
+  getHeldCart: async (id: string): Promise<PosHeldCartDTO> =>
+    ok(client.get(`/tenant/pos/held-carts/${encodeURIComponent(id)}`)),
+
+  recallHeldCart: async (id: string): Promise<PosHeldCartDTO> =>
+    ok(client.post(`/tenant/pos/held-carts/${encodeURIComponent(id)}/recall`, {})),
+
+  cancelHeldCart: async (id: string, payload?: { reason?: string }): Promise<PosHeldCartDTO> =>
+    ok(client.post(`/tenant/pos/held-carts/${encodeURIComponent(id)}/cancel`, payload || {})),
 
   listReceipts: async (params?: { shiftId?: string; registerId?: string; customerId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/receipts', { params: params || {} })),

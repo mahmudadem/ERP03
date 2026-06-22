@@ -77,6 +77,7 @@ Settlement accounts are resolved from the active register, not from company-leve
 - `CARD`, `BANK_TRANSFER`, and `CUSTOM` use `PosRegister.settlementAccountIds[method]`.
 - Missing non-cash register settlement accounts block the sale before receipt/document posting.
 - Registers also carry `defaultPriceListId`, `allowedCashierUserIds`, and `hardwareProfileId`. `allowedCashierUserIds` is enforced when opening a shift; an empty list means any cashier with POS access can use the register. `defaultPriceListId` and `hardwareProfileId` are persisted placeholders for the next pricing/hardware integration slices.
+- Held carts are stored as `PosHeldCart` records with `HELD`, `RECALLED`, or `CANCELLED` status. A held cart captures the current register, shift, cashier, customer, line snapshots, and current totals, but it does not reserve stock, consume receipt numbers, create payments, or post accounting. Recall changes the held record to `RECALLED` and restores the cart on the terminal; cancel changes it to `CANCELLED`.
 
 Line removal is audit-preserving. The terminal marks removed cart lines as `VOIDED` with cashier, timestamp, and reason. `CompletePosSaleUseCase` posts only active lines and appends voided snapshots to the persisted receipt; return validation filters them out so a removed line cannot later be refunded.
 

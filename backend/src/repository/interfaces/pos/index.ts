@@ -6,3 +6,4 @@ export * from './IPosReceiptRepository';
 export * from './IPosPaymentRepository';
 export * from './IPosReturnRepository';
 export * from './IPosPolicyRepository';
+export * from './IPosHeldCartRepository';

@@ -4565,3 +4565,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated POS architecture, returns guide, owner test guide, Golden Path 06, Task 251 gap matrix, completion report, and ACTIVE.
 - **Time spent:** ~0.7h for this slice; Task 251 total ~9.8h so far.
 - **Next:** Cashier-facing exchange UI polish or P1 hold/recall.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 8 hold/recall sale)
+
+- **Goal:** Continue closing POS gaps while the owner is away by adding hold/recall sale, a P1 cashier workflow that is testable without manual QA and does not touch accounting posting.
+- **What was done:** Added `PosHeldCart` with `HELD`, `RECALLED`, and `CANCELLED` statuses; added repository contracts plus Firestore/Prisma persistence; exposed hold/list/get/recall/cancel endpoints under `/tenant/pos/held-carts`; wired the terminal **Hold** and **Recall** controls; and fixed the existing quantity-increase button to update by line id instead of item id.
+- **Accounting/ERP impact:** Operational-only. Holding a sale does not reserve stock, consume receipt numbers, create payments, create receipts, move inventory, or post ledger activity. Stock/payment/accounting checks happen only when a recalled cart is completed through the normal POS sale path.
+- **Verification:** Focused held-cart tests passed (`PosHeldCartUseCases`: 1 suite / 5 tests). Backend typecheck passed. Frontend typecheck passed before docs; full verification follows in this session.
+- **Docs:** Updated POS architecture, selling guide, owner test guide, Task 251 gap matrix, completion report, ACTIVE, and this journal.
+- **Time spent:** ~1.3h for this slice; Task 251 total ~11.1h so far.
+- **Next:** Run full POS/backend/frontend verification, then proceed to cashier-facing exchange UI polish or the dedicated override-audit report page.

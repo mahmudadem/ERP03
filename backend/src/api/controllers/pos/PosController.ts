@@ -8,7 +8,7 @@
  */
 import { NextFunction, Request, Response } from 'express';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
-import { PosDTOMapper, PosCashMovementDTO, PosXReportDTO, PosReceiptDTO, PosPaymentDTO, PosReturnDTO } from '../../dtos/PosDTOs';
+import { PosDTOMapper, PosCashMovementDTO, PosXReportDTO, PosReceiptDTO, PosPaymentDTO, PosReturnDTO, PosHeldCartDTO } from '../../dtos/PosDTOs';
 import {
   CreatePosRegisterUseCase,
   GetPosRegisterUseCase,
@@ -38,6 +38,13 @@ import {
 import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/PreviewPosSaleUseCase';
 import { CompletePosReturnUseCase, VoidPosReceiptUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
 import { CompletePosExchangeUseCase } from '../../../application/pos/use-cases/CompletePosExchangeUseCase';
+import {
+  CancelPosHeldCartUseCase,
+  GetPosHeldCartUseCase,
+  HoldPosCartUseCase,
+  ListPosHeldCartsUseCase,
+  RecallPosHeldCartUseCase,
+} from '../../../application/pos/use-cases/PosHeldCartUseCases';
 import { PostPosReturnUseCase } from '../../../application/pos/use-cases/PostPosReturnUseCase';
 import {
   GetCashierSalesSummaryUseCase,
@@ -512,6 +519,106 @@ export class PosController {
   static async reprintReceipt(req: Request, res: Response, next: NextFunction) {
     // Reprint = same as getReceipt (read-only, no state change).
     return PosController.getReceipt(req, res, next);
+  }
+
+  static async holdCart(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const userEmail = PosController.getUserEmail(req);
+      const useCase = new HoldPosCartUseCase(
+        diContainer.posHeldCartRepository,
+        diContainer.posShiftRepository,
+        diContainer.posRegisterRepository,
+        diContainer.auditEngine
+      );
+      const cart = await useCase.execute({
+        companyId,
+        registerId: String((req as any).body?.registerId),
+        shiftId: String((req as any).body?.shiftId),
+        cashierUserId: String((req as any).body?.cashierUserId || userId),
+        customerId: (req as any).body?.customerId ? String((req as any).body.customerId) : undefined,
+        note: (req as any).body?.note ? String((req as any).body.note) : undefined,
+        lines: (req as any).body?.lines || [],
+        subtotal: (req as any).body?.subtotal !== undefined ? Number((req as any).body.subtotal) : undefined,
+        discountTotal: (req as any).body?.discountTotal !== undefined ? Number((req as any).body.discountTotal) : undefined,
+        taxTotal: (req as any).body?.taxTotal !== undefined ? Number((req as any).body.taxTotal) : undefined,
+        grandTotal: (req as any).body?.grandTotal !== undefined ? Number((req as any).body.grandTotal) : undefined,
+        actor: { userId, userEmail },
+      });
+      (res as any).status(201).json({ success: true, data: PosHeldCartDTO.fromDomain(cart) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listHeldCarts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new ListPosHeldCartsUseCase(diContainer.posHeldCartRepository);
+      const list = await useCase.execute({
+        companyId,
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
+        shiftId: (req as any).query?.shiftId ? String((req as any).query.shiftId) : undefined,
+        cashierUserId: (req as any).query?.cashierUserId ? String((req as any).query.cashierUserId) : undefined,
+        status: (req as any).query?.status ? String((req as any).query.status) as any : undefined,
+        limit: (req as any).query?.limit ? Number((req as any).query.limit) : undefined,
+      });
+      (res as any).json({ success: true, data: list.map((cart) => PosHeldCartDTO.fromDomain(cart)) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getHeldCart(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new GetPosHeldCartUseCase(diContainer.posHeldCartRepository);
+      const cart = await useCase.execute(companyId, id);
+      if (!cart) {
+        (res as any).status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Held cart not found' } });
+        return;
+      }
+      (res as any).json({ success: true, data: PosHeldCartDTO.fromDomain(cart) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async recallHeldCart(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const userEmail = PosController.getUserEmail(req);
+      const useCase = new RecallPosHeldCartUseCase(diContainer.posHeldCartRepository, diContainer.auditEngine);
+      const cart = await useCase.execute({
+        companyId,
+        id: String((req as any).params.id),
+        actor: { userId, userEmail },
+      });
+      (res as any).json({ success: true, data: PosHeldCartDTO.fromDomain(cart) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async cancelHeldCart(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const userEmail = PosController.getUserEmail(req);
+      const useCase = new CancelPosHeldCartUseCase(diContainer.posHeldCartRepository, diContainer.auditEngine);
+      const cart = await useCase.execute({
+        companyId,
+        id: String((req as any).params.id),
+        reason: (req as any).body?.reason ? String((req as any).body.reason) : undefined,
+        actor: { userId, userEmail },
+      });
+      (res as any).json({ success: true, data: PosHeldCartDTO.fromDomain(cart) });
+    } catch (error) {
+      next(error);
+    }
   }
 
   static async voidReceipt(req: Request, res: Response, next: NextFunction) {

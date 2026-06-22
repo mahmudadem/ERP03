@@ -70,6 +70,10 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 19. Close a shift with exact counted CASH/CARD/BANK/CUSTOM totals and confirm status becomes `RECONCILED`.
 20. Close another shift with over/short cash and confirm the voucher posts to the configured over/short account.
 21. Close or inspect a shift with non-cash variance and confirm the variance is stored but no automatic GL voucher is posted for non-cash difference.
+21a. Start a sale with at least one active line and click **Hold**.
+21b. Confirm the cart clears and **Recall** shows the held sale for the same shift/register.
+21c. Recall it, complete payment, and confirm the sale posts only after payment, not when it was held.
+21d. Hold another sale and cancel it from **Recall**. Confirm it disappears from the held list and no receipt/payment/stock movement is created.
 22. Open **POS → Reports → Payment Methods**.
 23. Confirm payment totals are real, not zero placeholders. CASH must be net of change.
 24. Configure or seed a cashier role policy with:
