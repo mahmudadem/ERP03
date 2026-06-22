@@ -49,6 +49,7 @@ frontend/src/modules/pos/pages/                 PosHomePage, PosSettingsPage, Po
                                                 PosZReportPage, PosDailySummaryReportPage,
                                                 PosPaymentMethodReportPage, PosCashierSalesReportPage,
                                                 PosCashOverShortReportPage, PosReceiptHistoryReportPage,
+                                                PosOverrideAuditReportPage,
                                                 PosDateRangeInitiator.
 ```
 
@@ -83,7 +84,7 @@ Line removal is audit-preserving. The terminal marks removed cart lines as `VOID
 
 Posted receipt cancellation is implemented as a financial reversal, not a status-only edit. `VoidPosReceiptUseCase` builds a return for all remaining active receipt quantities, calls the same POS-owned return path, and marks the original receipt `VOIDED` inside the transaction after the return is persisted. `CompletePosReturnUseCase` subtracts prior POS returns from the receipt's sold quantity before validating new returns, preventing duplicate refunds or duplicate stock reversals.
 
-Exchange workflow is modeled as two normal POS documents linked by one `exchangeId`: a POS return for the item coming back and a POS direct sale for the replacement item. `CompletePosExchangeUseCase` orchestrates the two use cases and reports net due/refund for the cashier, but it does not create a new GL document type or merge the postings. This keeps stock-in, stock-out, revenue reversal, new revenue, COGS reversal, new COGS, tax, cash movement, and settlement audit on the same proven paths as standalone returns and sales. SQL deployments need a Prisma migration for `exchangeId` on `pos_receipts` and `pos_returns`.
+Exchange workflow is modeled as two normal POS documents linked by one `exchangeId`: a POS return for the item coming back and a POS direct sale for the replacement item. `CompletePosExchangeUseCase` orchestrates the two use cases and reports net due/refund for the cashier, but it does not create a new GL document type or merge the postings. This keeps stock-in, stock-out, revenue reversal, new revenue, COGS reversal, new COGS, tax, cash movement, and settlement audit on the same proven paths as standalone returns and sales. The cashier-facing exchange mode on `PosReturnPage` collects returned receipt lines, replacement POS item lines, payment method/reference, and posts through `/tenant/pos/exchanges`; it does not calculate or persist accounting itself. SQL deployments need a Prisma migration for `exchangeId` on `pos_receipts` and `pos_returns`.
 
 Manager override policy is centralized through `IPolicyEngine` instead of page-only checks. `POSPolicy.cashierRolePolicies[].managerOverrideActions` can require approval for `VOID_LINE`, `PRICE_OVERRIDE`, `DISCOUNT_OVERRIDE`, `TAX_OVERRIDE`, `RETURN`, and `REPRINT`. Cashier role policies can also define numeric sale-line controls: `maxLineDiscountPercent`, `maxLineDiscountAmount`, `allowPriceOverride`, and `allowTaxOverride`. Sale completion evaluates voided lines, explicit price/tax override flags, manual discounts, and cashier role limits; return completion evaluates the `RETURN` hook. If a cashier role requires approval, the use case blocks unless the payload carries an approved manager override id. Receipt line snapshots persist discount type/value, price/tax override flags, void metadata, and manager override id so the POS override audit report can review the exception after posting. The current slice creates the backend enforcement point; a richer approval-capture UI is still a follow-up.
 
@@ -127,7 +128,7 @@ pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
 
-## 7. Reports (6 POS + 1 link)
+## 7. Reports (7 POS + 1 link)
 
 | Report | Route | Permission | Source use case |
 |---|---|---|---|
@@ -137,10 +138,10 @@ pos.reports.view     View POS Reports
 | Cashier Sales | `/pos/reports/cashiers` | pos.reports.view | `GetCashierSalesSummaryUseCase` |
 | Cash Over/Short | `/pos/reports/over-short` | pos.reports.view | `GetCashOverShortReportUseCase` |
 | Receipt History | `/pos/reports/receipts` | pos.reports.view | `GetReceiptHistoryUseCase` |
-| Override Audit | API: `/tenant/pos/reports/override-audit` | pos.reports.view | `GetPosOverrideAuditReportUseCase` |
+| Override Audit | `/pos/reports/override-audit` | pos.reports.view | `GetPosOverrideAuditReportUseCase` |
 | Unsettled Costs (link) | `/inventory/reports/unsettled-costs` | pos.reports.view | (existing inventory report) |
 
-All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. The override audit report is currently an API/reporting-use-case surface for manager review; adding a dedicated `ReportContainer` UI page is a follow-up.
+All UI report pages use the shared `<ReportContainer>` and pass `check-reports.mjs`. The Payment Methods report aggregates stored `PosPayment` rows for the receipt set selected by date/register filters; CASH is reported net of `changeGiven` so it reconciles to settlement and drawer cash. The Override Audit page exposes voided lines, manual discounts, price overrides, and tax overrides for manager review.
 
 ## 8. Testing
 

@@ -4584,3 +4584,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Frontend report checker/typecheck/build follows in this session.
 - **Time spent:** ~0.5h for this slice; Task 251 total ~11.6h so far.
 - **Next:** Cashier-facing exchange UI polish.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 10 cashier-facing exchange UI)
+
+- **Goal:** Close the exchange workflow gap where backend/API coverage existed but the cashier screen had no exchange entry flow.
+- **What was done:** Extended `PosReturnPage` with Return/Exchange modes. Exchange mode lets the cashier look up the original receipt, select returned quantities, search/add replacement POS items, choose replacement payment method/reference, review return value vs replacement value, and post through `posApi.completeExchange()`.
+- **Accounting/ERP impact:** UI orchestration only. The exchange still posts as one POS return plus one replacement POS sale through the existing backend use case; no new GL document type, tax math, stock valuation, settlement routing, or posting rule was added in the frontend.
+- **Verification:** Focused backend exchange test passed (`CompletePosExchange`: 1 suite / 3 tests), frontend report guard passed, frontend typecheck passed, and frontend build passed.
+- **Time spent:** ~0.8h for this slice; Task 251 total ~12.4h so far.
+- **Next:** Cashier-facing manager approval capture UI, item selling-policy guards, or remaining POS report gaps.

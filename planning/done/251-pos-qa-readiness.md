@@ -2,8 +2,8 @@
 
 **Date:** 2026-06-22
 **Branch:** `codex/pos-qa-readiness`
-**Status:** in progress locally; slices 1-8 green
-**Actual time:** ~11.6h so far
+**Status:** in progress locally; slices 1-10 green
+**Actual time:** ~12.4h so far
 
 ## Technical Developer View
 
@@ -29,6 +29,7 @@ This slice compared the POS implementation against the POS golden-path requireme
 - POS exchange now creates one linked POS return and one linked replacement POS sale with the same `exchangeId`, and reports net due/refund for the cashier.
 - POS hold/recall now stores suspended carts as `PosHeldCart` records with `HELD`, `RECALLED`, and `CANCELLED` status. Holding a cart does not reserve stock, consume receipt numbers, create payments, or post accounting; recall restores the cart for later payment.
 - POS Override Audit now has a dedicated ReportContainer page under POS Reports.
+- POS Returns now has a cashier-facing **Exchange** mode that collects returned receipt lines, replacement POS item lines, replacement payment method/reference, and posts through the existing exchange API.
 - POS QA/docs were updated to check POS policy, register-level settlement accounts, and real payment report totals.
 
 Files changed:
@@ -54,6 +55,7 @@ Files changed:
 - `backend/src/domain/pos/entities/POSPolicy.ts`
 - `frontend/src/api/posApi.ts`
 - `frontend/src/modules/pos/pages/PosTerminalPage.tsx`
+- `frontend/src/modules/pos/pages/PosReturnPage.tsx`
 - `frontend/src/modules/pos/pages/PosOverrideAuditReportPage.tsx`
 - `backend/src/tests/application/pos/CompletePosSale.test.ts`
 - `backend/src/tests/application/pos/CompletePosReturn.test.ts`
@@ -91,6 +93,8 @@ Cashiers can now hold and recall sales. Holding saves the active cart on the ser
 
 Managers now have a POS **Override Audit** report page for voided lines, manual discounts, price overrides, and tax overrides. This uses the same report shell as the other POS reports.
 
+Cashiers can now process exchanges from **POS → Returns** by switching to **Exchange**, selecting returned receipt quantities, adding replacement POS items, and posting the linked return plus replacement sale. The screen shows the return value, replacement value, and net due/refund before posting.
+
 Registers now carry the missing P0 setup fields: default price list id, allowed cashiers, and hardware profile id. If a register has allowed cashiers selected, other users cannot open a shift on that register.
 
 Shift close now supports per-method reconciliation. Cashiers count CASH, CARD, BANK_TRANSFER, and CUSTOM separately. If every method balances, the shift becomes `RECONCILED`. If cash differs, the normal cash over/short voucher is posted. If non-cash differs, the difference is saved for review but does not post automatically.
@@ -116,12 +120,15 @@ For testing, use `planning/qa/pos-owner-test-guide.md` first, then run the full 
 - `npm run build` from `backend/` — passed.
 - `npm --prefix frontend run typecheck` — passed after repairing the local `frontend/node_modules` install.
 - `npm --prefix frontend run build` — passed.
+- `npm --prefix frontend run check:reports` — passed after Override Audit page wiring.
+- `npm --prefix frontend run typecheck` — passed after cashier-facing exchange UI slice.
+- `npm test -- --runInBand src/tests/application/pos/CompletePosExchange.test.ts` — passed, 1 suite / 3 tests after cashier-facing exchange UI slice.
+- `npm --prefix frontend run build` — passed after cashier-facing exchange UI slice.
 
 ## Known Follow-Ups
 
 - Promotions remain production-gated until the stacking/cap model is implemented.
 - Cashier-facing manager approval capture UI is still required; this slice added backend policy hooks and enforcement.
-- Exchange has backend/API coverage; cashier-facing exchange UI polish is still a follow-up.
 - Default price-list and hardware-profile fields are persisted but not consumed by pricing/device integrations yet.
 - SQL deployments need a Prisma migration for the new POS shift reconciliation and held-cart fields before using them in SQL mode.
 - Held carts do not reserve stock in V1; stock availability is rechecked when the recalled sale is completed.

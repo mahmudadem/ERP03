@@ -34,6 +34,17 @@ Both documents share one exchange id. If the replacement sale is more expensive 
 
 The return and sale keep their normal accounting behavior. This means stock, revenue, tax, COGS, cash/card settlement, and shift cash movements remain auditable on the same paths as ordinary POS returns and POS sales.
 
+To process an exchange:
+
+1. Open **POS → Returns**.
+2. Switch the mode from **Return** to **Exchange**.
+3. Look up the original receipt.
+4. Enter the quantity being returned on the original receipt line.
+5. Search for the replacement item and add it to the replacement sale.
+6. Confirm the replacement quantity, price, payment method, and optional payment reference.
+7. Review **Return value**, **Replacement value**, and the calculated **Net due** or **Net refund**.
+8. Click **Post exchange** and confirm.
+
 ## Which shift does the return attach to?
 
 Returns always attach to the **current** open shift on the register, not the original shift where the sale happened. If the original shift has been closed and the cashier opened a new shift on the same register, the new shift is the one whose drawer math is updated.

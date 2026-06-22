@@ -59,7 +59,7 @@
 | Payments/change | 🟡 Partial | CASH/CARD/BANK/CUSTOM mixed payments, change, cash rounding, per-register settlement accounts exist. Missing: multi-currency tender/exchange-rate freeze and card/bank fees. |
 | Void instead of delete | ✅ Slice 1 done | Terminal line removal now records `VOIDED` line snapshots with cashier, time, and reason. Voided lines stay on the receipt audit trail, are excluded from posting totals/stock/ledger, and cannot be returned. Remaining follow-up: posted-receipt void/cancel flow. |
 | Manager override | 🟡 Backend hooks done | Below-cost uses approval via Commercial Core/Approval Engine. POS policy can now require manager approval for void, price override, discount override, return, tax override, and reprint; sale/return use cases enforce available hooks. Cashier role limits also require approval when configured. Missing: cashier-facing manager approval capture UI and posted receipt reprint endpoint enforcement. |
-| Return/exchange | ✅ P0 backend done | Receipt-based selected-line returns, refunds, duplicate-return prevention, posted receipt void via full POS return, and exchange as linked POS return + replacement POS sale exist. Remaining follow-up: cashier-facing exchange UI polish. |
+| Return/exchange | ✅ P0 done | Receipt-based selected-line returns, refunds, duplicate-return prevention, posted receipt void via full POS return, and exchange as linked POS return + replacement POS sale exist. Cashiers can process exchanges from POS → Returns → Exchange. |
 | Price/discount/tax edit policies | 🟡 Backend controls done | Cashier role limits exist for max line discount percent/amount and price/tax override permission; sale completion blocks over-limit lines unless a manager override id is supplied. Receipt snapshots and the override audit report expose void/discount/price/tax exceptions. Missing: manager approval capture UI and a dedicated override-audit report page. |
 | Selling policies | 🟡 Partial | Inventory core handles negative stock policy; below-cost can require approval. Missing inactive/blocked/expired/non-POS-enabled/non-discountable item guards as POS policy. |
 | Touch layout/quick actions | 🟡 Partial | Basic product search/cart, line void workflow, and hold/recall sale exist. Missing favorites, category buttons, per-terminal layout, serial number, and line note. |
@@ -99,7 +99,8 @@
 - **P0 slice 7 complete:** Exchange workflow as linked POS return + replacement POS sale sharing `exchangeId`.
 - **P1 slice 8 complete:** Hold/recall sale stores held carts server-side with `HELD` / `RECALLED` / `CANCELLED` status and terminal controls.
 - **P1 slice 9 complete:** Dedicated Override Audit report page added under POS Reports.
-- **P0/P1 next slice:** Cashier-facing exchange UI polish.
+- **P1 slice 10 complete:** Cashier-facing exchange mode added to POS Returns.
+- **P0/P1 next slice:** Cashier-facing manager approval capture UI, item selling-policy guards, or remaining report gaps.
 - Decide whether POS needs a printable receipt template before pilot.
 - Decide whether receipt/return reprint should include a stronger audit event.
 - Decide whether branch should remain free text or wait for a first-class Branch entity.

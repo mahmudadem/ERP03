@@ -92,9 +92,9 @@ Run this on a fresh company where Accounting, Inventory, Sales, and POS are init
 34. Expected: return is blocked because there is no remaining returnable quantity.
 35. On another receipt, process a partial return, then void the receipt.
 36. Expected: the void returns only the remaining quantity, not the already-returned quantity.
-37. Process an exchange where the replacement item is more expensive than the returned item.
+37. Open **POS → Returns**, switch to **Exchange**, look up a completed receipt, enter the returned quantity, search/add a replacement item, and post an exchange where the replacement item is more expensive than the returned item.
 38. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net due from customer.
-39. Process an exchange where the replacement item is cheaper than the returned item.
+39. Repeat from **POS → Returns → Exchange** where the replacement item is cheaper than the returned item.
 40. Expected: one POS return and one replacement POS receipt are created with the same exchange id; the response shows net refund to customer.
 
 ## Stop Conditions
