@@ -4718,3 +4718,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** `npx npm@10.8.2 ci` passed. Backend build passed. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests.
 - **Time spent:** ~0.4h.
 - **Next:** Push the lockfile fix and wait for PR #35 CI to turn green before merging.
+
+### Session: 2026-06-23 (Task 259 — POS shortcuts and control buttons)
+
+- **Goal:** Implement the owner-requested POS shortcuts/control-buttons package one slice at a time.
+- **What was done:** Added backend POS layout entities, validation, repository contract, Firestore repository, DI binding, admin CRUD use cases, runtime layout resolver, command registry, and safe command execution use case. Added routes for runtime layout, commands, product shortcut layouts/nodes, control button layouts/buttons, and receipt print. Integrated terminal runtime shortcuts/control buttons and a POS Settings `Layouts` tab. Wired receipt print/reprint responses to the shared print-layout engine while preserving reprint approval/audit controls.
+- **Accounting/ERP impact:** UI/configuration and controlled print payload preparation only. No sale posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval-engine semantics changed.
+- **Verification:** Backend typecheck passed; frontend typecheck passed; focused POS layout test passed (`PosLayoutUseCases.test.ts`: 1 suite / 4 tests). Backend build passed. Frontend build passed; existing browser-data/chunk-size warnings remain. `graphify update .` could not run because `graphify` is not installed in this shell.
+- **Docs:** Added `docs/architecture/pos-shortcuts-control-buttons.md`, `docs/user-guide/pos/shortcuts-and-control-buttons.md`, `planning/tasks/259-pos-shortcuts-control-buttons.md`, and `planning/done/259-pos-shortcuts-control-buttons.md`.
+- **Time spent:** ~4.4h.
+- **Next:** Review diff, commit, and merge if clean.

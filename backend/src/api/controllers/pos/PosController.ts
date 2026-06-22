@@ -39,7 +39,8 @@ import {
 import { PreviewPosSaleUseCase } from '../../../application/pos/use-cases/PreviewPosSaleUseCase';
 import { CompletePosReturnUseCase, VoidPosReceiptUseCase } from '../../../application/pos/use-cases/CompletePosReturnUseCase';
 import { CompletePosExchangeUseCase } from '../../../application/pos/use-cases/CompletePosExchangeUseCase';
-import { ReprintPosReceiptUseCase } from '../../../application/pos/use-cases/PosReceiptUseCases';
+import { PrintPosReceiptUseCase, ReprintPosReceiptUseCase } from '../../../application/pos/use-cases/PosReceiptUseCases';
+import { PrintLayoutCore } from '../../../application/system-core';
 import { CreatePosManagerOverrideUseCase } from '../../../application/pos/use-cases/PosManagerOverrideUseCases';
 import {
   CancelPosHeldCartUseCase,
@@ -48,6 +49,27 @@ import {
   ListPosHeldCartsUseCase,
   RecallPosHeldCartUseCase,
 } from '../../../application/pos/use-cases/PosHeldCartUseCases';
+import {
+  CreatePosControlButtonLayoutUseCase,
+  CreatePosControlButtonUseCase,
+  CreatePosProductShortcutLayoutUseCase,
+  CreatePosProductShortcutNodeUseCase,
+  DeletePosControlButtonLayoutUseCase,
+  DeletePosControlButtonUseCase,
+  DeletePosProductShortcutLayoutUseCase,
+  DeletePosProductShortcutNodeUseCase,
+  ListPosControlButtonLayoutsUseCase,
+  ListPosControlButtonsUseCase,
+  ListPosProductShortcutLayoutsUseCase,
+  ListPosProductShortcutNodesUseCase,
+  ResolvePosRuntimeLayoutUseCase,
+  UpdatePosControlButtonLayoutUseCase,
+  UpdatePosControlButtonUseCase,
+  UpdatePosProductShortcutLayoutUseCase,
+  UpdatePosProductShortcutNodeUseCase,
+} from '../../../application/pos/use-cases/PosLayoutUseCases';
+import { PosCommandRegistry } from '../../../application/pos/services/PosCommandRegistry';
+import { ExecutePosCommandUseCase, ListPosCommandDefinitionsUseCase } from '../../../application/pos/use-cases/PosCommandUseCases';
 import { PostPosReturnUseCase } from '../../../application/pos/use-cases/PostPosReturnUseCase';
 import {
   GetCashierSalesSummaryUseCase,
@@ -68,6 +90,8 @@ import {
 } from '../../validators/pos.validators';
 
 export class PosController {
+  private static readonly printLayoutCore = new PrintLayoutCore();
+
   private static getCompanyId(req: Request): string {
     const companyId = (req as any).user?.companyId;
     if (!companyId) throw new Error('Company context not found');
@@ -443,6 +467,240 @@ export class PosController {
     }
   }
 
+  // ===== Layouts =====
+
+  static async getRuntimeLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new ResolvePosRuntimeLayoutUseCase(
+        diContainer.posLayoutRepository,
+        diContainer.itemRepository,
+        diContainer.commercialCore
+      );
+      const data = await useCase.execute({
+        companyId,
+        branchId: (req as any).query?.branchId ? String((req as any).query.branchId) : undefined,
+        registerId: (req as any).query?.registerId ? String((req as any).query.registerId) : undefined,
+        userId: PosController.getUserId(req),
+      });
+      (res as any).json({ success: true, data });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listProductShortcutLayouts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new ListPosProductShortcutLayoutsUseCase(diContainer.posLayoutRepository);
+      const layouts = await useCase.execute(PosController.getCompanyId(req));
+      (res as any).json({ success: true, data: layouts.map((layout) => layout.toJSON()) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createProductShortcutLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new CreatePosProductShortcutLayoutUseCase(diContainer.posLayoutRepository);
+      const layout = await useCase.execute({ ...(req as any).body, companyId });
+      (res as any).status(201).json({ success: true, data: layout.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateProductShortcutLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new UpdatePosProductShortcutLayoutUseCase(diContainer.posLayoutRepository);
+      const layout = await useCase.execute(companyId, String((req as any).params.id), (req as any).body || {});
+      (res as any).json({ success: true, data: layout.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteProductShortcutLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new DeletePosProductShortcutLayoutUseCase(diContainer.posLayoutRepository);
+      await useCase.execute(PosController.getCompanyId(req), String((req as any).params.id));
+      (res as any).json({ success: true, data: { deleted: true } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listProductShortcutNodes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new ListPosProductShortcutNodesUseCase(diContainer.posLayoutRepository);
+      const nodes = await useCase.execute(PosController.getCompanyId(req), String((req as any).params.layoutId));
+      (res as any).json({ success: true, data: nodes.map((node) => node.toJSON()) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createProductShortcutNode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new CreatePosProductShortcutNodeUseCase(diContainer.posLayoutRepository);
+      const node = await useCase.execute({
+        ...(req as any).body,
+        companyId,
+        layoutId: String((req as any).params.layoutId),
+      });
+      (res as any).status(201).json({ success: true, data: node.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateProductShortcutNode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new UpdatePosProductShortcutNodeUseCase(diContainer.posLayoutRepository);
+      const node = await useCase.execute(companyId, String((req as any).params.id), (req as any).body || {});
+      (res as any).json({ success: true, data: node.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteProductShortcutNode(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new DeletePosProductShortcutNodeUseCase(diContainer.posLayoutRepository);
+      await useCase.execute(PosController.getCompanyId(req), String((req as any).params.id));
+      (res as any).json({ success: true, data: { deleted: true } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listControlButtonLayouts(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new ListPosControlButtonLayoutsUseCase(diContainer.posLayoutRepository);
+      const layouts = await useCase.execute(PosController.getCompanyId(req));
+      (res as any).json({ success: true, data: layouts.map((layout) => layout.toJSON()) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createControlButtonLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new CreatePosControlButtonLayoutUseCase(diContainer.posLayoutRepository);
+      const layout = await useCase.execute({ ...(req as any).body, companyId });
+      (res as any).status(201).json({ success: true, data: layout.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateControlButtonLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new UpdatePosControlButtonLayoutUseCase(diContainer.posLayoutRepository);
+      const layout = await useCase.execute(companyId, String((req as any).params.id), (req as any).body || {});
+      (res as any).json({ success: true, data: layout.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteControlButtonLayout(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new DeletePosControlButtonLayoutUseCase(diContainer.posLayoutRepository);
+      await useCase.execute(PosController.getCompanyId(req), String((req as any).params.id));
+      (res as any).json({ success: true, data: { deleted: true } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listControlButtons(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new ListPosControlButtonsUseCase(diContainer.posLayoutRepository);
+      const buttons = await useCase.execute(PosController.getCompanyId(req), String((req as any).params.layoutId));
+      (res as any).json({ success: true, data: buttons.map((button) => button.toJSON()) });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async createControlButton(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new CreatePosControlButtonUseCase(diContainer.posLayoutRepository);
+      const button = await useCase.execute({
+        ...(req as any).body,
+        companyId,
+        layoutId: String((req as any).params.layoutId),
+      });
+      (res as any).status(201).json({ success: true, data: button.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateControlButton(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const useCase = new UpdatePosControlButtonUseCase(diContainer.posLayoutRepository);
+      const button = await useCase.execute(companyId, String((req as any).params.id), (req as any).body || {});
+      (res as any).json({ success: true, data: button.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async deleteControlButton(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new DeletePosControlButtonUseCase(diContainer.posLayoutRepository);
+      await useCase.execute(PosController.getCompanyId(req), String((req as any).params.id));
+      (res as any).json({ success: true, data: { deleted: true } });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async listCommandCodes(req: Request, res: Response, next: NextFunction) {
+    try {
+      const useCase = new ListPosCommandDefinitionsUseCase(new PosCommandRegistry());
+      (res as any).json({ success: true, data: useCase.execute() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async executeCommand(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const userId = PosController.getUserId(req);
+      const useCase = new ExecutePosCommandUseCase(new PosCommandRegistry(), diContainer.permissionChecker);
+      const result = await useCase.execute({
+        companyId,
+        userId,
+        commandCode: String((req as any).body?.commandCode) as any,
+        context: {
+          ...((req as any).body?.context || {}),
+          branchId: (req as any).body?.context?.branchId ? String((req as any).body.context.branchId) : undefined,
+          registerId: (req as any).body?.context?.registerId ? String((req as any).body.context.registerId) : undefined,
+          shiftId: (req as any).body?.context?.shiftId ? String((req as any).body.context.shiftId) : undefined,
+          receiptId: (req as any).body?.context?.receiptId ? String((req as any).body.context.receiptId) : undefined,
+          saleId: (req as any).body?.context?.saleId ? String((req as any).body.context.saleId) : undefined,
+          cartId: (req as any).body?.context?.cartId ? String((req as any).body.context.cartId) : undefined,
+          customerId: (req as any).body?.context?.customerId ? String((req as any).body.context.customerId) : undefined,
+          hasActiveCart: (req as any).body?.context?.hasActiveCart === true,
+        },
+      });
+      (res as any).json({ success: true, data: result });
+    } catch (error) {
+      next(error);
+    }
+  }
+
   static async searchProducts(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = PosController.getCompanyId(req);
@@ -547,17 +805,43 @@ export class PosController {
     try {
       const companyId = PosController.getCompanyId(req);
       const id = String((req as any).params.id);
-      const receipt = await diContainer.posReceiptRepository.getById(companyId, id);
-      if (!receipt) {
-        (res as any).status(404).json({ success: false, error: { code: 'NOT_FOUND', message: 'Receipt not found' } });
-        return;
-      }
-      const payments = await diContainer.posPaymentRepository.listByReceipt(companyId, id);
+      const useCase = new PrintPosReceiptUseCase(
+        diContainer.posReceiptRepository,
+        diContainer.posPaymentRepository,
+        diContainer.printLayoutTemplateRepository,
+        PosController.printLayoutCore
+      );
+      const result = await useCase.execute(companyId, id);
       (res as any).json({
         success: true,
         data: {
-          receipt: PosReceiptDTO.fromDomain(receipt),
-          payments: payments.map((p) => PosPaymentDTO.fromDomain(p)),
+          receipt: PosReceiptDTO.fromDomain(result.receipt),
+          payments: result.payments.map((p: any) => PosPaymentDTO.fromDomain(p)),
+          printTemplate: result.printTemplate,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async printReceipt(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const useCase = new PrintPosReceiptUseCase(
+        diContainer.posReceiptRepository,
+        diContainer.posPaymentRepository,
+        diContainer.printLayoutTemplateRepository,
+        PosController.printLayoutCore
+      );
+      const result = await useCase.execute(companyId, id);
+      (res as any).json({
+        success: true,
+        data: {
+          receipt: PosReceiptDTO.fromDomain(result.receipt),
+          payments: result.payments.map((p: any) => PosPaymentDTO.fromDomain(p)),
+          printTemplate: result.printTemplate,
         },
       });
     } catch (error) {
@@ -573,7 +857,9 @@ export class PosController {
         diContainer.posReceiptRepository,
         diContainer.posPaymentRepository,
         diContainer.policyEngine,
-        diContainer.auditEngine
+        diContainer.auditEngine,
+        diContainer.printLayoutTemplateRepository,
+        PosController.printLayoutCore
       );
       const result = await useCase.execute({
         companyId,
@@ -591,6 +877,7 @@ export class PosController {
         data: {
           receipt: PosReceiptDTO.fromDomain(result.receipt),
           payments: result.payments.map((p: any) => PosPaymentDTO.fromDomain(p)),
+          printTemplate: result.printTemplate,
         },
       });
     } catch (error) {

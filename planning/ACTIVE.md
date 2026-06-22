@@ -1,5 +1,21 @@
 # 🎯 Current Focus
 
+## Task 259 — POS shortcuts and control buttons (2026-06-23)
+
+**Status:** ✅ Implemented on branch `codex/pos-shortcuts-control-buttons`.
+
+- **Why:** The owner requested the full POS shortcuts/control-buttons package one slice at a time: backend layout models/resolver/API, safe command registry/execution, terminal runtime wiring, admin/settings UI, receipt print/reprint integration, docs, and verification.
+- **What changed:** Added configurable POS product shortcut layouts/nodes and control button layouts/buttons; Firestore repository + DI; runtime resolver with USER → REGISTER → BRANCH → COMPANY priority; allowlisted command registry with permission/prerequisite checks; POS terminal shortcut/control rendering; POS Settings `Layouts` tab; receipt print/reprint payload integration with the shared print-layout engine.
+- **Docs:** [planning/tasks/259-pos-shortcuts-control-buttons.md](./tasks/259-pos-shortcuts-control-buttons.md), [planning/done/259-pos-shortcuts-control-buttons.md](./done/259-pos-shortcuts-control-buttons.md), [docs/architecture/pos-shortcuts-control-buttons.md](../docs/architecture/pos-shortcuts-control-buttons.md), [docs/user-guide/pos/shortcuts-and-control-buttons.md](../docs/user-guide/pos/shortcuts-and-control-buttons.md).
+- **Verification:** Focused POS layout tests green (`PosLayoutUseCases.test.ts`: 4 tests); backend typecheck/build green; frontend typecheck/build green. Frontend build has only existing browser-data/chunk-size warnings.
+- **Accounting impact:** Terminal configuration/control only. No posting, tax, COGS, inventory valuation, settlement routing, period-lock, voucher, or approval-engine semantics changed. Reprint approval/audit remains enforced.
+- **Follow-ups:** Replace raw item id entry in the basic settings UI with the shared item selector; physical printer/cash-drawer device execution remains a hardware runtime integration.
+- **Actual time:** ~4.4h.
+
+## Next action
+
+Commit `codex/pos-shortcuts-control-buttons`, then merge as requested.
+
 ## Task 257 — POS manager overrides via the Approval Engine (2026-06-22)
 
 **Status:** ✅ Implemented on branch `feat/pos-readiness-and-negative-stock` (on top of the 251/256/258 bundle).

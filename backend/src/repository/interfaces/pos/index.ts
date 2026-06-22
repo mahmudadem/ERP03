@@ -7,3 +7,4 @@ export * from './IPosPaymentRepository';
 export * from './IPosReturnRepository';
 export * from './IPosPolicyRepository';
 export * from './IPosHeldCartRepository';
+export * from './IPosLayoutRepository';
