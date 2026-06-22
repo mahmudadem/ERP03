@@ -13,7 +13,17 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { posApi, PosHeldCartDTO, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
+import {
+  posApi,
+  PosCommandCode,
+  PosControlButtonDTO,
+  PosHeldCartDTO,
+  PosProductShortcutNodeDTO,
+  PosRegisterDTO,
+  PosRuntimeLayoutDTO,
+  PosShiftDTO,
+  PosSettingsDTO,
+} from '../../../api/posApi';
 import { sharedApi, TaxCodeDTO } from '../../../api/sharedApi';
 import { authApi } from '../../../api/auth';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
@@ -146,6 +156,8 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [heldLoading, setHeldLoading] = useState(false);
   const [holdingCart, setHoldingCart] = useState(false);
   const [showHeldCarts, setShowHeldCarts] = useState(false);
+  const [runtimeLayout, setRuntimeLayout] = useState<PosRuntimeLayoutDTO | null>(null);
+  const [shortcutPath, setShortcutPath] = useState<PosProductShortcutNodeDTO[]>([]);
 
   const uomRefs = useRef<Record<string, UomSelectorHandle>>({});
 
@@ -233,6 +245,34 @@ const PosTerminalPage: React.FC<Props> = () => {
   }, [bootstrap?.register?.id, bootstrap?.openShift?.id]);
 
   useEffect(() => {
+    if (!bootstrap?.register) {
+      setRuntimeLayout(null);
+      setShortcutPath([]);
+      return;
+    }
+    let cancelled = false;
+    const loadRuntimeLayout = async () => {
+      try {
+        const data = await posApi.getRuntimeLayout({
+          branchId: bootstrap.register?.branchId,
+          registerId: bootstrap.register?.id,
+        });
+        if (!cancelled) {
+          setRuntimeLayout(data);
+          setShortcutPath([]);
+        }
+      } catch (err) {
+        console.error('Failed to load POS runtime layout', err);
+        if (!cancelled) setRuntimeLayout(null);
+      }
+    };
+    void loadRuntimeLayout();
+    return () => {
+      cancelled = true;
+    };
+  }, [bootstrap?.register?.branchId, bootstrap?.register?.id]);
+
+  useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
       setSearchResults([]);
@@ -316,6 +356,24 @@ const PosTerminalPage: React.FC<Props> = () => {
     return enabled.length ? enabled : ['CASH'];
   }, [bootstrap?.settings]);
 
+  const currentShortcutNodes = useMemo(() => {
+    let nodes = runtimeLayout?.productShortcutTree || [];
+    for (const group of shortcutPath) {
+      const next = nodes.find((node) => node.id === group.id);
+      nodes = next?.children || [];
+    }
+    return nodes;
+  }, [runtimeLayout?.productShortcutTree, shortcutPath]);
+
+  const topControlButtons = useMemo(
+    () => (runtimeLayout?.controlButtonsByZone?.TOP_BAR || []).slice(0, 5),
+    [runtimeLayout?.controlButtonsByZone]
+  );
+  const bottomControlButtons = useMemo(
+    () => runtimeLayout?.controlButtonsByZone?.BOTTOM_BAR || [],
+    [runtimeLayout?.controlButtonsByZone]
+  );
+
   const onAddToCart = (item: any) => {
     const unitPrice = Number(item.salePrice || 0);
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
@@ -350,6 +408,87 @@ const PosTerminalPage: React.FC<Props> = () => {
         },
       ];
     });
+  };
+
+  const onShortcutClick = (node: PosProductShortcutNodeDTO) => {
+    if (node.nodeType === 'GROUP') {
+      setShortcutPath((prev) => [...prev, node]);
+      return;
+    }
+    if (!node.item) {
+      toast.error(t('pos.terminal.shortcutItemMissing', { defaultValue: 'Shortcut item is unavailable.' }));
+      return;
+    }
+    onAddToCart({
+      ...node.item,
+      uom: node.unitId || node.item.uom || node.item.unitOfMeasure,
+    });
+    if (node.predefinedQty && node.predefinedQty > 1) {
+      setCart((prev) =>
+        prev.map((line) =>
+          line.itemId === node.item?.id && line.status !== 'VOIDED'
+            ? recalculateLine({ ...line, qty: Math.max(line.qty, Number(node.predefinedQty) || line.qty) })
+            : line
+        )
+      );
+    }
+  };
+
+  const executeControlButton = async (button: PosControlButtonDTO) => {
+    const commandCode = button.commandCode as PosCommandCode;
+    try {
+      const result = await posApi.executeCommand({
+        commandCode,
+        context: {
+          registerId: bootstrap?.register?.id,
+          branchId: bootstrap?.register?.branchId,
+          shiftId: bootstrap?.openShift?.id,
+          receiptId: lastReceipt?.receipt?.id,
+          hasActiveCart: activeCart.length > 0,
+          customerId,
+        },
+      });
+      if (result?.status === 'REJECTED') {
+        toast.error(result.message || button.label);
+        return;
+      }
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'POS command failed.');
+      return;
+    }
+
+    switch (commandCode) {
+      case 'HOLD_SALE':
+        await onHoldCart();
+        break;
+      case 'RECALL_SALE':
+        await openHeldCarts();
+        break;
+      case 'CLEAR_CART':
+      case 'VOID_TICKET':
+        onClearSale();
+        break;
+      case 'CASH_PAYMENT':
+        setTenderMethod('CASH');
+        openPayDialog();
+        break;
+      case 'CARD_PAYMENT':
+        setTenderMethod('CARD');
+        openPayDialog();
+        break;
+      case 'SPLIT_PAYMENT':
+        openPayDialog();
+        break;
+      case 'RETURN_REFUND':
+        navigate('/pos/returns');
+        break;
+      case 'END_SHIFT':
+        navigate('/pos/shift');
+        break;
+      default:
+        toast(t('pos.terminal.commandReady', { defaultValue: 'Command is ready.' }));
+        break;
+    }
   };
 
   const recalculateLine = (line: CartLine): CartLine => {
@@ -820,6 +959,15 @@ const PosTerminalPage: React.FC<Props> = () => {
               </span>
             )}
           </button>
+          {topControlButtons.map((button) => (
+            <button
+              key={button.id}
+              onClick={() => executeControlButton(button)}
+              className="inline-flex items-center gap-1.5 rounded-lg border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300"
+            >
+              {button.label}
+            </button>
+          ))}
           <button
             onClick={toggleFullscreen}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
@@ -912,6 +1060,76 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             )}
 
+            {!searching && !searchQuery && currentShortcutNodes.length > 0 && (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setShortcutPath([])}
+                    disabled={shortcutPath.length === 0}
+                    className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
+                  >
+                    {t('pos.terminal.shortcutsRoot', { defaultValue: 'Root' })}
+                  </button>
+                  {shortcutPath.map((node, index) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      onClick={() => setShortcutPath((prev) => prev.slice(0, index + 1))}
+                      className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)]"
+                    >
+                      {node.label}
+                    </button>
+                  ))}
+                  {shortcutPath.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => setShortcutPath((prev) => prev.slice(0, -1))}
+                      className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
+                    >
+                      {t('common.back', { defaultValue: 'Back' })}
+                    </button>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
+                  {currentShortcutNodes.map((node) => (
+                    <button
+                      key={node.id}
+                      type="button"
+                      onClick={() => onShortcutClick(node)}
+                      className="group flex min-h-[88px] flex-col justify-between rounded-xl border border-slate-200 bg-white p-3 text-left transition-colors hover:border-indigo-400 hover:bg-indigo-50/50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:hover:bg-[var(--color-bg-tertiary)]"
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className={`flex h-9 w-9 flex-none items-center justify-center rounded-lg text-xs font-bold ${
+                          node.nodeType === 'GROUP'
+                            ? 'bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300'
+                            : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300'
+                        }`}>
+                          {node.nodeType === 'GROUP' ? 'GRP' : initialsOf(node.label)}
+                        </div>
+                        <div className="min-w-0">
+                          <div className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">{node.label}</div>
+                          <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">
+                            {node.nodeType === 'GROUP'
+                              ? t('pos.terminal.shortcutGroup', { defaultValue: 'Group' })
+                              : node.item?.code || node.itemId}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between">
+                        <span className="font-mono text-sm font-bold text-slate-900 dark:text-[var(--color-text-primary)]">
+                          {node.nodeType === 'ITEM' && node.item?.salePrice !== undefined ? money(Number(node.item.salePrice || 0)) : ''}
+                        </span>
+                        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-slate-600 transition-colors group-hover:bg-indigo-600 group-hover:text-white dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-secondary)]">
+                          {node.nodeType === 'GROUP' ? <Search className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+                        </span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {!searching && searchQuery && searchResults.length === 0 && (
               <div className="flex h-full flex-col items-center justify-center py-16 text-center">
                 <Search className="mb-3 h-10 w-10 text-slate-200 dark:text-[var(--color-border)]" />
@@ -921,7 +1139,7 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             )}
 
-            {!searching && !searchQuery && (
+            {!searching && !searchQuery && currentShortcutNodes.length === 0 && (
               <div className="flex h-full flex-col items-center justify-center py-16 text-center">
                 <ScanLine className="mb-3 h-12 w-12 text-slate-200 dark:text-[var(--color-border)]" />
                 <p className="text-sm font-medium text-slate-600 dark:text-[var(--color-text-primary)]">
@@ -1034,7 +1252,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                                 value={l.qty}
                                 onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
                                 onFocus={(e) => e.target.select()}
-                                className="h-full w-10 sm:w-12 lg:w-16 xl:w-20 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                                className="h-full w-10 sm:w-12 lg:w-16 xl:w-24 px-1 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <button
                                 onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
@@ -1191,8 +1409,8 @@ const PosTerminalPage: React.FC<Props> = () => {
                         />
                       </div>
 
-                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[212px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
-                        {money(l.lineTotal)}
+                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[228px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
+                        <span className="block w-full truncate text-center">{money(l.lineTotal)}</span>
                       </div>
                     </div>
                   </li>
@@ -1255,6 +1473,21 @@ const PosTerminalPage: React.FC<Props> = () => {
                 />
               </div>
             </div>
+
+            {bottomControlButtons.length > 0 && (
+              <div className="grid grid-cols-2 gap-2">
+                {bottomControlButtons.map((button) => (
+                  <button
+                    key={button.id}
+                    type="button"
+                    onClick={() => executeControlButton(button)}
+                    className="rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-sm font-semibold text-indigo-700 transition-colors hover:bg-indigo-100 dark:border-indigo-500/30 dark:bg-indigo-500/10 dark:text-indigo-300"
+                  >
+                    {button.label}
+                  </button>
+                ))}
+              </div>
+            )}
 
             <button
               onClick={openPayDialog}
