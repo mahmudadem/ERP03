@@ -839,7 +839,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       {/* Workspace */}
       <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 landscape:grid-cols-12 lg:grid-cols-12">
         {/* Products pane */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-4 lg:col-span-7">
+        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-4 lg:col-span-7 lg:landscape:col-span-7">
           <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
             <div className="relative">
               <input
@@ -936,7 +936,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         </section>
 
         {/* Order pane */}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-8 lg:col-span-5">
+        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-8 lg:col-span-5 lg:landscape:col-span-5">
           <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
               <Receipt className="h-4 w-4 text-indigo-600" />
