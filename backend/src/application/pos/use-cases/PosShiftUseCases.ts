@@ -1,9 +1,11 @@
 import { randomUUID } from 'crypto';
-import { PosShift } from '../../../domain/pos/entities/PosShift';
+import { normalizePaymentTotals, PosShift, PosShiftPaymentTotals } from '../../../domain/pos/entities/PosShift';
 import { PosCashMovement, PosCashMovementType } from '../../../domain/pos/entities/PosCashMovement';
 import { IPosShiftRepository } from '../../../repository/interfaces/pos/IPosShiftRepository';
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
 import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
+import { IPosReceiptRepository } from '../../../repository/interfaces/pos/IPosReceiptRepository';
+import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPaymentRepository';
 import {
   IPosCashMovementRepository,
   PosCashMovementTotals,
@@ -43,6 +45,9 @@ export class OpenPosShiftUseCase {
     }
     if (!register.isActive()) {
       throw new Error('Cannot open a shift on an INACTIVE register.');
+    }
+    if (!register.isCashierAllowed(input.cashierUserId)) {
+      throw new Error('Cashier is not allowed to open a shift on this register.');
     }
     const existing = await this.shiftRepo.getOpenShiftForRegister(input.companyId, input.registerId);
     if (existing) {
@@ -145,6 +150,7 @@ export interface ClosePosShiftInput {
   companyId: string;
   shiftId: string;
   countedCash: number;
+  countedPaymentTotals?: Partial<PosShiftPaymentTotals>;
   actor: { userId: string };
 }
 
@@ -153,6 +159,9 @@ export interface ClosePosShiftResult {
   totals: PosCashMovementTotals;
   overShortAmount: number;
   overShortVoucherId?: string;
+  expectedPaymentTotals: PosShiftPaymentTotals;
+  countedPaymentTotals: PosShiftPaymentTotals;
+  overShortPaymentTotals: PosShiftPaymentTotals;
 }
 
 /**
@@ -173,7 +182,9 @@ export class ClosePosShiftUseCase {
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly accountRepo: IAccountRepository,
     private readonly accountingBridge: IAccountingBridge,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly receiptRepo?: IPosReceiptRepository,
+    private readonly paymentRepo?: IPosPaymentRepository
   ) {}
 
   async execute(input: ClosePosShiftInput): Promise<ClosePosShiftResult> {
@@ -187,7 +198,16 @@ export class ClosePosShiftUseCase {
     }
 
     const totals = await this.cashMovementRepo.sumByShift(input.companyId, input.shiftId);
-    const overShort = round2(input.countedCash - totals.expectedCash);
+    const expectedPaymentTotals = await this.expectedPaymentTotals(input.companyId, shift.id, totals.expectedCash);
+    const countedPaymentTotals = normalizePaymentTotals({ ...input.countedPaymentTotals, CASH: input.countedPaymentTotals?.CASH ?? input.countedCash });
+    const overShortPaymentTotals = normalizePaymentTotals({
+      CASH: countedPaymentTotals.CASH - expectedPaymentTotals.CASH,
+      CARD: countedPaymentTotals.CARD - expectedPaymentTotals.CARD,
+      BANK_TRANSFER: countedPaymentTotals.BANK_TRANSFER - expectedPaymentTotals.BANK_TRANSFER,
+      CUSTOM: countedPaymentTotals.CUSTOM - expectedPaymentTotals.CUSTOM,
+    });
+    const overShort = round2(overShortPaymentTotals.CASH);
+    const isFullyReconciled = Object.values(overShortPaymentTotals).every((amount) => Math.abs(amount) <= 0.005);
 
     let voucherId: string | undefined;
 
@@ -290,23 +310,37 @@ export class ClosePosShiftUseCase {
         voucherId = result.voucher?.id;
 
         // Mutate the shift in the same transaction.
-        shift.status = 'CLOSED';
+        shift.status = isFullyReconciled ? 'RECONCILED' : 'CLOSED';
         shift.closedAt = new Date();
         shift.expectedCash = totals.expectedCash;
         shift.countedCash = round2(input.countedCash);
+        shift.expectedPaymentTotals = expectedPaymentTotals;
+        shift.countedPaymentTotals = countedPaymentTotals;
+        shift.overShortPaymentTotals = overShortPaymentTotals;
         shift.overShortAmount = overShort;
         shift.overShortVoucherId = voucherId;
+        if (isFullyReconciled) {
+          shift.reconciledAt = new Date();
+          shift.reconciledBy = input.actor.userId;
+        }
         shift.updatedAt = new Date();
         await this.shiftRepo.update(shift, tx);
       });
     } else {
       // No variance — just mark the shift closed in a single transaction.
       await this.transactionManager.runTransaction(async (tx) => {
-        shift.status = 'CLOSED';
+        shift.status = isFullyReconciled ? 'RECONCILED' : 'CLOSED';
         shift.closedAt = new Date();
         shift.expectedCash = totals.expectedCash;
         shift.countedCash = round2(input.countedCash);
+        shift.expectedPaymentTotals = expectedPaymentTotals;
+        shift.countedPaymentTotals = countedPaymentTotals;
+        shift.overShortPaymentTotals = overShortPaymentTotals;
         shift.overShortAmount = 0;
+        if (isFullyReconciled) {
+          shift.reconciledAt = new Date();
+          shift.reconciledBy = input.actor.userId;
+        }
         shift.updatedAt = new Date();
         await this.shiftRepo.update(shift, tx);
       });
@@ -317,7 +351,24 @@ export class ClosePosShiftUseCase {
       totals,
       overShortAmount: overShort,
       overShortVoucherId: voucherId,
+      expectedPaymentTotals,
+      countedPaymentTotals,
+      overShortPaymentTotals,
     };
+  }
+
+  private async expectedPaymentTotals(companyId: string, shiftId: string, expectedCash: number): Promise<PosShiftPaymentTotals> {
+    const totals = normalizePaymentTotals({ CASH: expectedCash });
+    if (!this.receiptRepo || !this.paymentRepo) return totals;
+    const receipts = await this.receiptRepo.list(companyId, { shiftId, limit: 1000 });
+    for (const receipt of receipts) {
+      const payments = await this.paymentRepo.listByReceipt(companyId, receipt.id);
+      for (const payment of payments) {
+        if (payment.method === 'CASH') continue;
+        totals[payment.method] = round2(totals[payment.method] + payment.amount);
+      }
+    }
+    return totals;
   }
 
   private async assertAccount(companyId: string, accountId: string, label: string): Promise<void> {
@@ -336,7 +387,9 @@ export class ForceClosePosShiftUseCase {
     private readonly cashMovementRepo: IPosCashMovementRepository,
     private readonly accountRepo: IAccountRepository,
     private readonly accountingBridge: IAccountingBridge,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly receiptRepo?: IPosReceiptRepository,
+    private readonly paymentRepo?: IPosPaymentRepository
   ) {}
 
   async execute(input: ClosePosShiftInput): Promise<ClosePosShiftResult> {
@@ -348,7 +401,9 @@ export class ForceClosePosShiftUseCase {
       this.cashMovementRepo,
       this.accountRepo,
       this.accountingBridge,
-      this.transactionManager
+      this.transactionManager,
+      this.receiptRepo,
+      this.paymentRepo
     );
     const result = await close.execute(input);
     // Flip the status to FORCE_CLOSED after the voucher + shift update.

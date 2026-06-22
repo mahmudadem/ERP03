@@ -24,7 +24,7 @@ Click **Save**. You should see a success toast.
 
 ## Payment methods
 
-Each row is one POS-side payment code mapped to a settlement account:
+Each row is one POS-side payment code and behavior rule:
 
 | Code | Allows change? | Requires reference? | Typical use |
 |---|---|---|---|
@@ -33,8 +33,9 @@ Each row is one POS-side payment code mapped to a settlement account:
 | `BANK_TRANSFER` | no | yes (bank ref) | Bank-app transfers |
 | `CUSTOM` | no | optional | Loyalty, voucher, etc. |
 
-- **Settlement account** is the GL account that the receipt voucher Dr-side uses for that tender.
-- Saving with an enabled method whose settlement account is blank is rejected by the backend with a readable error.
+- Enable only the methods this company accepts at the till.
+- Set **Requires reference** for methods like card and bank transfer where the cashier must type an authorization or bank reference.
+- Money routing is configured on each register, not here. CASH uses the register's cash-drawer account; CARD, BANK_TRANSFER, and CUSTOM use that register's settlement accounts.
 
 ## Cash over / short
 
@@ -57,14 +58,20 @@ The same accounts are also used for POS cash rounding at sale time: rounding up 
 
 - Click **New Register**.
 - Fill in: code, name, branch (free text — there is no first-class Branch entity yet), warehouse, cash-drawer account.
+- Optionally set a default price list id and hardware profile id. These are saved now for the next pricing-layout and hardware-device slices.
+- Optionally select allowed cashiers. If no cashiers are selected, any cashier with POS access can open a shift on the register.
+- Configure non-cash settlement accounts for CARD, BANK_TRANSFER, and CUSTOM if those methods are enabled at this register.
 - Save. The register appears in the list.
 - Toggle a register to **INACTIVE** when you take it out of service. Already-open shifts on it remain open; new shifts cannot be opened.
 - Edit an existing register to change its name, warehouse, branch, or cash-drawer account.
 
 A register is required before cashiers can open shifts (Phase 1).
+If a register has allowed cashiers configured, other cashiers are blocked before the shift opens.
 
 ## Troubleshooting
 
 - **Settings save fails with "Account not found for cashOverAccountId"** — you typed an account id that doesn't exist in the Chart of Accounts. Pick from the dropdown or leave it blank until you create the account.
+- **Card or bank sale is blocked with "Configure ... settlement account on POS register ..."** — open **POS → Registers**, edit the active register, and set the missing non-cash settlement account.
+- **Open shift is blocked with "Cashier is not allowed..."** — edit the register and add that user to the allowed cashiers list, or clear the list to allow all POS cashiers.
 - **Sale is blocked after enabling cash rounding** — check that Cash over and Cash short accounts are configured in POS Settings.
 - **Sidebar doesn't show POS entries** — your company bundle doesn't include the POS module. Contact your platform admin.

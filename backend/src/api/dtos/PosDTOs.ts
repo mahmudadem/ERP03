@@ -9,6 +9,7 @@ import { PosCashMovement } from '../../domain/pos/entities/PosCashMovement';
 import { PosReceipt, PosReceiptLineSnapshot } from '../../domain/pos/entities/PosReceipt';
 import { PosPayment } from '../../domain/pos/entities/PosPayment';
 import { PosReturn, PosReturnLine } from '../../domain/pos/entities/PosReturn';
+import { PosHeldCart, PosHeldCartLine } from '../../domain/pos/entities/PosHeldCart';
 import { PosCashMovementTotals } from '../../repository/interfaces/pos/IPosCashMovementRepository';
 
 export interface PosRegisterDTO {
@@ -18,6 +19,9 @@ export interface PosRegisterDTO {
   name: string;
   branchId?: string;
   warehouseId: string;
+  defaultPriceListId?: string;
+  allowedCashierUserIds: string[];
+  hardwareProfileId?: string;
   cashDrawerAccountId: string;
   settlementAccountIds?: Partial<Record<'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM', string>>;
   status: 'ACTIVE' | 'INACTIVE';
@@ -52,14 +56,19 @@ export interface PosShiftDTO {
   companyId: string;
   registerId: string;
   cashierUserId: string;
-  status: 'OPEN' | 'CLOSED' | 'FORCE_CLOSED' | 'CANCELLED';
+  status: 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
   openedAt: string;
   openingFloat: number;
   closedAt?: string;
   expectedCash?: number;
   countedCash?: number;
+  expectedPaymentTotals?: Record<string, number>;
+  countedPaymentTotals?: Record<string, number>;
+  overShortPaymentTotals?: Record<string, number>;
   overShortAmount?: number;
   overShortVoucherId?: string;
+  reconciledAt?: string;
+  reconciledBy?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -73,6 +82,9 @@ export class PosDTOMapper {
       name: register.name,
       branchId: register.branchId,
       warehouseId: register.warehouseId,
+      defaultPriceListId: register.defaultPriceListId,
+      allowedCashierUserIds: register.allowedCashierUserIds,
+      hardwareProfileId: register.hardwareProfileId,
       cashDrawerAccountId: register.cashDrawerAccountId,
       settlementAccountIds: register.settlementAccountIds,
       status: register.status,
@@ -115,8 +127,13 @@ export class PosDTOMapper {
       closedAt: shift.closedAt ? shift.closedAt.toISOString() : undefined,
       expectedCash: shift.expectedCash,
       countedCash: shift.countedCash,
+      expectedPaymentTotals: shift.expectedPaymentTotals,
+      countedPaymentTotals: shift.countedPaymentTotals,
+      overShortPaymentTotals: shift.overShortPaymentTotals,
       overShortAmount: shift.overShortAmount,
       overShortVoucherId: shift.overShortVoucherId,
+      reconciledAt: shift.reconciledAt ? shift.reconciledAt.toISOString() : undefined,
+      reconciledBy: shift.reconciledBy,
       createdAt: shift.createdAt.toISOString(),
       updatedAt: shift.updatedAt.toISOString(),
     };
@@ -184,9 +201,18 @@ export interface PosReceiptLineSnapshotDTO {
   qty: number;
   uom: string;
   unitPrice: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   lineDiscount: number;
   taxCodeId?: string;
   lineTotal: number;
+  status?: 'ACTIVE' | 'VOIDED';
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  voidedBy?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  managerOverrideId?: string;
   salesInvoiceLineId?: string;
 }
 
@@ -206,6 +232,7 @@ export interface PosReceiptDTO {
   grandTotal: number;
   salesInvoiceId?: string;
   salesInvoiceNumber?: string;
+  exchangeId?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -228,6 +255,7 @@ export const PosReceiptDTO = {
       grandTotal: r.grandTotal,
       salesInvoiceId: r.salesInvoiceId,
       salesInvoiceNumber: r.salesInvoiceNumber,
+      exchangeId: r.exchangeId,
       createdBy: r.createdBy,
       createdAt: r.createdAt.toISOString(),
     };
@@ -282,6 +310,7 @@ export interface PosReturnDTO {
   refundTotal: number;
   salesReturnId?: string;
   salesReturnNumber?: string;
+  exchangeId?: string;
   createdBy: string;
   createdAt: string;
 }
@@ -302,8 +331,63 @@ export const PosReturnDTO = {
       refundTotal: r.refundTotal,
       salesReturnId: r.salesReturnId,
       salesReturnNumber: r.salesReturnNumber,
+      exchangeId: r.exchangeId,
       createdBy: r.createdBy,
       createdAt: r.createdAt.toISOString(),
+    };
+  },
+};
+
+export interface PosHeldCartLineDTO extends PosHeldCartLine {}
+
+export interface PosHeldCartDTO {
+  id: string;
+  companyId: string;
+  registerId: string;
+  shiftId: string;
+  cashierUserId: string;
+  customerId?: string;
+  note?: string;
+  status: 'HELD' | 'RECALLED' | 'CANCELLED';
+  lines: PosHeldCartLineDTO[];
+  subtotal: number;
+  discountTotal: number;
+  taxTotal: number;
+  grandTotal: number;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  recalledAt?: string;
+  recalledBy?: string;
+  cancelledAt?: string;
+  cancelledBy?: string;
+  cancelReason?: string;
+}
+
+export const PosHeldCartDTO = {
+  fromDomain(cart: PosHeldCart): PosHeldCartDTO {
+    return {
+      id: cart.id,
+      companyId: cart.companyId,
+      registerId: cart.registerId,
+      shiftId: cart.shiftId,
+      cashierUserId: cart.cashierUserId,
+      customerId: cart.customerId,
+      note: cart.note,
+      status: cart.status,
+      lines: cart.lines,
+      subtotal: cart.subtotal,
+      discountTotal: cart.discountTotal,
+      taxTotal: cart.taxTotal,
+      grandTotal: cart.grandTotal,
+      createdBy: cart.createdBy,
+      createdAt: cart.createdAt.toISOString(),
+      updatedAt: cart.updatedAt.toISOString(),
+      recalledAt: cart.recalledAt?.toISOString(),
+      recalledBy: cart.recalledBy,
+      cancelledAt: cart.cancelledAt?.toISOString(),
+      cancelledBy: cart.cancelledBy,
+      cancelReason: cart.cancelReason,
     };
   },
 };

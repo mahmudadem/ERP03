@@ -8,13 +8,14 @@
  *   └───────────────────────────────────────────────────────────────────────┘
  *
  * Backend stays authoritative: `previewSale` supplies the tax-inclusive quote,
- * `completeSale` posts the Sales Invoice. The screen only collects intent.
+ * `completeSale` posts the POS_DIRECT_SALE. The screen only collects intent.
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
-import { posApi, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
+import { posApi, PosHeldCartDTO, PosRegisterDTO, PosShiftDTO, PosSettingsDTO } from '../../../api/posApi';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
+import { ManagerOverrideCapture, ManagerOverrideValue } from '../components/ManagerOverrideCapture';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { errorHandler } from '../../../services/errorHandler';
 import { useAuth } from '../../../context/AuthContext';
@@ -32,18 +33,28 @@ import {
   Landmark,
   Wallet,
   ScanLine,
+  Archive,
+  RotateCcw,
+  XCircle,
 } from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
 interface CartLine {
+  lineId: string;
   itemId: string;
   itemCode: string;
   itemName: string;
+  uom?: string;
   qty: number;
   unitPrice: number;
   lineDiscount: number;
   lineTotal: number;
+  status: 'ACTIVE' | 'VOIDED';
+  voidedBy?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  managerOverrideId?: string;
 }
 
 type PaymentMethod = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
@@ -59,6 +70,10 @@ interface Props { isWindow?: boolean }
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 const money = (n: number): string =>
   (Number.isFinite(n) ? n : 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const makeLineId = (): string =>
+  typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `line_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 
 const METHOD_META: Record<PaymentMethod, { label: string; Icon: typeof Banknote }> = {
   CASH: { label: 'Cash', Icon: Banknote },
@@ -92,6 +107,16 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [completing, setCompleting] = useState(false);
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [lastReceipt, setLastReceipt] = useState<any | null>(null);
+  const [voidTarget, setVoidTarget] = useState<{ lineId?: string; all?: boolean } | null>(null);
+  const [voidReason, setVoidReason] = useState('');
+  const [voidManagerOverride, setVoidManagerOverride] = useState<ManagerOverrideValue | null>(null);
+  const [showVoidManagerOverride, setShowVoidManagerOverride] = useState(false);
+  const [saleManagerOverride, setSaleManagerOverride] = useState<ManagerOverrideValue | null>(null);
+  const [showSaleManagerOverride, setShowSaleManagerOverride] = useState(false);
+  const [heldCarts, setHeldCarts] = useState<PosHeldCartDTO[]>([]);
+  const [heldLoading, setHeldLoading] = useState(false);
+  const [holdingCart, setHoldingCart] = useState(false);
+  const [showHeldCarts, setShowHeldCarts] = useState(false);
 
   // Tender form (React state — no more getElementById)
   const [tenderMethod, setTenderMethod] = useState<PaymentMethod>('CASH');
@@ -119,6 +144,11 @@ const PosTerminalPage: React.FC<Props> = () => {
   }, [userId]);
 
   useEffect(() => {
+    if (!bootstrap?.register || !bootstrap.openShift) return;
+    void loadHeldCarts();
+  }, [bootstrap?.register?.id, bootstrap?.openShift?.id]);
+
+  useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
       setSearchResults([]);
@@ -138,18 +168,19 @@ const PosTerminalPage: React.FC<Props> = () => {
     return () => clearTimeout(handle);
   }, [searchQuery]);
 
-  const subtotal = useMemo(() => cart.reduce((s, l) => s + l.qty * l.unitPrice, 0), [cart]);
-  const discountTotal = useMemo(() => cart.reduce((s, l) => s + l.lineDiscount, 0), [cart]);
-  const itemCount = useMemo(() => cart.reduce((s, l) => s + l.qty, 0), [cart]);
+  const activeCart = useMemo(() => cart.filter((l) => l.status !== 'VOIDED'), [cart]);
+  const subtotal = useMemo(() => activeCart.reduce((s, l) => s + l.qty * l.unitPrice, 0), [activeCart]);
+  const discountTotal = useMemo(() => activeCart.reduce((s, l) => s + l.lineDiscount, 0), [activeCart]);
+  const itemCount = useMemo(() => activeCart.reduce((s, l) => s + l.qty, 0), [activeCart]);
 
   // Tax-inclusive total comes from the backend quote (same calc the SI uses). While the
   // quote loads we fall back to a tax-exclusive estimate; the backend stays authoritative.
   const [quote, setQuote] = useState<{ subtotal: number; taxTotal: number; grandTotal: number } | null>(null);
   useEffect(() => {
-    if (cart.length === 0) { setQuote(null); return; }
+    if (activeCart.length === 0) { setQuote(null); return; }
     const handle = setTimeout(async () => {
       try {
-        const q = await posApi.previewSale(cart.map((l) => ({ itemId: l.itemId, qty: l.qty, unitPrice: l.unitPrice })));
+        const q = await posApi.previewSale(activeCart.map((l) => ({ itemId: l.itemId, qty: l.qty, unitPrice: l.unitPrice })));
         setQuote(q);
       } catch (err) {
         console.error('Preview failed', err);
@@ -157,7 +188,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       }
     }, 250);
     return () => clearTimeout(handle);
-  }, [cart]);
+  }, [activeCart]);
 
   const taxTotal = quote?.taxTotal ?? 0;
   const grandTotal = quote?.grandTotal ?? Math.max(0, subtotal - discountTotal);
@@ -191,10 +222,10 @@ const PosTerminalPage: React.FC<Props> = () => {
       return;
     }
     setCart((prev) => {
-      const existing = prev.find((l) => l.itemId === item.id);
+      const existing = prev.find((l) => l.itemId === item.id && l.status !== 'VOIDED');
       if (existing) {
         return prev.map((l) =>
-          l.itemId === item.id
+          l.lineId === existing.lineId
             ? { ...l, qty: l.qty + 1, lineTotal: round2((l.qty + 1) * l.unitPrice - l.lineDiscount) }
             : l
         );
@@ -202,42 +233,189 @@ const PosTerminalPage: React.FC<Props> = () => {
       return [
         ...prev,
         {
+          lineId: makeLineId(),
           itemId: item.id,
           itemCode: item.code || '',
           itemName: item.name || '',
+          uom: item.uom || item.unitOfMeasure || '',
           qty: 1,
           unitPrice,
           lineDiscount: 0,
           lineTotal: round2(unitPrice),
+          status: 'ACTIVE',
         },
       ];
     });
   };
 
-  const onUpdateQty = (itemId: string, qty: number) => {
-    if (qty <= 0) { onRemoveLine(itemId); return; }
+  const onUpdateQty = (lineId: string, qty: number) => {
+    if (qty <= 0) { beginVoidLine(lineId); return; }
     setCart((prev) =>
       prev.map((l) =>
-        l.itemId === itemId
+        l.lineId === lineId && l.status !== 'VOIDED'
           ? { ...l, qty, lineTotal: round2(qty * l.unitPrice - l.lineDiscount) }
           : l
       )
     );
   };
 
-  const onRemoveLine = (itemId: string) => {
-    setCart((prev) => prev.filter((l) => l.itemId !== itemId));
+  const beginVoidLine = (lineId: string) => {
+    setVoidTarget({ lineId });
+    setVoidReason('');
+    setVoidManagerOverride(null);
   };
 
   const onClearSale = () => {
-    setCart([]);
+    if (activeCart.length === 0) {
+      setCart([]);
+      setPayments([]);
+      setSearchQuery('');
+      searchRef.current?.focus();
+      return;
+    }
+    setVoidTarget({ all: true });
+    setVoidReason('');
+    setVoidManagerOverride(null);
+  };
+
+  const confirmVoid = () => {
+    const reason = voidReason.trim();
+    if (!voidTarget || !reason) {
+      toast.error(t('pos.terminal.voidReasonRequired', { defaultValue: 'Enter a reason before voiding the line.' }));
+      return;
+    }
+    const voidedAt = new Date().toISOString();
+    setCart((prev) =>
+      prev.map((l) => {
+        const shouldVoid = voidTarget.all ? l.status !== 'VOIDED' : l.lineId === voidTarget.lineId;
+        return shouldVoid
+          ? { ...l, status: 'VOIDED', voidedBy: userId, voidedAt, voidReason: reason, managerOverrideId: voidManagerOverride?.managerOverrideId || l.managerOverrideId }
+          : l;
+      })
+    );
     setPayments([]);
-    setSearchQuery('');
+    setVoidTarget(null);
+    setVoidReason('');
+    setVoidManagerOverride(null);
+    toast.success(t('pos.terminal.lineVoided', { defaultValue: 'Line voided.' }));
     searchRef.current?.focus();
   };
 
   const onAddPayment = (p: Payment) => setPayments((prev) => [...prev, p]);
   const onRemovePayment = (idx: number) => setPayments((prev) => prev.filter((_, i) => i !== idx));
+
+  const loadHeldCarts = async () => {
+    const register = bootstrap?.register;
+    const shift = bootstrap?.openShift;
+    if (!register || !shift) return;
+    try {
+      setHeldLoading(true);
+      const list = await posApi.listHeldCarts({
+        registerId: register.id,
+        shiftId: shift.id,
+        status: 'HELD',
+        limit: 25,
+      });
+      setHeldCarts(list);
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to load held carts.');
+    } finally {
+      setHeldLoading(false);
+    }
+  };
+
+  const openHeldCarts = async () => {
+    setShowHeldCarts(true);
+    await loadHeldCarts();
+  };
+
+  const onHoldCart = async () => {
+    const register = bootstrap?.register;
+    const shift = bootstrap?.openShift;
+    if (!register || !shift) {
+      toast.error(t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      return;
+    }
+    if (activeCart.length === 0) {
+      toast.error(t('pos.terminal.noActiveLines', { defaultValue: 'Add at least one active line before holding the sale.' }));
+      return;
+    }
+    try {
+      setHoldingCart(true);
+      await posApi.holdCart({
+        registerId: register.id,
+        shiftId: shift.id,
+        cashierUserId: userId,
+        customerId,
+        lines: activeCart.map((l) => ({
+          lineId: l.lineId,
+          itemId: l.itemId,
+          itemCode: l.itemCode,
+          itemName: l.itemName,
+          uom: l.uom,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+          lineDiscount: l.lineDiscount,
+          lineTotal: l.lineTotal,
+          managerOverrideId: l.managerOverrideId,
+        })),
+        subtotal,
+        discountTotal,
+        taxTotal,
+        grandTotal,
+      });
+      setCart([]);
+      setPayments([]);
+      setSearchQuery('');
+      toast.success(t('pos.terminal.held', { defaultValue: 'Sale held.' }));
+      await loadHeldCarts();
+      searchRef.current?.focus();
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to hold sale.');
+    } finally {
+      setHoldingCart(false);
+    }
+  };
+
+  const onRecallHeldCart = async (held: PosHeldCartDTO) => {
+    if (activeCart.length > 0) {
+      toast.error(t('pos.terminal.recallNeedsEmptyCart', { defaultValue: 'Complete, hold, or void the current sale before recalling another one.' }));
+      return;
+    }
+    try {
+      const recalled = await posApi.recallHeldCart(held.id);
+      setCart(recalled.lines.map((line) => ({
+        lineId: line.lineId || makeLineId(),
+        itemId: line.itemId,
+        itemCode: line.itemCode || '',
+        itemName: line.itemName || '',
+        uom: line.uom || '',
+        qty: Number(line.qty) || 0,
+        unitPrice: Number(line.unitPrice) || 0,
+        lineDiscount: Number(line.lineDiscount) || 0,
+        lineTotal: Number(line.lineTotal) || round2((Number(line.qty) || 0) * (Number(line.unitPrice) || 0) - (Number(line.lineDiscount) || 0)),
+        status: 'ACTIVE',
+        managerOverrideId: line.managerOverrideId,
+      })));
+      setCustomerId(recalled.customerId || settings?.walkInCustomerId);
+      setPayments([]);
+      toast.success(t('pos.terminal.recalled', { defaultValue: 'Held sale recalled.' }));
+      await loadHeldCarts();
+      setShowHeldCarts(false);
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to recall held sale.');
+    }
+  };
+
+  const onCancelHeldCart = async (held: PosHeldCartDTO) => {
+    try {
+      await posApi.cancelHeldCart(held.id, { reason: 'Cancelled from POS terminal' });
+      toast.success(t('pos.terminal.heldCancelled', { defaultValue: 'Held sale cancelled.' }));
+      await loadHeldCarts();
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to cancel held sale.');
+    }
+  };
 
   // Scan flow: pressing Enter adds the top match and clears the box for the next scan.
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -249,7 +427,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   };
 
   const openPayDialog = () => {
-    if (cart.length === 0) return;
+    if (activeCart.length === 0) return;
     setTenderMethod(enabledMethods[0]);
     setTenderAmount(balanceDue ? String(balanceDue) : String(round2(grandTotal)));
     setTenderRef('');
@@ -267,11 +445,27 @@ const PosTerminalPage: React.FC<Props> = () => {
     setTenderRef('');
   };
 
+  const applySaleManagerOverride = (override: ManagerOverrideValue) => {
+    setSaleManagerOverride(override);
+    setCart((prev) =>
+      prev.map((line) =>
+        line.status !== 'VOIDED' && !line.managerOverrideId
+          ? { ...line, managerOverrideId: override.managerOverrideId }
+          : line
+      )
+    );
+    setShowSaleManagerOverride(false);
+  };
+
   const onCompleteSale = async () => {
     const register = bootstrap?.register;
     const shift = bootstrap?.openShift;
     if (!register || !shift) {
       toast.error(t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      return;
+    }
+    if (activeCart.length === 0) {
+      toast.error(t('pos.terminal.noActiveLines', { defaultValue: 'Add at least one active line before taking payment.' }));
       return;
     }
     if (Math.abs(paid - grandTotal) > 0.005) {
@@ -284,7 +478,19 @@ const PosTerminalPage: React.FC<Props> = () => {
         registerId: register.id,
         shiftId: shift.id,
         customerId,
-        lines: cart.map((l) => ({ itemId: l.itemId, qty: l.qty, unitPrice: l.unitPrice })),
+        lines: cart.map((l) => ({
+          itemId: l.itemId,
+          itemCode: l.itemCode,
+          itemName: l.itemName,
+          uom: l.uom,
+          qty: l.qty,
+          unitPrice: l.unitPrice,
+          status: l.status,
+          voidedBy: l.voidedBy,
+          voidedAt: l.voidedAt,
+          voidReason: l.voidReason,
+          managerOverrideId: l.managerOverrideId,
+        })),
         payments: salePayments,
       });
       const data = unwrap<any>(result);
@@ -292,6 +498,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.success(t('pos.terminal.completed', { defaultValue: 'Sale completed.' }));
       setCart([]);
       setPayments([]);
+      setSaleManagerOverride(null);
       setSearchQuery('');
       searchRef.current?.focus();
     } catch (err: any) {
@@ -377,6 +584,28 @@ const PosTerminalPage: React.FC<Props> = () => {
               </span>
             </div>
           )}
+          <button
+            onClick={onHoldCart}
+            disabled={activeCart.length === 0 || holdingCart}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+          >
+            <Archive className="h-3.5 w-3.5" />
+            {holdingCart
+              ? t('common.processing', { defaultValue: 'Processing…' })
+              : t('pos.terminal.hold', { defaultValue: 'Hold' })}
+          </button>
+          <button
+            onClick={openHeldCarts}
+            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
+          >
+            <RotateCcw className="h-3.5 w-3.5" />
+            {t('pos.terminal.recall', { defaultValue: 'Recall' })}
+            {heldCarts.length > 0 && (
+              <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
+                {heldCarts.length}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => navigate('/pos/shift')}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
@@ -500,7 +729,9 @@ const PosTerminalPage: React.FC<Props> = () => {
                 className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:text-[var(--color-text-secondary)] dark:hover:bg-rose-500/10 cursor-pointer"
               >
                 <Trash2 className="h-3.5 w-3.5" />
-                {t('pos.terminal.clear', { defaultValue: 'Clear' })}
+                {activeCart.length > 0
+                  ? t('pos.terminal.voidAll', { defaultValue: 'Void all' })
+                  : t('pos.terminal.clear', { defaultValue: 'Clear' })}
               </button>
             )}
           </div>
@@ -521,19 +752,27 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             ) : (
               <ul className="divide-y divide-slate-100 dark:divide-[var(--color-border)]">
-                {cart.map((l) => (
-                  <li key={l.itemId} className="flex items-center gap-3 px-4 py-2.5">
+                {cart.map((l) => {
+                  const isVoided = l.status === 'VOIDED';
+                  return (
+                  <li key={l.lineId} className={`flex items-center gap-3 px-4 py-2.5 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : ''}`}>
                     <div className="min-w-0 flex-1">
-                      <div className="truncate text-sm font-medium text-slate-900 dark:text-[var(--color-text-primary)]">{l.itemName}</div>
+                      <div className={`truncate text-sm font-medium ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>{l.itemName}</div>
                       <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">
                         {l.itemCode} · {money(l.unitPrice)}
+                        {isVoided ? ` · ${t('pos.terminal.voided', { defaultValue: 'Voided' })}` : ''}
                       </div>
                     </div>
 
                     {/* Qty stepper */}
+                    {isVoided ? (
+                      <div className="w-28 flex-none rounded-lg border border-slate-200 px-2 py-1 text-center text-xs font-semibold text-slate-500 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]">
+                        {t('pos.terminal.voided', { defaultValue: 'Voided' })}
+                      </div>
+                    ) : (
                     <div className="flex flex-none items-center rounded-lg border border-slate-200 dark:border-[var(--color-border)]">
                       <button
-                        onClick={() => onUpdateQty(l.itemId, round2(l.qty - 1))}
+                        onClick={() => onUpdateQty(l.lineId, round2(l.qty - 1))}
                         aria-label={t('pos.terminal.decrease', { defaultValue: 'Decrease quantity' })}
                         className="flex h-8 w-8 items-center justify-center rounded-l-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
                       >
@@ -544,31 +783,37 @@ const PosTerminalPage: React.FC<Props> = () => {
                         min="0"
                         step="0.001"
                         value={l.qty}
-                        onChange={(e) => onUpdateQty(l.itemId, Number(e.target.value) || 0)}
+                        onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
                         aria-label={t('pos.terminal.qty', { defaultValue: 'Qty' })}
                         className="h-8 w-12 border-x border-slate-200 bg-transparent text-center text-sm text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
                       />
                       <button
-                        onClick={() => onUpdateQty(l.itemId, round2(l.qty + 1))}
+                        onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
                         aria-label={t('pos.terminal.increase', { defaultValue: 'Increase quantity' })}
                         className="flex h-8 w-8 items-center justify-center rounded-r-lg text-slate-500 transition-colors hover:bg-slate-100 dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
                       >
                         <Plus className="h-3.5 w-3.5" />
                       </button>
                     </div>
+                    )}
 
-                    <div className="w-20 flex-none text-right font-mono text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+                    <div className={`w-20 flex-none text-right font-mono text-sm font-semibold ${isVoided ? 'text-slate-400 line-through' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`}>
                       {money(l.lineTotal)}
                     </div>
-                    <button
-                      onClick={() => onRemoveLine(l.itemId)}
-                      aria-label={t('pos.terminal.remove', { defaultValue: 'Remove line' })}
-                      className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 cursor-pointer"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </button>
+                    {isVoided ? (
+                      <div className="h-8 w-8 flex-none" />
+                    ) : (
+                      <button
+                        onClick={() => beginVoidLine(l.lineId)}
+                        aria-label={t('pos.terminal.remove', { defaultValue: 'Remove line' })}
+                        className="flex h-8 w-8 flex-none items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 cursor-pointer"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </button>
+                    )}
                   </li>
-                ))}
+                );
+                })}
               </ul>
             )}
           </div>
@@ -609,7 +854,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
             <button
               onClick={openPayDialog}
-              disabled={cart.length === 0}
+              disabled={activeCart.length === 0}
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-3.5 text-base font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
             >
               <CreditCard className="h-5 w-5" />
@@ -711,6 +956,30 @@ const PosTerminalPage: React.FC<Props> = () => {
               <Plus className="h-4 w-4" /> {t('pos.terminal.addTender', { defaultValue: 'Add payment' })}
             </button>
 
+            <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="text-xs font-semibold text-amber-900">
+                    {t('pos.managerOverride.title', { defaultValue: 'Manager approval' })}
+                  </div>
+                  <div className="mt-0.5 text-xs text-amber-800">
+                    {saleManagerOverride
+                      ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', saleManagerOverride.managerOverrideId)
+                      : t('pos.managerOverride.saleHelp', { defaultValue: 'Capture approval before completing a sale with restricted discounts, price, tax, or void overrides.' })}
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowSaleManagerOverride(true)}
+                  className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+                >
+                  {saleManagerOverride
+                    ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
+                    : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                </button>
+              </div>
+            </div>
+
             {/* Tender list */}
             {payments.length > 0 && (
               <ul className="divide-y divide-slate-100 rounded-xl border border-slate-200 dark:divide-[var(--color-border)] dark:border-[var(--color-border)]">
@@ -764,6 +1033,145 @@ const PosTerminalPage: React.FC<Props> = () => {
         confirmLabel={completing
           ? t('common.processing', { defaultValue: 'Processing…' })
           : t('pos.terminal.completeSale', { defaultValue: 'Complete sale' })}
+      />
+
+      <ConfirmDialog
+        isOpen={Boolean(voidTarget)}
+        title={voidTarget?.all
+          ? t('pos.terminal.voidAllTitle', { defaultValue: 'Void current sale lines' })
+          : t('pos.terminal.voidLineTitle', { defaultValue: 'Void line' })}
+        message={
+          <div className="space-y-3">
+            <p>
+              {voidTarget?.all
+                ? t('pos.terminal.voidAllMessage', { defaultValue: 'Active lines will remain on the receipt audit trail but will not be posted to stock or accounting.' })
+                : t('pos.terminal.voidLineMessage', { defaultValue: 'The line will remain on the receipt audit trail but will not be posted to stock or accounting.' })}
+            </p>
+            <div>
+              <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
+                {t('pos.terminal.voidReason', { defaultValue: 'Void reason' })}
+              </label>
+              <textarea
+                value={voidReason}
+                onChange={(event) => setVoidReason(event.target.value)}
+                rows={3}
+                className="w-full resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-amber-500 focus:ring-2 focus:ring-amber-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
+              />
+            </div>
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="text-xs text-amber-900">
+                  {voidManagerOverride
+                    ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', voidManagerOverride.managerOverrideId)
+                    : t('pos.managerOverride.voidHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for line voids.' })}
+                </span>
+                <button
+                  type="button"
+                  onClick={() => setShowVoidManagerOverride(true)}
+                  className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
+                >
+                  {voidManagerOverride
+                    ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
+                    : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                </button>
+              </div>
+            </div>
+          </div>
+        }
+        tone="warning"
+        onConfirm={confirmVoid}
+        onCancel={() => {
+          setVoidTarget(null);
+          setVoidReason('');
+        }}
+        confirmLabel={voidTarget?.all
+          ? t('pos.terminal.voidAll', { defaultValue: 'Void all' })
+          : t('pos.terminal.voidLine', { defaultValue: 'Void line' })}
+      />
+
+      <ManagerOverrideCapture
+        isOpen={showVoidManagerOverride}
+        action="VOID_LINE"
+        title={t('pos.managerOverride.voidTitle', { defaultValue: 'Approve line void' })}
+        context={{ registerId: register?.id, shiftId: shift?.id, lineId: voidTarget?.lineId, all: voidTarget?.all === true }}
+        onCancel={() => setShowVoidManagerOverride(false)}
+        onApproved={(override) => {
+          setVoidManagerOverride(override);
+          setShowVoidManagerOverride(false);
+        }}
+      />
+
+      <ManagerOverrideCapture
+        isOpen={showSaleManagerOverride}
+        action="DISCOUNT_OVERRIDE"
+        title={t('pos.managerOverride.saleTitle', { defaultValue: 'Approve sale override' })}
+        context={{ registerId: register?.id, shiftId: shift?.id, lineCount: activeCart.length, total: grandTotal }}
+        onCancel={() => setShowSaleManagerOverride(false)}
+        onApproved={applySaleManagerOverride}
+      />
+
+      <ConfirmDialog
+        isOpen={showHeldCarts}
+        title={t('pos.terminal.heldCartsTitle', { defaultValue: 'Held sales' })}
+        message={
+          <div className="max-h-[60vh] space-y-3 overflow-y-auto">
+            {heldLoading ? (
+              <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-[var(--color-text-secondary)]">
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-slate-300 border-t-indigo-600" />
+                {t('common.loading', { defaultValue: 'Loading…' })}
+              </div>
+            ) : heldCarts.length === 0 ? (
+              <p className="text-sm text-slate-500 dark:text-[var(--color-text-secondary)]">
+                {t('pos.terminal.noHeldCarts', { defaultValue: 'No held sales for this shift.' })}
+              </p>
+            ) : (
+              <ul className="space-y-2">
+                {heldCarts.map((held) => (
+                  <li
+                    key={held.id}
+                    className="rounded-xl border border-slate-200 p-3 dark:border-[var(--color-border)]"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
+                          {held.lines.length} {t('pos.terminal.lines', { defaultValue: 'lines' })}
+                        </div>
+                        <div className="mt-0.5 font-mono text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+                          {new Date(held.createdAt).toLocaleString()} · {money(held.grandTotal)}
+                        </div>
+                      </div>
+                      <div className="flex flex-none items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={() => onRecallHeldCart(held)}
+                          className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 cursor-pointer"
+                        >
+                          <RotateCcw className="h-3.5 w-3.5" />
+                          {t('pos.terminal.recall', { defaultValue: 'Recall' })}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => onCancelHeldCart(held)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-rose-200 px-2.5 py-1.5 text-xs font-semibold text-rose-600 transition-colors hover:bg-rose-50 dark:border-rose-500/30 dark:hover:bg-rose-500/10 cursor-pointer"
+                        >
+                          <XCircle className="h-3.5 w-3.5" />
+                          {t('common.cancel', { defaultValue: 'Cancel' })}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="mt-2 line-clamp-2 text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
+                      {held.lines.map((line) => line.itemName || line.itemCode || line.itemId).join(', ')}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        }
+        tone="info"
+        onConfirm={() => setShowHeldCarts(false)}
+        onCancel={() => setShowHeldCarts(false)}
+        confirmLabel={t('common.close', { defaultValue: 'Close' })}
       />
     </div>
   );

@@ -13,6 +13,12 @@ export class PolicyEngine implements IPolicyEngine {
     if (request.scope === 'pos' && request.action === 'directSale') {
       return this.resolvePosDirectSale(request);
     }
+    if (request.scope === 'pos' && request.action === 'managerOverride') {
+      return this.resolvePosManagerOverride(request);
+    }
+    if (request.scope === 'pos' && request.action === 'saleLineControls') {
+      return this.resolvePosSaleLineControls(request);
+    }
 
     if (request.scope === 'accounting' && request.action === 'postingApprovalRequired' && request.companyId) {
       const voucherType = String(request.context?.voucherType || '');
@@ -80,4 +86,89 @@ export class PolicyEngine implements IPolicyEngine {
 
     return { allowed, requiresApproval: requiresApproval && !approvedOverride, resolvedBy };
   }
+
+  private async resolvePosManagerOverride(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
+    if (!request.companyId) {
+      return { allowed: false, requiresApproval: false, resolvedBy: ['POSPolicy.missingCompany'] };
+    }
+
+    const policy = await this.posPolicyRepo.getPolicy(request.companyId);
+    const action = String(request.context?.overrideAction || '');
+    const cashierRolePolicy = policy?.findCashierRolePolicy(String(request.context?.cashierRoleId || ''));
+    const requiresApproval = cashierRolePolicy?.managerOverrideActions.includes(action as any) === true;
+    const approvedOverride = request.context?.approvedOverride === true || Boolean(String(request.context?.approvedOverrideId || '').trim());
+
+    const resolvedBy = [
+      requiresApproval
+        ? `CashierRolePolicy.managerOverride.${action}.requiresApproval`
+        : `CashierRolePolicy.managerOverride.${action || 'UNKNOWN'}.notRequired`,
+    ];
+
+    if (requiresApproval && !approvedOverride) {
+      resolvedBy.push('CashierRolePolicy.managerOverride.blockedPendingApproval');
+      return { allowed: false, requiresApproval: true, resolvedBy };
+    }
+
+    if (requiresApproval && approvedOverride) {
+      resolvedBy.push('ApprovedOverride.allow');
+    }
+
+    return { allowed: true, requiresApproval: false, resolvedBy };
+  }
+
+  private async resolvePosSaleLineControls(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
+    if (!request.companyId) {
+      return { allowed: false, requiresApproval: false, resolvedBy: ['POSPolicy.missingCompany'] };
+    }
+
+    const policy = await this.posPolicyRepo.getPolicy(request.companyId);
+    const cashierRolePolicy = policy?.findCashierRolePolicy(String(request.context?.cashierRoleId || ''));
+    if (!cashierRolePolicy) {
+      return { allowed: true, requiresApproval: false, resolvedBy: ['CashierRolePolicy.notConfigured'] };
+    }
+
+    const approvedOverride =
+      request.context?.approvedOverride === true ||
+      Boolean(String(request.context?.approvedOverrideId || '').trim());
+    const resolvedBy: string[] = [];
+
+    const priceOverride = request.context?.priceOverride === true;
+    const taxOverride = request.context?.taxOverride === true;
+    const discountPercent = numberOrZero(request.context?.discountPercent);
+    const discountAmount = numberOrZero(request.context?.discountAmount);
+
+    if (priceOverride && cashierRolePolicy.allowPriceOverride === false) {
+      resolvedBy.push('CashierRolePolicy.priceOverride.blocked');
+    }
+    if (taxOverride && cashierRolePolicy.allowTaxOverride === false) {
+      resolvedBy.push('CashierRolePolicy.taxOverride.blocked');
+    }
+    if (
+      cashierRolePolicy.maxLineDiscountPercent !== undefined &&
+      discountPercent > cashierRolePolicy.maxLineDiscountPercent
+    ) {
+      resolvedBy.push('CashierRolePolicy.maxLineDiscountPercent.exceeded');
+    }
+    if (
+      cashierRolePolicy.maxLineDiscountAmount !== undefined &&
+      discountAmount > cashierRolePolicy.maxLineDiscountAmount
+    ) {
+      resolvedBy.push('CashierRolePolicy.maxLineDiscountAmount.exceeded');
+    }
+
+    if (resolvedBy.length === 0) {
+      return { allowed: true, requiresApproval: false, resolvedBy: ['CashierRolePolicy.saleLineControls.allow'] };
+    }
+
+    if (approvedOverride) {
+      return { allowed: true, requiresApproval: false, resolvedBy: [...resolvedBy, 'ApprovedOverride.allow'] };
+    }
+
+    return { allowed: false, requiresApproval: true, resolvedBy };
+  }
+}
+
+function numberOrZero(value: unknown): number {
+  const n = Number(value);
+  return Number.isFinite(n) ? n : 0;
 }

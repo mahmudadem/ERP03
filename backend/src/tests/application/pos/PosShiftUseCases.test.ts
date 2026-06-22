@@ -155,6 +155,25 @@ describe('PosShiftUseCases', () => {
         useCase.execute({ companyId: 'cmp_test', registerId: 'reg_1', cashierUserId: 'cashier_1', openingFloat: 0, actor: { userId: 'cashier_1' } })
       ).rejects.toThrow(/INACTIVE/);
     });
+
+    it('rejects a cashier who is not allowed on the register', async () => {
+      const register = makeRegister({ allowedCashierUserIds: ['cashier_allowed'] });
+      const shiftRepo = {
+        getOpenShiftForRegister: jest.fn().mockResolvedValue(null),
+        getOpenShiftForCashier: jest.fn().mockResolvedValue(null),
+        create: jest.fn(),
+      };
+      const registerRepo = { getById: jest.fn().mockResolvedValue(register), create: jest.fn(), update: jest.fn(), list: jest.fn() };
+      const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(null) };
+      const cashMovementRepo = { create: jest.fn() };
+      const tx = { runTransaction: jest.fn(async (fn: any) => fn({ tx: true })) };
+      const useCase = new OpenPosShiftUseCase(shiftRepo as any, registerRepo as any, posSettingsRepo as any, cashMovementRepo as any, tx as any);
+
+      await expect(
+        useCase.execute({ companyId: 'cmp_test', registerId: 'reg_1', cashierUserId: 'cashier_blocked', openingFloat: 0, actor: { userId: 'cashier_blocked' } })
+      ).rejects.toThrow(/not allowed/);
+      expect(shiftRepo.create).not.toHaveBeenCalled();
+    });
   });
 
   describe('CreatePosCashMovementUseCase', () => {
@@ -221,6 +240,55 @@ describe('PosShiftUseCases', () => {
       expect(result.overShortVoucherId).toBeUndefined();
       expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
       expect(shiftRepo.update).toHaveBeenCalled();
+    });
+
+    it('stores expected/counted variance by payment method without posting non-cash discrepancies', async () => {
+      const shift = makeOpenShift();
+      const totals = {
+        OPENING_FLOAT: 100, PAYIN: 0, PAYOUT: 0, DROP: 0, SALE_CASH: 0, REFUND_CASH: 0, expectedCash: 100,
+      };
+      const shiftRepo = {
+        getById: jest.fn().mockResolvedValue(shift),
+        create: jest.fn(),
+        update: jest.fn().mockResolvedValue(undefined),
+        getOpenShiftForRegister: jest.fn(),
+        getOpenShiftForCashier: jest.fn(),
+        list: jest.fn(),
+      };
+      const posSettingsRepo = { getSettings: jest.fn(), saveSettings: jest.fn() };
+      const registerRepo = { getById: jest.fn().mockResolvedValue(makeRegister()), create: jest.fn(), update: jest.fn(), list: jest.fn() };
+      const cashMovementRepo = { sumByShift: jest.fn().mockResolvedValue(totals), create: jest.fn(), listByShift: jest.fn() };
+      const accountRepo = { getById: jest.fn() };
+      const accountingBridge = { recordFinancialEvent: jest.fn() };
+      const receiptRepo = { list: jest.fn().mockResolvedValue([{ id: 'rcp_1' }]) };
+      const paymentRepo = { listByReceipt: jest.fn().mockResolvedValue([{ method: 'CARD', amount: 25, changeGiven: 0 }]) };
+      const tx = { runTransaction: async (fn: any) => fn({}) };
+      const useCase = new ClosePosShiftUseCase(
+        shiftRepo as any,
+        posSettingsRepo as any,
+        registerRepo as any,
+        cashMovementRepo as any,
+        accountRepo as any,
+        accountingBridge as any,
+        tx as any,
+        receiptRepo as any,
+        paymentRepo as any
+      );
+
+      const result = await useCase.execute({
+        companyId: 'cmp_test',
+        shiftId: 'shift_1',
+        countedCash: 100,
+        countedPaymentTotals: { CASH: 100, CARD: 20 },
+        actor: { userId: 'cashier_1' },
+      });
+
+      expect(result.overShortAmount).toBe(0);
+      expect(result.expectedPaymentTotals).toMatchObject({ CASH: 100, CARD: 25 });
+      expect(result.countedPaymentTotals).toMatchObject({ CASH: 100, CARD: 20 });
+      expect(result.overShortPaymentTotals).toMatchObject({ CASH: 0, CARD: -5 });
+      expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+      expect(shift.status).toBe('CLOSED');
     });
 
     it('posts a balanced over-voucher Dr cash / Cr over when counted > expected', async () => {

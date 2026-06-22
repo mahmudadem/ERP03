@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import { posApi, PosRegisterDTO } from '../../../api/posApi';
+import { listUsers, CompanyUser } from '../../../api/companyAdmin';
 import { Card } from '../../../components/ui/Card';
 import { Modal } from '../../../components/ui/Modal';
 import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
@@ -24,6 +25,7 @@ const PosRegistersPage: React.FC<Props> = () => {
   const [list, setList] = useState<PosRegisterDTO[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<Partial<PosRegisterDTO> | null>(null);
+  const [companyUsers, setCompanyUsers] = useState<CompanyUser[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const { confirm: confirmDialog } = useConfirm();
@@ -31,8 +33,12 @@ const PosRegistersPage: React.FC<Props> = () => {
   const load = async () => {
     try {
       setLoading(true);
-      const result = await posApi.listRegisters();
+      const [result, usersResult] = await Promise.all([
+        posApi.listRegisters(),
+        listUsers().catch(() => [] as CompanyUser[]),
+      ]);
       setList(unwrap<PosRegisterDTO[]>(result) || []);
+      setCompanyUsers(usersResult || []);
     } catch (err) {
       console.error('Failed to load registers', err);
       toast.error(t('pos.registers.loadError', { defaultValue: 'Failed to load POS registers.' }));
@@ -50,6 +56,9 @@ const PosRegistersPage: React.FC<Props> = () => {
       code: '',
       name: '',
       warehouseId: '',
+      defaultPriceListId: '',
+      allowedCashierUserIds: [],
+      hardwareProfileId: '',
       cashDrawerAccountId: '',
       settlementAccountIds: {},
       status: 'ACTIVE',
@@ -68,13 +77,19 @@ const PosRegistersPage: React.FC<Props> = () => {
       toast.error(t('pos.registers.requiredFields', { defaultValue: 'Code, name, warehouse, and cash-drawer account are required.' }));
       return;
     }
+    const payload = {
+      ...editing,
+      defaultPriceListId: editing.defaultPriceListId?.trim() || undefined,
+      allowedCashierUserIds: editing.allowedCashierUserIds || [],
+      hardwareProfileId: editing.hardwareProfileId?.trim() || undefined,
+    };
     try {
       setSaving(true);
       if (editing.id) {
-        await posApi.updateRegister(editing.id, editing);
+        await posApi.updateRegister(editing.id, payload);
         toast.success(t('pos.registers.updated', { defaultValue: 'Register updated.' }));
       } else {
-        await posApi.createRegister(editing);
+        await posApi.createRegister(payload);
         toast.success(t('pos.registers.created', { defaultValue: 'Register created.' }));
       }
       setShowForm(false);
@@ -114,6 +129,9 @@ const PosRegistersPage: React.FC<Props> = () => {
     { key: 'name', label: t('pos.registers.col.name', { defaultValue: 'Name' }), width: '180px', priority: 1, accessor: (r) => r.name },
     { key: 'branchId', label: t('pos.registers.col.branch', { defaultValue: 'Branch' }), width: '120px', priority: 2, accessor: (r) => r.branchId || '—' },
     { key: 'warehouseId', label: t('pos.registers.col.warehouse', { defaultValue: 'Warehouse' }), width: '180px', priority: 2, accessor: (r) => r.warehouseId },
+    { key: 'defaultPriceListId', label: t('pos.registers.col.priceList', { defaultValue: 'Price list' }), width: '150px', priority: 3, accessor: (r) => r.defaultPriceListId || '—' },
+    { key: 'allowedCashierUserIds', label: t('pos.registers.col.cashiers', { defaultValue: 'Cashiers' }), width: '100px', priority: 3, accessor: (r) => r.allowedCashierUserIds?.length || t('common.all', { defaultValue: 'All' }) },
+    { key: 'hardwareProfileId', label: t('pos.registers.col.hardware', { defaultValue: 'Hardware' }), width: '130px', priority: 3, accessor: (r) => r.hardwareProfileId || '—' },
     { key: 'cashDrawerAccountId', label: t('pos.registers.col.cashAccount', { defaultValue: 'Cash account' }), width: '180px', priority: 2, accessor: (r) => r.cashDrawerAccountId },
     {
       key: 'settlementAccountIds',
@@ -200,6 +218,75 @@ const PosRegistersPage: React.FC<Props> = () => {
                   value={editing.warehouseId}
                   onChange={(w) => setEditing({ ...editing, warehouseId: w?.id || '' })}
                 />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">{t('pos.registers.col.priceList', { defaultValue: 'Default price list' })}</label>
+                <input
+                  type="text"
+                  value={editing.defaultPriceListId || ''}
+                  onChange={(e) => setEditing({ ...editing, defaultPriceListId: e.target.value || undefined })}
+                  className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                />
+                <div className="text-xs text-slate-500 mt-1">
+                  {t('pos.registers.priceListHelp', { defaultValue: 'Placeholder for terminal-specific price-list selection. Leave blank to use normal POS pricing.' })}
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">{t('pos.registers.col.hardware', { defaultValue: 'Hardware profile' })}</label>
+                <input
+                  type="text"
+                  value={editing.hardwareProfileId || ''}
+                  onChange={(e) => setEditing({ ...editing, hardwareProfileId: e.target.value || undefined })}
+                  className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                />
+                <div className="text-xs text-slate-500 mt-1">
+                  {t('pos.registers.hardwareHelp', { defaultValue: 'Placeholder for receipt printer, cash drawer, scanner, and customer display mapping.' })}
+                </div>
+              </div>
+              <div className="md:col-span-2 rounded border border-slate-200 p-3">
+                <div className="mb-2 flex items-center justify-between">
+                  <label className="text-sm font-medium">{t('pos.registers.allowedCashiers', { defaultValue: 'Allowed cashiers' })}</label>
+                  <button
+                    type="button"
+                    onClick={() => setEditing({ ...editing, allowedCashierUserIds: [] })}
+                    className="text-xs font-medium text-indigo-600 hover:text-indigo-700"
+                  >
+                    {t('pos.registers.allowAllCashiers', { defaultValue: 'Allow all' })}
+                  </button>
+                </div>
+                <div className="max-h-40 space-y-2 overflow-y-auto">
+                  {companyUsers.length === 0 ? (
+                    <div className="text-xs text-slate-500">
+                      {t('pos.registers.noUsersLoaded', { defaultValue: 'No company users loaded. Leave blank to allow all cashiers.' })}
+                    </div>
+                  ) : (
+                    companyUsers.map((u) => {
+                      const checked = (editing.allowedCashierUserIds || []).includes(u.userId);
+                      return (
+                        <label key={u.userId} className="flex items-center gap-2 text-sm text-slate-700">
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(event) => {
+                              const current = editing.allowedCashierUserIds || [];
+                              setEditing({
+                                ...editing,
+                                allowedCashierUserIds: event.target.checked
+                                  ? Array.from(new Set([...current, u.userId]))
+                                  : current.filter((id) => id !== u.userId),
+                              });
+                            }}
+                          />
+                          <span className="truncate">{u.email || u.userId}</span>
+                          {u.roleName ? <span className="text-xs text-slate-400">{u.roleName}</span> : null}
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+                <div className="text-xs text-slate-500 mt-2">
+                  {t('pos.registers.allowedCashiersHelp', { defaultValue: 'When no users are selected, any cashier with POS access can open a shift on this register.' })}
+                </div>
               </div>
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium mb-1">{t('pos.registers.col.cashAccount', { defaultValue: 'Cash-drawer account' })} *</label>

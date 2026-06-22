@@ -12,6 +12,8 @@ import { IPosReturnRepository } from '../../../repository/interfaces/pos/IPosRet
 import { IPosShiftRepository } from '../../../repository/interfaces/pos/IPosShiftRepository';
 import { IPosCashMovementRepository } from '../../../repository/interfaces/pos/IPosCashMovementRepository';
 import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
+import { IPosPaymentRepository } from '../../../repository/interfaces/pos/IPosPaymentRepository';
+import { IRecordChangeLogRepository } from '../../../repository/interfaces/system/IRecordChangeLogRepository';
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesReturnRepository } from '../../../repository/interfaces/sales/ISalesReturnRepository';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
@@ -148,11 +150,12 @@ export interface PaymentMethodSummaryRow {
 }
 
 export class GetPaymentMethodSummaryUseCase {
-  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+  constructor(
+    private readonly receiptRepo: IPosReceiptRepository,
+    private readonly paymentRepo: IPosPaymentRepository
+  ) {}
 
   async execute(input: GetPaymentMethodSummaryInput): Promise<PaymentMethodSummaryRow[]> {
-    // Payment method rows live in posPayments (we have to load each receipt's payments).
-    // V1: we re-fetch each receipt and read from its payment rows via the repo.
     const list = await this.receiptRepo.list(input.companyId, {
       dateFrom: input.dateFrom,
       dateTo: input.dateTo,
@@ -160,9 +163,24 @@ export class GetPaymentMethodSummaryUseCase {
       limit: 1000,
     } as any);
     const byMethod: Record<string, { count: number; amount: number }> = { CASH: { count: 0, amount: 0 }, CARD: { count: 0, amount: 0 }, BANK_TRANSFER: { count: 0, amount: 0 }, CUSTOM: { count: 0, amount: 0 } };
-    // Note: V1 does not aggregate from pos_payments here (it would require a payments repo
-    // list-by-company API). The summary is a placeholder that the cashier page can later
-    // enrich by listing payments per receipt.
+
+    await Promise.all(list.map(async (receipt) => {
+      const payments = await this.paymentRepo.listByReceipt(input.companyId, receipt.id);
+      const seenMethods = new Set<string>();
+      for (const payment of payments) {
+        const bucket = byMethod[payment.method];
+        if (!bucket) continue;
+        if (!seenMethods.has(payment.method)) {
+          bucket.count += 1;
+          seenMethods.add(payment.method);
+        }
+        const netAmount = payment.method === 'CASH'
+          ? payment.amount - payment.changeGiven
+          : payment.amount;
+        bucket.amount = round2(bucket.amount + netAmount);
+      }
+    }));
+
     return (Object.keys(byMethod) as Array<keyof typeof byMethod>).map((m) => ({
       method: m as any,
       receiptCount: byMethod[m].count,
@@ -299,5 +317,252 @@ export class GetReceiptHistoryUseCase {
       salesInvoiceNumber: r.salesInvoiceNumber,
       createdAt: r.createdAt.toISOString(),
     }));
+  }
+}
+
+// ───────── 7. Cancelled / voided receipts report ─────────
+
+export interface GetCancelledReceiptsInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  registerId?: string;
+  limit?: number;
+}
+
+export interface CancelledReceiptRow {
+  id: string;
+  receiptNumber: string;
+  registerId: string;
+  shiftId: string;
+  customerId: string;
+  grandTotal: number;
+  salesInvoiceId?: string;
+  salesInvoiceNumber?: string;
+  createdBy: string;
+  createdAt: string;
+  status: 'VOIDED';
+}
+
+export class GetCancelledReceiptsUseCase {
+  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+
+  async execute(input: GetCancelledReceiptsInput): Promise<CancelledReceiptRow[]> {
+    const receipts = await this.receiptRepo.list(input.companyId, {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      registerId: input.registerId,
+      limit: input.limit ?? 1000,
+    });
+    return receipts
+      .filter((receipt) => receipt.status === 'VOIDED')
+      .map((receipt) => ({
+        id: receipt.id,
+        receiptNumber: receipt.receiptNumber,
+        registerId: receipt.registerId,
+        shiftId: receipt.shiftId,
+        customerId: receipt.customerId,
+        grandTotal: receipt.grandTotal,
+        salesInvoiceId: receipt.salesInvoiceId,
+        salesInvoiceNumber: receipt.salesInvoiceNumber,
+        createdBy: receipt.createdBy,
+        createdAt: receipt.createdAt.toISOString(),
+        status: 'VOIDED' as const,
+      }));
+  }
+}
+
+// ───────── 8. Top selling items report ─────────
+
+export interface GetTopSellingItemsInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  registerId?: string;
+  limit?: number;
+}
+
+export interface TopSellingItemRow {
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  qtySold: number;
+  grossSales: number;
+  receiptCount: number;
+}
+
+export class GetTopSellingItemsUseCase {
+  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+
+  async execute(input: GetTopSellingItemsInput): Promise<TopSellingItemRow[]> {
+    const receipts = await this.receiptRepo.list(input.companyId, {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      registerId: input.registerId,
+      limit: 1000,
+    });
+    const byItem = new Map<string, TopSellingItemRow & { receiptIds: Set<string> }>();
+    for (const receipt of receipts) {
+      if (receipt.status !== 'COMPLETED') continue;
+      for (const line of receipt.lines) {
+        if (line.status === 'VOIDED') continue;
+        const key = line.itemId;
+        const bucket = byItem.get(key) || {
+          itemId: line.itemId,
+          itemCode: line.itemCode,
+          itemName: line.itemName,
+          qtySold: 0,
+          grossSales: 0,
+          receiptCount: 0,
+          receiptIds: new Set<string>(),
+        };
+        bucket.qtySold = round2(bucket.qtySold + line.qty);
+        bucket.grossSales = round2(bucket.grossSales + line.lineTotal);
+        bucket.receiptIds.add(receipt.id);
+        bucket.receiptCount = bucket.receiptIds.size;
+        byItem.set(key, bucket);
+      }
+    }
+    return Array.from(byItem.values())
+      .map(({ receiptIds, ...row }) => row)
+      .sort((a, b) => b.qtySold - a.qtySold || b.grossSales - a.grossSales)
+      .slice(0, input.limit ?? 50);
+  }
+}
+
+// ───────── 9. Override and void audit report ─────────
+
+export interface GetPosOverrideAuditReportInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  registerId?: string;
+  limit?: number;
+}
+
+export interface PosOverrideAuditRow {
+  receiptId: string;
+  receiptNumber: string;
+  registerId: string;
+  shiftId: string;
+  cashierUserId: string;
+  createdAt: string;
+  itemId: string;
+  itemCode: string;
+  itemName: string;
+  qty: number;
+  unitPrice: number;
+  lineTotal: number;
+  eventType: 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE';
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
+  lineDiscount: number;
+  taxCodeId?: string;
+  voidReason?: string;
+  voidedBy?: string;
+  voidedAt?: string;
+  managerOverrideId?: string;
+}
+
+export class GetPosOverrideAuditReportUseCase {
+  constructor(private readonly receiptRepo: IPosReceiptRepository) {}
+
+  async execute(input: GetPosOverrideAuditReportInput): Promise<PosOverrideAuditRow[]> {
+    const receipts = await this.receiptRepo.list(input.companyId, {
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      registerId: input.registerId,
+      limit: input.limit ?? 1000,
+    });
+    const rows: PosOverrideAuditRow[] = [];
+    for (const receipt of receipts) {
+      for (const line of receipt.lines) {
+        for (const eventType of auditEventTypesForLine(line)) {
+          rows.push({
+            receiptId: receipt.id,
+            receiptNumber: receipt.receiptNumber,
+            registerId: receipt.registerId,
+            shiftId: receipt.shiftId,
+            cashierUserId: receipt.createdBy,
+            createdAt: receipt.createdAt.toISOString(),
+            itemId: line.itemId,
+            itemCode: line.itemCode,
+            itemName: line.itemName,
+            qty: line.qty,
+            unitPrice: line.unitPrice,
+            lineTotal: line.lineTotal,
+            eventType,
+            discountType: line.discountType,
+            discountValue: line.discountValue,
+            lineDiscount: line.lineDiscount,
+            taxCodeId: line.taxCodeId,
+            voidReason: line.voidReason,
+            voidedBy: line.voidedBy,
+            voidedAt: line.voidedAt,
+            managerOverrideId: line.managerOverrideId,
+          });
+        }
+      }
+    }
+    return rows;
+  }
+}
+
+function auditEventTypesForLine(line: {
+  status?: string;
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  lineDiscount?: number;
+  discountValue?: number;
+}): Array<PosOverrideAuditRow['eventType']> {
+  const eventTypes: Array<PosOverrideAuditRow['eventType']> = [];
+  if (line.status === 'VOIDED') eventTypes.push('VOID_LINE');
+  if (line.priceOverride === true) eventTypes.push('PRICE_OVERRIDE');
+  if ((line.lineDiscount || 0) > 0 || (line.discountValue || 0) > 0) eventTypes.push('DISCOUNT_OVERRIDE');
+  if (line.taxOverride === true) eventTypes.push('TAX_OVERRIDE');
+  return eventTypes;
+}
+
+// ───────── 10. Receipt reprint audit report ─────────
+
+export interface GetPosReprintAuditReportInput {
+  companyId: string;
+  dateFrom?: string;
+  dateTo?: string;
+  limit?: number;
+}
+
+export interface PosReprintAuditRow {
+  receiptId: string;
+  receiptNumber?: string;
+  action: string;
+  reprintedAt: string;
+  cashierUserId: string;
+  cashierUserEmail?: string;
+  managerOverrideId?: string;
+}
+
+export class GetPosReprintAuditReportUseCase {
+  constructor(private readonly recordChangeLogRepo: IRecordChangeLogRepository) {}
+
+  async execute(input: GetPosReprintAuditReportInput): Promise<PosReprintAuditRow[]> {
+    const logs = await this.recordChangeLogRepo.list(input.companyId, {
+      entityType: 'POS_RECEIPT',
+      action: 'UPDATE',
+      dateFrom: input.dateFrom,
+      dateTo: input.dateTo,
+      limit: input.limit ?? 500,
+    });
+    return logs
+      .filter((log) => log.changes.some((change) => change.field === 'reprintRequested' && change.after === true))
+      .map((log) => ({
+        receiptId: log.entityId,
+        receiptNumber: log.entityNumber,
+        action: 'REPRINT',
+        reprintedAt: log.timestamp.toISOString(),
+        cashierUserId: log.userId,
+        cashierUserEmail: log.userEmail,
+        managerOverrideId: String(log.changes.find((change) => change.field === 'managerOverrideId')?.after || '') || undefined,
+      }));
   }
 }

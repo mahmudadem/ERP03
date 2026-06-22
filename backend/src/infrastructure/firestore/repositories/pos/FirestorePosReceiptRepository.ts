@@ -1,5 +1,5 @@
 import { Firestore, Transaction } from 'firebase-admin/firestore';
-import { PosReceipt } from '../../../../domain/pos/entities/PosReceipt';
+import { PosReceipt, PosReceiptStatus } from '../../../../domain/pos/entities/PosReceipt';
 import { IPosReceiptRepository } from '../../../../repository/interfaces/pos/IPosReceiptRepository';
 
 export class FirestorePosReceiptRepository implements IPosReceiptRepository {
@@ -23,6 +23,16 @@ export class FirestorePosReceiptRepository implements IPosReceiptRepository {
       return;
     }
     await ref.set(payload);
+  }
+
+  async updateStatus(companyId: string, id: string, status: PosReceiptStatus, transaction?: unknown): Promise<void> {
+    const ref = this.collection(companyId).doc(id);
+    const txn = this.asTransaction(transaction);
+    if (txn) {
+      txn.update(ref, { status });
+      return;
+    }
+    await ref.update({ status });
   }
 
   async getById(companyId: string, id: string): Promise<PosReceipt | null> {

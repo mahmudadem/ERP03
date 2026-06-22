@@ -2,10 +2,11 @@
  * PosReceipt — A printed receipt for a completed POS sale.
  *
  * The receipt is the operational/print artifact. The financial truth lives on
- * the linked SalesInvoice (created by CreateAndPostSalesInvoiceUseCase via
- * CompletePosSaleUseCase). `salesInvoiceId` is the link.
+ * the linked POS_DIRECT_SALE posting result. `salesInvoiceId` remains as a
+ * legacy API link field.
  */
 export type PosReceiptStatus = 'COMPLETED' | 'VOIDED';
+export type PosReceiptLineStatus = 'ACTIVE' | 'VOIDED';
 
 export interface PosReceiptLineSnapshot {
   itemId: string;
@@ -14,9 +15,18 @@ export interface PosReceiptLineSnapshot {
   qty: number;
   uom: string;
   unitPrice: number;
+  discountType?: 'PERCENT' | 'AMOUNT';
+  discountValue?: number;
   lineDiscount: number;
   taxCodeId?: string;
   lineTotal: number;
+  status?: PosReceiptLineStatus;
+  priceOverride?: boolean;
+  taxOverride?: boolean;
+  voidedBy?: string;
+  voidedAt?: string;
+  voidReason?: string;
+  managerOverrideId?: string;
   salesInvoiceLineId?: string; // populated by CompletePosSale for P3 returns
   revenueAccountId?: string;
   taxAccountId?: string;
@@ -44,6 +54,7 @@ export interface PosReceiptProps {
   grandTotal: number;
   salesInvoiceId?: string;
   salesInvoiceNumber?: string;
+  exchangeId?: string;
   createdBy: string;
   createdAt: Date;
 }
@@ -64,6 +75,7 @@ export class PosReceipt {
   grandTotal: number;
   salesInvoiceId?: string;
   salesInvoiceNumber?: string;
+  exchangeId?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
 
@@ -94,6 +106,7 @@ export class PosReceipt {
     this.grandTotal = round2(props.grandTotal);
     this.salesInvoiceId = props.salesInvoiceId;
     this.salesInvoiceNumber = props.salesInvoiceNumber;
+    this.exchangeId = props.exchangeId;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
   }
@@ -115,6 +128,7 @@ export class PosReceipt {
       grandTotal: this.grandTotal,
       salesInvoiceId: this.salesInvoiceId,
       salesInvoiceNumber: this.salesInvoiceNumber,
+      exchangeId: this.exchangeId,
       createdBy: this.createdBy,
       createdAt: this.createdAt.toISOString(),
     };
@@ -137,9 +151,18 @@ export class PosReceipt {
         qty: Number(l.qty),
         uom: l.uom,
         unitPrice: Number(l.unitPrice),
+        discountType: l.discountType === 'PERCENT' || l.discountType === 'AMOUNT' ? l.discountType : undefined,
+        discountValue: l.discountValue === undefined ? undefined : Number(l.discountValue),
         lineDiscount: Number(l.lineDiscount) || 0,
         taxCodeId: l.taxCodeId,
         lineTotal: Number(l.lineTotal),
+        status: l.status === 'VOIDED' ? 'VOIDED' : 'ACTIVE',
+        priceOverride: l.priceOverride === true,
+        taxOverride: l.taxOverride === true,
+        voidedBy: l.voidedBy,
+        voidedAt: l.voidedAt,
+        voidReason: l.voidReason,
+        managerOverrideId: l.managerOverrideId,
         salesInvoiceLineId: l.salesInvoiceLineId,
         revenueAccountId: l.revenueAccountId,
         taxAccountId: l.taxAccountId,
@@ -156,6 +179,7 @@ export class PosReceipt {
       grandTotal: Number(data.grandTotal) || 0,
       salesInvoiceId: data.salesInvoiceId,
       salesInvoiceNumber: data.salesInvoiceNumber,
+      exchangeId: data.exchangeId,
       createdBy: data.createdBy,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
     });

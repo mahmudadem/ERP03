@@ -4514,3 +4514,183 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Action taken:** Reverted the uncommitted exploratory 250d code edits and left the branch at the last green commit (`0299755e`, 250c). Updated `planning/ACTIVE.md` with the blocker and options for CTO decision.
 - **Accounting/ERP impact:** No 250d accounting or posting behavior was changed or committed. 250c remains the last green system state.
 - **Next:** CTO must decide whether to broaden 250d to include POS return decoupling, narrow the 250d guard to direct-sale files only, or add a separate prep task before 250d.
+# Session: 2026-06-22 (Task 251 — POS QA readiness and settlement routing)
+
+- **Goal:** Compare POS against the owner QA requirements, close concrete gaps, and leave a ready-to-run POS test guide.
+- **What was done:** Created isolated worktree `D:\DEV2026\ERP03-pos-readiness` on branch `codex/pos-qa-readiness`. Fixed Payment Methods report aggregation from persisted POS payment rows. Corrected POS sale and return settlement routing so CASH uses the active register cash drawer and CARD/BANK_TRANSFER/CUSTOM use that register's settlement accounts. Updated POS settings behavior so enabled payment methods do not require company-level settlement accounts. After reading the owner attachment, added the production promotion hard gate, POS-specific inventory reference types (`POS_DIRECT_SALE`, `POS_RETURN`), and an architecture guard to prevent POS stock refs from drifting back to Sales document labels. Updated POS architecture/user docs, Golden Path 06, and added an owner test guide plus Task 251 gap plan/completion report.
+- **Accounting/ERP impact:** This is a cash-control hardening fix. It prevents multi-register settlement drift and makes payment-method reporting reconciliable. It does not change tax calculation, COGS, inventory valuation, voucher balancing, approval, or period-lock behavior.
+- **Verification:** `npm test -- --runInBand src/tests/application/pos` passed (9 suites / 53 tests). `npm test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` passed (13 tests). `npm run typecheck` from `backend/` passed. `npm run build` from `backend/` passed.
+- **Time spent:** ~2.8h.
+- **Next:** Review and merge `codex/pos-qa-readiness`, then run `planning/qa/pos-owner-test-guide.md` followed by `planning/qa/golden-paths/06-pos.md` on a fresh company.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 1 void-line audit)
+
+- **Goal:** Continue the owner's POS requirements one-by-one by closing the first P0 cashier-control gap: cart lines must be voided with audit data instead of hard-deleted.
+- **What was done:** Added POS receipt line status/void metadata, changed sale completion to post only active lines while appending voided line snapshots to the receipt, filtered voided receipt lines out of POS return validation, and updated the terminal so removing a line opens a reason dialog and marks the line `VOIDED` instead of removing it from the cart. Voided rows remain visible in the cart/receipt audit payload and are excluded from totals, stock, ledger, tax, payment, and returnable quantity.
+- **Accounting/ERP impact:** Audit-control hardening only. Active sale posting math is unchanged; voided cart lines do not generate stock movements, revenue, COGS, tax, cash, settlement, or returns. This matches market-standard POS behavior for pre-payment line voids.
+- **Verification:** Focused backend tests passed (`CompletePosSale` + `CompletePosReturn`: 2 suites / 21 tests). Full POS backend suite passed (9 suites / 55 tests). System Core boundary guard passed (13 tests). Backend typecheck/build passed. Frontend typecheck/build passed after repairing the local `frontend/node_modules` install.
+- **Docs:** Updated POS architecture, selling user guide, owner test guide, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~1.2h for this slice; Task 251 total ~4.0h so far.
+- **Next:** P0 slice 2 — manager override policy hooks for void, manual price, discount, returns, tax override, and reprint.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 2 manager-override hooks)
+
+- **Goal:** Add enforceable manager override hooks for POS sensitive actions without inventing a full approval UI workflow in this slice.
+- **What was done:** Extended `POSPolicy.cashierRolePolicies` with `managerOverrideActions` for `VOID_LINE`, `PRICE_OVERRIDE`, `DISCOUNT_OVERRIDE`, `TAX_OVERRIDE`, `RETURN`, and `REPRINT`. Added `PolicyEngine.resolve({ scope:'pos', action:'managerOverride' })`. Sale completion now checks manager-override policy for voided lines, explicit price/tax override flags, and manual discounts. Return completion now checks manager-override policy for POS returns. Controllers and frontend API types accept override ids/role context for the new backend hooks.
+- **Accounting/ERP impact:** Control hardening only. Posting math is unchanged. The important control is now server-side: if a cashier role requires approval for a sensitive POS action, the action is blocked unless an approved manager override id is supplied.
+- **Verification:** Focused tests passed (`PolicyEnginePosPolicy`, `CompletePosSale`, `CompletePosReturn`: 3 suites / 28 tests). Backend typecheck passed. Frontend typecheck passed.
+- **Docs:** Updated POS architecture, selling/returns user guides, owner test guide, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~1.0h for this slice; Task 251 total ~5.0h so far.
+- **Next:** P0 slice 3 — register defaults for price list, allowed cashiers, and hardware profile placeholder.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 3 register defaults)
+
+- **Goal:** Add the missing POS register setup fields from the owner requirements: default price list, allowed cashiers, and hardware profile placeholder.
+- **What was done:** Extended `PosRegister` with `defaultPriceListId`, `allowedCashierUserIds`, and `hardwareProfileId`; exposed them through DTO/API validation and the frontend register form/list. The register form now loads company users and lets admins pick allowed cashiers by checkbox. `OpenPosShiftUseCase` blocks users who are not on a register's allowed-cashier list; an empty list means all POS cashiers are allowed.
+- **Accounting/ERP impact:** Operational control only. No ledger, tax, stock valuation, COGS, settlement, or receipt posting math changed. The control prevents a cashier from opening a drawer on an unauthorized register.
+- **Verification:** Focused shift/register test passed (`PosShiftUseCases`: 1 suite / 11 tests). Backend typecheck passed. Frontend typecheck passed.
+- **Docs:** Updated POS architecture, setup guide, owner test guide, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~1.1h for this slice; Task 251 total ~6.1h so far.
+- **Next:** P0 slice 4 — shift counted/expected by payment method plus `RECONCILED` status.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 4 shift reconciliation)
+
+- **Goal:** Add expected/counted shift reconciliation by payment method and introduce `RECONCILED` status for fully balanced shifts.
+- **What was done:** Extended `PosShift` with expected/counted/variance payment totals for CASH, CARD, BANK_TRANSFER, and CUSTOM plus `RECONCILED`, `reconciledAt`, and `reconciledBy`. Close-shift now computes cash expected from cash movements and non-cash expected from receipt payment rows, persists per-method variances, and marks fully balanced shifts `RECONCILED`. Cash variance still posts the over/short voucher; non-cash variance is stored only. Frontend close modal now accepts counted CARD/BANK_TRANSFER/CUSTOM totals.
+- **Accounting/ERP impact:** This improves reconciliation without inventing automatic card/bank clearing postings. Cash over/short remains the only automatic GL variance entry. Non-cash differences are operational settlement exceptions for later bank/card reconciliation.
+- **Verification:** Focused shift test passed (`PosShiftUseCases`: 1 suite / 12 tests). Backend typecheck passed. Frontend typecheck passed.
+- **Docs:** Updated POS architecture, shifts guide, reports guide, owner test guide, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~1.3h for this slice; Task 251 total ~7.4h so far.
+- **Next:** P0 slice 5 — cashier price/discount/tax policy limits and audit reports.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 5 cashier policy limits and override audit)
+
+- **Goal:** Add server-side cashier controls for manual price/discount/tax behavior and expose an audit report for POS exceptions.
+- **What was done:** Extended `CashierRolePolicy` with `maxLineDiscountPercent`, `maxLineDiscountAmount`, `allowPriceOverride`, and `allowTaxOverride`. Added `PolicyEngine.resolve({ scope:'pos', action:'saleLineControls' })` and wired `CompletePosSaleUseCase` to block over-limit discounts or blocked price/tax overrides unless the line carries an approved manager override id. Receipt line snapshots now preserve discount type/value, price override flag, tax override flag, and manager override id. Added the backend override audit report endpoint `/tenant/pos/reports/override-audit`, returning rows for voided lines, manual discounts, price overrides, and tax overrides.
+- **Accounting/ERP impact:** Control and audit hardening only. Posting math is unchanged. Over-limit cashier edits are blocked before receipt, inventory, ledger, payment, or cash movement persistence unless manager-approved. The audit report gives managers a review trail for exceptions.
+- **Verification:** Focused tests passed (`CompletePosSale`, `PolicyEnginePosPolicy`, `PosReporting`: 3 suites / 29 tests). Full POS backend suite passed (9 suites / 66 tests). System Core boundary guard passed (13 tests). Backend typecheck passed. Frontend typecheck passed.
+- **Docs:** Updated POS architecture, selling/report user guides, owner test guide, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~0.9h for this slice; Task 251 total ~8.3h so far.
+- **Next:** P0 slice 6 — exchange workflow and/or posted receipt cancellation/void flow.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 6 posted receipt void)
+
+- **Goal:** Add a safe posted-receipt void/cancel path without weakening accounting reversal controls.
+- **What was done:** Added `IPosReceiptRepository.updateStatus()` in Firestore and Prisma implementations. Updated `CompletePosReturnUseCase` to subtract prior POS returns from sold quantity before validating a new return, preventing duplicate refunds. Added `VoidPosReceiptUseCase`, which builds a full return for all remaining active receipt quantities, posts through the existing POS return flow, and marks the original receipt `VOIDED` inside the same transaction. Added `POST /tenant/pos/receipts/:id/void` with idempotency middleware and `pos.return.create` permission, plus a frontend `posApi.voidReceipt()` method.
+- **Accounting/ERP impact:** This is a reversal-control fix. A posted receipt cannot be voided by status change alone; stock, settlement, and linked return documents are created through the existing POS return path first. Prior returns reduce remaining quantity, so the same unit cannot be refunded or restocked twice.
+- **Verification:** Focused return tests passed (`CompletePosReturn`: 1 suite / 10 tests). Backend typecheck passed. Frontend typecheck passed. Full POS backend suite passed (9 suites / 68 tests). System Core boundary guard passed (13 tests).
+- **Docs:** Updated POS architecture, returns guide, owner test guide, Golden Path 06, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~0.8h for this slice; Task 251 total ~9.1h so far.
+- **Next:** P0 slice 7 — exchange workflow.
+
+### Session: 2026-06-22 (Task 251 — POS P0 slice 7 exchange workflow)
+
+- **Goal:** Implement exchange as a linked POS return plus replacement POS sale, using existing accounting-safe posting paths.
+- **What was done:** Added `exchangeId` to POS receipts and returns, including DTOs and Prisma persistence fields. Added `CompletePosExchangeUseCase`, which validates exchange input, loads the original receipt for customer context, creates a POS return for returned lines, creates a replacement POS sale, links both with one exchange id, and reports net due/refund. Exposed `POST /tenant/pos/exchanges` with idempotency middleware and POS return/terminal permissions. Added `posApi.completeExchange()`.
+- **Accounting/ERP impact:** No new GL document type and no merged posting. The returned item uses the proven POS return path; the replacement item uses the proven POS direct-sale path. Stock, revenue, tax, COGS, settlement, and shift cash effects remain separately auditable while the exchange id links the customer event.
+- **Verification:** Focused exchange tests passed (`CompletePosExchange`: 1 suite / 3 tests). Backend typecheck passed. Frontend typecheck passed. Full POS backend suite passed (10 suites / 71 tests). System Core boundary guard passed (13 tests).
+- **Docs:** Updated POS architecture, returns guide, owner test guide, Golden Path 06, Task 251 gap matrix, completion report, and ACTIVE.
+- **Time spent:** ~0.7h for this slice; Task 251 total ~9.8h so far.
+- **Next:** Cashier-facing exchange UI polish or P1 hold/recall.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 8 hold/recall sale)
+
+- **Goal:** Continue closing POS gaps while the owner is away by adding hold/recall sale, a P1 cashier workflow that is testable without manual QA and does not touch accounting posting.
+- **What was done:** Added `PosHeldCart` with `HELD`, `RECALLED`, and `CANCELLED` statuses; added repository contracts plus Firestore/Prisma persistence; exposed hold/list/get/recall/cancel endpoints under `/tenant/pos/held-carts`; wired the terminal **Hold** and **Recall** controls; and fixed the existing quantity-increase button to update by line id instead of item id.
+- **Accounting/ERP impact:** Operational-only. Holding a sale does not reserve stock, consume receipt numbers, create payments, create receipts, move inventory, or post ledger activity. Stock/payment/accounting checks happen only when a recalled cart is completed through the normal POS sale path.
+- **Verification:** Focused held-cart tests passed (`PosHeldCartUseCases`: 1 suite / 5 tests). Backend typecheck passed. Frontend typecheck passed before docs; full verification follows in this session.
+- **Docs:** Updated POS architecture, selling guide, owner test guide, Task 251 gap matrix, completion report, ACTIVE, and this journal.
+- **Time spent:** ~1.3h for this slice; Task 251 total ~11.1h so far.
+- **Next:** Run full POS/backend/frontend verification, then proceed to cashier-facing exchange UI polish or the dedicated override-audit report page.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 9 override audit report page)
+
+- **Goal:** Close the POS reports gap where override audit had backend/API coverage but no manager-facing report page.
+- **What was done:** Added `PosOverrideAuditReportPage` with `ReportContainer`, wired `/pos/reports/override-audit` into router config and POS Reports menu, and updated POS docs/test guide/planning.
+- **Accounting/ERP impact:** Read-only reporting only. No receipt, payment, stock, tax, COGS, settlement, approval, or ledger behavior changed.
+- **Verification:** Frontend report checker/typecheck/build follows in this session.
+- **Time spent:** ~0.5h for this slice; Task 251 total ~11.6h so far.
+- **Next:** Cashier-facing exchange UI polish.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 10 cashier-facing exchange UI)
+
+- **Goal:** Close the exchange workflow gap where backend/API coverage existed but the cashier screen had no exchange entry flow.
+- **What was done:** Extended `PosReturnPage` with Return/Exchange modes. Exchange mode lets the cashier look up the original receipt, select returned quantities, search/add replacement POS items, choose replacement payment method/reference, review return value vs replacement value, and post through `posApi.completeExchange()`.
+- **Accounting/ERP impact:** UI orchestration only. The exchange still posts as one POS return plus one replacement POS sale through the existing backend use case; no new GL document type, tax math, stock valuation, settlement routing, or posting rule was added in the frontend.
+- **Verification:** Focused backend exchange test passed (`CompletePosExchange`: 1 suite / 3 tests), frontend report guard passed, frontend typecheck passed, and frontend build passed.
+- **Time spent:** ~0.8h for this slice; Task 251 total ~12.4h so far.
+- **Next:** Cashier-facing manager approval capture UI, item selling-policy guards, or remaining POS report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 11 item selling-policy guards)
+
+- **Goal:** Reduce pilot risk by preventing POS from selling inactive or POS-blocked items and discounting non-discountable items.
+- **What was done:** Added backend sale-boundary guards in `PostPosSaleUseCase` for inactive items, `metadata.pos.enabled === false`, `metadata.pos.blocked === true`, and `metadata.pos.discountable === false`. Added focused tests proving the guard blocks before stock or ledger writes.
+- **Accounting/ERP impact:** Control hardening only. Valid sale posting math is unchanged; invalid item attempts now fail before receipt, payment, stock movement, revenue, tax, COGS, settlement, or audit rows are created.
+- **Verification:** Focused backend POS sale-posting test passed (`PostPosSale`: 1 suite / 10 tests); backend typecheck/build passed.
+- **Time spent:** ~0.5h for this slice; Task 251 total ~12.9h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 12 Top Selling Items report)
+
+- **Goal:** Close one remaining POS report gap with a manager-facing top-selling item report.
+- **What was done:** Added `GetTopSellingItemsUseCase`, `/tenant/pos/reports/top-selling-items`, `posApi.getTopSellingItemsReport()`, and `PosTopSellingItemsReportPage` under POS Reports. The report ranks completed receipt lines by item and excludes voided lines.
+- **Accounting/ERP impact:** Read-only reporting only. It is a gross selling report from POS receipts and does not net later returns; no posting, settlement, stock, tax, or ledger behavior changed.
+- **Verification:** Focused POS reporting test passed (`PosReporting`: 1 suite / 7 tests), frontend report guard passed with 32 report routes, backend typecheck/build passed, and frontend typecheck/build passed.
+- **Time spent:** ~0.6h for this slice; Task 251 total ~13.5h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 13 Reprint Audit)
+
+- **Goal:** Close the receipt reprint control/report gap from the POS requirements without changing posting behavior.
+- **What was done:** Added `ReprintPosReceiptUseCase`, enforcing the existing POS `REPRINT` manager-override policy before returning printable receipt data. Reprints now write a `POS_RECEIPT` record-change audit row. Extended the record-change repository with filtered listing, added `/tenant/pos/reports/reprint-audit`, added `PosReprintAuditReportPage`, and wired it under POS Reports.
+- **Accounting/ERP impact:** Audit/control only. Reprinting does not create, edit, void, return, settle, or post anything. It records duplicate-copy activity for manager review and can be blocked by cashier role policy until manager-approved.
+- **Verification:** Focused backend tests passed (`ReprintPosReceiptUseCase` + `PosReporting`: 2 suites / 10 tests); backend typecheck/build passed; frontend report guard passed with 33 report routes; frontend typecheck/build passed.
+- **Time spent:** ~0.7h for this slice; Task 251 total ~14.2h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or remaining POS report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P1 slice 14 Cancelled Receipts report)
+
+- **Goal:** Close the cancelled-receipts report gap with a read-only manager report.
+- **What was done:** Added `GetCancelledReceiptsUseCase`, `/tenant/pos/reports/cancelled-receipts`, `posApi.getCancelledReceiptsReport()`, and `PosCancelledReceiptsReportPage` under POS Reports. The report lists only receipts whose status is `VOIDED`.
+- **Accounting/ERP impact:** Read-only reporting only. ERP03 still requires posted receipt cancellation to reverse through the POS return flow before marking the receipt voided; this report does not perform the cancellation.
+- **Verification:** Focused POS reporting test passed (`PosReporting`: 1 suite / 9 tests); backend typecheck/build passed; frontend report guard passed with 34 report routes; frontend typecheck/build passed.
+- **Time spent:** ~0.5h for this slice; Task 251 total ~14.7h so far.
+- **Next:** Cashier-facing manager approval capture UI, expiry/batch-aware item guards, or promotion-performance report after promotions are enabled.
+
+### Session: 2026-06-22 (Task 251 — POS P0/P1 slice 15 Manager Approval Capture UI)
+
+- **Goal:** Close the cashier-facing manager approval capture gap so backend manager-override policies are usable from POS screens instead of only by API/test harness.
+- **What was done:** Added `CreatePosManagerOverrideUseCase` and `POST /tenant/pos/manager-overrides`, which creates an audited `mgr_override_*` id with cashier, selected manager, action, reason, and context. Added a reusable `ManagerOverrideCapture` dialog. Wired the Terminal void dialog to attach approval ids to voided receipt lines, the Tender dialog to attach approval ids to active sale lines before completion, and the Returns/Exchange page to attach approval ids to return/exchange payloads. Updated exchange orchestration so the same approval id reaches both the POS return leg and replacement sale leg.
+- **Accounting/ERP impact:** Control/audit hardening only. No tax, COGS, stock valuation, settlement routing, voucher posting, period-lock, or approval-engine math changed. This is approval capture, not manager credential/PIN validation; stronger manager authentication remains a future security hardening slice.
+- **Verification:** Focused tests passed (`PosManagerOverrideUseCases` + `CompletePosExchange`: 2 suites / 6 tests). Backend typecheck/build passed. Frontend typecheck, report guard, and production build passed; build still reports existing bundle-size/Browserslist/baseline-data warnings.
+- **Docs:** Updated POS architecture, selling/returns user guides, owner test guide, Golden Path 06, Task 251 gap plan, completion report, and ACTIVE.
+- **Time spent:** ~1.1h for this slice; Task 251 total ~15.8h so far.
+- **Next:** Expiry/batch-aware item guards or remaining POS report gaps.
+
+### Session: 2026-06-22 (Task 251 — POS P0/P1 slice 16 Expiry/Batch Protective Guards)
+
+- **Goal:** Close the expiry/batch-aware POS guard gap without inventing a batch-level stock model that the current inventory core does not support.
+- **What was done:** Extended `PostPosSaleUseCase` item guards so POS posting blocks expired items, expiry-tracked items without a selected valid expiry, batch/lot-required items, and serial-required items before stock movement, receipt, payment, or ledger writes. The supported V1 metadata flags are documented under POS architecture; true batch/lot/serial selling remains a future slice because POS lines do not yet carry selected lot/serial identity.
+- **Accounting/ERP impact:** Control hardening only. No tax, COGS, costing, inventory valuation, settlement routing, voucher posting, period-lock, or approval-engine math changed. The important accounting protection is avoiding anonymous stock depletion for controlled items.
+- **Verification:** Focused POS sale posting test passed (`PostPosSale`: 1 suite / 13 tests). Backend build passed.
+- **Docs:** Updated POS architecture, selling user guide, owner test guide, Golden Path 06, Task 251 gap plan, completion report, and ACTIVE.
+- **Time spent:** ~0.4h for this slice; Task 251 total ~16.2h so far.
+- **Next:** Remaining POS report gaps or printable receipt template decision.
+
+### Session: 2026-06-22 (Task 251 — merge current main into POS readiness)
+
+- **Goal:** Prepare `codex/pos-qa-readiness` for merge by reconciling it with current `origin/main`.
+- **What was done:** Merged `origin/main` into the POS readiness worktree. The only textual conflict was `planning/ACTIVE.md`; resolved by preserving both the Task 251 POS readiness summary and the Task 256 shared print-layout engine summary. Audited merge hotspots: POS initialization now keeps `ensureInventoryEngine`, POS held-cart/manager-override/exchange routes remain wired, DI keeps both POS repositories and the new FX/print-layout/inventory-init registrations, and `SystemCoreBoundaries.test.ts` keeps the POS guards plus the new FX contract guard.
+- **Accounting/ERP impact:** Merge reconciliation only. The important combined behavior is that POS readiness controls now sit on top of the latest always-on posting/inventory/FX engine changes. No new posting math, tax, COGS, inventory valuation, settlement routing, period-lock, or approval behavior was added in this merge step.
+- **Verification:** `npx prisma generate` passed. Backend build passed. Focused backend merge suite passed: POS + System Core boundaries + AccountingBridge + FX + inventory init + print-layout, 19 suites / 121 tests. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests. Frontend `check:reports`, `typecheck`, and production build passed; existing bundle/browser-data warnings remain.
+- **Time spent:** ~0.8h for merge reconciliation and focused validation.
+- **Next:** Commit/push `codex/pos-qa-readiness` for PR/merge to `main`.
+
+### Session: 2026-06-22 (Task 251 — CI lockfile fix)
+
+- **Goal:** Clear the backend GitHub Actions blocker on PR #35.
+- **What was done:** Backend CI failed during `npm ci` because `backend/package-lock.json` was missing npm 10 metadata for transitive optional packages `@types/markdown-it@14.1.2` and `picomatch@4.0.4`. Regenerated the backend lockfile with npm 10.8.2 from inside `backend/`, keeping the change scoped to the lockfile.
+- **Accounting/ERP impact:** Dependency metadata only. No runtime code, posting, tax, stock, settlement, approval, period-lock, or report behavior changed.
+- **Verification:** `npx npm@10.8.2 ci` passed. Backend build passed. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests.
+- **Time spent:** ~0.4h.
+- **Next:** Push the lockfile fix and wait for PR #35 CI to turn green before merging.

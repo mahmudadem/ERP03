@@ -16,6 +16,7 @@ import { useAuth } from '../../../context/AuthContext';
 import { Clock, DollarSign, PowerOff, Plus } from 'lucide-react';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
+const PAYMENT_METHODS = ['CASH', 'CARD', 'BANK_TRANSFER', 'CUSTOM'] as const;
 
 interface Props { isWindow?: boolean }
 
@@ -37,6 +38,12 @@ const PosShiftPage: React.FC<Props> = () => {
   const [registerId, setRegisterId] = useState('');
   const [openingFloat, setOpeningFloat] = useState<string>('0');
   const [countedCash, setCountedCash] = useState<string>('0');
+  const [countedPaymentTotals, setCountedPaymentTotals] = useState<Record<string, string>>({
+    CASH: '0',
+    CARD: '0',
+    BANK_TRANSFER: '0',
+    CUSTOM: '0',
+  });
   const [movementType, setMovementType] = useState<'PAYIN' | 'PAYOUT' | 'DROP'>('PAYIN');
   const [movementAmount, setMovementAmount] = useState<string>('0');
   const [movementReason, setMovementReason] = useState<string>('');
@@ -105,9 +112,15 @@ const PosShiftPage: React.FC<Props> = () => {
     try {
       setClosing(true);
       const counted = Number(countedCash) || 0;
+      const countedByMethod = {
+        CASH: counted,
+        CARD: Number(countedPaymentTotals.CARD) || 0,
+        BANK_TRANSFER: Number(countedPaymentTotals.BANK_TRANSFER) || 0,
+        CUSTOM: Number(countedPaymentTotals.CUSTOM) || 0,
+      };
       const result = force
-        ? await posApi.forceCloseShift(openShift.id, { countedCash: counted })
-        : await posApi.closeShift(openShift.id, { countedCash: counted });
+        ? await posApi.forceCloseShift(openShift.id, { countedCash: counted, countedPaymentTotals: countedByMethod })
+        : await posApi.closeShift(openShift.id, { countedCash: counted, countedPaymentTotals: countedByMethod });
       const data = unwrap<any>(result);
       const variance = data?.overShortAmount ?? 0;
       const voucherId = data?.overShortVoucherId;
@@ -120,6 +133,7 @@ const PosShiftPage: React.FC<Props> = () => {
       }
       setShowCloseForm(false);
       setCountedCash('0');
+      setCountedPaymentTotals({ CASH: '0', CARD: '0', BANK_TRANSFER: '0', CUSTOM: '0' });
       await load();
     } catch (err: any) {
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to close shift.');
@@ -164,7 +178,7 @@ const PosShiftPage: React.FC<Props> = () => {
     { key: 'openedAt', label: t('pos.shift.col.opened', { defaultValue: 'Opened' }), width: '160px', priority: 2, accessor: (r) => new Date(r.openedAt).toLocaleString() },
     { key: 'closedAt', label: t('pos.shift.col.closed', { defaultValue: 'Closed' }), width: '160px', priority: 2, accessor: (r) => r.closedAt ? new Date(r.closedAt).toLocaleString() : '—' },
     { key: 'openingFloat', label: t('pos.shift.col.opening', { defaultValue: 'Opening' }), width: '120px', priority: 2, accessor: (r) => r.openingFloat },
-    { key: 'overShort', label: t('pos.shift.col.variance', { defaultValue: 'Variance' }), width: '120px', priority: 1, accessor: (r) => r.overShortAmount ?? 0 },
+    { key: 'overShort', label: t('pos.shift.col.variance', { defaultValue: 'Cash variance' }), width: '120px', priority: 1, accessor: (r) => r.overShortAmount ?? 0 },
   ];
 
   const totals = xReport?.totals;
@@ -291,11 +305,31 @@ const PosShiftPage: React.FC<Props> = () => {
             <input
               type="number"
               value={countedCash}
-              onChange={(e) => setCountedCash(e.target.value)}
+              onChange={(e) => {
+                setCountedCash(e.target.value);
+                setCountedPaymentTotals((prev) => ({ ...prev, CASH: e.target.value }));
+              }}
               min="0"
               step="0.01"
               className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
             />
+          </div>
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+            {PAYMENT_METHODS.filter((method) => method !== 'CASH').map((method) => (
+              <div key={method}>
+                <label className="block text-sm font-medium mb-1">
+                  {t(`pos.shift.counted.${method}`, { defaultValue: `Counted ${method}` })}
+                </label>
+                <input
+                  type="number"
+                  value={countedPaymentTotals[method]}
+                  onChange={(e) => setCountedPaymentTotals((prev) => ({ ...prev, [method]: e.target.value }))}
+                  min="0"
+                  step="0.01"
+                  className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                />
+              </div>
+            ))}
           </div>
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setShowCloseForm(false)} className="px-3 py-1.5 rounded border border-slate-300 text-sm">{t('common.cancel', { defaultValue: 'Cancel' })}</button>

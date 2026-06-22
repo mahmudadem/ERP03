@@ -75,6 +75,10 @@ const PosPaymentMethodReportPage = lazy(() => import('../modules/pos/pages/PosPa
 const PosCashierSalesReportPage = lazy(() => import('../modules/pos/pages/PosCashierSalesReportPage'));
 const PosCashOverShortReportPage = lazy(() => import('../modules/pos/pages/PosCashOverShortReportPage'));
 const PosReceiptHistoryReportPage = lazy(() => import('../modules/pos/pages/PosReceiptHistoryReportPage'));
+const PosCancelledReceiptsReportPage = lazy(() => import('../modules/pos/pages/PosCancelledReceiptsReportPage'));
+const PosOverrideAuditReportPage = lazy(() => import('../modules/pos/pages/PosOverrideAuditReportPage'));
+const PosTopSellingItemsReportPage = lazy(() => import('../modules/pos/pages/PosTopSellingItemsReportPage'));
+const PosReprintAuditReportPage = lazy(() => import('../modules/pos/pages/PosReprintAuditReportPage'));
 
 // Settings
 const SettingsHomePage = lazy(() => import('../modules/settings/pages/SettingsHomePage'));
@@ -290,6 +294,10 @@ export const routesConfig: AppRoute[] = [
   { path: '/pos/reports/cashiers', label: 'Cashier Sales', component: PosCashierSalesReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
   { path: '/pos/reports/over-short', label: 'Cash Over/Short', component: PosCashOverShortReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
   { path: '/pos/reports/receipts', label: 'Receipt History', component: PosReceiptHistoryReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/cancelled-receipts', label: 'Cancelled Receipts', component: PosCancelledReceiptsReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/top-selling-items', label: 'Top Selling Items', component: PosTopSellingItemsReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/override-audit', label: 'Override Audit', component: PosOverrideAuditReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
+  { path: '/pos/reports/reprint-audit', label: 'Reprint Audit', component: PosReprintAuditReportPage, section: 'POS', requiredPermission: 'pos.reports.view', requiredModule: 'pos' },
 
 
   // SETTINGS

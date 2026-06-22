@@ -35,11 +35,19 @@ router.get('/bootstrap', permissionGuard('pos.terminal.access'), PosController.g
 router.get('/products/search', permissionGuard('pos.terminal.access'), PosController.searchProducts);
 router.post('/sales/preview', permissionGuard('pos.terminal.access'), PosController.previewSale);
 router.post('/sales', idempotencyMiddleware, permissionGuard('pos.terminal.access'), PosController.completeSale);
+router.get('/held-carts', permissionGuard('pos.terminal.access'), PosController.listHeldCarts);
+router.post('/held-carts', idempotencyMiddleware, permissionGuard('pos.terminal.access'), PosController.holdCart);
+router.get('/held-carts/:id', permissionGuard('pos.terminal.access'), PosController.getHeldCart);
+router.post('/held-carts/:id/recall', permissionGuard('pos.terminal.access'), PosController.recallHeldCart);
+router.post('/held-carts/:id/cancel', permissionGuard('pos.terminal.access'), PosController.cancelHeldCart);
 router.get('/receipts', permissionGuard('pos.terminal.access'), PosController.listReceipts);
 router.get('/receipts/:id', permissionGuard('pos.terminal.access'), PosController.getReceipt);
 router.get('/receipts/:id/reprint', permissionGuard('pos.receipt.reprint'), PosController.reprintReceipt);
+router.post('/receipts/:id/void', idempotencyMiddleware, permissionGuard('pos.return.create'), PosController.voidReceipt);
+router.post('/manager-overrides', permissionGuard('pos.terminal.access'), PosController.createManagerOverride);
 
 // Returns
+router.post('/exchanges', idempotencyMiddleware, permissionGuard('pos.return.create'), permissionGuard('pos.terminal.access'), PosController.completeExchange);
 router.post('/returns', idempotencyMiddleware, permissionGuard('pos.return.create'), PosController.completeReturn);
 router.get('/returns', permissionGuard('pos.terminal.access'), PosController.listReturns);
 router.get('/returns/:id', permissionGuard('pos.terminal.access'), PosController.getReturn);
@@ -51,5 +59,9 @@ router.get('/reports/payment-methods', permissionGuard('pos.reports.view'), PosC
 router.get('/reports/cashier-sales', permissionGuard('pos.reports.view'), PosController.getCashierSales);
 router.get('/reports/cash-over-short', permissionGuard('pos.reports.view'), PosController.getCashOverShort);
 router.get('/reports/receipt-history', permissionGuard('pos.reports.view'), PosController.getReceiptHistory);
+router.get('/reports/cancelled-receipts', permissionGuard('pos.reports.view'), PosController.getCancelledReceipts);
+router.get('/reports/top-selling-items', permissionGuard('pos.reports.view'), PosController.getTopSellingItems);
+router.get('/reports/override-audit', permissionGuard('pos.reports.view'), PosController.getOverrideAuditReport);
+router.get('/reports/reprint-audit', permissionGuard('pos.reports.view'), PosController.getReprintAuditReport);
 
 export default router;

@@ -43,6 +43,7 @@ const makeRegister = (): PosRegister =>
     name: 'Front',
     warehouseId: 'wh1',
     cashDrawerAccountId: 'cash-acc',
+    settlementAccountIds: { CARD: 'card-reg-acc' },
     status: 'ACTIVE',
     createdAt: new Date(),
     updatedAt: new Date(),
@@ -196,7 +197,160 @@ describe('CompletePosSaleUseCase', () => {
     expect(postedInput.customerId).toBe('walk-in-cust');
     expect(postedInput.documentNumber).toBe('R-000001');
     expect(postedInput.lines[0].warehouseId).toBe('wh1');
+    expect(postedInput.paymentMethods.find((m: any) => m.code === 'CASH')?.settlementAccountId).toBe('cash-acc');
+    expect(postedInput.paymentMethods.find((m: any) => m.code === 'CARD')?.settlementAccountId).toBe('card-reg-acc');
     expect(postedInput.transaction).toEqual({ tx: true });
+  });
+
+  it('persists voided cart lines for audit without sending them to POS posting totals', async () => {
+    const { useCase, postPosSaleUC } = setup({ draftGrand: 10 });
+    const result = await run(useCase, [{ method: 'CASH', amount: 10 }], {
+      lines: [
+        { itemId: 'item_1', itemCode: 'ITEM-1', itemName: 'Widget', uom: 'ea', qty: 1, unitPrice: 10 },
+        {
+          itemId: 'item_void',
+          itemCode: 'VOID-1',
+          itemName: 'Removed item',
+          uom: 'ea',
+          qty: 2,
+          unitPrice: 5,
+          status: 'VOIDED',
+          voidedBy: 'cashier_1',
+          voidedAt: '2026-06-22T10:00:00.000Z',
+          voidReason: 'Customer changed mind',
+        },
+      ],
+    });
+
+    const postedInput = postedInputOf(postPosSaleUC);
+    expect(postedInput.lines).toHaveLength(1);
+    expect(postedInput.lines[0].itemId).toBe('item_1');
+    expect(result.receipt.lines).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        itemId: 'item_void',
+        status: 'VOIDED',
+        voidedBy: 'cashier_1',
+        voidReason: 'Customer changed mind',
+        lineTotal: 10,
+      }),
+    ]));
+    expect(result.receipt.grandTotal).toBe(10);
+  });
+
+  it('blocks a voided line when cashier policy requires manager approval and no override is supplied', async () => {
+    const { useCase, postPosSaleUC, policyEngine } = setup({ draftGrand: 10 });
+    policyEngine.resolve.mockImplementation((request: any) => {
+      if (request.action === 'managerOverride' && request.context?.overrideAction === 'VOID_LINE') {
+        return Promise.resolve({ allowed: false, requiresApproval: true, resolvedBy: ['CashierRolePolicy.managerOverride.VOID_LINE.requiresApproval'] });
+      }
+      return Promise.resolve({ allowed: true, requiresApproval: false, resolvedBy: ['test'] });
+    });
+
+    await expect(run(useCase, [{ method: 'CASH', amount: 10 }], {
+      actor: { userId: 'cashier_1', roleId: 'cashier-jr' },
+      lines: [
+        { itemId: 'item_1', itemCode: 'ITEM-1', itemName: 'Widget', uom: 'ea', qty: 1, unitPrice: 10 },
+        {
+          itemId: 'item_void',
+          itemCode: 'VOID-1',
+          itemName: 'Removed item',
+          uom: 'ea',
+          qty: 1,
+          unitPrice: 5,
+          status: 'VOIDED',
+          voidedBy: 'cashier_1',
+          voidedAt: '2026-06-22T10:00:00.000Z',
+          voidReason: 'Wrong item',
+        },
+      ],
+    })).rejects.toThrow(/Manager approval is required for POS void line/);
+
+    expect(postPosSaleUC.execute).not.toHaveBeenCalled();
+  });
+
+  it('allows manager-approved discounts when cashier policy requires an override', async () => {
+    const { useCase, postPosSaleUC, policyEngine } = setup({ draftGrand: 9 });
+    policyEngine.resolve.mockImplementation((request: any) => {
+      if (request.action === 'managerOverride' && request.context?.overrideAction === 'DISCOUNT_OVERRIDE') {
+        return Promise.resolve({
+          allowed: request.context?.approvedOverride === true,
+          requiresApproval: request.context?.approvedOverride !== true,
+          resolvedBy: ['CashierRolePolicy.managerOverride.DISCOUNT_OVERRIDE.requiresApproval'],
+        });
+      }
+      return Promise.resolve({ allowed: true, requiresApproval: false, resolvedBy: ['test'] });
+    });
+
+    await run(useCase, [{ method: 'CASH', amount: 9 }], {
+      actor: { userId: 'cashier_1', roleId: 'cashier-jr' },
+      lines: [{
+        itemId: 'item_1',
+        qty: 1,
+        unitPrice: 10,
+        discountType: 'AMOUNT',
+        discountValue: 1,
+        managerOverrideId: 'mgr_override_1',
+      }],
+    });
+
+    const postedInput = postedInputOf(postPosSaleUC);
+    expect(postedInput.lines[0]).toMatchObject({ discountType: 'AMOUNT', discountValue: 1 });
+  });
+
+  it('blocks sale line discount limits until a manager override id is supplied', async () => {
+    const { useCase, postPosSaleUC, policyEngine } = setup({ draftGrand: 8 });
+    policyEngine.resolve.mockImplementation((request: any) => {
+      if (request.action === 'saleLineControls') {
+        return Promise.resolve({
+          allowed: Boolean(request.context?.approvedOverrideId),
+          requiresApproval: !request.context?.approvedOverrideId,
+          resolvedBy: ['CashierRolePolicy.maxLineDiscountPercent.exceeded'],
+        });
+      }
+      return Promise.resolve({ allowed: true, requiresApproval: false, resolvedBy: ['test'] });
+    });
+
+    await expect(run(useCase, [{ method: 'CASH', amount: 8 }], {
+      actor: { userId: 'cashier_1', roleId: 'cashier-jr' },
+      lines: [{ itemId: 'item_1', qty: 1, unitPrice: 10, discountType: 'PERCENT', discountValue: 20 }],
+    })).rejects.toThrow(/Manager approval is required for POS price, discount, or tax override limits/);
+
+    expect(postPosSaleUC.execute).not.toHaveBeenCalled();
+
+    await run(useCase, [{ method: 'CASH', amount: 8 }], {
+      actor: { userId: 'cashier_1', roleId: 'cashier-jr' },
+      lines: [{
+        itemId: 'item_1',
+        qty: 1,
+        unitPrice: 10,
+        discountType: 'PERCENT',
+        discountValue: 20,
+        managerOverrideId: 'mgr_override_1',
+      }],
+    });
+
+    const postedInput = postedInputOf(postPosSaleUC);
+    expect(postedInput.lines[0]).toMatchObject({ discountType: 'PERCENT', discountValue: 20 });
+  });
+
+  it('persists price and tax override flags on receipt line audit snapshots', async () => {
+    const { useCase } = setup({ draftGrand: 10 });
+    const result = await run(useCase, [{ method: 'CASH', amount: 10 }], {
+      lines: [{
+        itemId: 'item_1',
+        qty: 1,
+        unitPrice: 10,
+        priceOverride: true,
+        taxOverride: true,
+        managerOverrideId: 'mgr_override_1',
+      }],
+    });
+
+    expect(result.receipt.lines[0]).toMatchObject({
+      priceOverride: true,
+      taxOverride: true,
+      managerOverrideId: 'mgr_override_1',
+    });
   });
 
   it('completes a single-tender exact sale through POS posting', async () => {
@@ -228,6 +382,22 @@ describe('CompletePosSaleUseCase', () => {
     const postedInput = postedInputOf(postPosSaleUC);
     expect(postedInput.payments[0].amount).toBe(10);
     expect(result.change).toBe(5);
+  });
+
+  it('rejects before posting when a non-cash register settlement account is missing', async () => {
+    const { useCase, postPosSaleUC } = setup({
+      settings: {
+        paymentMethods: [
+          { code: 'CASH', settlementAccountId: '', requiresReference: false, allowsChange: true, isEnabled: true },
+          { code: 'BANK_TRANSFER', settlementAccountId: '', requiresReference: true, allowsChange: false, isEnabled: true },
+        ],
+      },
+    });
+    (postPosSaleUC.execute as jest.Mock).mockClear();
+    await expect(run(useCase, [{ method: 'BANK_TRANSFER', amount: 10, reference: 'BANK-1' }], {
+      lines: [{ itemId: 'item_1', qty: 1, unitPrice: 10 }],
+    })).rejects.toThrow(/Configure BANK_TRANSFER settlement account on POS register POS-01/);
+    expect(postPosSaleUC.execute).not.toHaveBeenCalled();
   });
 
   it('validates payment against the TAX-INCLUSIVE POS total without creating a receipt on shortfall', async () => {

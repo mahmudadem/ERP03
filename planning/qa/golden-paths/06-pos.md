@@ -14,7 +14,7 @@ This is not only a cashier-screen test. POS touches the same financial controls 
 - Over/short must post balanced journal vouchers to the configured cash over/short accounts.
 - Reports must agree with receipts, shifts, and the linked Sales documents.
 
-Known V1 limitation to accept during QA: the Payment Methods summary report may show placeholder aggregate totals. Receipt-level payment rows and linked Sales Invoice settlements are still testable and must be correct.
+Payment Methods is no longer an accepted placeholder report: it must aggregate the stored receipt payment rows. CASH must be shown net of change so the report agrees with posted settlement and shift cash math.
 
 ## Time Budget
 
@@ -25,7 +25,7 @@ Estimated manual run time: **60–90 minutes** on a fresh tenant if master data 
 | # | Step | Expected |
 |---|------|----------|
 | 1 | Confirm POS module is enabled for the company and the user has POS permissions | POS menu appears; restricted users cannot access manager-only pages |
-| 2 | Open POS Settings and enable **Allow POS Direct Sales** | Settings save with a success toast; Sales Settings contains a form-scoped rule allowing `pos_sale` direct invoices |
+| 2 | Open POS Settings and enable **Allow POS Direct Sales** | Settings save with a success toast; POS policy allows `POS_DIRECT_SALE` without requiring a Sales Settings governance rule |
 | 3 | Configure walk-in customer | Customer must be an existing CUSTOMER party; no free-text customer id |
 | 4 | Configure payment-method behavior: CASH enabled/allows change/no reference; CARD enabled/requires reference/no change | Settings save; payment accounts are not entered here because money routing belongs to each register |
 | 5 | Configure Cash Over and Cash Short accounts | Settings save; these accounts are later used for variance vouchers |
@@ -68,8 +68,13 @@ Estimated manual run time: **60–90 minutes** on a fresh tenant if master data 
 |---|------|----------|
 | 21 | Return 1 unit from the step-17 receipt with CASH refund | POS return created; linked Sales Return is POSTED with `AFTER_INVOICE`; cash movement `REFUND_CASH` is recorded |
 | 22 | Try to return more than sold quantity | Blocked with clear message |
+| 22b | Try to return the same unit again after step 21 | Blocked because prior POS returns reduce remaining returnable quantity |
 | 23 | Check stock level | Returned quantity is added back according to existing Sales Return inventory logic |
 | 24 | Check X Report | Expected cash decreased by the cash refund |
+| 24b | Void a different completed receipt with no prior returns | POS creates a return for every active receipt line, posts the reversal, and marks the original receipt `VOIDED` |
+| 24c | Partially return another receipt, then void it | Void returns only the remaining active quantities; already-returned quantities are not refunded again |
+| 24d | Exchange a returned item for a more expensive replacement item | POS creates one return and one replacement sale with the same exchange id; response shows net amount due from customer |
+| 24e | Exchange a returned item for a cheaper replacement item | POS creates one return and one replacement sale with the same exchange id; response shows net refund to customer |
 
 ## F. Shift Close and Cash Variance
 
@@ -90,6 +95,16 @@ Estimated manual run time: **60–90 minutes** on a fresh tenant if master data 
 | 32 | Login as a cashier without settings/register permissions | Terminal access works if granted; settings/register management pages are hidden or blocked |
 | 33 | Login as a cashier without reports permission | POS reports are hidden or blocked |
 
+## G2. Cashier Policy Limits and Override Audit
+
+| # | Step | Expected |
+|---|------|----------|
+| 33a | Configure or seed a cashier role policy with a low max discount percent/amount and price/tax override disabled | Policy saves for that cashier role |
+| 33b | Try a POS sale with an over-limit manual line discount and no captured manager approval | Blocked before receipt, stock, ledger, payment, or cash movement persistence |
+| 33c | Repeat the same sale, click **Capture approval** in the Tender dialog, select a manager, enter the reason, and complete the sale | Sale completes; receipt line carries the generated manager override id and discount metadata |
+| 33d | Create or inspect a receipt containing a voided line, price override flag, tax override flag, and/or manual discount | Receipt snapshot keeps the exception metadata for audit review |
+| 33e | Try selling an item whose POS metadata marks it expired, expiry-tracked without selected expiry, batch/lot-required, or serial-required | Blocked before receipt, stock, ledger, payment, or cash movement persistence |
+
 ## H. Reports
 
 | # | Step | Expected |
@@ -99,7 +114,8 @@ Estimated manual run time: **60–90 minutes** on a fresh tenant if master data 
 | 36 | Cashier Sales | Cashier user appears with correct receipt count and total |
 | 37 | Cash Over/Short | Only variance shifts appear; voucher links are present where variance was posted |
 | 38 | Receipt History | Receipts show linked Sales Invoice numbers and can be traced back to POS activity |
-| 39 | Payment Methods report | If aggregate totals are placeholders, record as known limitation only; verify the linked receipts and Sales Invoice settlements instead |
+| 39 | Payment Methods report | CASH / CARD / BANK_TRANSFER / CUSTOM totals match stored receipt payment rows; CASH is net of change |
+| 39b | Override Audit report endpoint `/tenant/pos/reports/override-audit` | Returns rows for voided lines, manual discounts, price overrides, and tax overrides with receipt/register/shift/cashier context |
 
 ## I. Cross-Module Accounting Checks
 

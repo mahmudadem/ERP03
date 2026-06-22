@@ -10,6 +10,9 @@ export interface UpsertPosRegisterInput {
   name: string;
   branchId?: string;
   warehouseId: string;
+  defaultPriceListId?: string;
+  allowedCashierUserIds?: string[];
+  hardwareProfileId?: string;
   cashDrawerAccountId: string;
   settlementAccountIds?: PosRegisterSettlementAccounts;
   status?: 'ACTIVE' | 'INACTIVE';
@@ -28,6 +31,9 @@ export class CreatePosRegisterUseCase {
       name: input.name,
       branchId: input.branchId,
       warehouseId: input.warehouseId,
+      defaultPriceListId: input.defaultPriceListId,
+      allowedCashierUserIds: input.allowedCashierUserIds,
+      hardwareProfileId: input.hardwareProfileId,
       cashDrawerAccountId: input.cashDrawerAccountId,
       settlementAccountIds: input.settlementAccountIds,
       status: input.status === 'INACTIVE' ? 'INACTIVE' : 'ACTIVE',
@@ -59,6 +65,9 @@ export class UpdatePosRegisterUseCase {
     if (patch.name !== undefined) existing.name = patch.name;
     if (patch.branchId !== undefined) existing.branchId = patch.branchId?.trim() || undefined;
     if (patch.warehouseId !== undefined) existing.warehouseId = patch.warehouseId;
+    if (patch.defaultPriceListId !== undefined) existing.defaultPriceListId = patch.defaultPriceListId?.trim() || undefined;
+    if (patch.allowedCashierUserIds !== undefined) existing.allowedCashierUserIds = Array.from(new Set(patch.allowedCashierUserIds.map((id) => String(id || '').trim()).filter(Boolean)));
+    if (patch.hardwareProfileId !== undefined) existing.hardwareProfileId = patch.hardwareProfileId?.trim() || undefined;
     if (patch.cashDrawerAccountId !== undefined) existing.cashDrawerAccountId = patch.cashDrawerAccountId;
     if (patch.settlementAccountIds !== undefined) existing.settlementAccountIds = patch.settlementAccountIds;
     if (patch.status !== undefined) existing.status = patch.status;

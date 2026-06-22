@@ -22,6 +22,7 @@ export class PrismaPosReturnRepository implements IPosReturnRepository {
         refundTotal: returnDoc.refundTotal,
         salesReturnId: returnDoc.salesReturnId || null,
         salesReturnNumber: returnDoc.salesReturnNumber || null,
+        exchangeId: returnDoc.exchangeId || null,
         createdBy: returnDoc.createdBy,
         createdAt: returnDoc.createdAt,
       },
@@ -62,6 +63,7 @@ export class PrismaPosReturnRepository implements IPosReturnRepository {
       refundTotal: Number(record.refundTotal),
       salesReturnId: record.salesReturnId || undefined,
       salesReturnNumber: record.salesReturnNumber || undefined,
+      exchangeId: record.exchangeId || undefined,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
     });

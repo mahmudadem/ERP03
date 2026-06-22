@@ -1,6 +1,6 @@
 import { Firestore, Query } from 'firebase-admin/firestore';
 import { RecordChangeLog } from '../../../../domain/system/entities/RecordChangeLog';
-import { IRecordChangeLogRepository } from '../../../../repository/interfaces/system/IRecordChangeLogRepository';
+import { IRecordChangeLogRepository, RecordChangeLogListFilters } from '../../../../repository/interfaces/system/IRecordChangeLogRepository';
 
 interface RecordChangeLogDoc {
   id: string;
@@ -13,6 +13,7 @@ interface RecordChangeLogDoc {
   userId: string;
   userEmail?: string;
   timestamp: string;
+  metadata?: Record<string, unknown>;
 }
 
 class RecordChangeLogMapper {
@@ -28,6 +29,7 @@ class RecordChangeLogMapper {
       userId: entry.userId,
       userEmail: entry.userEmail,
       timestamp: entry.timestamp.toISOString(),
+      metadata: entry.metadata,
     };
   }
 
@@ -43,6 +45,7 @@ class RecordChangeLogMapper {
       userId: data.userId,
       userEmail: data.userEmail,
       timestamp: new Date(data.timestamp),
+      metadata: data.metadata,
     });
   }
 }
@@ -66,6 +69,18 @@ export class FirestoreRecordChangeLogRepository implements IRecordChangeLogRepos
       .where('entityId', '==', entityId)
       .orderBy('timestamp', 'desc')
       .get();
+    return snap.docs.map((doc) => RecordChangeLogMapper.toDomain(doc.data()));
+  }
+
+  async list(companyId: string, filters: RecordChangeLogListFilters = {}): Promise<RecordChangeLog[]> {
+    let query: Query = this.collection(companyId);
+    if (filters.entityType) query = query.where('entityType', '==', filters.entityType);
+    if (filters.action) query = query.where('action', '==', filters.action);
+    if (filters.dateFrom) query = query.where('timestamp', '>=', filters.dateFrom);
+    if (filters.dateTo) query = query.where('timestamp', '<=', filters.dateTo);
+    query = query.orderBy('timestamp', 'desc');
+    if (filters.limit) query = query.limit(filters.limit);
+    const snap = await query.get();
     return snap.docs.map((doc) => RecordChangeLogMapper.toDomain(doc.data()));
   }
 }

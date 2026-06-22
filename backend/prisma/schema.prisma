@@ -68,6 +68,7 @@ model Company {
   posCashMovements PosCashMovement[]
   posReceipts     PosReceipt[]
   posPayments     PosPayment[]
+  posHeldCarts    PosHeldCart[]
   posReturns      PosReturn[]
   costCenters     CostCenter[]
   fiscalYears     FiscalYear[]
@@ -1720,8 +1721,13 @@ model PosShift {
   closedAt           DateTime?
   expectedCash       Float?
   countedCash        Float?
+  expectedPaymentTotals Json?
+  countedPaymentTotals Json?
+  overShortPaymentTotals Json?
   overShortAmount    Float?
   overShortVoucherId String?
+  reconciledAt       DateTime?
+  reconciledBy       String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
@@ -1770,6 +1776,7 @@ model PosReceipt {
   grandTotal          Float    @default(0)
   salesInvoiceId      String?
   salesInvoiceNumber  String?
+  exchangeId          String?
   createdBy           String
   createdAt           DateTime @default(now())
 
@@ -1781,6 +1788,7 @@ model PosReceipt {
   @@index([companyId, registerId])
   @@index([companyId, customerId])
   @@index([companyId, salesInvoiceId])
+  @@index([companyId, exchangeId])
   @@index([companyId, createdAt])
   @@map("pos_receipts")
 }
@@ -1801,6 +1809,40 @@ model PosPayment {
   @@map("pos_payments")
 }
 
+model PosHeldCart {
+  id             String   @id @default(uuid())
+  companyId      String
+  registerId     String
+  shiftId        String
+  cashierUserId  String
+  customerId     String?
+  note           String?
+  status         String   @default("HELD")
+  lines          Json
+  subtotal       Float    @default(0)
+  discountTotal  Float    @default(0)
+  taxTotal       Float    @default(0)
+  grandTotal     Float    @default(0)
+  createdBy      String
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  recalledAt     DateTime?
+  recalledBy     String?
+  cancelledAt    DateTime?
+  cancelledBy    String?
+  cancelReason   String?
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@index([companyId, registerId])
+  @@index([companyId, shiftId])
+  @@index([companyId, cashierUserId])
+  @@index([companyId, status])
+  @@index([companyId, updatedAt])
+  @@map("pos_held_carts")
+}
+
 model PosReturn {
   id                    String   @id @default(uuid())
   companyId             String
@@ -1815,6 +1857,7 @@ model PosReturn {
   refundTotal           Float    @default(0)
   salesReturnId         String?
   salesReturnNumber     String?
+  exchangeId            String?
   createdBy             String
   createdAt             DateTime @default(now())
 
@@ -1825,6 +1868,7 @@ model PosReturn {
   @@index([companyId, shiftId])
   @@index([companyId, originalReceiptId])
   @@index([companyId, salesInvoiceId])
+  @@index([companyId, exchangeId])
   @@index([companyId, createdAt])
   @@map("pos_returns")
 }

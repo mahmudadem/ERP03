@@ -23,6 +23,8 @@ export type ReferenceType =
   | 'DELIVERY_NOTE'
   | 'SALES_INVOICE'
   | 'SALES_RETURN'
+  | 'POS_DIRECT_SALE'
+  | 'POS_RETURN'
   | 'STOCK_ADJUSTMENT'
   | 'STOCK_TRANSFER'
   | 'OPENING'
