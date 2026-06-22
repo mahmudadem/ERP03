@@ -1,6 +1,7 @@
 import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
 import {
   ApplyPromotionsContext,
+  CommercialDiscountType,
   CommercialLineCalculationContext,
   CommercialPromotionApplicationResult,
   CommercialPromotionRule,
@@ -19,24 +20,77 @@ const numeric = (value: unknown, fallback = 0): number => {
   return Number.isNaN(resolved) ? fallback : resolved;
 };
 
+/**
+ * FUP-1 PRODUCTION GATE — promotions / free-goods are HARD-DISABLED in the
+ * production Sales and POS posting paths until the full stacking/cap model lands
+ * (maxDiscountAmount/Percent, exclusivePromotion, canStackWith,
+ * appliesBeforeTax/After, best-selection, promoted-return handling).
+ *
+ * The pure evaluator `applyCommercialPromotions` below is intentionally left
+ * callable so unit tests and the future stacking/cap work can exercise it; this
+ * gate governs ONLY whether production posting code is allowed to APPLY its
+ * output. It is the single chokepoint for both apps (POS
+ * `PostPosSaleUseCase.applyPromotions` and Sales `CreateSalesInvoiceUseCase`).
+ *
+ * Default OFF. Flip ON only when the stacking/cap model is implemented and
+ * audited — either by setting `ERP_PROMOTIONS_ENABLED=true` or by removing this
+ * gate entirely. Tests force the gate via `__setPromotionsEnabledForTest`.
+ */
+let promotionsEnabledOverride: boolean | null = null;
+
+export const arePromotionsEnabledInProduction = (): boolean => {
+  if (promotionsEnabledOverride !== null) return promotionsEnabledOverride;
+  return process.env.ERP_PROMOTIONS_ENABLED === 'true';
+};
+
+/** Test-only: force the FUP-1 gate on/off. Pass `null` to reset to env-driven default. */
+export const __setPromotionsEnabledForTest = (value: boolean | null): void => {
+  promotionsEnabledOverride = value;
+};
+
 export type CommercialPriceResolver = (context: ResolvePriceContext) => Promise<number | null>;
 export type CommercialCostResolver = (context: CostMarginValidationContext) => Promise<number | null>;
+
+/**
+ * FUP-2: canonical line trade-discount resolver. Given an already-computed gross
+ * line total, returns the discount amount with the standard clamp rules
+ * (explicit ≤ gross; PERCENT of gross; AMOUNT ≤ gross). This is the single
+ * implementation that SI/SO/SR/PI/PO/PR all delegate to so the discount decision
+ * lives in one place. `currency` defaults to 'USD' (2-decimal) to match the
+ * historical document-entity rounding exactly.
+ */
+export const resolveLineDiscountAmount = (
+  grossLineTotalDoc: number,
+  options: {
+    discountType?: CommercialDiscountType;
+    discountValue?: number;
+    explicitDiscountAmount?: number;
+    currency?: string;
+  }
+): number => {
+  const currency = options.currency || 'USD';
+  const explicit = options.explicitDiscountAmount;
+  if (explicit !== undefined && !Number.isNaN(explicit)) {
+    return roundMoney(Math.max(0, Math.min(explicit, grossLineTotalDoc)), currency);
+  }
+  if (options.discountType === 'PERCENT') {
+    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (numeric(options.discountValue) / 100))), currency);
+  }
+  if (options.discountType === 'AMOUNT') {
+    return roundMoney(Math.max(0, Math.min(numeric(options.discountValue), grossLineTotalDoc)), currency);
+  }
+  return 0;
+};
 
 export const calculateCommercialDiscountAmount = (context: DiscountCalculationContext): number => {
   const currency = context.currency || 'USD';
   const gross = roundMoney(numeric(context.quantity) * numeric(context.unitPrice), currency);
-  const explicit = context.discountAmount !== undefined ? numeric(context.discountAmount) : undefined;
-
-  if (explicit !== undefined && !Number.isNaN(explicit)) {
-    return roundMoney(Math.max(0, Math.min(explicit, gross)), currency);
-  }
-  if (context.discountType === 'PERCENT') {
-    return roundMoney(Math.max(0, Math.min(gross, gross * (numeric(context.discountValue) / 100))), currency);
-  }
-  if (context.discountType === 'AMOUNT') {
-    return roundMoney(Math.max(0, Math.min(numeric(context.discountValue), gross)), currency);
-  }
-  return 0;
+  return resolveLineDiscountAmount(gross, {
+    discountType: context.discountType,
+    discountValue: numeric(context.discountValue),
+    explicitDiscountAmount: context.discountAmount !== undefined ? numeric(context.discountAmount) : undefined,
+    currency,
+  });
 };
 
 export const calculateCommercialLineAmounts = (

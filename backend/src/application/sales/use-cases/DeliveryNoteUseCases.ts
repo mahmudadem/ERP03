@@ -7,7 +7,7 @@ import { SalesOrder } from '../../../domain/sales/entities/SalesOrder';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore, cloneStockLevel, createStockLevel, computeStockOutMovement } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -21,6 +21,8 @@ import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/I
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
@@ -239,7 +241,9 @@ export class PostDeliveryNoteUseCase {
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly auditEngine?: IAuditEngine
+    private readonly auditEngine?: IAuditEngine,
+    // FUP-3: when wired, GL postings route through the bridge (full/minimal decision).
+    private readonly accountingBridge?: IAccountingBridge
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
   }
@@ -305,7 +309,7 @@ export class PostDeliveryNoteUseCase {
     const levelsByItemMap = new Map<string, StockLevel[]>();
     for (const itemId of distinctItemIds) {
       const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
-      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+      levelsByItemMap.set(itemId, existingLevels.map((level) => cloneStockLevel(level)));
     }
     for (const line of dn.lines) {
       const levels = levelsByItemMap.get(line.itemId) || [];
@@ -313,7 +317,7 @@ export class PostDeliveryNoteUseCase {
       if (!stockLevelMap.has(key)) {
         let existing = levels.find((level) => level.warehouseId === dn.warehouseId);
         if (!existing) {
-          existing = StockLevel.createNew(companyId, line.itemId, dn.warehouseId);
+          existing = createStockLevel(companyId, line.itemId, dn.warehouseId);
           levels.push(existing);
         }
         stockLevelMap.set(key, existing);
@@ -373,62 +377,19 @@ export class PostDeliveryNoteUseCase {
       const level = stockLevelMap.get(stockLevelKey);
       if (!level) throw new Error(`Stock level not pre-fetched for item ${item.code}`);
 
-      const qtyBefore = level.qtyOnHand;
-      const oldMaxBusinessDate = level.maxBusinessDate;
-      let issueCostBase = 0;
-      let issueCostCCY = 0;
-      let costBasis: 'AVG' | 'LAST_KNOWN' | 'MISSING' = 'MISSING';
-      if (qtyBefore > 0) {
-        issueCostBase = level.avgCostBase;
-        issueCostCCY = level.avgCostCCY;
-        costBasis = 'AVG';
-      } else if (level.lastCostBase > 0) {
-        issueCostBase = level.lastCostBase;
-        issueCostCCY = level.lastCostCCY;
-        costBasis = 'LAST_KNOWN';
-      }
-
-      const settledQty = Math.min(qtyInBaseUom, Math.max(qtyBefore, 0));
-      const unsettledQty = qtyInBaseUom - settledQty;
-      const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
-
-      const movement = new StockMovement({
-        id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      // FUP-4: stock OUT movement + level mutation owned by the inventory core.
+      const { movement, unitCostBase: outUnitCostBase, lineCostBase: outLineCostBase } = computeStockOutMovement({
         companyId,
-        date: dn.deliveryDate,
-        postingSeq: level.postingSeq + 1,
-        createdAt: new Date(),
-        createdBy: dn.createdBy,
-        postedAt: new Date(),
-        itemId: item.id,
+        item,
+        level,
         warehouseId: dn.warehouseId,
-        direction: 'OUT',
+        qtyInBaseUom,
+        date: dn.deliveryDate,
+        createdBy: dn.createdBy,
         movementType: 'SALES_DELIVERY',
-        qty: qtyInBaseUom,
-        uom: item.baseUom,
         referenceType: 'DELIVERY_NOTE',
         referenceId: dn.id,
         referenceLineId: line.lineId,
-        reversesMovementId: undefined,
-        transferPairId: undefined,
-        unitCostBase: issueCostBase,
-        totalCostBase: roundMoney(issueCostBase * qtyInBaseUom),
-        unitCostCCY: issueCostCCY,
-        totalCostCCY: roundMoney(issueCostCCY * qtyInBaseUom),
-        movementCurrency: item.costCurrency,
-        fxRateMovToBase: effectiveFxCCYToBase,
-        fxRateCCYToBase: effectiveFxCCYToBase,
-        fxRateKind: 'EFFECTIVE',
-        avgCostBaseAfter: level.avgCostBase,
-        avgCostCCYAfter: level.avgCostCCY,
-        qtyBefore,
-        qtyAfter: qtyBefore - qtyInBaseUom,
-        settledQty,
-        unsettledQty,
-        unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
-        negativeQtyAtPosting: (qtyBefore - qtyInBaseUom) < 0,
-        costSettled: unsettledQty === 0,
-        isBackdated: dn.deliveryDate < oldMaxBusinessDate,
         costSource: 'PURCHASE',
         metadata: {
           uomConversion: {
@@ -444,17 +405,9 @@ export class PostDeliveryNoteUseCase {
         },
       });
 
-      level.qtyOnHand -= qtyInBaseUom;
-      level.postingSeq += 1;
-      level.version += 1;
-      level.totalMovements += 1;
-      level.maxBusinessDate = dn.deliveryDate > oldMaxBusinessDate ? dn.deliveryDate : oldMaxBusinessDate;
-      level.updatedAt = new Date();
-      level.lastMovementId = movement.id;
-
       line.stockMovementId = movement.id;
-      line.unitCostBase = roundMoney(movement.unitCostBase || 0);
-      line.lineCostBase = roundMoney(qtyInBaseUom * line.unitCostBase);
+      line.unitCostBase = outUnitCostBase;
+      line.lineCostBase = outLineCostBase;
       if (accountingMode === 'PERPETUAL') {
         this.assertPositiveTrackedCost(qtyInBaseUom, line.unitCostBase, line.itemName || item.name, `delivery note ${dn.dnNumber}`);
       }
@@ -560,32 +513,37 @@ export class PostDeliveryNoteUseCase {
           });
         }
 
-        const voucher = await this.accountingPostingService.postInTransaction(
+        const voucher = await postFinancialEvent(
+          { bridge: this.accountingBridge, postingService: this.accountingPostingService },
           {
-            companyId,
-            voucherType: VoucherType.JOURNAL_ENTRY,
-            voucherNo: `DN-${dn.dnNumber}`,
-            date: dn.deliveryDate,
-            description: `Delivery Note ${dn.dnNumber} COGS`,
-            currency: resolvedBaseCurrency,
-            exchangeRate: 1,
-            lines: cogsVoucherLines,
-            metadata: {
-              sourceModule: 'sales',
-              sourceType: 'DELIVERY_NOTE',
-              sourceId: dn.id,
-              referenceType: 'DELIVERY_NOTE',
-              referenceId: dn.id,
-              ...(periodLockOverride ? { periodLockOverride } : {}),
+            kind: 'DELIVERY_NOTE',
+            transaction,
+            subledgerVoucher: {
+              companyId,
+              voucherType: VoucherType.JOURNAL_ENTRY,
+              voucherNo: `DN-${dn.dnNumber}`,
+              date: dn.deliveryDate,
+              description: `Delivery Note ${dn.dnNumber} COGS`,
+              currency: resolvedBaseCurrency,
+              exchangeRate: 1,
+              lines: cogsVoucherLines,
+              metadata: {
+                sourceModule: 'sales',
+                sourceType: 'DELIVERY_NOTE',
+                sourceId: dn.id,
+                referenceType: 'DELIVERY_NOTE',
+                referenceId: dn.id,
+                ...(periodLockOverride ? { periodLockOverride } : {}),
+              },
+              createdBy: dn.createdBy,
+              postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+              reference: dn.dnNumber,
+              baseCurrencyOverride: resolvedBaseCurrency,
             },
-            createdBy: dn.createdBy,
-            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-            reference: dn.dnNumber,
-            baseCurrencyOverride: resolvedBaseCurrency,
-          },
-          transaction
+          }
         );
-        dn.cogsVoucherId = voucher.id;
+        // FUP-3: voucher is null in minimal mode (Accounting App disabled) → no GL link.
+        dn.cogsVoucherId = voucher ? voucher.id : null;
       } else {
         dn.cogsVoucherId = null;
       }

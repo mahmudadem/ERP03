@@ -62,6 +62,8 @@ import { InitializeAccountingUseCase } from '../../../application/accounting/use
 import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import { PeriodLockOverride } from '../../../domain/accounting/entities/PeriodLockOverride';
 import { IAuditEngine } from '../../../application/system-core/contracts/IAuditEngine';
+import { IAccountingBridge } from '../../../application/system-core/contracts/IAccountingBridge';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 import { BackfillPartyAccountsUseCase } from '../../../application/shared/use-cases/BackfillPartyAccountsUseCase';
 import {
   validateCreateDeliveryNoteInput,
@@ -239,6 +241,19 @@ export class SalesController {
     );
   }
 
+  /**
+   * FUP-3: wrap the same-config posting service in the accounting bridge so source-module GL
+   * postings get the full-vs-minimal decision (no GL voucher when the Accounting App is disabled).
+   * `validateAccounts` mirrors buildAccountingPostingService so full-mode behavior is unchanged.
+   */
+  private static buildAccountingBridge(validateAccounts: boolean = false): IAccountingBridge {
+    return new LegacyAccountingBridgeAdapter(
+      SalesController.buildAccountingPostingService(validateAccounts),
+      diContainer.companyModuleRepository,
+      diContainer.postingLogRepository
+    );
+  }
+
   private static buildPostSalesInvoiceUseCase(IAuditEngine?: IAuditEngine): PostSalesInvoiceUseCase {
     const inventoryService = SalesController.buildSalesInventoryService();
     const accountingPostingService = SalesController.buildAccountingPostingService(true);
@@ -269,7 +284,8 @@ export class SalesController {
       IAuditEngine,
       diContainer.partyItemPriceRepository,
       diContainer.recordSalesProfitLineFactsUseCase,
-      diContainer.numberingEngine
+      diContainer.numberingEngine,
+      SalesController.buildAccountingBridge(true)
     );
   }
 
@@ -737,7 +753,8 @@ export class SalesController {
         accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
-        IAuditEngine
+        IAuditEngine,
+        SalesController.buildAccountingBridge()
       );
 
       if (periodLockOverride) {
@@ -1124,7 +1141,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         IAuditEngine,
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase,
-        diContainer.numberingEngine
+        diContainer.numberingEngine,
+        SalesController.buildAccountingBridge(true)
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -1370,7 +1388,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         IAuditEngine,
         diContainer.postingLogRepository,
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase
+        diContainer.recordSalesProfitLineFactsUseCase,
+        SalesController.buildAccountingBridge()
       );
 
       if (periodLockOverride) {

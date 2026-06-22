@@ -12,6 +12,7 @@ import { ILedgerRepository } from '../../../repository/interfaces/accounting/ILe
 import { IAccountRepository } from '../../../repository/interfaces/accounting/IAccountRepository';
 import { PeriodLockService } from './PeriodLockService';
 import { PostingGateway } from './PostingGateway';
+import { IApprovalEngine } from '../../system-core/contracts/IApprovalEngine';
 
 export interface PostSubledgerVoucherInput {
   companyId: string;
@@ -52,7 +53,14 @@ export class SubledgerVoucherPostingService {
     private readonly accountRepo?: IAccountRepository,
     validationService?: VoucherValidationService,
     private readonly periodLockService?: PeriodLockService,
-    private readonly policyRegistry?: SubledgerAccountingPolicyRegistry
+    private readonly policyRegistry?: SubledgerAccountingPolicyRegistry,
+    /**
+     * Item 4: when provided, the accounting_voucher approval REQUIREMENT decision is resolved
+     * through the unified IApprovalEngine instead of inline config reads. The engine adapter wraps
+     * the same AccountingPolicyRegistry.isApprovalRequiredForVoucherType, so the outcome is
+     * identical — this routes the decision through the engine without changing behavior.
+     */
+    private readonly approvalEngine?: IApprovalEngine
   ) {
     this.validationService = validationService || new VoucherValidationService();
   }
@@ -186,11 +194,27 @@ export class SubledgerVoucherPostingService {
     if (input.approved !== undefined) return input.approved;
 
     const isInventoryOrigin = input.metadata?.sourceModule === 'inventory';
-    if (isInventoryOrigin && this.policyRegistry) {
-      const config = await this.policyRegistry.getConfig(input.companyId);
-      const exempt = (config as any).approvalExemptVoucherTypes ?? [];
-      const approvalRequired = !!(config as any).approvalRequired && !exempt.includes(input.voucherType);
-      return !approvalRequired;
+    if (isInventoryOrigin) {
+      // Item 4: route the requirement decision through IApprovalEngine when wired. The adapter
+      // delegates to AccountingPolicyRegistry.isApprovalRequiredForVoucherType — identical to the
+      // inline config check below — so this is behavior-preserving.
+      if (this.approvalEngine) {
+        const result = await this.approvalEngine.evaluate(
+          {
+            type: 'accounting_voucher',
+            id: input.voucherNo || `V-${input.voucherType}`,
+            payload: { voucherType: input.voucherType },
+          },
+          { companyId: input.companyId, voucherType: input.voucherType, actorUserId: input.createdBy }
+        );
+        return result.decision === 'APPROVED';
+      }
+      if (this.policyRegistry) {
+        const config = await this.policyRegistry.getConfig(input.companyId);
+        const exempt = (config as any).approvalExemptVoucherTypes ?? [];
+        const approvalRequired = !!(config as any).approvalRequired && !exempt.includes(input.voucherType);
+        return !approvalRequired;
+      }
     }
 
     return true;

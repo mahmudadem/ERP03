@@ -2,6 +2,7 @@ import {
   CommercialCore,
   calculateCommercialDiscountAmount,
   calculateCommercialLineAmounts,
+  resolveLineDiscountAmount,
 } from '../../../application/system-core';
 
 describe('Commercial Core', () => {
@@ -21,6 +22,20 @@ describe('Commercial Core', () => {
       discountValue: 500,
       currency: 'USD',
     })).toBe(100);
+  });
+
+  it('FUP-2: resolveLineDiscountAmount is the shared clamp used by SI/SO/SR/PI/PO/PR entities', () => {
+    // explicit amount is clamped to gross
+    expect(resolveLineDiscountAmount(80, { explicitDiscountAmount: 120 })).toBe(80);
+    // PERCENT of gross
+    expect(resolveLineDiscountAmount(1000, { discountType: 'PERCENT', discountValue: 10 })).toBe(100);
+    // AMOUNT clamped to gross
+    expect(resolveLineDiscountAmount(50, { discountType: 'AMOUNT', discountValue: 999 })).toBe(50);
+    // no discount → 0
+    expect(resolveLineDiscountAmount(1000, {})).toBe(0);
+    // delegated path produces the same number as the gross-based helper
+    expect(resolveLineDiscountAmount(1000, { discountType: 'PERCENT', discountValue: 10 }))
+      .toBe(calculateCommercialDiscountAmount({ quantity: 10, unitPrice: 100, discountType: 'PERCENT', discountValue: 10 }));
   });
 
   it('250l-1 preserves golden exclusive line totals while owning the discount decision', () => {

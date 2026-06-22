@@ -7,6 +7,8 @@ import { IItemRepository } from '../../../repository/interfaces/inventory/IItemR
 import { IStockAdjustmentRepository } from '../../../repository/interfaces/inventory/IStockAdjustmentRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { ProcessINInput, ProcessOUTInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
@@ -77,7 +79,8 @@ export class PostStockAdjustmentUseCase {
     private readonly transactionManager: ITransactionManager,
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService?: SubledgerVoucherPostingService,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
+    private readonly accountingBridge?: IAccountingBridge
   ) {}
 
   async execute(companyId: string, adjustmentId: string, userId: string, createAccountingEffect: boolean = true): Promise<StockAdjustment> {
@@ -345,30 +348,37 @@ export class PostStockAdjustmentUseCase {
     }
 
     try {
-      const voucher = await this.accountingPostingService.postInTransaction({
-        companyId,
-        voucherType: VoucherType.JOURNAL_ENTRY,
-        voucherNo: `ADJ-${adjustment.id}`,
-        date: adjustment.date,
-        description: `Inventory adjustment ${adjustment.id} (${adjustment.reason})`,
-        currency: '',
-        exchangeRate: 1,
-        lines: voucherLines,
-        metadata: {
-          sourceModule: 'inventory',
-          referenceType: 'STOCK_ADJUSTMENT',
-          referenceId: adjustment.id,
-          adjustmentId: adjustment.id,
-          adjustmentReason: adjustment.reason,
-          adjustmentValueBase: computedAmountBase,
-        },
-        createdBy: userId,
-        postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-        reference: adjustment.id,
-        baseCurrencyOverride,
-      }, transaction);
+      const voucher = await postFinancialEvent(
+        { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+        {
+          kind: 'STOCK_ADJUSTMENT',
+          transaction,
+          subledgerVoucher: {
+            companyId,
+            voucherType: VoucherType.JOURNAL_ENTRY,
+            voucherNo: `ADJ-${adjustment.id}`,
+            date: adjustment.date,
+            description: `Inventory adjustment ${adjustment.id} (${adjustment.reason})`,
+            currency: '',
+            exchangeRate: 1,
+            lines: voucherLines,
+            metadata: {
+              sourceModule: 'inventory',
+              referenceType: 'STOCK_ADJUSTMENT',
+              referenceId: adjustment.id,
+              adjustmentId: adjustment.id,
+              adjustmentReason: adjustment.reason,
+              adjustmentValueBase: computedAmountBase,
+            },
+            createdBy: userId,
+            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+            reference: adjustment.id,
+            baseCurrencyOverride,
+          },
+        }
+      );
 
-      return voucher.id;
+      return voucher ? voucher.id : null;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(

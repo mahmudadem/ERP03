@@ -68,6 +68,8 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { PurchaseDTOMapper } from '../../dtos/PurchaseDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { IAccountingBridge } from '../../../application/system-core/contracts/IAccountingBridge';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
 import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import {
@@ -193,6 +195,18 @@ export class PurchaseController {
       undefined,
       undefined,
       diContainer.policyRegistry as any
+    );
+  }
+
+  /**
+   * FUP-3: wrap the same-config posting service in the accounting bridge so purchase GL postings get
+   * the full-vs-minimal decision (no GL voucher when the Accounting App is disabled).
+   */
+  private static buildAccountingBridge(validateAccounts: boolean = false): IAccountingBridge {
+    return new LegacyAccountingBridgeAdapter(
+      PurchaseController.buildAccountingPostingService(validateAccounts),
+      diContainer.companyModuleRepository,
+      diContainer.postingLogRepository
     );
   }
 
@@ -578,7 +592,8 @@ export class PurchaseController {
         diContainer.companyModuleRepository,
         PurchaseController.buildAccountingPostingService(),
         diContainer.accountRepository,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        PurchaseController.buildAccountingBridge()
       );
 
       const grn = await useCase.execute(companyId, id);
@@ -749,7 +764,8 @@ export class PurchaseController {
         diContainer.ledgerRepository,
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase,
-        diContainer.numberingEngine
+        diContainer.numberingEngine,
+        PurchaseController.buildAccountingBridge(true)
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -888,7 +904,8 @@ export class PurchaseController {
       diContainer.ledgerRepository,
       diContainer.partyItemPriceRepository,
       undefined,
-      diContainer.numberingEngine
+      diContainer.numberingEngine,
+      PurchaseController.buildAccountingBridge(true)
     );
   }
 
@@ -1258,7 +1275,8 @@ export class PurchaseController {
         diContainer.accountRepository,
         diContainer.transactionManager,
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase
+        diContainer.recordSalesProfitLineFactsUseCase,
+        PurchaseController.buildAccountingBridge()
       );
 
       const pr = await useCase.execute(companyId, id);

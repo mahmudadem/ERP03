@@ -10,6 +10,12 @@ import {
   CreateSalesInvoiceUseCase,
 } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
 import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
+import { __setPromotionsEnabledForTest } from '../../../application/system-core/commercial/CommercialCore';
+
+// FUP-1: promotions are hard-gated OFF in production; this suite exercises the
+// auto-application path, so it explicitly opens the gate and resets it afterwards.
+beforeEach(() => __setPromotionsEnabledForTest(true));
+afterEach(() => __setPromotionsEnabledForTest(null));
 
 // ---------------------------------------------------------------------------
 // Test constants

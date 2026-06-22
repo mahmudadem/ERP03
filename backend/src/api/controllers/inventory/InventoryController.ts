@@ -78,6 +78,8 @@ import { InventoryValuationService } from '../../../application/inventory/servic
 import { InventoryAccountingModeLockService } from '../../../application/inventory/services/InventoryAccountingModeLockService';
 import { SimpleTradingCompanyInitializer } from '../../../application/onboarding/use-cases/SimpleTradingCompanyInitializer';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { IAccountingBridge } from '../../../application/system-core/contracts/IAccountingBridge';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
@@ -145,6 +147,19 @@ export class InventoryController {
       new VoucherValidationService(),
       undefined,
       diContainer.policyRegistry as any
+    );
+  }
+
+  /**
+   * FUP-3: wrap the posting service in the accounting bridge so inventory GL postings get the
+   * full-vs-minimal decision (no GL voucher when the Accounting App is disabled). Same posting-service
+   * config as buildAccountingPostingService, so full-mode behavior is unchanged.
+   */
+  private static buildAccountingBridge(): IAccountingBridge {
+    return new LegacyAccountingBridgeAdapter(
+      InventoryController.buildAccountingPostingService(),
+      diContainer.companyModuleRepository,
+      diContainer.postingLogRepository
     );
   }
 
@@ -1339,7 +1354,8 @@ export class InventoryController {
         diContainer.accountRepository,
         movementUseCase,
         accountingPostingService,
-        diContainer.transactionManager
+        diContainer.transactionManager,
+        InventoryController.buildAccountingBridge()
       );
 
       const document = await useCase.execute(companyId, (req as any).params.id, userId);
@@ -1445,7 +1461,8 @@ export class InventoryController {
         diContainer.transactionManager,
         diContainer.companyModuleRepository,
         accountingPostingService,
-        diContainer.inventorySettingsRepository
+        diContainer.inventorySettingsRepository,
+        InventoryController.buildAccountingBridge()
       );
 
       const adjustment = await useCase.execute(companyId, (req as any).params.id, userId);
@@ -1535,7 +1552,8 @@ export class InventoryController {
         diContainer.inventorySettingsRepository,
         diContainer.transactionManager,
         diContainer.companyModuleRepository,
-        accountingPostingService
+        accountingPostingService,
+        InventoryController.buildAccountingBridge()
       );
 
       const revaluation = await useCase.execute(companyId, (req as any).params.id, userId);
@@ -1595,7 +1613,8 @@ export class InventoryController {
       diContainer.transactionManager,
       diContainer.companyModuleRepository,
       diContainer.inventorySettingsRepository,
-      InventoryController.buildAccountingPostingService()
+      InventoryController.buildAccountingPostingService(),
+      InventoryController.buildAccountingBridge()
     );
   }
 

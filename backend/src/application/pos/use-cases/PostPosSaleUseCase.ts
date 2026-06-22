@@ -8,7 +8,7 @@ import { IInventorySettingsRepository } from '../../../repository/interfaces/inv
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
-import { IAccountingBridge, ICommercialCore, IInventoryCore, ITaxEngine } from '../../system-core';
+import { IAccountingBridge, ICommercialCore, IInventoryCore, ITaxEngine, arePromotionsEnabledInProduction } from '../../system-core';
 import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
 import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
@@ -419,6 +419,9 @@ export class PostPosSaleUseCase {
     input: PostPosSaleInput,
     itemMap: Map<string, Item>
   ): Promise<PostPosSaleLineInput[]> {
+    // FUP-1 hard gate: promotions stay dormant in production until the
+    // stacking/cap model lands, regardless of wired reader or stored rules.
+    if (!arePromotionsEnabledInProduction()) return input.lines;
     if (!this.commercialCore || !this.promotionRuleReader) return input.lines;
     if (input.lines.some((line) => line.appliedPromotionId)) return input.lines;
 

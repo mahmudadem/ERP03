@@ -1,4 +1,5 @@
 import { roundMoney } from '../../../application/system-core/money/roundMoney';
+import { resolveLineDiscountAmount } from '../../../application/system-core/commercial/CommercialCore';
 export type SOStatus =
   | 'DRAFT'
   | 'CONFIRMED'
@@ -106,16 +107,11 @@ const calculateSODiscountAmountDoc = (
   discountValue: number,
   explicitDiscountAmountDoc: number | undefined,
 ): number => {
-  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
-    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
-  }
-  if (discountType === 'PERCENT') {
-    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
-  }
-  if (discountType === 'AMOUNT') {
-    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
-  }
-  return 0;
+  return resolveLineDiscountAmount(grossLineTotalDoc, {
+    discountType,
+    discountValue,
+    explicitDiscountAmount: explicitDiscountAmountDoc,
+  });
 };
 
 const toDate = (value: any): Date => {

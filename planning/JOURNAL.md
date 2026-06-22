@@ -2,6 +2,18 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-22 (Containment-audit follow-ups — FUP-1..4 + approval item-4, all green before resuming POS)
+
+- **Context:** After the Epic-250 containment audit, the owner directed "fix both / all must be clean before continuing the POS module." Closed the open post-epic follow-ups in risk order, behavior-preserving throughout.
+- **FUP-1 (promotion gate) — HARDENED:** replaced the "no rules exist" assumption with a real hard gate `arePromotionsEnabledInProduction()` in `CommercialCore.ts` (defaults OFF; `ERP_PROMOTIONS_ENABLED=true` to flip), checked at all 3 production apply sites (POS sale, direct-SI, SO). Pure evaluator stays callable for tests. +gate-OFF proof tests.
+- **FUP-2 (commercial discount math) — DONE:** centralised SI/PI/SO/PO/SR/PR line discount/amount on `resolveLineDiscountAmount` in `CommercialCore`; all six domain entities delegate. Golden totals unchanged; +1 test.
+- **FUP-4 (stock-OUT behind Inventory Core) — DONE:** extracted Sales' inline OUT/return costing to `computeStockOutMovement`/`computeStockReturnInMovement` in `InventoryIntegrationContracts`; Sales/Delivery/Return no longer construct `StockMovement`/`StockLevel`; added an architecture guard forbidding those constructions in `application/sales`.
+- **Approval item-4 — DONE:** voucher-posting approval *requirement* decision routed through `IApprovalEngine` in `SubledgerVoucherPostingService` (optional engine param; falls back to inline config). Proven equivalent to the legacy formula; +4 parity tests.
+- **FUP-3 (posters behind IAccountingBridge) — DONE for document vouchers:** added shared `postFinancialEvent` + bridged `SubledgerDocumentPoster`; wired & activated **all 10 document posters** through `IAccountingBridge` (DeliveryNote, GoodsReceipt, PurchaseReturn, StockAdjustment, StockTransfer, OpeningStock, InventoryRevaluation, **and now SI/PI/SR** via their controllers — `accountingBridge` is the last ctor param, matched to each site's `validateAccounts` flag). Full mode is byte-identical (golden Dr/Cr parity tests added to `SubledgerDocumentPoster.test.ts`); minimal mode (Accounting App disabled) posts no GL voucher, only a `PostingLog`. **Carved out as FUP-5:** settlement/payment `PostingGateway`-direct paths (SI/PI settlement receipts, PaymentSync) — needs a bridge-API design decision, not a wiring task.
+- **Accounting/ERP impact:** behavior-preserving for accounting-enabled tenants (the normal case) — identical vouchers. The only intended delta: accounting-App-*disabled* tenants now get minimal-journal mode for SI/PI/SR document vouchers (no GL voucher), which is the whole point of the bridge. Pre-alpha, no production data, so safe.
+- **Verification:** backend typecheck ✅, full suite **1626 passed / 18 skipped / 0 failed** (+3 vs prior — new bridge parity tests), backend build ✅, frontend typecheck ✅.
+- **Next:** POS module work is unblocked and the tree is green. FUP-5 (settlement bridging) is the only open thread — scoped in `planning/tasks/` for a future session.
+
 ### Session: 2026-06-21 (Post-engine-merge: restore pre-engine WIP — "Bucket B")
 
 - **Context:** Epic 250 (System Core engines) merged to `main` via PR #34. The pre-engine uncommitted working-tree WIP was backed up to branch `wip/pre-engine-pos-qa` (pushed) before updating `main`.

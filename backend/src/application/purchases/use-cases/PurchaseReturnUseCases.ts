@@ -43,6 +43,8 @@ import {
   PartyItemPriceUpsertInput,
 } from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
@@ -495,7 +497,8 @@ export class PostPurchaseReturnUseCase {
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
+    private readonly accountingBridge?: IAccountingBridge
   ) {}
 
 async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<PurchaseReturn> {
@@ -1090,30 +1093,34 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         }
 
         if (shouldPostAccounting) {
-          const voucher = await this.accountingPostingService.postInTransaction(
+          const voucher = await postFinancialEvent(
+            { bridge: this.accountingBridge, postingService: this.accountingPostingService },
             {
-              companyId,
-              voucherType: VoucherType.PURCHASE_RETURN,
-              voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
-              date: purchaseReturn.returnDate,
-              description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
-              currency: purchaseReturn.currency,
-              exchangeRate: purchaseReturn.exchangeRate,
-              lines: voucherLines,
-              metadata: {
-                sourceModule: 'purchases',
-                sourceType: 'PURCHASE_RETURN',
-                sourceId: purchaseReturn.id,
-                originType: 'purchase_return',
+              kind: 'PURCHASE_RETURN',
+              transaction,
+              subledgerVoucher: {
+                companyId,
+                voucherType: VoucherType.PURCHASE_RETURN,
+                voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
+                date: purchaseReturn.returnDate,
+                description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
+                currency: purchaseReturn.currency,
+                exchangeRate: purchaseReturn.exchangeRate,
+                lines: voucherLines,
+                metadata: {
+                  sourceModule: 'purchases',
+                  sourceType: 'PURCHASE_RETURN',
+                  sourceId: purchaseReturn.id,
+                  originType: 'purchase_return',
+                },
+                createdBy: purchaseReturn.createdBy,
+                postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
+                reference: purchaseReturn.returnNumber,
+                baseCurrencyOverride: resolvedBaseCurrency,
               },
-              createdBy: purchaseReturn.createdBy,
-              postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
-              reference: purchaseReturn.returnNumber,
-              baseCurrencyOverride: resolvedBaseCurrency,
-            },
-            transaction
+            }
           );
-          purchaseReturn.voucherId = voucher.id;
+          purchaseReturn.voucherId = voucher ? voucher.id : null;
         }
 
         if (isAfterInvoice) {
@@ -1143,30 +1150,34 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         });
 
         if (shouldPostAccounting) {
-          const voucher = await this.accountingPostingService.postInTransaction(
+          const voucher = await postFinancialEvent(
+            { bridge: this.accountingBridge, postingService: this.accountingPostingService },
             {
-              companyId,
-              voucherType: VoucherType.PURCHASE_RETURN,
-              voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
-              date: purchaseReturn.returnDate,
-              description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
-              currency: purchaseReturn.currency,
-              exchangeRate: purchaseReturn.exchangeRate,
-              lines: voucherLines,
-              metadata: {
-                sourceModule: 'purchases',
-                sourceType: 'PURCHASE_RETURN',
-                sourceId: purchaseReturn.id,
-                originType: 'purchase_return',
+              kind: 'PURCHASE_RETURN',
+              transaction,
+              subledgerVoucher: {
+                companyId,
+                voucherType: VoucherType.PURCHASE_RETURN,
+                voucherNo: `RET-VCH-${purchaseReturn.returnNumber}`,
+                date: purchaseReturn.returnDate,
+                description: `Purchase Return: ${purchaseReturn.returnNumber} - ${purchaseReturn.vendorName}`,
+                currency: purchaseReturn.currency,
+                exchangeRate: purchaseReturn.exchangeRate,
+                lines: voucherLines,
+                metadata: {
+                  sourceModule: 'purchases',
+                  sourceType: 'PURCHASE_RETURN',
+                  sourceId: purchaseReturn.id,
+                  originType: 'purchase_return',
+                },
+                createdBy: purchaseReturn.createdBy,
+                postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
+                reference: purchaseReturn.returnNumber,
+                baseCurrencyOverride: resolvedBaseCurrency,
               },
-              createdBy: purchaseReturn.createdBy,
-              postingLockPolicy: PostingLockPolicy.STRICT_LOCKED,
-              reference: purchaseReturn.returnNumber,
-              baseCurrencyOverride: resolvedBaseCurrency,
-            },
-            transaction
+            }
           );
-          purchaseReturn.voucherId = voucher.id;
+          purchaseReturn.voucherId = voucher ? voucher.id : null;
         }
       } else {
         purchaseReturn.voucherId = null;

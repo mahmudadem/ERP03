@@ -36,11 +36,12 @@
   1. **Wrap-up docs:** ✅ done — `docs/architecture/system-core.md`, `module-boundaries.md` (new), `pos-independence.md` all exist. §N test coverage verified present + green (dedicated engine tests for Money/Tax/Numbering/Approval/Commercial/AccountingBridge + `SystemCoreBoundaries`/`PolicyEnginePosPolicy`/POS persona+independence tests; full suite 1616 green).
   2. **Merge to `main`** (owner approval) — and reconcile the **uncommitted POS QA WIP still sitting on `main`** that we branched away from.
   3. **Resume POS feature work** (the original goal) on top of the now-correct engines.
-- **Named follow-ups (post-epic hardening, none blocking the merge except FUP-1's production gate):**
-  - **FUP-1 (gating):** Promotion stacking/cap model (maxDiscount, exclusive, best-selection, appliesBeforeTax/After, promoted-return) before enabling POS/Sales promotion application in production. POS promotions are default-dormant until then.
-  - **FUP-2:** Commercial Core for SO/PO/SR/PR (they still use local pricing/discount helpers).
-  - **FUP-3:** Route Sales/Purchases/Inventory posters behind `IAccountingBridge` (currently only POS + the bridge default).
-  - **FUP-4 (from 250j):** Move stock-OUT orchestration behind `IInventoryCore` so Sales drops `Item`/`StockLevel`/`StockMovement` imports.
+- **Named follow-ups (post-epic hardening) — status after the 2026-06-22 containment-audit fix pass:**
+  - **FUP-1 (gating) — ✅ HARDENED.** Promotions are now blocked in production by a real hard gate, not just "no rules exist": `arePromotionsEnabledInProduction()` in `CommercialCore.ts` defaults OFF (`ERP_PROMOTIONS_ENABLED=true` to flip) and is checked at all 3 production apply sites (`PostPosSaleUseCase.applyPromotions`, direct-SI, SO). Still must NOT flip ON until the stacking/cap model (maxDiscount, exclusive, best-selection, appliesBeforeTax/After, promoted-return) lands and is audited.
+  - **FUP-2 — ✅ DONE.** SI/PI/SO/PO/SR/PR line discount/amount math is centralised on `resolveLineDiscountAmount` in `CommercialCore`; all six document entities delegate. Golden totals unchanged; +1 test.
+  - **FUP-3 — ✅ DONE (document vouchers) / 🔜 FUP-5 (settlement).** All 10 document posters now route through `IAccountingBridge` (full-vs-minimal decision) and are **active in production**: DeliveryNote, GoodsReceipt, PurchaseReturn, StockAdjustment, StockTransfer, OpeningStock, InventoryRevaluation, **and now SI/PI/SR** (controllers wired 2026-06-22; byte-identical full-mode posting proven by golden Dr/Cr parity tests in `SubledgerDocumentPoster.test.ts`). **Remaining → FUP-5:** the settlement/payment **gateway-direct** postings (SI/PI settlement receipts, PaymentSync) still post via `PostingGateway` directly; routing them needs a bridge-API design decision (accept a pre-built `VoucherEntity`, or refactor settlement to the subledger-input shape) — not a wiring task.
+  - **FUP-4 (from 250j) — ✅ DONE.** Stock-OUT/return costing extracted to inventory core (`computeStockOutMovement`/`computeStockReturnInMovement`); Sales no longer constructs `StockMovement`/`StockLevel`; architecture guard added.
+  - **Approval item-4 — ✅ DONE.** Voucher-posting approval requirement routed through `IApprovalEngine` in `SubledgerVoucherPostingService`; proven equivalent to the legacy config formula (+4 parity tests).
 - **Estimate:** ~3–5 weeks of execution + CTO audit between phases.
 
 ---

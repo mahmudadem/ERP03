@@ -6,6 +6,7 @@ import {
 } from '../../../application/accounting/services/SubledgerDocumentPoster';
 import { VoucherType, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import { IAccountingBridge } from '../../../application/system-core/contracts/IAccountingBridge';
 
 /** Minimal plan builder so each test only states what it cares about. */
 function makePlan(entries: SubledgerPostingEntry[], overrides: Partial<SubledgerPostingPlan> = {}): SubledgerPostingPlan {
@@ -176,5 +177,76 @@ describe('SubledgerDocumentPoster.post (Task 178 Stage A)', () => {
       ]))
     ).rejects.toBeInstanceOf(AccountMappingError);
     expect(calls).toHaveLength(0); // nothing posted
+  });
+});
+
+/**
+ * FUP-3: when a bridge is injected the poster routes the SAME assembled input through
+ * the accounting bridge (full-vs-minimal decision) instead of posting directly. These
+ * golden Dr/Cr parity tests prove (a) the bridge receives byte-for-byte the same voucher
+ * the direct path would, and (b) minimal mode posts no GL voucher.
+ */
+describe('SubledgerDocumentPoster.post — FUP-3 bridge routing', () => {
+  const plan = makePlan([debit('inv-acct', 100), credit('ap-acct', 100)], {
+    approved: true,
+    postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+    metadata: { sourceModule: 'purchases', sourceType: 'PURCHASE_INVOICE', sourceId: 'pi_1' },
+    reference: 'PI-1',
+  });
+  const transaction = { id: 'tx_1' };
+
+  it('full mode: bridge posts the identical voucher the direct path would, and returns its id', async () => {
+    // Capture what the DIRECT (no-bridge) path would send.
+    const directCalls: any[] = [];
+    const directService: ISubledgerPostingService = {
+      async postInTransaction(input) { directCalls.push(input); return { id: 'direct-v' }; },
+    };
+    await new SubledgerDocumentPoster(directService).post(plan, transaction);
+
+    // Now route the same plan through a bridge in FULL mode.
+    const bridgeCalls: any[] = [];
+    const bridge: IAccountingBridge = {
+      async recordFinancialEvent(ev) {
+        bridgeCalls.push(ev);
+        return { mode: 'full', voucher: { id: 'bridged-v' } } as any;
+      },
+    };
+    const result = await new SubledgerDocumentPoster({} as ISubledgerPostingService, bridge).post(plan, transaction);
+
+    expect(result).toEqual({ id: 'bridged-v' });
+    expect(bridgeCalls).toHaveLength(1);
+    expect(bridgeCalls[0].kind).toBe(String(VoucherType.PURCHASE_INVOICE));
+    expect(bridgeCalls[0].transaction).toBe(transaction);
+    // Golden parity: the voucher handed to the bridge equals the one the direct path posts.
+    expect(bridgeCalls[0].subledgerVoucher).toEqual(directCalls[0]);
+    // And the assembled lines are the balanced Dr/Cr pair.
+    expect(bridgeCalls[0].subledgerVoucher.lines).toEqual([
+      expect.objectContaining({ accountId: 'inv-acct', side: 'Debit', baseAmount: 100, docAmount: 100 }),
+      expect.objectContaining({ accountId: 'ap-acct', side: 'Credit', baseAmount: 100, docAmount: 100 }),
+    ]);
+  });
+
+  it('minimal mode: bridge records the event, poster returns null (no GL voucher)', async () => {
+    const bridge: IAccountingBridge = {
+      async recordFinancialEvent() {
+        return { mode: 'minimal', voucher: null, eventLogId: 'fj_x' } as any;
+      },
+    };
+    const result = await new SubledgerDocumentPoster({} as ISubledgerPostingService, bridge).post(plan, transaction);
+    expect(result).toBeNull();
+  });
+
+  it('still raises AccountMappingError before reaching the bridge when an account is missing', async () => {
+    const recordFinancialEvent = jest.fn();
+    const bridge: IAccountingBridge = { recordFinancialEvent } as any;
+    await expect(
+      new SubledgerDocumentPoster({} as ISubledgerPostingService, bridge).post(
+        makePlan([
+          { role: 'tax', accountId: undefined, side: 'Debit', baseAmount: 10, docAmount: 10 },
+          credit('ap-acct', 10),
+        ])
+      )
+    ).rejects.toBeInstanceOf(AccountMappingError);
+    expect(recordFinancialEvent).not.toHaveBeenCalled();
   });
 });

@@ -1,4 +1,5 @@
 import { roundMoney } from '../../../application/system-core/money/roundMoney';
+import { resolveLineDiscountAmount } from '../../../application/system-core/commercial/CommercialCore';
 export type PRStatus = 'DRAFT' | 'POSTED' | 'CANCELLED';
 export type ReturnContext = 'AFTER_INVOICE' | 'BEFORE_INVOICE' | 'DIRECT';
 export type PurchaseReturnDiscountType = 'PERCENT' | 'AMOUNT';
@@ -89,16 +90,11 @@ const calculatePRDiscountAmountDoc = (
   discountValue: number,
   explicitDiscountAmountDoc: number | undefined,
 ): number => {
-  if (explicitDiscountAmountDoc !== undefined && !Number.isNaN(explicitDiscountAmountDoc)) {
-    return roundMoney(Math.max(0, Math.min(explicitDiscountAmountDoc, grossLineTotalDoc)));
-  }
-  if (discountType === 'PERCENT') {
-    return roundMoney(Math.max(0, Math.min(grossLineTotalDoc, grossLineTotalDoc * (discountValue / 100))));
-  }
-  if (discountType === 'AMOUNT') {
-    return roundMoney(Math.max(0, Math.min(discountValue, grossLineTotalDoc)));
-  }
-  return 0;
+  return resolveLineDiscountAmount(grossLineTotalDoc, {
+    discountType,
+    discountValue,
+    explicitDiscountAmount: explicitDiscountAmountDoc,
+  });
 };
 
 const toDate = (value: any): Date => {

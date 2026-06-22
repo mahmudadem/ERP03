@@ -47,6 +47,7 @@ import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
   ItemQtyToBaseUomResult,
   convertItemQtyToBaseUomDetailed,
@@ -545,7 +546,8 @@ export class PostPurchaseInvoiceUseCase {
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
-    private readonly numberingEngine?: INumberingEngine
+    private readonly numberingEngine?: INumberingEngine,
+    private readonly accountingBridge?: IAccountingBridge
   ) {
     this.accountRepo = accountRepo;
   }
@@ -1019,7 +1021,7 @@ export class PostPurchaseInvoiceUseCase {
         });
 
         if (shouldPostAccounting) {
-          const poster = new SubledgerDocumentPoster(this.accountingPostingService);
+          const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
           const voucher = await poster.post(
             {
               companyId,
@@ -1044,7 +1046,7 @@ export class PostPurchaseInvoiceUseCase {
             transaction
           );
 
-          pi.voucherId = voucher.id;
+          pi.voucherId = voucher ? voucher.id : null;
         }
 
         // --- Process settlements inside the same transaction (atomic) ---

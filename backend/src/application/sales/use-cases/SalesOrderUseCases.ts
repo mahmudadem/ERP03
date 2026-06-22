@@ -21,6 +21,7 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
 import { CreditCheckResult, CreditCheckService } from '../services/CreditCheckService';
 import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { arePromotionsEnabledInProduction } from '../../system-core';
 import { IPromotionRuleRepository } from '../../../repository/interfaces/sales/IPromotionRuleRepository';
 
 
@@ -259,7 +260,9 @@ export class CreateSalesOrderUseCase {
       input.skipPromotions === true ||
       so.lines.some((l) => (l as any).appliedPromotionId);
 
-    if (this.promotionRuleRepo && !userAlreadyDecided) {
+    // FUP-1 hard gate: promotions stay dormant in production until the
+    // stacking/cap model lands, even if ACTIVE rules exist in the repo.
+    if (this.promotionRuleRepo && !userAlreadyDecided && arePromotionsEnabledInProduction()) {
       const rules = await this.promotionRuleRepo.list(input.companyId);
       if (rules.length > 0) {
         const promotionService = new PromotionApplicationService();
