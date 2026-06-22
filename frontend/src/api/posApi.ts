@@ -14,6 +14,26 @@ export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' |
 export type PosHeldCartStatus = 'HELD' | 'RECALLED' | 'CANCELLED';
 export type PosManagerOverrideAction = 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE' | 'RETURN' | 'REPRINT';
 export type PosShiftPaymentTotals = Record<PosPaymentMethodCode, number>;
+export type PosLayoutScopeType = 'COMPANY' | 'BRANCH' | 'REGISTER' | 'USER';
+export type PosProductShortcutNodeType = 'GROUP' | 'ITEM';
+export type PosControlButtonZone = 'TOP_BAR' | 'RIGHT_PANEL' | 'CART_FOOTER' | 'BOTTOM_BAR' | 'MORE_MENU';
+export type PosCommandCode =
+  | 'CUSTOMER_LOOKUP'
+  | 'PRINT_RECEIPT'
+  | 'REPRINT_LAST_RECEIPT'
+  | 'HOLD_SALE'
+  | 'RECALL_SALE'
+  | 'CLEAR_CART'
+  | 'VOID_LINE'
+  | 'VOID_TICKET'
+  | 'APPLY_DISCOUNT'
+  | 'PRICE_CHECK'
+  | 'CASH_PAYMENT'
+  | 'CARD_PAYMENT'
+  | 'SPLIT_PAYMENT'
+  | 'OPEN_CASH_DRAWER'
+  | 'RETURN_REFUND'
+  | 'END_SHIFT';
 
 export interface PosCashierRolePolicyDTO {
   roleId: string;
@@ -145,6 +165,86 @@ export interface PosManagerOverrideDTO {
   reason: string;
 }
 
+export interface PosLayoutDTO {
+  id: string;
+  companyId: string;
+  name: string;
+  scopeType: PosLayoutScopeType;
+  scopeId?: string | null;
+  isDefault: boolean;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PosProductShortcutNodeDTO {
+  id: string;
+  companyId: string;
+  layoutId: string;
+  parentId?: string | null;
+  nodeType: PosProductShortcutNodeType;
+  label: string;
+  secondaryLabel?: string | null;
+  itemId?: string | null;
+  variantId?: string | null;
+  unitId?: string | null;
+  predefinedQty?: number | null;
+  sortOrder: number;
+  isActive: boolean;
+  color?: string | null;
+  icon?: string | null;
+  imageUrl?: string | null;
+  item?: any | null;
+  children?: PosProductShortcutNodeDTO[];
+}
+
+export interface PosControlButtonDTO {
+  id: string;
+  companyId: string;
+  layoutId: string;
+  zone: PosControlButtonZone;
+  commandCode: PosCommandCode;
+  label: string;
+  secondaryLabel?: string | null;
+  icon?: string | null;
+  color?: string | null;
+  sortOrder: number;
+  isVisible: boolean;
+  isActive: boolean;
+  requiredPermission?: string | null;
+}
+
+export interface PosCommandDefinitionDTO {
+  code: PosCommandCode;
+  defaultLabel: string;
+  defaultIcon?: string;
+  requiredPermission?: string;
+  requiresActiveRegister?: boolean;
+  requiresActiveShift?: boolean;
+  requiresActiveCart?: boolean;
+  executionMode: 'FRONTEND_UI' | 'BACKEND_COMMAND';
+}
+
+export interface PosRuntimeLayoutDTO {
+  productShortcutLayout: Pick<PosLayoutDTO, 'id' | 'name' | 'scopeType' | 'scopeId'> | null;
+  productShortcutTree: PosProductShortcutNodeDTO[];
+  controlButtonLayout: Pick<PosLayoutDTO, 'id' | 'name' | 'scopeType' | 'scopeId'> | null;
+  controlButtonsByZone: Record<PosControlButtonZone, PosControlButtonDTO[]>;
+}
+
+export interface PosReceiptPrintPayloadDTO {
+  receipt: any;
+  payments: any[];
+  printTemplate?: {
+    id?: string;
+    name: string;
+    documentType: 'POS_RECEIPT';
+    isDefault: boolean;
+    source: 'SAVED_TEMPLATE' | 'GENERATED_DEFAULT';
+    layout: any;
+  };
+}
+
 // The global response interceptor (setupErrorInterceptor) already unwraps the
 // `{ success, data }` envelope and resolves to the bare payload, so `r` is
 // usually ALREADY the DTO. The three-level fallback mirrors every other api
@@ -208,6 +308,63 @@ export const posApi = {
   // ===== Sale / Receipts =====
   getBootstrap: async (params: { registerId?: string; cashierUserId?: string }): Promise<any> =>
     ok(client.get('/tenant/pos/bootstrap', { params })),
+
+  getRuntimeLayout: async (params: { branchId?: string; registerId?: string }): Promise<PosRuntimeLayoutDTO> =>
+    ok(client.get('/tenant/pos/layout/runtime', { params })),
+
+  listCommands: async (): Promise<PosCommandDefinitionDTO[]> =>
+    ok(client.get('/tenant/pos/commands')),
+
+  executeCommand: async (payload: { commandCode: PosCommandCode; context: Record<string, unknown> }): Promise<any> =>
+    ok(client.post('/tenant/pos/commands/execute', payload)),
+
+  listProductShortcutLayouts: async (): Promise<PosLayoutDTO[]> =>
+    ok(client.get('/tenant/pos/product-shortcut-layouts')),
+
+  createProductShortcutLayout: async (payload: Partial<PosLayoutDTO>): Promise<PosLayoutDTO> =>
+    ok(client.post('/tenant/pos/product-shortcut-layouts', payload)),
+
+  updateProductShortcutLayout: async (id: string, payload: Partial<PosLayoutDTO>): Promise<PosLayoutDTO> =>
+    ok(client.patch(`/tenant/pos/product-shortcut-layouts/${encodeURIComponent(id)}`, payload)),
+
+  deleteProductShortcutLayout: async (id: string): Promise<void> =>
+    ok(client.delete(`/tenant/pos/product-shortcut-layouts/${encodeURIComponent(id)}`)),
+
+  listProductShortcutNodes: async (layoutId: string): Promise<PosProductShortcutNodeDTO[]> =>
+    ok(client.get(`/tenant/pos/product-shortcut-layouts/${encodeURIComponent(layoutId)}/nodes`)),
+
+  createProductShortcutNode: async (layoutId: string, payload: Partial<PosProductShortcutNodeDTO>): Promise<PosProductShortcutNodeDTO> =>
+    ok(client.post(`/tenant/pos/product-shortcut-layouts/${encodeURIComponent(layoutId)}/nodes`, payload)),
+
+  updateProductShortcutNode: async (id: string, payload: Partial<PosProductShortcutNodeDTO>): Promise<PosProductShortcutNodeDTO> =>
+    ok(client.patch(`/tenant/pos/product-shortcut-nodes/${encodeURIComponent(id)}`, payload)),
+
+  deleteProductShortcutNode: async (id: string): Promise<void> =>
+    ok(client.delete(`/tenant/pos/product-shortcut-nodes/${encodeURIComponent(id)}`)),
+
+  listControlButtonLayouts: async (): Promise<PosLayoutDTO[]> =>
+    ok(client.get('/tenant/pos/control-button-layouts')),
+
+  createControlButtonLayout: async (payload: Partial<PosLayoutDTO>): Promise<PosLayoutDTO> =>
+    ok(client.post('/tenant/pos/control-button-layouts', payload)),
+
+  updateControlButtonLayout: async (id: string, payload: Partial<PosLayoutDTO>): Promise<PosLayoutDTO> =>
+    ok(client.patch(`/tenant/pos/control-button-layouts/${encodeURIComponent(id)}`, payload)),
+
+  deleteControlButtonLayout: async (id: string): Promise<void> =>
+    ok(client.delete(`/tenant/pos/control-button-layouts/${encodeURIComponent(id)}`)),
+
+  listControlButtons: async (layoutId: string): Promise<PosControlButtonDTO[]> =>
+    ok(client.get(`/tenant/pos/control-button-layouts/${encodeURIComponent(layoutId)}/buttons`)),
+
+  createControlButton: async (layoutId: string, payload: Partial<PosControlButtonDTO>): Promise<PosControlButtonDTO> =>
+    ok(client.post(`/tenant/pos/control-button-layouts/${encodeURIComponent(layoutId)}/buttons`, payload)),
+
+  updateControlButton: async (id: string, payload: Partial<PosControlButtonDTO>): Promise<PosControlButtonDTO> =>
+    ok(client.patch(`/tenant/pos/control-buttons/${encodeURIComponent(id)}`, payload)),
+
+  deleteControlButton: async (id: string): Promise<void> =>
+    ok(client.delete(`/tenant/pos/control-buttons/${encodeURIComponent(id)}`)),
 
   searchProducts: async (q: string, limit = 25): Promise<{ items: any[] }> =>
     ok(client.get('/tenant/pos/products/search', { params: { q, limit } })),
@@ -281,10 +438,13 @@ export const posApi = {
   listReceipts: async (params?: { shiftId?: string; registerId?: string; customerId?: string; limit?: number }): Promise<any[]> =>
     ok(client.get('/tenant/pos/receipts', { params: params || {} })),
 
-  getReceipt: async (id: string): Promise<{ receipt: any; payments: any[] }> =>
+  getReceipt: async (id: string): Promise<PosReceiptPrintPayloadDTO> =>
     ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}`)),
 
-  reprintReceipt: async (id: string, params?: { managerOverrideId?: string; reason?: string }): Promise<{ receipt: any; payments: any[] }> =>
+  printReceipt: async (id: string): Promise<PosReceiptPrintPayloadDTO> =>
+    ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}/print`)),
+
+  reprintReceipt: async (id: string, params?: { managerOverrideId?: string; reason?: string }): Promise<PosReceiptPrintPayloadDTO> =>
     ok(client.get(`/tenant/pos/receipts/${encodeURIComponent(id)}/reprint`, { params: params || {} })),
 
   createManagerOverride: async (payload: {

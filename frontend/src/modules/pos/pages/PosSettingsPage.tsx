@@ -10,7 +10,19 @@ import { ModuleSettingsLayout } from '../../../components/shared/ModuleSettingsL
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { AccountSelector } from '../../../modules/accounting/components/shared/AccountSelector';
 import { listRoles, CompanyRole } from '../../../api/companyAdmin';
-import { posApi, PosSettingsDTO, PosPaymentMethodDTO, PosPaymentMethodCode, PosPolicyDTO, PosCashierRolePolicyDTO, PosManagerOverrideAction } from '../../../api/posApi';
+import {
+  posApi,
+  PosCommandDefinitionDTO,
+  PosControlButtonDTO,
+  PosLayoutDTO,
+  PosPaymentMethodCode,
+  PosPaymentMethodDTO,
+  PosPolicyDTO,
+  PosProductShortcutNodeDTO,
+  PosSettingsDTO,
+  PosCashierRolePolicyDTO,
+  PosManagerOverrideAction,
+} from '../../../api/posApi';
 import { errorHandler } from '../../../services/errorHandler';
 import { Info, Save, Shield, ShieldCheck, UserCog } from 'lucide-react';
 
@@ -39,6 +51,17 @@ const PosSettingsPage: React.FC<Props> = () => {
   const [activeTab, setActiveTab] = useState<string>('general');
   const [showAllowDirectConfirm, setShowAllowDirectConfirm] = useState(false);
   const [pendingAllowDirect, setPendingAllowDirect] = useState<boolean | null>(null);
+  const [productLayouts, setProductLayouts] = useState<PosLayoutDTO[]>([]);
+  const [controlLayouts, setControlLayouts] = useState<PosLayoutDTO[]>([]);
+  const [selectedProductLayoutId, setSelectedProductLayoutId] = useState('');
+  const [selectedControlLayoutId, setSelectedControlLayoutId] = useState('');
+  const [productNodes, setProductNodes] = useState<PosProductShortcutNodeDTO[]>([]);
+  const [controlButtons, setControlButtons] = useState<PosControlButtonDTO[]>([]);
+  const [commands, setCommands] = useState<PosCommandDefinitionDTO[]>([]);
+  const [newProductLayoutName, setNewProductLayoutName] = useState('Default shortcuts');
+  const [newControlLayoutName, setNewControlLayoutName] = useState('Default controls');
+  const [newNode, setNewNode] = useState<Partial<PosProductShortcutNodeDTO>>({ nodeType: 'GROUP', label: '', sortOrder: 0, isActive: true });
+  const [newButton, setNewButton] = useState<Partial<PosControlButtonDTO>>({ zone: 'BOTTOM_BAR', commandCode: 'CASH_PAYMENT', label: '', sortOrder: 0, isActive: true, isVisible: true });
 
   const normalizeSettings = (data: PosSettingsDTO | null): PosSettingsDTO => {
     const base: PosSettingsDTO = data || {
@@ -105,6 +128,46 @@ const PosSettingsPage: React.FC<Props> = () => {
     };
     void load();
   }, []);
+
+  const reloadLayouts = async () => {
+    const [pl, cl, cmd] = await Promise.all([
+      posApi.listProductShortcutLayouts(),
+      posApi.listControlButtonLayouts(),
+      posApi.listCommands(),
+    ]);
+    setProductLayouts(pl);
+    setControlLayouts(cl);
+    setCommands(cmd);
+    setSelectedProductLayoutId((prev) => prev || pl[0]?.id || '');
+    setSelectedControlLayoutId((prev) => prev || cl[0]?.id || '');
+  };
+
+  useEffect(() => {
+    if (!settings) return;
+    void reloadLayouts().catch((err) => console.error('Failed to load POS layouts', err));
+  }, [settings?.companyId]);
+
+  useEffect(() => {
+    if (!selectedProductLayoutId) {
+      setProductNodes([]);
+      return;
+    }
+    posApi
+      .listProductShortcutNodes(selectedProductLayoutId)
+      .then(setProductNodes)
+      .catch((err) => console.error('Failed to load product shortcut nodes', err));
+  }, [selectedProductLayoutId]);
+
+  useEffect(() => {
+    if (!selectedControlLayoutId) {
+      setControlButtons([]);
+      return;
+    }
+    posApi
+      .listControlButtons(selectedControlLayoutId)
+      .then(setControlButtons)
+      .catch((err) => console.error('Failed to load POS control buttons', err));
+  }, [selectedControlLayoutId]);
 
   const update = <K extends keyof PosSettingsDTO>(field: K, value: PosSettingsDTO[K]) => {
     setSettings((prev) => (prev ? { ...prev, [field]: value } : prev));
@@ -191,6 +254,58 @@ const PosSettingsPage: React.FC<Props> = () => {
     }
   };
 
+  const createProductLayout = async () => {
+    const layout = await posApi.createProductShortcutLayout({
+      name: newProductLayoutName || 'POS shortcuts',
+      scopeType: 'COMPANY',
+      isDefault: productLayouts.length === 0,
+      isActive: true,
+    });
+    setProductLayouts((prev) => [...prev, layout]);
+    setSelectedProductLayoutId(layout.id);
+    toast.success(t('pos.settings.layouts.created', { defaultValue: 'Layout created.' }));
+  };
+
+  const createControlLayout = async () => {
+    const layout = await posApi.createControlButtonLayout({
+      name: newControlLayoutName || 'POS controls',
+      scopeType: 'COMPANY',
+      isDefault: controlLayouts.length === 0,
+      isActive: true,
+    });
+    setControlLayouts((prev) => [...prev, layout]);
+    setSelectedControlLayoutId(layout.id);
+    toast.success(t('pos.settings.layouts.created', { defaultValue: 'Layout created.' }));
+  };
+
+  const saveProductNode = async () => {
+    if (!selectedProductLayoutId || !newNode.label) return;
+    const node = await posApi.createProductShortcutNode(selectedProductLayoutId, {
+      ...newNode,
+      sortOrder: Number(newNode.sortOrder) || 0,
+      isActive: newNode.isActive !== false,
+    });
+    setProductNodes((prev) => [...prev, node]);
+    setNewNode({ nodeType: 'GROUP', label: '', sortOrder: 0, isActive: true });
+    toast.success(t('pos.settings.layouts.nodeCreated', { defaultValue: 'Shortcut node created.' }));
+  };
+
+  const saveControlButton = async () => {
+    if (!selectedControlLayoutId || !newButton.commandCode) return;
+    const definition = commands.find((cmd) => cmd.code === newButton.commandCode);
+    const button = await posApi.createControlButton(selectedControlLayoutId, {
+      ...newButton,
+      label: newButton.label || definition?.defaultLabel || newButton.commandCode,
+      requiredPermission: newButton.requiredPermission || definition?.requiredPermission,
+      sortOrder: Number(newButton.sortOrder) || 0,
+      isActive: newButton.isActive !== false,
+      isVisible: newButton.isVisible !== false,
+    });
+    setControlButtons((prev) => [...prev, button]);
+    setNewButton({ zone: 'BOTTOM_BAR', commandCode: 'CASH_PAYMENT', label: '', sortOrder: 0, isActive: true, isVisible: true });
+    toast.success(t('pos.settings.layouts.buttonCreated', { defaultValue: 'Control button created.' }));
+  };
+
   if (loading) {
     return <div className="p-6 text-sm text-slate-500">{t('common.loading', { defaultValue: 'Loading…' })}</div>;
   }
@@ -203,6 +318,7 @@ const PosSettingsPage: React.FC<Props> = () => {
     { id: 'payments', label: t('pos.settings.paymentMethods.title', { defaultValue: 'Payment Methods' }), icon: Shield },
     { id: 'overShort', label: t('pos.settings.overShort.title', { defaultValue: 'Cash Over/Short' }), icon: ShieldCheck },
     { id: 'cashierPolicies', label: t('pos.settings.cashierPolicies.title', { defaultValue: 'Cashier Policies' }), icon: UserCog },
+    { id: 'layouts', label: t('pos.settings.layouts.title', { defaultValue: 'Layouts' }), icon: UserCog },
   ];
 
   return (
@@ -538,6 +654,201 @@ const PosSettingsPage: React.FC<Props> = () => {
               )}
             </div>
           </Card>
+        )}
+
+        {activeTab === 'layouts' && (
+          <div className="space-y-4">
+            <Card>
+              <div className="space-y-4 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                  <label className="flex-1 text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">
+                      {t('pos.settings.layouts.productLayoutName', { defaultValue: 'New product shortcut layout' })}
+                    </span>
+                    <input
+                      value={newProductLayoutName}
+                      onChange={(e) => setNewProductLayoutName(e.target.value)}
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <button type="button" onClick={createProductLayout} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">
+                    {t('common.create', { defaultValue: 'Create' })}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+                  <div>
+                    <label className="mb-1 block text-xs font-medium text-slate-500">
+                      {t('pos.settings.layouts.productLayouts', { defaultValue: 'Product shortcut layouts' })}
+                    </label>
+                    <select
+                      value={selectedProductLayoutId}
+                      onChange={(e) => setSelectedProductLayoutId(e.target.value)}
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    >
+                      <option value="">{t('common.select', { defaultValue: 'Select' })}</option>
+                      {productLayouts.map((layout) => (
+                        <option key={layout.id} value={layout.id}>{layout.name} ({layout.scopeType})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.nodeType', { defaultValue: 'Node type' })}</span>
+                    <select
+                      value={newNode.nodeType || 'GROUP'}
+                      onChange={(e) => setNewNode((prev) => ({ ...prev, nodeType: e.target.value as any, itemId: e.target.value === 'GROUP' ? '' : prev.itemId }))}
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    >
+                      <option value="GROUP">GROUP</option>
+                      <option value="ITEM">ITEM</option>
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.parent', { defaultValue: 'Parent group' })}</span>
+                    <select
+                      value={newNode.parentId || ''}
+                      onChange={(e) => setNewNode((prev) => ({ ...prev, parentId: e.target.value || null }))}
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    >
+                      <option value="">{t('pos.settings.layouts.root', { defaultValue: 'Root' })}</option>
+                      {productNodes.filter((node) => node.nodeType === 'GROUP').map((node) => (
+                        <option key={node.id} value={node.id}>{node.label}</option>
+                      ))}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('common.label', { defaultValue: 'Label' })}</span>
+                    <input value={newNode.label || ''} onChange={(e) => setNewNode((prev) => ({ ...prev, label: e.target.value }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.itemId', { defaultValue: 'Item ID' })}</span>
+                    <input disabled={newNode.nodeType !== 'ITEM'} value={newNode.itemId || ''} onChange={(e) => setNewNode((prev) => ({ ...prev, itemId: e.target.value }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm disabled:bg-slate-100" />
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.sortOrder', { defaultValue: 'Sort order' })}</span>
+                    <input type="number" value={newNode.sortOrder ?? 0} onChange={(e) => setNewNode((prev) => ({ ...prev, sortOrder: Number(e.target.value) || 0 }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+                  </label>
+                  <button type="button" onClick={saveProductNode} disabled={!selectedProductLayoutId || !newNode.label} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                    {t('pos.settings.layouts.addShortcut', { defaultValue: 'Add shortcut' })}
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs text-slate-500">
+                        <th className="px-2 py-2">Type</th>
+                        <th className="px-2 py-2">Label</th>
+                        <th className="px-2 py-2">Item</th>
+                        <th className="px-2 py-2">Sort</th>
+                        <th className="px-2 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {productNodes.map((node) => (
+                        <tr key={node.id} className="border-b">
+                          <td className="px-2 py-2 font-mono text-xs">{node.nodeType}</td>
+                          <td className="px-2 py-2">{node.label}</td>
+                          <td className="px-2 py-2 font-mono text-xs">{node.itemId || '-'}</td>
+                          <td className="px-2 py-2">{node.sortOrder}</td>
+                          <td className="px-2 py-2 text-right">
+                            <button type="button" onClick={async () => { await posApi.deleteProductShortcutNode(node.id); setProductNodes((prev) => prev.filter((n) => n.id !== node.id)); }} className="text-xs font-semibold text-rose-600">
+                              {t('common.delete', { defaultValue: 'Delete' })}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Card>
+
+            <Card>
+              <div className="space-y-4 p-4">
+                <div className="flex flex-col gap-3 md:flex-row md:items-end">
+                  <label className="flex-1 text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">
+                      {t('pos.settings.layouts.controlLayoutName', { defaultValue: 'New control button layout' })}
+                    </span>
+                    <input
+                      value={newControlLayoutName}
+                      onChange={(e) => setNewControlLayoutName(e.target.value)}
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    />
+                  </label>
+                  <button type="button" onClick={createControlLayout} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white">
+                    {t('common.create', { defaultValue: 'Create' })}
+                  </button>
+                </div>
+
+                <div className="grid grid-cols-1 gap-4 lg:grid-cols-4">
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.controlLayouts', { defaultValue: 'Control layouts' })}</span>
+                    <select value={selectedControlLayoutId} onChange={(e) => setSelectedControlLayoutId(e.target.value)} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
+                      <option value="">{t('common.select', { defaultValue: 'Select' })}</option>
+                      {controlLayouts.map((layout) => <option key={layout.id} value={layout.id}>{layout.name} ({layout.scopeType})</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.command', { defaultValue: 'Command' })}</span>
+                    <select
+                      value={newButton.commandCode || 'CASH_PAYMENT'}
+                      onChange={(e) => {
+                        const cmd = commands.find((c) => c.code === e.target.value);
+                        setNewButton((prev) => ({ ...prev, commandCode: e.target.value as any, label: cmd?.defaultLabel || prev.label, requiredPermission: cmd?.requiredPermission }));
+                      }}
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    >
+                      {commands.map((cmd) => <option key={cmd.code} value={cmd.code}>{cmd.code}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('pos.settings.layouts.zone', { defaultValue: 'Zone' })}</span>
+                    <select value={newButton.zone || 'BOTTOM_BAR'} onChange={(e) => setNewButton((prev) => ({ ...prev, zone: e.target.value as any }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm">
+                      {['TOP_BAR', 'RIGHT_PANEL', 'CART_FOOTER', 'BOTTOM_BAR', 'MORE_MENU'].map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                    </select>
+                  </label>
+                  <label className="text-sm">
+                    <span className="mb-1 block text-xs font-medium text-slate-500">{t('common.label', { defaultValue: 'Label' })}</span>
+                    <input value={newButton.label || ''} onChange={(e) => setNewButton((prev) => ({ ...prev, label: e.target.value }))} className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm" />
+                  </label>
+                  <button type="button" onClick={saveControlButton} disabled={!selectedControlLayoutId} className="rounded bg-indigo-600 px-3 py-2 text-sm font-semibold text-white disabled:opacity-50">
+                    {t('pos.settings.layouts.addButton', { defaultValue: 'Add button' })}
+                  </button>
+                </div>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b text-left text-xs text-slate-500">
+                        <th className="px-2 py-2">Zone</th>
+                        <th className="px-2 py-2">Command</th>
+                        <th className="px-2 py-2">Label</th>
+                        <th className="px-2 py-2">Permission</th>
+                        <th className="px-2 py-2"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {controlButtons.map((button) => (
+                        <tr key={button.id} className="border-b">
+                          <td className="px-2 py-2 font-mono text-xs">{button.zone}</td>
+                          <td className="px-2 py-2 font-mono text-xs">{button.commandCode}</td>
+                          <td className="px-2 py-2">{button.label}</td>
+                          <td className="px-2 py-2 font-mono text-xs">{button.requiredPermission || '-'}</td>
+                          <td className="px-2 py-2 text-right">
+                            <button type="button" onClick={async () => { await posApi.deleteControlButton(button.id); setControlButtons((prev) => prev.filter((b) => b.id !== button.id)); }} className="text-xs font-semibold text-rose-600">
+                              {t('common.delete', { defaultValue: 'Delete' })}
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </Card>
+          </div>
         )}
       </ModuleSettingsLayout>
 

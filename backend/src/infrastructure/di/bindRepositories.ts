@@ -348,6 +348,7 @@ import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/Fir
 import { FirestorePosPaymentRepository } from '../firestore/repositories/pos/FirestorePosPaymentRepository';
 import { FirestorePosReturnRepository } from '../firestore/repositories/pos/FirestorePosReturnRepository';
 import { FirestorePosHeldCartRepository } from '../firestore/repositories/pos/FirestorePosHeldCartRepository';
+import { FirestorePosLayoutRepository } from '../firestore/repositories/pos/FirestorePosLayoutRepository';
 
 import { PrismaGoodsReceiptRepository } from '../prisma/repositories/purchases/PrismaGoodsReceiptRepository';
 import { PrismaPurchaseInvoiceRepository } from '../prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
@@ -831,6 +832,12 @@ export const diContainer = {
     return DB_TYPE === 'SQL'
       ? new PrismaPosHeldCartRepository(getPrismaClient())
       : new FirestorePosHeldCartRepository(getDb());
+  },
+  get posLayoutRepository(): PosRepo.IPosLayoutRepository {
+    if (DB_TYPE === 'SQL') {
+      throw new Error('PosLayoutRepository: SQL implementation not yet available');
+    }
+    return new FirestorePosLayoutRepository(getDb());
   },
 
 
