@@ -1359,17 +1359,36 @@ export class PostPurchaseInvoiceUseCase {
 
       // Single sanctioned ledger door. This system-generated settlement payment is policy-exempt
       // (Stage 4b will fold settlement postings into the policy set).
-      const gateway = new PostingGateway(this.ledgerRepo!, new VoucherValidationService());
-      await gateway.record(
-        postedVoucher,
-        {
-          userId: pi.createdBy,
-          enforcePolicies: false,
-          exemptionReason: 'system-generated settlement payment for Purchase Invoice (Stage 4b)',
-        },
-        transaction
-      );
-      await this.voucherRepo!.save(postedVoucher, transaction);
+      const postFull = async () => {
+        const gateway = new PostingGateway(this.ledgerRepo!, new VoucherValidationService());
+        await gateway.record(
+          postedVoucher,
+          {
+            userId: pi.createdBy,
+            enforcePolicies: false,
+            exemptionReason: 'system-generated settlement payment for Purchase Invoice (Stage 4b)',
+          },
+          transaction
+        );
+        await this.voucherRepo!.save(postedVoucher, transaction);
+      };
+
+      // FUP-5: route the payment through the accounting bridge (full-vs-minimal). Full mode posts the
+      // identical voucher via the gateway; minimal mode (Accounting App disabled) records a minimal
+      // journal and posts no GL voucher. Without a bridge, post directly (legacy behavior preserved).
+      let settlementPosted = true;
+      if (this.accountingBridge) {
+        const result = await this.accountingBridge.recordPreBuiltVoucher({
+          companyId,
+          kind: 'PURCHASE_PAYMENT',
+          voucher: postedVoucher,
+          postFull,
+          transaction,
+        });
+        settlementPosted = result.mode === 'full';
+      } else {
+        await postFull();
+      }
 
       const paymentId = `pay_${randomUUID()}`;
       const payment = new PaymentHistory({
@@ -1386,7 +1405,7 @@ export class PostPurchaseInvoiceUseCase {
         paymentMethod: settlementMethod,
         reference: settlement.reference || undefined,
         notes: settlement.notes || undefined,
-        voucherId,
+        voucherId: settlementPosted ? voucherId : null,
         createdBy: pi.createdBy,
         createdAt: now,
       });
