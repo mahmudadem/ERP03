@@ -3,7 +3,35 @@
 > **Status:** Not started. **Priority:** MEDIUM (the largest of the engines-vs-modules trio).
 > **Principle:** [engines-vs-modules.md](../../docs/architecture/engines-vs-modules.md) — "item" is a shared catalog concept; the Inventory module is the UI/reporting layer on top. Item management is gated by *permission*, not by module-enabled.
 
-## The problem (current coupling)
+## Refined findings (2026-06-22 investigation — read before implementing)
+
+The original framing was too broad. Verified facts:
+
+- **Item management already survives a module *disable*.** The route guard is
+  `moduleInitializedGuard('inventory')`, which checks **`initialized`** (not `isEnabled`), and
+  `CompanyModule.disable()` only flips `isEnabled` — it never un-initializes. So a tenant with
+  the Inventory module toggled OFF (but initialized) can still hit item routes with the right
+  permission. The guard already matches the engines-vs-modules rule.
+- **Permissions are flexible, not hard-locked.** `RoleModuleBundleDeriver` derives module
+  bundles *from* permissions (permission → module), so any role granted `inventory.items.manage`
+  gets item access. There is **no code lock** tying item permissions to the Inventory module —
+  so "POS user can manage items" is a role-config choice, not a code change.
+
+So the only genuine **code** gaps are:
+
+1. **(a) No guaranteed inventory auto-init.** Accounting has `EnsureAccountingEngineInitialized`
+   (auto-invoked by Sales/Purchase init); inventory has **no equivalent** — it's only initialized
+   by `SimpleTradingCompanyInitializer` (the starter template). A POS-only / non-template creation
+   path can leave inventory un-initialized → item routes 403. **Fix:** add an idempotent
+   `EnsureInventoryEngineInitialized` and invoke it from the same places (Sales/Purchase init +
+   a POS setup step) so `initialized` is always true. *Design choice: where to invoke.*
+2. **(b) Frontend surface.** Item-management UI lives under the Inventory module sidebar, hidden
+   when the module is disabled. A POS persona needs an item-management entry that does not depend
+   on the Inventory module being visible. *Product/UX choice.*
+
+Permissions (b in the old list) need **no code** — just role configuration.
+
+## The problem (original framing — superseded by the findings above)
 
 Two things are bundled inside "the Inventory module" but are in very different states:
 
