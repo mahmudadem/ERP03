@@ -1034,7 +1034,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                                 value={l.qty}
                                 onChange={(e) => onUpdateQty(l.lineId, Number(e.target.value) || 0)}
                                 onFocus={(e) => e.target.select()}
-                                className="h-full w-10 sm:w-12 xl:w-16 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
+                                className="h-full w-10 sm:w-12 lg:w-16 xl:w-20 border-x border-slate-200 bg-transparent text-center text-[13px] sm:text-sm font-medium text-slate-900 outline-none [appearance:textfield] focus:bg-indigo-50/50 dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)] dark:focus:bg-[var(--color-bg-tertiary)] [&::-webkit-inner-spin-button]:appearance-none"
                               />
                               <button
                                 onClick={() => onUpdateQty(l.lineId, round2(l.qty + 1))}
@@ -1191,7 +1191,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         />
                       </div>
 
-                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[196px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
+                      <div className={`ml-auto flex items-center justify-center rounded-md px-2 py-1 xl:w-[212px] font-mono text-[17.5px] font-bold ${isVoided ? 'text-slate-400 line-through bg-slate-50 dark:bg-[var(--color-bg-primary)]/50' : 'text-indigo-700 bg-indigo-50 dark:bg-indigo-500/10 dark:text-indigo-400'}`}>
                         {money(l.lineTotal)}
                       </div>
                     </div>
