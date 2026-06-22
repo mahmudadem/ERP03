@@ -26,7 +26,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore, cloneStockLevel, createStockLevel, computeStockOutMovement } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -69,6 +69,7 @@ import { PostingLog, LineDecision } from '../../../domain/accounting/entities/Po
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { randomUUID as nodeRandomUUID } from 'crypto';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
@@ -89,6 +90,7 @@ import {
   calculateSalesInvoiceTotals,
 } from '../services/SalesInvoiceCalculationService';
 import { PromotionApplicationService, PromotionEvalLine } from '../services/PromotionApplicationService';
+import { arePromotionsEnabledInProduction } from '../../system-core';
 import { CreditCheckService, CreditCheckResult } from '../services/CreditCheckService';
 import { CreditOverride } from '../../../domain/sales/entities/CreditOverride';
 import { CreditLimitExceededError } from '../../../domain/sales/errors/CreditLimitExceededError';
@@ -683,7 +685,9 @@ export class CreateSalesInvoiceUseCase {
     }
 
     // --- Promotion evaluation (direct persona only) ---
-    if (this.promotionRuleRepo && input.persona === 'direct') {
+    // FUP-1 hard gate: promotions stay dormant in production until the
+    // stacking/cap model lands, even if ACTIVE rules exist in the repo.
+    if (this.promotionRuleRepo && input.persona === 'direct' && arePromotionsEnabledInProduction()) {
       const rules = await this.promotionRuleRepo.list(input.companyId);
       if (rules.length > 0) {
         const promotionService = new PromotionApplicationService();
@@ -973,7 +977,8 @@ export class PostSalesInvoiceUseCase {
     private readonly auditEngine?: IAuditEngine,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
-    private readonly numberingEngine?: INumberingEngine
+    private readonly numberingEngine?: INumberingEngine,
+    private readonly accountingBridge?: IAccountingBridge
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
     this.accountingPostingService = accountingPostingService;
@@ -1085,7 +1090,7 @@ export class PostSalesInvoiceUseCase {
     const levelsByItemMap = new Map<string, StockLevel[]>();
     for (const itemId of distinctItemIds) {
       const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
-      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+      levelsByItemMap.set(itemId, existingLevels.map((level) => cloneStockLevel(level)));
     }
     for (const line of si.lines) {
       if (line.trackInventory) {
@@ -1096,7 +1101,7 @@ export class PostSalesInvoiceUseCase {
             const levels = levelsByItemMap.get(line.itemId) || [];
             let existing = levels.find((level) => level.warehouseId === warehouseId);
             if (!existing) {
-              existing = StockLevel.createNew(companyId, line.itemId, warehouseId);
+              existing = createStockLevel(companyId, line.itemId, warehouseId);
               levels.push(existing);
             }
             stockLevelMap.set(key, existing);
@@ -1185,64 +1190,20 @@ export class PostSalesInvoiceUseCase {
         const level = stockLevelMap.get(stockLevelKey);
         if (!level) continue;
 
-        const qtyBefore = level.qtyOnHand;
-        const oldMaxBusinessDate = level.maxBusinessDate;
-        let issueCostBase = 0;
-        let issueCostCCY = 0;
-        let costBasis: 'AVG' | 'LAST_KNOWN' | 'MISSING' = 'MISSING';
-        if (qtyBefore > 0) {
-          issueCostBase = level.avgCostBase;
-          issueCostCCY = level.avgCostCCY;
-          costBasis = 'AVG';
-        } else if (level.lastCostBase > 0) {
-          issueCostBase = level.lastCostBase;
-          issueCostCCY = level.lastCostCCY;
-          costBasis = 'LAST_KNOWN';
-        }
-
-        const settledQty = Math.min(qtyInBaseUom, Math.max(qtyBefore, 0));
-        const unsettledQty = qtyInBaseUom - settledQty;
-        const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
-
-        const movement = new StockMovement({
-          id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        // FUP-4: stock OUT movement + level mutation owned by the inventory core.
+        const { movement, unitCostBase: outUnitCostBase, lineCostBase: outLineCostBase } = computeStockOutMovement({
           companyId,
-          date: si.invoiceDate,
-          postingSeq: level.postingSeq + 1,
-          createdAt: new Date(),
-          createdBy: si.createdBy,
-          postedAt: new Date(),
-          itemId: item.id,
+          item,
+          level,
           warehouseId,
-          direction: 'OUT',
+          qtyInBaseUom,
+          date: si.invoiceDate,
+          createdBy: si.createdBy,
           movementType: 'SALES_DELIVERY',
-          qty: qtyInBaseUom,
-          uom: item.baseUom,
           referenceType: 'SALES_INVOICE',
           referenceId: si.id,
           referenceLineId: line.lineId,
-          reversesMovementId: undefined,
-          transferPairId: undefined,
-          unitCostBase: issueCostBase,
-          totalCostBase: roundMoney(issueCostBase * qtyInBaseUom),
-          unitCostCCY: issueCostCCY,
-          totalCostCCY: roundMoney(issueCostCCY * qtyInBaseUom),
-          movementCurrency: item.costCurrency,
-          fxRateMovToBase: effectiveFxCCYToBase,
-          fxRateCCYToBase: effectiveFxCCYToBase,
-          fxRateKind: 'EFFECTIVE',
-          avgCostBaseAfter: level.avgCostBase,
-          avgCostCCYAfter: level.avgCostCCY,
-          qtyBefore,
-          qtyAfter: qtyBefore - qtyInBaseUom,
-          settledQty,
-          unsettledQty,
-          unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
-          negativeQtyAtPosting: (qtyBefore - qtyInBaseUom) < 0,
-          costSettled: unsettledQty === 0,
-          isBackdated: si.invoiceDate < oldMaxBusinessDate,
           costSource: 'PURCHASE',
-          notes: undefined,
           metadata: {
             uomConversion: {
               conversionId: conversionResult.trace.conversionId,
@@ -1257,18 +1218,9 @@ export class PostSalesInvoiceUseCase {
           },
         });
 
-        const movementQty = qtyInBaseUom;
-        level.qtyOnHand -= movementQty;
-        level.postingSeq += 1;
-        level.version += 1;
-        level.totalMovements += 1;
-        level.maxBusinessDate = si.invoiceDate > oldMaxBusinessDate ? si.invoiceDate : oldMaxBusinessDate;
-        level.updatedAt = new Date();
-        level.lastMovementId = movement.id;
-
         line.stockMovementId = movement.id;
-        line.unitCostBase = roundMoney(movement.unitCostBase || 0);
-        line.lineCostBase = roundMoney(qtyInBaseUom * line.unitCostBase);
+        line.unitCostBase = outUnitCostBase;
+        line.lineCostBase = outLineCostBase;
 
         if (accountingMode === 'PERPETUAL' && invSettings?.allowDeferredCost !== true) {
           this.assertPositiveTrackedCost(
@@ -1546,7 +1498,7 @@ export class PostSalesInvoiceUseCase {
       this.recalcInvoiceTotals(si);
 
       if (shouldPostAccounting) {
-        const poster = new SubledgerDocumentPoster(this.accountingPostingService);
+        const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
 
         // Main invoice voucher (AR vs Revenue + Tax). The buckets are already
         // accumulated upstream, so each entry maps 1:1 to a voucher line — the
@@ -1585,7 +1537,7 @@ export class PostSalesInvoiceUseCase {
           },
           transaction
         );
-        si.voucherId = revVoucher.id;
+        si.voucherId = revVoucher ? revVoucher.id : null;
 
         // Inventory recognition voucher (COGS vs Inventory) — one debit/credit
         // pair per cost bucket.
@@ -1625,7 +1577,7 @@ export class PostSalesInvoiceUseCase {
               },
               transaction
             );
-            si.cogsVoucherId = cogsVoucher.id;
+            si.cogsVoucherId = cogsVoucher ? cogsVoucher.id : null;
           }
         } else {
           si.cogsVoucherId = null;

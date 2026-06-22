@@ -133,6 +133,7 @@ import { SettingsResolver } from '../../application/common/services/SettingsReso
 import { ModuleActivationService } from '../../application/system/services/ModuleActivationService';
 import {
   LegacyAccountingBridgeAdapter,
+  LegacyApprovalEngineAdapter,
   ApprovalEngine,
   ApprovalSubjectRegistry,
   LegacyAuditEngineAdapter,
@@ -1046,6 +1047,9 @@ export const diContainer = {
         undefined,
         this.periodLockService,
         this.policyRegistry,
+        // Item 4: resolve the accounting_voucher approval requirement through the unified engine
+        // (adapter wraps the same AccountingPolicyRegistry → behavior-identical).
+        new LegacyApprovalEngineAdapter(this.policyRegistry as any),
       ),
       this.companyModuleRepository,
       this.postingLogRepository

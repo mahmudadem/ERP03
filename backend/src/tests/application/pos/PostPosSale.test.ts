@@ -1,5 +1,5 @@
 import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
-import { CommercialCore } from '../../../application/system-core/commercial/CommercialCore';
+import { CommercialCore, __setPromotionsEnabledForTest } from '../../../application/system-core/commercial/CommercialCore';
 import { TaxEngine } from '../../../application/system-core/tax/TaxEngine';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { Party } from '../../../domain/shared/entities/Party';
@@ -73,6 +73,11 @@ const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitC
 };
 
 describe('PostPosSaleUseCase', () => {
+  // FUP-1: promotions are hard-gated OFF in production; these suites exercise the
+  // application path, so they explicitly open the gate and reset it afterwards.
+  beforeEach(() => __setPromotionsEnabledForTest(true));
+  afterEach(() => __setPromotionsEnabledForTest(null));
+
   it('posts a POS sale through inventory core and accounting bridge without Sales use-cases', async () => {
     const { useCase, inventoryCore, accountingBridge } = setup();
 
@@ -232,6 +237,43 @@ describe('PostPosSaleUseCase', () => {
       appliedPromotionId: 'promo_10',
       appliedPromotionName: '10% off',
     });
+  });
+
+  it('FUP-1: hard gate OFF leaves ACTIVE promotions dormant (no discount applied)', async () => {
+    __setPromotionsEnabledForTest(false);
+    const promotionRuleReader = {
+      list: jest.fn().mockResolvedValue([{
+        id: 'promo_10',
+        name: '10% off',
+        type: 'THRESHOLD_DISCOUNT',
+        status: 'ACTIVE',
+        priority: 1,
+        scope: 'ALL',
+        thresholdDiscount: { thresholdBasis: 'QTY', thresholdValue: 2, discountPct: 10 },
+      }]),
+    };
+    const { useCase } = setup({
+      commercialCore: new CommercialCore(),
+      promotionRuleReader,
+    });
+
+    const result = await useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentId: 'pos_sale_gated',
+      documentNumber: 'R-000002',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 2, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 20 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    });
+
+    // Gate is OFF → rules are never read, full price stands, no promotion stamped.
+    expect(promotionRuleReader.list).not.toHaveBeenCalled();
+    expect(result.grandTotal).toBe(20);
+    expect(result.discountTotal).toBe(0);
+    expect(result.lines[0].appliedPromotionId).toBeUndefined();
   });
 
   it('250l-3 inserts POS free-goods promotion lines at zero price', async () => {

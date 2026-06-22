@@ -13,6 +13,8 @@ import { IInventorySettingsRepository } from '../../../repository/interfaces/inv
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { Item, ItemCostingStats, CostPoint } from '../../../domain/inventory/entities/Item';
@@ -212,7 +214,8 @@ export class PostInventoryRevaluationUseCase {
     private readonly inventorySettingsRepo: IInventorySettingsRepository,
     private readonly transactionManager: ITransactionManager,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService?: SubledgerVoucherPostingService
+    private readonly accountingPostingService?: SubledgerVoucherPostingService,
+    private readonly accountingBridge?: IAccountingBridge
   ) {}
 
   async execute(companyId: string, revaluationId: string, userId: string): Promise<InventoryRevaluation> {
@@ -439,29 +442,36 @@ export class PostInventoryRevaluationUseCase {
     }
 
     try {
-      const voucher = await this.accountingPostingService.postInTransaction({
-        companyId,
-        voucherType: VoucherType.JOURNAL_ENTRY,
-        voucherNo: `REV-${revaluation.id}`,
-        date: revaluation.date,
-        description: `Inventory revaluation ${revaluation.id} (${revaluation.reason})`,
-        currency: '',
-        exchangeRate: 1,
-        lines: voucherLines,
-        metadata: {
-          sourceModule: 'inventory',
-          referenceType: 'INVENTORY_REVALUATION',
-          referenceId: revaluation.id,
-          revaluationId: revaluation.id,
-          revaluationReason: revaluation.reason,
-          totalValueDeltaBase: computedAmountBase,
-        },
-        createdBy: userId,
-        postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-        reference: revaluation.id,
-      }, transaction);
+      const voucher = await postFinancialEvent(
+        { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+        {
+          kind: 'INVENTORY_REVALUATION',
+          transaction,
+          subledgerVoucher: {
+            companyId,
+            voucherType: VoucherType.JOURNAL_ENTRY,
+            voucherNo: `REV-${revaluation.id}`,
+            date: revaluation.date,
+            description: `Inventory revaluation ${revaluation.id} (${revaluation.reason})`,
+            currency: '',
+            exchangeRate: 1,
+            lines: voucherLines,
+            metadata: {
+              sourceModule: 'inventory',
+              referenceType: 'INVENTORY_REVALUATION',
+              referenceId: revaluation.id,
+              revaluationId: revaluation.id,
+              revaluationReason: revaluation.reason,
+              totalValueDeltaBase: computedAmountBase,
+            },
+            createdBy: userId,
+            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+            reference: revaluation.id,
+          },
+        }
+      );
 
-      return voucher.id;
+      return voucher ? voucher.id : null;
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       throw new Error(

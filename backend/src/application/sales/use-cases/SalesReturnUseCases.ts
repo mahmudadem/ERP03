@@ -5,6 +5,7 @@ import {
   SubledgerDocumentPoster,
   SubledgerPostingEntry,
 } from '../../accounting/services/SubledgerDocumentPoster';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { DeliveryNote } from '../../../domain/sales/entities/DeliveryNote';
@@ -25,7 +26,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { CostPoint, Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
-import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore, createStockLevel, computeStockReturnInMovement } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -500,7 +501,8 @@ export class PostSalesReturnUseCase {
     private readonly auditEngine?: IAuditEngine,
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
+    private readonly accountingBridge?: IAccountingBridge
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
   }
@@ -610,7 +612,7 @@ export class PostSalesReturnUseCase {
         const key = `${line.itemId}|${warehouseId}`;
         if (!stockLevelMap.has(key)) {
           const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
-          stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, warehouseId));
+          stockLevelMap.set(key, existing ?? createStockLevel(companyId, line.itemId, warehouseId));
         }
       }
     }
@@ -837,54 +839,23 @@ export class PostSalesReturnUseCase {
         const fxRateCCYToBase = line.fxRateCCYToBase > 0 ? line.fxRateCCYToBase : (salesReturn.exchangeRate || 1);
         const unitCostInMoveCurrency = roundMoney(unitCostBase / fxRateMovToBase);
 
-        const qtyBefore = level.qtyOnHand;
-        const oldMaxBusinessDate = level.maxBusinessDate;
-        let newAvgBase = unitCostBase;
-        let newAvgCCY = unitCostInMoveCurrency;
-        if (qtyBefore > 0) {
-          const newQty = qtyBefore + qtyInBaseUom;
-          newAvgBase = roundMoney(((level.avgCostBase * qtyBefore) + (unitCostBase * qtyInBaseUom)) / newQty);
-          newAvgCCY = roundMoney(((level.avgCostCCY * qtyBefore) + (unitCostInMoveCurrency * qtyInBaseUom)) / newQty);
-        }
-        const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
-        const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
-        const qtyAfter = qtyBefore + qtyInBaseUom;
-
-        const movement = new StockMovement({
-          id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        // FUP-4: RETURN_IN movement + level mutation owned by the inventory core.
+        const { movement } = computeStockReturnInMovement({
           companyId,
-          date: salesReturn.returnDate,
-          postingSeq: level.postingSeq + 1,
-          createdAt: new Date(),
-          createdBy: salesReturn.createdBy,
-          postedAt: new Date(),
-          itemId: item.id,
+          item,
+          level,
           warehouseId,
-          direction: 'IN',
-          movementType: 'RETURN_IN',
-          qty: qtyInBaseUom,
-          uom: item.baseUom,
+          qtyInBaseUom,
+          date: salesReturn.returnDate,
+          createdBy: salesReturn.createdBy,
+          unitCostBase,
+          unitCostInMoveCurrency,
+          fxRateMovToBase,
+          fxRateCCYToBase,
+          movementCurrency: salesReturn.currency.toUpperCase(),
           referenceType: 'SALES_RETURN',
           referenceId: salesReturn.id,
           referenceLineId: line.lineId,
-          unitCostBase,
-          totalCostBase: roundMoney(unitCostBase * qtyInBaseUom),
-          unitCostCCY: newAvgCCY,
-          totalCostCCY: roundMoney(newAvgCCY * qtyInBaseUom),
-          movementCurrency: salesReturn.currency.toUpperCase(),
-          fxRateMovToBase,
-          fxRateCCYToBase,
-          fxRateKind: 'DOCUMENT',
-          avgCostBaseAfter: newAvgBase,
-          avgCostCCYAfter: newAvgCCY,
-          qtyBefore,
-          qtyAfter,
-          settlesNegativeQty,
-          newPositiveQty,
-          negativeQtyAtPosting: qtyAfter < 0,
-          costSettled: unitCostBase > 0,
-          isBackdated: salesReturn.returnDate < oldMaxBusinessDate,
-          costSource: 'RETURN',
           metadata: {
             uomConversion: {
               conversionId: conversionResult.trace.conversionId,
@@ -898,18 +869,6 @@ export class PostSalesReturnUseCase {
             },
           },
         });
-
-        level.qtyOnHand += qtyInBaseUom;
-        level.avgCostBase = newAvgBase;
-        level.avgCostCCY = newAvgCCY;
-        level.lastCostBase = unitCostBase;
-        level.lastCostCCY = newAvgCCY;
-        level.postingSeq += 1;
-        level.version += 1;
-        level.totalMovements += 1;
-        level.maxBusinessDate = salesReturn.returnDate > oldMaxBusinessDate ? salesReturn.returnDate : oldMaxBusinessDate;
-        level.updatedAt = new Date();
-        level.lastMovementId = movement.id;
 
         line.stockMovementId = movement.id;
         inventoryMovements.set(line.lineId, { movement, updatedLevel: level });
@@ -1017,7 +976,7 @@ export class PostSalesReturnUseCase {
         }
       }
 
-      const poster = new SubledgerDocumentPoster(this.accountingPostingService);
+      const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
 
       if (shouldPostAccounting && cogsBucket.size > 0) {
         // Return reverses the sale's cost: inventory comes back (Debit),
@@ -1056,7 +1015,7 @@ export class PostSalesReturnUseCase {
           },
           transaction
         );
-        salesReturn.cogsVoucherId = cogsVoucher.id;
+        salesReturn.cogsVoucherId = cogsVoucher ? cogsVoucher.id : null;
       } else {
         salesReturn.cogsVoucherId = null;
       }
@@ -1124,7 +1083,7 @@ export class PostSalesReturnUseCase {
           },
           transaction
         );
-        salesReturn.revenueVoucherId = revenueVoucher.id;
+        salesReturn.revenueVoucherId = revenueVoucher ? revenueVoucher.id : null;
 
         if (isAfterInvoice && salesInvoice) {
           if (salesReturn.settlementMode === 'CREDIT_NOTE') {

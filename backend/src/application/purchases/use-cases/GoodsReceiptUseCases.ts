@@ -19,6 +19,8 @@ import { ICompanyModuleRepository } from '../../../repository/interfaces/company
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
   convertItemQtyToBaseUomDetailed,
 } from '../../inventory/services/UomResolutionService';
@@ -236,7 +238,8 @@ export class PostGoodsReceiptUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge?: IAccountingBridge
   ) {}
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<GoodsReceipt> {
@@ -551,29 +554,33 @@ export class PostGoodsReceiptUseCase {
         });
 
         if (shouldPostAccounting) {
-          const voucher = await this.accountingPostingService.postInTransaction(
+          const voucher = await postFinancialEvent(
+            { bridge: this.accountingBridge, postingService: this.accountingPostingService },
             {
-              companyId,
-              voucherType: VoucherType.JOURNAL_ENTRY,
-              voucherNo: `GRN-${grn.grnNumber}`,
-              date: grn.receiptDate,
-              description: `Goods Receipt ${grn.grnNumber}`,
-              currency: resolvedBaseCurrency,
-              exchangeRate: 1,
-              lines: voucherLines,
-              metadata: {
-                sourceModule: 'purchases',
-                sourceType: 'GOODS_RECEIPT',
-                sourceId: grn.id,
+              kind: 'GOODS_RECEIPT',
+              transaction,
+              subledgerVoucher: {
+                companyId,
+                voucherType: VoucherType.JOURNAL_ENTRY,
+                voucherNo: `GRN-${grn.grnNumber}`,
+                date: grn.receiptDate,
+                description: `Goods Receipt ${grn.grnNumber}`,
+                currency: resolvedBaseCurrency,
+                exchangeRate: 1,
+                lines: voucherLines,
+                metadata: {
+                  sourceModule: 'purchases',
+                  sourceType: 'GOODS_RECEIPT',
+                  sourceId: grn.id,
+                },
+                createdBy: grn.createdBy,
+                postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+                reference: grn.grnNumber,
+                baseCurrencyOverride: resolvedBaseCurrency,
               },
-              createdBy: grn.createdBy,
-              postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-              reference: grn.grnNumber,
-              baseCurrencyOverride: resolvedBaseCurrency,
-            },
-            transaction
+            }
           );
-          grn.voucherId = voucher.id;
+          grn.voucherId = voucher ? voucher.id : null;
         } else {
           grn.voucherId = null;
         }

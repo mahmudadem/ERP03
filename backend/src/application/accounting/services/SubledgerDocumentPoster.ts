@@ -1,6 +1,7 @@
 import { VoucherType, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { AccountMappingError, AccountRole } from '../../../domain/accounting/errors/AccountMappingError';
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 
 /**
  * Task 178 — the shared "subledger document → ledger voucher" assembler.
@@ -105,33 +106,50 @@ export interface ISubledgerPostingService {
 const BALANCE_EPSILON = 0.001;
 
 export class SubledgerDocumentPoster {
-  constructor(private readonly postingService: ISubledgerPostingService) {}
+  /**
+   * FUP-3: when `bridge` is provided, document vouchers route through the accounting bridge
+   * (full-vs-minimal decision — no GL voucher when the Accounting App is disabled) and `post`
+   * returns `null` in minimal mode. Without a bridge it falls back to the direct posting service,
+   * preserving legacy behavior for existing unit tests.
+   */
+  constructor(
+    private readonly postingService: ISubledgerPostingService,
+    private readonly bridge?: IAccountingBridge
+  ) {}
 
   /**
-   * Validate the plan, assemble balanced voucher lines, and post. Returns the
-   * created voucher's id.
+   * Validate the plan, assemble balanced voucher lines, and post. Returns the created voucher's id,
+   * or `null` when the bridge recorded the event in minimal mode (no GL voucher posted).
    */
-  async post(plan: SubledgerPostingPlan, transaction?: unknown): Promise<{ id: string }> {
+  async post(plan: SubledgerPostingPlan, transaction?: unknown): Promise<{ id: string } | null> {
     const lines = this.assembleLines(plan);
-    return this.postingService.postInTransaction(
-      {
-        companyId: plan.companyId,
-        voucherType: plan.voucherType,
-        voucherNo: plan.voucherNo,
-        date: plan.date,
-        description: plan.description,
-        currency: plan.currency,
-        exchangeRate: plan.exchangeRate,
-        lines,
-        metadata: plan.metadata,
-        reference: plan.reference ?? null,
-        createdBy: plan.createdBy,
-        approved: plan.approved,
-        postingLockPolicy: plan.postingLockPolicy,
-        baseCurrencyOverride: plan.baseCurrencyOverride,
-      },
-      transaction
-    );
+    const input = {
+      companyId: plan.companyId,
+      voucherType: plan.voucherType,
+      voucherNo: plan.voucherNo,
+      date: plan.date,
+      description: plan.description,
+      currency: plan.currency,
+      exchangeRate: plan.exchangeRate,
+      lines,
+      metadata: plan.metadata,
+      reference: plan.reference ?? null,
+      createdBy: plan.createdBy,
+      approved: plan.approved,
+      postingLockPolicy: plan.postingLockPolicy,
+      baseCurrencyOverride: plan.baseCurrencyOverride,
+    };
+
+    if (this.bridge) {
+      const result = await this.bridge.recordFinancialEvent({
+        kind: String(plan.voucherType),
+        subledgerVoucher: input,
+        transaction,
+      });
+      return result.voucher ? { id: result.voucher.id } : null;
+    }
+
+    return this.postingService.postInTransaction(input, transaction);
   }
 
   /**

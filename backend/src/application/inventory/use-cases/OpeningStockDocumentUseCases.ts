@@ -16,6 +16,8 @@ import { IOpeningStockDocumentRepository } from '../../../repository/interfaces/
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
+import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { ProcessINInput, RecordStockMovementUseCase } from './RecordStockMovementUseCase';
 
@@ -340,7 +342,8 @@ export class PostOpeningStockDocumentUseCase {
     private readonly accountRepo: IAccountRepository,
     private readonly movementUseCase: RecordStockMovementUseCase,
     private readonly accountingPostingService: SubledgerVoucherPostingService,
-    private readonly transactionManager: ITransactionManager
+    private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge?: IAccountingBridge
   ) {}
 
   async execute(companyId: string, documentId: string, userId: string): Promise<OpeningStockDocument> {
@@ -516,33 +519,37 @@ export class PostOpeningStockDocumentUseCase {
           },
         });
 
-        const voucher = await this.accountingPostingService.postInTransaction(
+        const voucher = await postFinancialEvent(
+          { bridge: this.accountingBridge, postingService: this.accountingPostingService },
           {
-            companyId,
-            voucherType: VoucherType.OPENING_BALANCE,
-            voucherNo: `OS-${document.id}`,
-            date: document.date,
-            description: `Opening Stock Document ${document.id}`,
-            currency: company.baseCurrency,
-            exchangeRate: 1,
-            lines: [],
-            strategyPayload: {
-              balances,
+            kind: 'OPENING_STOCK',
+            transaction,
+            subledgerVoucher: {
+              companyId,
+              voucherType: VoucherType.OPENING_BALANCE,
+              voucherNo: `OS-${document.id}`,
+              date: document.date,
+              description: `Opening Stock Document ${document.id}`,
+              currency: company.baseCurrency,
+              exchangeRate: 1,
+              lines: [],
+              strategyPayload: {
+                balances,
+              },
+              metadata: {
+                sourceModule: 'inventory',
+                sourceType: 'OPENING_STOCK_DOCUMENT',
+                sourceId: document.id,
+                warehouseId: document.warehouseId,
+              },
+              createdBy: userId,
+              postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
+              reference: document.id,
             },
-            metadata: {
-              sourceModule: 'inventory',
-              sourceType: 'OPENING_STOCK_DOCUMENT',
-              sourceId: document.id,
-              warehouseId: document.warehouseId,
-            },
-            createdBy: userId,
-            postingLockPolicy: PostingLockPolicy.FLEXIBLE_LOCKED,
-            reference: document.id,
-          },
-          transaction
+          }
         );
 
-        voucherId = voucher.id;
+        voucherId = voucher ? voucher.id : null;
       }
 
       const updatePatch: Partial<OpeningStockDocument> = {
