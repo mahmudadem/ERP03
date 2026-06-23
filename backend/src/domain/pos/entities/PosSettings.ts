@@ -46,6 +46,7 @@ export interface PosSettingsProps {
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix?: string;
   receiptNextSeq?: number;
   cashRounding?: PosCashRounding;
@@ -64,6 +65,7 @@ export class PosSettings {
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix: string;
   receiptNextSeq: number;
   cashRounding: PosCashRounding;
@@ -98,6 +100,7 @@ export class PosSettings {
     this.walkInCustomerId = props.walkInCustomerId?.trim() || undefined;
     this.cashOverAccountId = props.cashOverAccountId?.trim() || undefined;
     this.cashShortAccountId = props.cashShortAccountId?.trim() || undefined;
+    this.defaultRevenueAccountId = props.defaultRevenueAccountId?.trim() || undefined;
     this.receiptPrefix = props.receiptPrefix?.trim() || 'R';
     this.receiptNextSeq = Number.isFinite(props.receiptNextSeq) ? Number(props.receiptNextSeq) : 1;
     this.cashRounding = rounding;
@@ -146,6 +149,7 @@ export class PosSettings {
       walkInCustomerId: this.walkInCustomerId,
       cashOverAccountId: this.cashOverAccountId,
       cashShortAccountId: this.cashShortAccountId,
+      defaultRevenueAccountId: this.defaultRevenueAccountId,
       receiptPrefix: this.receiptPrefix,
       receiptNextSeq: this.receiptNextSeq,
       cashRounding: this.cashRounding,
@@ -162,6 +166,7 @@ export class PosSettings {
       walkInCustomerId: data.walkInCustomerId,
       cashOverAccountId: data.cashOverAccountId,
       cashShortAccountId: data.cashShortAccountId,
+      defaultRevenueAccountId: data.defaultRevenueAccountId,
       receiptPrefix: data.receiptPrefix || 'R',
       receiptNextSeq: Number(data.receiptNextSeq) || 1,
       cashRounding: VALID_ROUNDING.includes(data.cashRounding) ? data.cashRounding : 'none',

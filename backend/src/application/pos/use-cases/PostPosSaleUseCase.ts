@@ -14,6 +14,7 @@ import { PosPaymentMethodConfig, PosNegativeStockPolicy } from '../../../domain/
 import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
 import { PosNegativeStockError } from '../../../domain/pos/errors/PosNegativeStockError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -111,6 +112,7 @@ export class PostPosSaleUseCase {
     private readonly inventoryCore: IInventoryCore,
     private readonly accountingBridge: IAccountingBridge,
     private readonly taxEngine: ITaxEngine,
+    private readonly posSettingsRepo: IPosSettingsRepository,
     private readonly commercialCore?: ICommercialCore,
     private readonly promotionRuleReader?: PromotionRuleReader
   ) {}
@@ -118,10 +120,11 @@ export class PostPosSaleUseCase {
   async execute(input: PostPosSaleInput): Promise<PostPosSaleResult> {
     if (!input.lines.length) throw new Error('POS sale must contain at least one line.');
 
-    const [customer, invSettings, baseCurrencyRaw] = await Promise.all([
+    const [customer, invSettings, baseCurrencyRaw, posSettings] = await Promise.all([
       this.partyRepo.getById(input.companyId, input.customerId),
       this.inventorySettingsRepo.getSettings(input.companyId),
       this.companyCurrencyRepo.getBaseCurrency(input.companyId),
+      this.posSettingsRepo.getSettings(input.companyId),
     ]);
     if (!customer) throw new Error(`Customer not found: ${input.customerId}`);
 
@@ -226,7 +229,7 @@ export class PostPosSaleUseCase {
         }
       }
 
-      const revenueAccountId = this.resolveRevenueAccount(item, categoryMap);
+      const revenueAccountId = this.resolveRevenueAccount(item, categoryMap, posSettings?.defaultRevenueAccountId);
       if (!revenueAccountId) {
         throw new AccountMappingError({
           companyId: input.companyId,
@@ -590,10 +593,11 @@ export class PostPosSaleUseCase {
     };
   }
 
-  private resolveRevenueAccount(item: Item, categories: Map<string, any>): string | undefined {
+  private resolveRevenueAccount(item: Item, categories: Map<string, any>, posDefaultRevenueAccountId?: string): string | undefined {
     if (item.revenueAccountId) return item.revenueAccountId;
     const category = item.categoryId ? categories.get(item.categoryId) : undefined;
-    return category?.defaultRevenueAccountId;
+    if (category?.defaultRevenueAccountId) return category.defaultRevenueAccountId;
+    return posDefaultRevenueAccountId;
   }
 
   private resolveCogsAccounts(item: Item, categories: Map<string, any>, invSettings: any): { cogsAccountId: string; inventoryAccountId: string } | null {

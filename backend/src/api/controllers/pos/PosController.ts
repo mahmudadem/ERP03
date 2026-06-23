@@ -751,6 +751,7 @@ export class PosController {
           diContainer.inventoryCore,
           diContainer.accountingBridge,
           diContainer.taxEngine,
+          diContainer.posSettingsRepository,
           diContainer.commercialCore,
           diContainer.promotionRuleRepository
         ),
@@ -1026,7 +1027,8 @@ export class PosController {
           diContainer.partyRepository,
           diContainer.companyCurrencyRepository,
           diContainer.inventoryCore,
-          diContainer.accountingBridge
+          diContainer.accountingBridge,
+          diContainer.posSettingsRepository
         ),
         diContainer.policyEngine,
         diContainer.auditEngine
@@ -1075,7 +1077,8 @@ export class PosController {
         diContainer.partyRepository,
         diContainer.companyCurrencyRepository,
         diContainer.inventoryCore,
-        diContainer.accountingBridge
+        diContainer.accountingBridge,
+        diContainer.posSettingsRepository
       );
       const completeReturnUseCase = new CompletePosReturnUseCase(
         diContainer.posReceiptRepository,
@@ -1107,6 +1110,7 @@ export class PosController {
           diContainer.inventoryCore,
           diContainer.accountingBridge,
           diContainer.taxEngine,
+          diContainer.posSettingsRepository,
           diContainer.commercialCore,
           diContainer.promotionRuleRepository
         ),
@@ -1174,7 +1178,8 @@ export class PosController {
           diContainer.partyRepository,
           diContainer.companyCurrencyRepository,
           diContainer.inventoryCore,
-          diContainer.accountingBridge
+          diContainer.accountingBridge,
+          diContainer.posSettingsRepository
         ),
         diContainer.policyEngine,
         diContainer.auditEngine

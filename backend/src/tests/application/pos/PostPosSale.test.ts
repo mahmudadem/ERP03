@@ -49,6 +49,7 @@ const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitC
   const partyRepo = { getById: jest.fn().mockResolvedValue(makeParty()) };
   const taxCodeRepo = { getById: jest.fn().mockResolvedValue(null) };
   const companyCurrencyRepo = { getBaseCurrency: jest.fn().mockResolvedValue('USD') };
+  const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(null) };
   const inventoryCore = {
     processOUT: jest.fn().mockResolvedValue({
       id: 'sm_1',
@@ -70,6 +71,7 @@ const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitC
     inventoryCore as any,
     accountingBridge as any,
     new TaxEngine(),
+    posSettingsRepo as any,
     options.commercialCore,
     options.promotionRuleReader
   );

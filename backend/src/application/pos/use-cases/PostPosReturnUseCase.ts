@@ -9,6 +9,7 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IAccountingBridge, IInventoryCore } from '../../system-core';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
+import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -58,13 +59,18 @@ export class PostPosReturnUseCase {
     private readonly partyRepo: IPartyRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryCore: IInventoryCore,
-    private readonly accountingBridge: IAccountingBridge
+    private readonly accountingBridge: IAccountingBridge,
+    private readonly posSettingsRepo: IPosSettingsRepository
   ) {}
 
   async execute(input: PostPosReturnInput): Promise<PostPosReturnResult> {
     const returnId = input.returnId || `pos_ret_${randomUUID()}`;
-    const baseCurrency = ((await this.companyCurrencyRepo.getBaseCurrency(input.companyId)) || 'USD').toUpperCase();
-    const categories = await this.itemCategoryRepo.getCompanyCategories(input.companyId);
+    const [baseCurrencyRaw, categories, posSettings] = await Promise.all([
+      this.companyCurrencyRepo.getBaseCurrency(input.companyId),
+      this.itemCategoryRepo.getCompanyCategories(input.companyId),
+      this.posSettingsRepo.getSettings(input.companyId),
+    ]);
+    const baseCurrency = (baseCurrencyRaw || 'USD').toUpperCase();
     const categoryMap = new Map(categories.map((c) => [c.id, c]));
     const invSettings = await this.inventorySettingsRepo.getSettings(input.companyId);
     const customer = await this.partyRepo.getById(input.companyId, input.originalReceipt.customerId);
@@ -111,13 +117,13 @@ export class PostPosReturnUseCase {
         });
       }
 
-      const revenueAccountId = (receiptLine as any).revenueAccountId || this.resolveRevenueAccount(item, categoryMap);
+      const revenueAccountId = (receiptLine as any).revenueAccountId || this.resolveRevenueAccount(item, categoryMap, posSettings?.defaultRevenueAccountId);
       if (!revenueAccountId) {
         throw new AccountMappingError({
           companyId: input.companyId,
           itemId: item.id,
           accountRole: 'revenue',
-          fallbackChain: ['receiptLine.revenueAccountId', 'item.revenueAccountId', 'category.defaultRevenueAccountId'],
+          fallbackChain: ['receiptLine.revenueAccountId', 'item.revenueAccountId', 'category.defaultRevenueAccountId', 'posSettings.defaultRevenueAccountId'],
           lineNo: idx + 1,
         });
       }
@@ -251,8 +257,13 @@ export class PostPosReturnUseCase {
     return { returnId, returnNumber: input.returnNumber, refundTotal, lines: postedLines, voucherIds };
   }
 
-  private resolveRevenueAccount(item: any, categories: Map<string, any>): string | undefined {
-    return item.revenueAccountId || (item.categoryId ? categories.get(item.categoryId)?.defaultRevenueAccountId : undefined);
+  private resolveRevenueAccount(item: any, categories: Map<string, any>, posDefaultRevenueAccountId?: string): string | undefined {
+    if (item.revenueAccountId) return item.revenueAccountId;
+    if (item.categoryId) {
+      const categoryDefault = categories.get(item.categoryId)?.defaultRevenueAccountId;
+      if (categoryDefault) return categoryDefault;
+    }
+    return posDefaultRevenueAccountId;
   }
 
   private resolveCogsAccount(item: any, categories: Map<string, any>, invSettings: any): string | undefined {
