@@ -115,20 +115,23 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   it('251: POS stock movement refs must keep POS document identity', () => {
-    const files = [
-      path.resolve(SRC, 'application/pos/use-cases/PostPosSaleUseCase.ts'),
-      path.resolve(SRC, 'application/pos/use-cases/PostPosReturnUseCase.ts'),
-    ];
-    const offenders = files
+    const saleFile = path.resolve(SRC, 'application/pos/use-cases/PostPosSaleUseCase.ts');
+    const returnFile = path.resolve(SRC, 'application/pos/use-cases/PostPosReturnUseCase.ts');
+
+    // POS posts its stock movements with the pure inventory helpers
+    // (computeStockOutMovement / computeStockReturnInMovement), passing
+    // `referenceType`. It must NEVER stamp a movement as a Sales document —
+    // that would silently convert a POS sale into a sales invoice (gate #8).
+    const forbidsSalesIdentity = /referenceType:\s*['"]SALES_(?:INVOICE|RETURN)['"]/;
+    const offenders = [saleFile, returnFile]
       .filter((file) => fs.existsSync(file))
-      .filter((file) => {
-        const content = fs.readFileSync(file, 'utf8');
-        return /refs:\s*\{[^}]*type:\s*['"]SALES_(?:INVOICE|RETURN)['"]/.test(content);
-      })
+      .filter((file) => forbidsSalesIdentity.test(fs.readFileSync(file, 'utf8')))
       .map((file) => path.relative(SRC, file));
     expect(offenders).toEqual([]);
-    expect(fs.readFileSync(files[0], 'utf8')).toContain("type: 'POS_DIRECT_SALE'");
-    expect(fs.readFileSync(files[1], 'utf8')).toContain("type: 'POS_RETURN'");
+
+    // POS stock movements keep the POS document identity.
+    expect(fs.readFileSync(saleFile, 'utf8')).toContain("referenceType: 'POS_DIRECT_SALE'");
+    expect(fs.readFileSync(returnFile, 'utf8')).toContain("referenceType: 'POS_RETURN'");
   });
 
   it('250h: tax engine contract and adapter must not import Sales calculation internals', () => {
