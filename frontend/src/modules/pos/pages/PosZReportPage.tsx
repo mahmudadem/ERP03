@@ -23,7 +23,7 @@ const PosZReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
           <div className="md:col-span-8 space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              {t('pos.report.z.shiftId', { defaultValue: 'Shift ID' })}
+              {t('pos:report.z.shiftId', { defaultValue: 'Shift ID' })}
             </label>
             <input
               type="text"
@@ -71,18 +71,18 @@ const PosZReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
     return (
       <div className="p-4 space-y-3 text-sm">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Stat label={t('pos.report.z.opening', { defaultValue: 'Opening float' })} value={data.shift.openingFloat} />
-          <Stat label={t('pos.report.z.expected', { defaultValue: 'Expected cash' })} value={data.totals.expectedCash} />
-          <Stat label={t('pos.report.z.gross', { defaultValue: 'Gross sales' })} value={data.grossTotal} />
-          <Stat label={t('pos.report.z.returns', { defaultValue: 'Returns' })} value={data.returnsTotal} />
-          <Stat label={t('pos.report.z.net', { defaultValue: 'Net sales' })} value={data.netTotal} />
-          <Stat label={t('pos.report.z.receipts', { defaultValue: 'Receipts' })} value={String(data.receiptCount)} />
-          <Stat label={t('pos.report.z.returnsCount', { defaultValue: 'Returns count' })} value={String(data.returnCount)} />
-          <Stat label={t('pos.report.z.variance', { defaultValue: 'Over/short' })} value={data.shift.overShortAmount ?? 0} highlight={Number(data.shift.overShortAmount || 0) !== 0} />
+          <Stat label={t('pos:report.z.opening', { defaultValue: 'Opening float' })} value={data.shift.openingFloat} />
+          <Stat label={t('pos:report.z.expected', { defaultValue: 'Expected cash' })} value={data.totals.expectedCash} />
+          <Stat label={t('pos:report.z.gross', { defaultValue: 'Gross sales' })} value={data.grossTotal} />
+          <Stat label={t('pos:report.z.returns', { defaultValue: 'Returns' })} value={data.returnsTotal} />
+          <Stat label={t('pos:report.z.net', { defaultValue: 'Net sales' })} value={data.netTotal} />
+          <Stat label={t('pos:report.z.receipts', { defaultValue: 'Receipts' })} value={String(data.receiptCount)} />
+          <Stat label={t('pos:report.z.returnsCount', { defaultValue: 'Returns count' })} value={String(data.returnCount)} />
+          <Stat label={t('pos:report.z.variance', { defaultValue: 'Over/short' })} value={data.shift.overShortAmount ?? 0} highlight={Number(data.shift.overShortAmount || 0) !== 0} />
         </div>
         {data.shift.overShortVoucherId && (
           <div className="text-xs text-slate-500">
-            {t('pos.report.z.voucher', { defaultValue: 'Voucher' })}: <span className="font-mono">{data.shift.overShortVoucherId}</span>
+            {t('pos:report.z.voucher', { defaultValue: 'Voucher' })}: <span className="font-mono">{data.shift.overShortVoucherId}</span>
           </div>
         )}
       </div>
@@ -91,8 +91,8 @@ const PosZReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
 
   return (
     <ReportContainer<ZParams>
-      title={t('pos.report.z.title', { defaultValue: 'Z Report (by shift)' })}
-      subtitle={t('pos.report.z.subtitle', { defaultValue: 'Finalized close summary for a closed POS shift.' })}
+      title={t('pos:report.z.title', { defaultValue: 'Z Report (by shift)' })}
+      subtitle={t('pos:report.z.subtitle', { defaultValue: 'Finalized close summary for a closed POS shift.' })}
       isWindow={isWindow}
       initiator={Initiator}
       ReportContent={Content}

@@ -28,9 +28,9 @@ const PosPaymentMethodReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="py-2 px-2">Method</th>
-              <th className="py-2 px-2 text-right">Receipts</th>
-              <th className="py-2 px-2 text-right">Amount</th>
+              <th className="py-2 px-2">{t('pos:report.col.method')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.receipts')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.amount')}</th>
             </tr>
           </thead>
           <tbody>
@@ -49,8 +49,8 @@ const PosPaymentMethodReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.payments.title', { defaultValue: 'Payment Methods' })}
-      subtitle={t('pos.report.payments.subtitle', { defaultValue: 'Receipts and amounts per POS payment method.' })}
+      title={t('pos:report.payments.title', { defaultValue: 'Payment Methods' })}
+      subtitle={t('pos:report.payments.subtitle', { defaultValue: 'Receipts and amounts per POS payment method.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

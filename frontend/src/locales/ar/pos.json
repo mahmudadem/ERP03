@@ -21,7 +21,8 @@
     "confirm": {
       "title": "إنهاء إعداد نقطة البيع؟",
       "body": "سيتم حفظ إعدادات نقطة البيع هذه ووضع الوحدة كمنتهية الإعداد لهذه الشركة."
-    }
+    },
+    "loadFailed": "فشل تحميل إعدادات نقطة البيع الحالية."
   },
   "home": {
     "title": "نقطة البيع",
@@ -84,7 +85,68 @@
     "bootstrapError": "فشل تحميل بيانات نقطة البيع.",
     "lastReceipt": "آخر إيصال",
     "receiptNumber": "الإيصال",
-    "siNumber": "فاتورة المبيعات"
+    "siNumber": "فاتورة المبيعات",
+    "noTaxCode": "لا يوجد رمز ضريبة",
+    "shortcutItemMissing": "صنف الاختصار غير متاح.",
+    "commandReady": "الأمر جاهز.",
+    "voidReasonRequired": "أدخل سبب الإلغاء.",
+    "lineVoided": "تم إلغاء السطر.",
+    "noActiveLines": "لا توجد سطور بيع نشطة.",
+    "held": "تم تعليق البيع.",
+    "recallNeedsEmptyCart": "استرجاع البيع يتطلب سلة فارغة.",
+    "recalled": "تم استرجاع البيع.",
+    "needOpenShiftHelp": "افتح وردية نقطة بيع قبل البيع.",
+    "shiftOpen": "الوردية مفتوحة",
+    "hold": "تعليق",
+    "recall": "استرجاع",
+    "manageShift": "إدارة الوردية",
+    "shortcutsRoot": "الرئيسية",
+    "shortcutGroup": "مجموعة",
+    "noResultsFor": "لا توجد نتائج لـ \"{{query}}\".",
+    "searchPrompt": "امسح أو ابحث لإضافة المنتجات",
+    "searchPromptHelp": "اضغط على منتج لإضافته إلى الطلب. اضغط Enter لإضافة أفضل نتيجة.",
+    "currentSale": "البيع الحالي",
+    "voidAll": "إلغاء الكل",
+    "clear": "مسح",
+    "cartEmptyHelp": "أضف أصنافاً من قائمة المنتجات.",
+    "voided": "ملغى",
+    "editLine": "تعديل السطر",
+    "hideDetails": "إخفاء التفاصيل",
+    "showDetails": "إظهار التفاصيل",
+    "balanceDue": "الرصيد المستحق",
+    "exact": "مطابق",
+    "referenceOptional": "المرجع اختياري",
+    "remove": "إزالة",
+    "fullyPaid": "مدفوع بالكامل",
+    "voidAllTitle": "إلغاء كل سطور البيع؟",
+    "voidLineTitle": "إلغاء سطر البيع؟",
+    "voidAllMessage": "سيتم وسم كل سطور البيع الحالية كملغاة مع حفظ أثر تدقيقي.",
+    "voidLineMessage": "سيتم وسم السطر المحدد كملغى مع حفظ أثر تدقيقي.",
+    "voidReason": "سبب الإلغاء",
+    "voidLine": "إلغاء السطر",
+    "editLineTitle": "تعديل سطر البيع",
+    "taxCodeLabel": "رمز الضريبة",
+    "unitPrice": "سعر الوحدة",
+    "discountPercent": "نسبة الخصم",
+    "lineDiscount": "خصم السطر",
+    "taxAmount": "مبلغ الضريبة",
+    "uom": "وحدة القياس",
+    "taxCode": "رمز الضريبة",
+    "lineTotal": "إجمالي السطر",
+    "heldCartsTitle": "المبيعات المعلقة",
+    "noHeldCarts": "لا توجد مبيعات معلقة.",
+    "lines": "السطور",
+    "unitShort": "وحدة",
+    "priceShort": "سعر",
+    "taxShort": "ضريبة",
+    "discountPercentShort": "خصم %",
+    "discountAmountShort": "خصم مبلغ",
+    "editPrice": "تعديل السعر",
+    "editTaxAmount": "تعديل مبلغ الضريبة",
+    "editDiscountPercent": "تعديل نسبة الخصم",
+    "editDiscountAmount": "تعديل مبلغ الخصم",
+    "edit": "تعديل",
+    "heldCancelled": "تم إلغاء البيع المعلق."
   },
   "settings": {
     "title": "إعدادات نقطة البيع",
@@ -134,6 +196,43 @@
     "confirmAllowDirect": {
       "title": "تبديل المبيعات المباشرة من نقطة البيع؟",
       "body": "سيؤدي هذا إلى تغيير ما إذا كانت المبيعات المباشرة مسموح بها من نقطة البيع."
+    },
+    "cashOverContext": "إيراد",
+    "cashShortContext": "مصروف",
+    "cashierPolicies": {
+      "title": "سياسات أدوار الكاشير",
+      "noRoles": "لا توجد أدوار كاشير.",
+      "directApproval": "طلب موافقة للبيع المباشر",
+      "overrideActions": "إجراءات موافقة المدير",
+      "saleLimits": "حدود استثناء البيع",
+      "maxDiscountPercent": "أقصى نسبة خصم",
+      "maxDiscountAmount": "أقصى مبلغ خصم",
+      "allowPriceOverride": "السماح بتعديل السعر",
+      "allowTaxOverride": "السماح بتعديل الضريبة"
+    },
+    "layouts": {
+      "created": "تم إنشاء التخطيط.",
+      "nodeCreated": "تم إنشاء الاختصار.",
+      "buttonCreated": "تم إنشاء زر التحكم.",
+      "productLayoutName": "تخطيط اختصارات منتجات جديد",
+      "productLayouts": "تخطيطات اختصارات المنتجات",
+      "nodeType": "نوع العقدة",
+      "parent": "المجموعة الأب",
+      "root": "الرئيسية",
+      "item": "الصنف",
+      "selectItem": "اختر صنفاً...",
+      "sortOrder": "ترتيب العرض",
+      "addShortcut": "إضافة اختصار",
+      "controlLayoutName": "تخطيط أزرار تحكم جديد",
+      "controlLayouts": "تخطيطات التحكم",
+      "command": "الأمر",
+      "zone": "المنطقة",
+      "addButton": "إضافة زر",
+      "groupNode": "مجموعة",
+      "itemNode": "صنف",
+      "type": "النوع",
+      "sort": "الترتيب",
+      "permission": "الصلاحية"
     }
   },
   "registers": {
@@ -161,8 +260,21 @@
       "branch": "الفرع",
       "warehouse": "المستودع",
       "cashAccount": "حساب الصندوق",
-      "status": "الحالة"
-    }
+      "status": "الحالة",
+      "priceList": "قائمة الأسعار",
+      "cashiers": "الكاشيرون",
+      "hardware": "الأجهزة",
+      "settlementAccounts": "حسابات غير نقدية"
+    },
+    "priceListHelp": "اختيار قائمة أسعار خاصة بالكاشير. اتركه فارغاً لاستخدام تسعير نقطة البيع العادي.",
+    "hardwareHelp": "ربط طابعة الإيصالات ودرج النقد والماسح وشاشة العميل.",
+    "allowedCashiers": "الكاشيرون المسموحون",
+    "allowAllCashiers": "السماح للجميع",
+    "noUsersLoaded": "لم يتم تحميل مستخدمي الشركة. اتركه فارغاً للسماح لكل الكاشيرين.",
+    "allowedCashiersHelp": "عند عدم اختيار مستخدمين، يستطيع أي كاشير لديه صلاحية نقطة البيع فتح وردية على هذا السجل.",
+    "cashAccountContext": "أصل نقدي/بنكي",
+    "cashDrawerHelp": "يستخدم لكل مبيعات النقد والمرتجعات النقدية وحركات النقد وقيود الفرق لهذا السجل.",
+    "nonCashSettlementHelp": "يستخدم عندما يقبل هذا السجل طريقة الدفع غير النقدية هذه. اتركه فارغاً فقط إذا لم تستخدم هذه الطريقة في هذا السجل."
   },
   "shift": {
     "title": "وردية نقطة البيع",
@@ -235,6 +347,13 @@
       "amount": "الاسترداد",
       "sr": "رقم مرتجع المبيعات",
       "date": "التاريخ"
+    },
+    "modeReturn": "مرتجع",
+    "modeExchange": "استبدال",
+    "payment": {
+      "cash": "نقداً",
+      "card": "بطاقة",
+      "custom": "مخصص"
     }
   },
   "shortcuts": {
@@ -326,6 +445,86 @@
     "receipts": {
       "title": "سجل الإيصالات",
       "subtitle": "جميع إيصالات نقطة البيع في الفترة، مع رقم فاتورة المبيعات المرتبطة."
+    },
+    "cancelledReceipts": {
+      "title": "الإيصالات الملغاة",
+      "subtitle": "إيصالات نقطة البيع المرحلة والموسومة كملغاة بعد العكس عبر مسار المرتجع."
+    },
+    "overrideAudit": {
+      "title": "تدقيق الاستثناءات",
+      "subtitle": "الإلغاءات والخصومات اليدوية وتعديلات السعر والضريبة لمراجعة المدير."
+    },
+    "reprintAudit": {
+      "title": "تدقيق إعادة الطباعة",
+      "subtitle": "أحداث إعادة طباعة الإيصالات للرقابة على النسخ المكررة."
+    },
+    "topSellingItems": {
+      "title": "الأصناف الأكثر مبيعاً",
+      "subtitle": "الكمية المباعة والإجمالي من إيصالات نقطة البيع المكتملة."
+    },
+    "col": {
+      "date": "التاريخ",
+      "receipts": "الإيصالات",
+      "returnCount": "عدد المرتجعات",
+      "returns": "المرتجعات",
+      "gross": "الإجمالي",
+      "net": "الصافي",
+      "shift": "الوردية",
+      "register": "السجل",
+      "cashier": "الكاشير",
+      "closed": "الإغلاق",
+      "expected": "المتوقع",
+      "counted": "المعدود",
+      "variance": "الفرق",
+      "voucher": "السند",
+      "receipt": "الإيصال",
+      "status": "الحالة",
+      "originalTotal": "الإجمالي الأصلي",
+      "method": "الطريقة",
+      "amount": "المبلغ",
+      "customer": "العميل",
+      "total": "الإجمالي",
+      "time": "الوقت",
+      "action": "الإجراء",
+      "managerOverride": "استثناء المدير",
+      "event": "الحدث",
+      "item": "الصنف",
+      "qty": "الكمية",
+      "lineTotal": "إجمالي السطر",
+      "reasonValue": "السبب / القيمة",
+      "override": "الاستثناء",
+      "si": "فاتورة البيع",
+      "shifts": "الورديات",
+      "qtySold": "الكمية المباعة",
+      "grossSales": "إجمالي المبيعات"
     }
+  },
+  "exchange": {
+    "enterItem": "ابحث واختر صنف الاستبدال.",
+    "noItems": "لا توجد أصناف استبدال محددة.",
+    "priceRequired": "أدخل سعر استبدال صالح.",
+    "noReturnLines": "اختر سطر مرتجع واحداً على الأقل.",
+    "noReplacementLines": "أضف سطر استبدال واحداً على الأقل.",
+    "completed": "تم ترحيل الاستبدال.",
+    "replacementTitle": "بيع الاستبدال",
+    "searchPlaceholder": "ابحث برمز الصنف أو الاسم أو الباركود",
+    "search": "بحث",
+    "item": "الصنف",
+    "qty": "الكمية",
+    "price": "السعر",
+    "total": "الإجمالي",
+    "salePaymentMethod": "طريقة دفع الاستبدال",
+    "salePaymentRef": "مرجع الدفع",
+    "returnValue": "قيمة المرتجع",
+    "replacementValue": "قيمة الاستبدال",
+    "netDue": "الصافي المستحق",
+    "netRefund": "صافي الاسترداد",
+    "post": "ترحيل الاستبدال",
+    "confirmTitle": "ترحيل الاستبدال؟",
+    "confirmBody": "سيتم ترحيل مرتجع نقطة بيع وبيع بديل تحت مرجع استبدال واحد. متابعة؟",
+    "confirm": "ترحيل الاستبدال"
+  },
+  "common": {
+    "loading": "جارٍ التحميل..."
   }
 }

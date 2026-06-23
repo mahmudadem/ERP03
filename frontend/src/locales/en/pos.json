@@ -21,7 +21,8 @@
     "confirm": {
       "title": "Finish POS setup?",
       "body": "This will save these POS settings and mark the POS module as initialized for this company."
-    }
+    },
+    "loadFailed": "Failed to load existing POS settings."
   },
   "home": {
     "title": "Point of Sale",
@@ -84,7 +85,68 @@
     "bootstrapError": "Failed to load POS data.",
     "lastReceipt": "Last receipt",
     "receiptNumber": "Receipt",
-    "siNumber": "Sales Invoice"
+    "siNumber": "Sales Invoice",
+    "noTaxCode": "No tax code",
+    "shortcutItemMissing": "Shortcut item is unavailable.",
+    "commandReady": "Command is ready.",
+    "voidReasonRequired": "Enter a void reason.",
+    "lineVoided": "Line voided.",
+    "noActiveLines": "No active sale lines.",
+    "held": "Sale held.",
+    "recallNeedsEmptyCart": "Recall requires an empty cart.",
+    "recalled": "Sale recalled.",
+    "needOpenShiftHelp": "Open a POS shift before selling.",
+    "shiftOpen": "Shift open",
+    "hold": "Hold",
+    "recall": "Recall",
+    "manageShift": "Manage shift",
+    "shortcutsRoot": "Root",
+    "shortcutGroup": "Group",
+    "noResultsFor": "No results for \"{{query}}\".",
+    "searchPrompt": "Scan or search to add products",
+    "searchPromptHelp": "Tap a product to add it to the order. Press Enter to add the top match.",
+    "currentSale": "Current sale",
+    "voidAll": "Void all",
+    "clear": "Clear",
+    "cartEmptyHelp": "Add items from the product list.",
+    "voided": "Voided",
+    "editLine": "Edit line",
+    "hideDetails": "Hide details",
+    "showDetails": "Show details",
+    "balanceDue": "Balance due",
+    "exact": "Exact",
+    "referenceOptional": "Reference optional",
+    "remove": "Remove",
+    "fullyPaid": "Fully paid",
+    "voidAllTitle": "Void all sale lines?",
+    "voidLineTitle": "Void sale line?",
+    "voidAllMessage": "This marks all current sale lines as voided and keeps an audit trail.",
+    "voidLineMessage": "This marks the selected line as voided and keeps an audit trail.",
+    "voidReason": "Void reason",
+    "voidLine": "Void line",
+    "editLineTitle": "Edit sale line",
+    "taxCodeLabel": "Tax code",
+    "unitPrice": "Unit price",
+    "discountPercent": "Discount %",
+    "lineDiscount": "Line discount",
+    "taxAmount": "Tax amount",
+    "uom": "UoM",
+    "taxCode": "Tax code",
+    "lineTotal": "Line total",
+    "heldCartsTitle": "Held sales",
+    "noHeldCarts": "No held sales.",
+    "lines": "Lines",
+    "unitShort": "UNIT",
+    "priceShort": "PRICE",
+    "taxShort": "TAX",
+    "discountPercentShort": "DIS %",
+    "discountAmountShort": "DIS $",
+    "editPrice": "Edit price",
+    "editTaxAmount": "Edit tax amount",
+    "editDiscountPercent": "Edit discount %",
+    "editDiscountAmount": "Edit discount amount",
+    "edit": "Edit",
+    "heldCancelled": "Held sale cancelled."
   },
   "settings": {
     "title": "POS Settings",
@@ -134,6 +196,43 @@
     "confirmAllowDirect": {
       "title": "Toggle POS direct sales?",
       "body": "This will change whether direct cash sales are allowed from the POS terminal."
+    },
+    "cashOverContext": "Income",
+    "cashShortContext": "Expense",
+    "cashierPolicies": {
+      "title": "Cashier role policies",
+      "noRoles": "No cashier roles found.",
+      "directApproval": "Require approval for direct sale",
+      "overrideActions": "Manager approval actions",
+      "saleLimits": "Sale override limits",
+      "maxDiscountPercent": "Max discount %",
+      "maxDiscountAmount": "Max discount amount",
+      "allowPriceOverride": "Allow price override",
+      "allowTaxOverride": "Allow tax override"
+    },
+    "layouts": {
+      "created": "Layout created.",
+      "nodeCreated": "Shortcut node created.",
+      "buttonCreated": "Control button created.",
+      "productLayoutName": "New product shortcut layout",
+      "productLayouts": "Product shortcut layouts",
+      "nodeType": "Node type",
+      "parent": "Parent group",
+      "root": "Root",
+      "item": "Item",
+      "selectItem": "Select item...",
+      "sortOrder": "Sort order",
+      "addShortcut": "Add shortcut",
+      "controlLayoutName": "New control button layout",
+      "controlLayouts": "Control layouts",
+      "command": "Command",
+      "zone": "Zone",
+      "addButton": "Add button",
+      "groupNode": "Group",
+      "itemNode": "Item",
+      "type": "Type",
+      "sort": "Sort",
+      "permission": "Permission"
     }
   },
   "registers": {
@@ -161,8 +260,21 @@
       "branch": "Branch",
       "warehouse": "Warehouse",
       "cashAccount": "Cash account",
-      "status": "Status"
-    }
+      "status": "Status",
+      "priceList": "Price list",
+      "cashiers": "Cashiers",
+      "hardware": "Hardware",
+      "settlementAccounts": "Non-cash accounts"
+    },
+    "priceListHelp": "Terminal-specific price-list selection. Leave blank to use normal POS pricing.",
+    "hardwareHelp": "Receipt printer, cash drawer, scanner, and customer display mapping.",
+    "allowedCashiers": "Allowed cashiers",
+    "allowAllCashiers": "Allow all",
+    "noUsersLoaded": "No company users loaded. Leave blank to allow all cashiers.",
+    "allowedCashiersHelp": "When no users are selected, any cashier with POS access can open a shift on this register.",
+    "cashAccountContext": "Cash/Bank asset",
+    "cashDrawerHelp": "Used for all CASH sales, cash refunds, cash movements, and over/short close entries for this register.",
+    "nonCashSettlementHelp": "Used when this register accepts this non-cash method. Leave blank only if the method is not used at this register."
   },
   "shift": {
     "title": "POS Shift",
@@ -235,6 +347,13 @@
       "amount": "Refund",
       "sr": "Sales Return #",
       "date": "Date"
+    },
+    "modeReturn": "Return",
+    "modeExchange": "Exchange",
+    "payment": {
+      "cash": "Cash",
+      "card": "Card",
+      "custom": "Custom"
     }
   },
   "shortcuts": {
@@ -326,6 +445,86 @@
     "receipts": {
       "title": "Receipt History",
       "subtitle": "All POS receipts in the period, with the linked SI number."
+    },
+    "cancelledReceipts": {
+      "title": "Cancelled Receipts",
+      "subtitle": "Posted POS receipts marked voided after reversal through the return path."
+    },
+    "overrideAudit": {
+      "title": "Override Audit",
+      "subtitle": "Voids, manual discounts, price overrides, and tax overrides for manager review."
+    },
+    "reprintAudit": {
+      "title": "Reprint Audit",
+      "subtitle": "Receipt reprint events for duplicate-copy control."
+    },
+    "topSellingItems": {
+      "title": "Top Selling Items",
+      "subtitle": "Gross sold quantity and amount from completed POS receipts."
+    },
+    "col": {
+      "date": "Date",
+      "receipts": "Receipts",
+      "returnCount": "Return count",
+      "returns": "Returns",
+      "gross": "Gross",
+      "net": "Net",
+      "shift": "Shift",
+      "register": "Register",
+      "cashier": "Cashier",
+      "closed": "Closed",
+      "expected": "Expected",
+      "counted": "Counted",
+      "variance": "Variance",
+      "voucher": "Voucher",
+      "receipt": "Receipt",
+      "status": "Status",
+      "originalTotal": "Original total",
+      "method": "Method",
+      "amount": "Amount",
+      "customer": "Customer",
+      "total": "Total",
+      "time": "Time",
+      "action": "Action",
+      "managerOverride": "Manager override",
+      "event": "Event",
+      "item": "Item",
+      "qty": "Qty",
+      "lineTotal": "Line total",
+      "reasonValue": "Reason / value",
+      "override": "Override",
+      "si": "SI",
+      "shifts": "Shifts",
+      "qtySold": "Qty sold",
+      "grossSales": "Gross sales"
     }
+  },
+  "exchange": {
+    "enterItem": "Search and select a replacement item.",
+    "noItems": "No replacement items selected.",
+    "priceRequired": "Enter a valid replacement price.",
+    "noReturnLines": "Select at least one return line.",
+    "noReplacementLines": "Add at least one replacement line.",
+    "completed": "Exchange posted.",
+    "replacementTitle": "Replacement sale",
+    "searchPlaceholder": "Search item code, name, or barcode",
+    "search": "Search",
+    "item": "Item",
+    "qty": "Qty",
+    "price": "Price",
+    "total": "Total",
+    "salePaymentMethod": "Replacement payment method",
+    "salePaymentRef": "Payment reference",
+    "returnValue": "Return value",
+    "replacementValue": "Replacement value",
+    "netDue": "Net due",
+    "netRefund": "Net refund",
+    "post": "Post exchange",
+    "confirmTitle": "Post exchange?",
+    "confirmBody": "This posts a POS return and a replacement POS sale under one exchange reference. Continue?",
+    "confirm": "Post exchange"
+  },
+  "common": {
+    "loading": "Loading..."
   }
 }

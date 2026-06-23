@@ -205,7 +205,20 @@
     "formsManagement": "إدارة النماذج",
     "home": "الرئيسية",
     "search": "بحث (Ctrl + G)",
-    "uiLab": "مختبر الواجهة"
+    "uiLab": "مختبر الواجهة",
+    "shift": "الوردية",
+    "returns": "المرتجعات",
+    "registers": "السجلات",
+    "posZReport": "تقرير Z (حسب الوردية)",
+    "posDailySummary": "الملخص اليومي",
+    "posPaymentMethods": "طرق الدفع",
+    "posCashierSales": "مبيعات الكاشير",
+    "posCashOverShort": "فرق النقدية",
+    "posReceiptHistory": "سجل الإيصالات",
+    "posCancelledReceipts": "الإيصالات الملغاة",
+    "posTopSellingItems": "الأصناف الأكثر مبيعاً",
+    "posOverrideAudit": "تدقيق الاستثناءات",
+    "posReprintAudit": "تدقيق إعادة الطباعة"
   },
   "reportContainer": {
     "refresh": "تحديث",
@@ -4131,7 +4144,15 @@
     "view": "عرض",
     "post": "ترحيل",
     "apply": "تطبيق",
-    "clearFilters": "مسح عوامل التصفية"
+    "clearFilters": "مسح عوامل التصفية",
+    "close": "إغلاق",
+    "create": "إنشاء",
+    "select": "اختيار",
+    "confirm": "تأكيد",
+    "generate": "إنشاء",
+    "empty": "لا توجد صفوف.",
+    "processing": "جارٍ المعالجة...",
+    "label": "التسمية"
   },
   "messaging": {
     "whatsapp": {

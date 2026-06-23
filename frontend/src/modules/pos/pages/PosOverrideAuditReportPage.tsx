@@ -80,14 +80,14 @@ const PosOverrideAuditReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-slate-500">
-              <th className="px-2 py-2">Time</th>
-              <th className="px-2 py-2">Receipt</th>
-              <th className="px-2 py-2">Event</th>
-              <th className="px-2 py-2">Item</th>
-              <th className="px-2 py-2 text-right">Qty</th>
-              <th className="px-2 py-2 text-right">Line total</th>
-              <th className="px-2 py-2">Reason / value</th>
-              <th className="px-2 py-2">Override</th>
+              <th className="px-2 py-2">{t('pos:report.col.time')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.receipt')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.event')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.item')}</th>
+              <th className="px-2 py-2 text-right">{t('pos:report.col.qty')}</th>
+              <th className="px-2 py-2 text-right">{t('pos:report.col.lineTotal')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.reasonValue')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.override')}</th>
             </tr>
           </thead>
           <tbody>
@@ -126,8 +126,8 @@ const PosOverrideAuditReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.overrideAudit.title', { defaultValue: 'Override Audit' })}
-      subtitle={t('pos.report.overrideAudit.subtitle', { defaultValue: 'Voids, manual discounts, price overrides, and tax overrides for manager review.' })}
+      title={t('pos:report.overrideAudit.title', { defaultValue: 'Override Audit' })}
+      subtitle={t('pos:report.overrideAudit.subtitle', { defaultValue: 'Voids, manual discounts, price overrides, and tax overrides for manager review.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

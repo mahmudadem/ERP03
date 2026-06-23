@@ -87,14 +87,14 @@ const PosShiftPage: React.FC<Props> = () => {
 
   const onOpen = async () => {
     if (!registerId) {
-      toast.error(t('pos.shift.openNeedRegister', { defaultValue: 'Pick a register.' }));
+      toast.error(t('pos:shift.openNeedRegister', { defaultValue: 'Pick a register.' }));
       return;
     }
     try {
       setOpening(true);
       const float = Number(openingFloat) || 0;
       const shift = await posApi.openShift({ registerId, cashierUserId: userId, openingFloat: float });
-      toast.success(t('pos.shift.opened', { defaultValue: 'Shift opened.' }));
+      toast.success(t('pos:shift.opened', { defaultValue: 'Shift opened.' }));
       setShowOpenForm(false);
       setRegisterId('');
       setOpeningFloat('0');
@@ -125,11 +125,11 @@ const PosShiftPage: React.FC<Props> = () => {
       const variance = data?.overShortAmount ?? 0;
       const voucherId = data?.overShortVoucherId;
       if (variance && voucherId) {
-        toast.success(t('pos.shift.closedWithVoucher', {
+        toast.success(t('pos:shift.closedWithVoucher', {
           defaultValue: `Shift closed. ${variance > 0 ? 'Over' : 'Short'} ${Math.abs(variance)} → voucher ${voucherId}.`,
         }));
       } else {
-        toast.success(t('pos.shift.closed', { defaultValue: 'Shift closed.' }));
+        toast.success(t('pos:shift.closed', { defaultValue: 'Shift closed.' }));
       }
       setShowCloseForm(false);
       setCountedCash('0');
@@ -147,7 +147,7 @@ const PosShiftPage: React.FC<Props> = () => {
     try {
       const amount = Number(movementAmount) || 0;
       if (amount <= 0) {
-        toast.error(t('pos.shift.amountPositive', { defaultValue: 'Amount must be positive.' }));
+        toast.error(t('pos:shift.amountPositive', { defaultValue: 'Amount must be positive.' }));
         return;
       }
       await posApi.createCashMovement(openShift.id, {
@@ -155,7 +155,7 @@ const PosShiftPage: React.FC<Props> = () => {
         amount,
         reason: movementReason || undefined,
       });
-      toast.success(t('pos.shift.movementAdded', { defaultValue: 'Cash movement recorded.' }));
+      toast.success(t('pos:shift.movementAdded', { defaultValue: 'Cash movement recorded.' }));
       setShowMovementForm(false);
       setMovementAmount('0');
       setMovementReason('');
@@ -166,22 +166,22 @@ const PosShiftPage: React.FC<Props> = () => {
   };
 
   const shiftColumns: ColumnDefinition<PosShiftDTO>[] = [
-    { key: 'id', label: t('pos.shift.col.id', { defaultValue: 'Shift' }), width: '180px', priority: 1, accessor: (r) => r.id.slice(-8) },
-    { key: 'registerId', label: t('pos.shift.col.register', { defaultValue: 'Register' }), width: '120px', priority: 1, accessor: (r) => {
+    { key: 'id', label: t('pos:shift.col.id', { defaultValue: 'Shift' }), width: '180px', priority: 1, accessor: (r) => r.id.slice(-8) },
+    { key: 'registerId', label: t('pos:shift.col.register', { defaultValue: 'Register' }), width: '120px', priority: 1, accessor: (r) => {
       const reg = registers.find(reg => reg.id === r.registerId);
       return reg ? `${reg.code} - ${reg.name}` : r.registerId;
     } },
-    { key: 'status', label: t('pos.shift.col.status', { defaultValue: 'Status' }), width: '100px', priority: 1,
+    { key: 'status', label: t('pos:shift.col.status', { defaultValue: 'Status' }), width: '100px', priority: 1,
       render: (_v, r) => (
         <span className={`px-2 py-0.5 rounded text-xs ${r.status === 'OPEN' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-600'}`}>
           {r.status}
         </span>
       ),
     },
-    { key: 'openedAt', label: t('pos.shift.col.opened', { defaultValue: 'Opened' }), width: '160px', priority: 2, accessor: (r) => new Date(r.openedAt).toLocaleString() },
-    { key: 'closedAt', label: t('pos.shift.col.closed', { defaultValue: 'Closed' }), width: '160px', priority: 2, accessor: (r) => r.closedAt ? new Date(r.closedAt).toLocaleString() : '—' },
-    { key: 'openingFloat', label: t('pos.shift.col.opening', { defaultValue: 'Opening' }), width: '120px', priority: 2, accessor: (r) => r.openingFloat },
-    { key: 'overShort', label: t('pos.shift.col.variance', { defaultValue: 'Cash variance' }), width: '120px', priority: 1, accessor: (r) => r.overShortAmount ?? 0 },
+    { key: 'openedAt', label: t('pos:shift.col.opened', { defaultValue: 'Opened' }), width: '160px', priority: 2, accessor: (r) => new Date(r.openedAt).toLocaleString() },
+    { key: 'closedAt', label: t('pos:shift.col.closed', { defaultValue: 'Closed' }), width: '160px', priority: 2, accessor: (r) => r.closedAt ? new Date(r.closedAt).toLocaleString() : '—' },
+    { key: 'openingFloat', label: t('pos:shift.col.opening', { defaultValue: 'Opening' }), width: '120px', priority: 2, accessor: (r) => r.openingFloat },
+    { key: 'overShort', label: t('pos:shift.col.variance', { defaultValue: 'Cash variance' }), width: '120px', priority: 1, accessor: (r) => r.overShortAmount ?? 0 },
   ];
 
   const totals = xReport?.totals;
@@ -194,7 +194,7 @@ const PosShiftPage: React.FC<Props> = () => {
             <div className="flex items-center gap-2">
               <Clock className="w-5 h-5 text-indigo-600" />
               <h2 className="text-lg font-semibold">
-                {t('pos.shift.openTitle', { defaultValue: 'Open shift' })} — {(() => {
+                {t('pos:shift.openTitle', { defaultValue: 'Open shift' })} — {(() => {
                   const reg = registers.find(r => r.id === openShift.registerId);
                   return reg ? `${reg.code} - ${reg.name}` : openShift.registerId;
                 })()}
@@ -202,19 +202,19 @@ const PosShiftPage: React.FC<Props> = () => {
             </div>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-sm">
               <div>
-                <div className="text-slate-500">{t('pos.shift.openingFloat', { defaultValue: 'Opening float' })}</div>
+                <div className="text-slate-500">{t('pos:shift.openingFloat', { defaultValue: 'Opening float' })}</div>
                 <div className="font-mono">{openShift.openingFloat.toFixed(2)}</div>
               </div>
               <div>
-                <div className="text-slate-500">{t('pos.shift.expected', { defaultValue: 'Expected cash' })}</div>
+                <div className="text-slate-500">{t('pos:shift.expected', { defaultValue: 'Expected cash' })}</div>
                 <div className="font-mono">{totals?.expectedCash?.toFixed(2) ?? '0.00'}</div>
               </div>
               <div>
-                <div className="text-slate-500">{t('pos.shift.cashSales', { defaultValue: 'Cash sales' })}</div>
+                <div className="text-slate-500">{t('pos:shift.cashSales', { defaultValue: 'Cash sales' })}</div>
                 <div className="font-mono">{totals?.SALE_CASH?.toFixed(2) ?? '0.00'}</div>
               </div>
               <div>
-                <div className="text-slate-500">{t('pos.shift.refunds', { defaultValue: 'Refunds' })}</div>
+                <div className="text-slate-500">{t('pos:shift.refunds', { defaultValue: 'Refunds' })}</div>
                 <div className="font-mono">{totals?.REFUND_CASH?.toFixed(2) ?? '0.00'}</div>
               </div>
             </div>
@@ -223,13 +223,13 @@ const PosShiftPage: React.FC<Props> = () => {
                 onClick={() => setShowMovementForm(true)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded border border-slate-300 text-sm"
               >
-                <Plus className="w-4 h-4" /> {t('pos.shift.addMovement', { defaultValue: 'Add cash movement' })}
+                <Plus className="w-4 h-4" /> {t('pos:shift.addMovement', { defaultValue: 'Add cash movement' })}
               </button>
               <button
                 onClick={() => setShowCloseForm(true)}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-indigo-600 text-white text-sm"
               >
-                <DollarSign className="w-4 h-4" /> {t('pos.shift.closeShift', { defaultValue: 'Close shift' })}
+                <DollarSign className="w-4 h-4" /> {t('pos:shift.closeShift', { defaultValue: 'Close shift' })}
               </button>
             </div>
           </div>
@@ -238,34 +238,34 @@ const PosShiftPage: React.FC<Props> = () => {
         <Card>
           <div className="p-6 text-center space-y-3">
             <p className="text-sm text-slate-500">
-              {t('pos.shift.noOpen', { defaultValue: 'No open shift. Open one to start selling.' })}
+              {t('pos:shift.noOpen', { defaultValue: 'No open shift. Open one to start selling.' })}
             </p>
             <button
               onClick={() => setShowOpenForm(true)}
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-indigo-600 text-white text-sm"
             >
-              <Plus className="w-4 h-4" /> {t('pos.shift.open', { defaultValue: 'Open shift' })}
+              <Plus className="w-4 h-4" /> {t('pos:shift.open', { defaultValue: 'Open shift' })}
             </button>
           </div>
         </Card>
       )}
 
       <OperationalListLayout<PosShiftDTO>
-        title={t('pos.shift.historyTitle', { defaultValue: 'Shift history' })}
-        subtitle={t('pos.shift.historySubtitle', { defaultValue: 'Recent shifts for this company.' })}
+        title={t('pos:shift.historyTitle', { defaultValue: 'Shift history' })}
+        subtitle={t('pos:shift.historySubtitle', { defaultValue: 'Recent shifts for this company.' })}
         onRefresh={load}
         data={shifts}
         columns={shiftColumns}
         loading={loading}
         idKey="id"
-        emptyMessage={t('pos.shift.empty', { defaultValue: 'No shifts yet.' })}
+        emptyMessage={t('pos:shift.empty', { defaultValue: 'No shifts yet.' })}
       />
 
       {/* Open shift modal */}
-      <Modal isOpen={showOpenForm} onClose={() => setShowOpenForm(false)} title={t('pos.shift.openTitle', { defaultValue: 'Open shift' })}>
+      <Modal isOpen={showOpenForm} onClose={() => setShowOpenForm(false)} title={t('pos:shift.openTitle', { defaultValue: 'Open shift' })}>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1">{t('pos.shift.register', { defaultValue: 'Register' })}</label>
+            <label className="block text-sm font-medium mb-1">{t('pos:shift.register', { defaultValue: 'Register' })}</label>
             <select
               value={registerId}
               onChange={(e) => setRegisterId(e.target.value)}
@@ -278,7 +278,7 @@ const PosShiftPage: React.FC<Props> = () => {
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">{t('pos.shift.openingFloat', { defaultValue: 'Opening float' })}</label>
+            <label className="block text-sm font-medium mb-1">{t('pos:shift.openingFloat', { defaultValue: 'Opening float' })}</label>
             <input
               type="number"
               value={openingFloat}
@@ -291,23 +291,23 @@ const PosShiftPage: React.FC<Props> = () => {
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setShowOpenForm(false)} className="px-3 py-1.5 rounded border border-slate-300 text-sm">{t('common.cancel', { defaultValue: 'Cancel' })}</button>
             <button onClick={onOpen} disabled={opening} className="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
-              {opening ? <Spinner size="sm" variant="white" /> : t('pos.shift.open', { defaultValue: 'Open shift' })}
+              {opening ? <Spinner size="sm" variant="white" /> : t('pos:shift.open', { defaultValue: 'Open shift' })}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Close shift modal */}
-      <Modal isOpen={showCloseForm} onClose={() => setShowCloseForm(false)} title={t('pos.shift.closeTitle', { defaultValue: 'Close shift' })}>
+      <Modal isOpen={showCloseForm} onClose={() => setShowCloseForm(false)} title={t('pos:shift.closeTitle', { defaultValue: 'Close shift' })}>
         <div className="space-y-3">
           <div className="text-sm bg-slate-50 p-3 rounded">
             <div className="flex justify-between">
-              <span>{t('pos.shift.expected', { defaultValue: 'Expected cash' })}:</span>
+              <span>{t('pos:shift.expected', { defaultValue: 'Expected cash' })}:</span>
               <span className="font-mono">{totals?.expectedCash?.toFixed(2) ?? '0.00'}</span>
             </div>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">{t('pos.shift.counted', { defaultValue: 'Counted cash' })}</label>
+            <label className="block text-sm font-medium mb-1">{t('pos:shift.counted', { defaultValue: 'Counted cash' })}</label>
             <input
               type="number"
               value={countedCash}
@@ -324,7 +324,7 @@ const PosShiftPage: React.FC<Props> = () => {
             {PAYMENT_METHODS.filter((method) => method !== 'CASH').map((method) => (
               <div key={method}>
                 <label className="block text-sm font-medium mb-1">
-                  {t(`pos.shift.counted.${method}`, { defaultValue: `Counted ${method}` })}
+                  {t(`pos:shift.counted.${method}`, { defaultValue: `Counted ${method}` })}
                 </label>
                 <input
                   type="number"
@@ -340,29 +340,29 @@ const PosShiftPage: React.FC<Props> = () => {
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setShowCloseForm(false)} className="px-3 py-1.5 rounded border border-slate-300 text-sm">{t('common.cancel', { defaultValue: 'Cancel' })}</button>
             <button onClick={() => onClose(false)} disabled={closing} className="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
-              {closing ? <Spinner size="sm" variant="white" /> : t('pos.shift.close', { defaultValue: 'Close shift' })}
+              {closing ? <Spinner size="sm" variant="white" /> : t('pos:shift.close', { defaultValue: 'Close shift' })}
             </button>
           </div>
         </div>
       </Modal>
 
       {/* Cash movement modal */}
-      <Modal isOpen={showMovementForm} onClose={() => setShowMovementForm(false)} title={t('pos.shift.addMovement', { defaultValue: 'Add cash movement' })}>
+      <Modal isOpen={showMovementForm} onClose={() => setShowMovementForm(false)} title={t('pos:shift.addMovement', { defaultValue: 'Add cash movement' })}>
         <div className="space-y-3">
           <div>
-            <label className="block text-sm font-medium mb-1">{t('pos.shift.movementType', { defaultValue: 'Type' })}</label>
+            <label className="block text-sm font-medium mb-1">{t('pos:shift.movementType', { defaultValue: 'Type' })}</label>
             <select
               value={movementType}
               onChange={(e) => setMovementType(e.target.value as any)}
               className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
             >
-              <option value="PAYIN">{t('pos.shift.payin', { defaultValue: 'Pay-in (cash added)' })}</option>
-              <option value="PAYOUT">{t('pos.shift.payout', { defaultValue: 'Pay-out (cash removed)' })}</option>
-              <option value="DROP">{t('pos.shift.drop', { defaultValue: 'Drop (to safe)' })}</option>
+              <option value="PAYIN">{t('pos:shift.payin', { defaultValue: 'Pay-in (cash added)' })}</option>
+              <option value="PAYOUT">{t('pos:shift.payout', { defaultValue: 'Pay-out (cash removed)' })}</option>
+              <option value="DROP">{t('pos:shift.drop', { defaultValue: 'Drop (to safe)' })}</option>
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">{t('pos.shift.amount', { defaultValue: 'Amount' })}</label>
+            <label className="block text-sm font-medium mb-1">{t('pos:shift.amount', { defaultValue: 'Amount' })}</label>
             <input
               type="number"
               value={movementAmount}
@@ -373,7 +373,7 @@ const PosShiftPage: React.FC<Props> = () => {
             />
           </div>
           <div>
-            <label className="block text-sm font-medium mb-1">{t('pos.shift.reason', { defaultValue: 'Reason' })}</label>
+            <label className="block text-sm font-medium mb-1">{t('pos:shift.reason', { defaultValue: 'Reason' })}</label>
             <input
               type="text"
               value={movementReason}

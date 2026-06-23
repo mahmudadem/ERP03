@@ -55,12 +55,12 @@ const PosCancelledReceiptsReportPage: React.FC<{ isWindow?: boolean }> = ({ isWi
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-slate-500">
-              <th className="px-2 py-2">Receipt</th>
-              <th className="px-2 py-2">Status</th>
-              <th className="px-2 py-2">Register</th>
-              <th className="px-2 py-2">Cashier</th>
-              <th className="px-2 py-2 text-right">Original total</th>
-              <th className="px-2 py-2">Date</th>
+              <th className="px-2 py-2">{t('pos:report.col.receipt')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.status')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.register')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.cashier')}</th>
+              <th className="px-2 py-2 text-right">{t('pos:report.col.originalTotal')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.date')}</th>
             </tr>
           </thead>
           <tbody>
@@ -89,8 +89,8 @@ const PosCancelledReceiptsReportPage: React.FC<{ isWindow?: boolean }> = ({ isWi
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.cancelledReceipts.title', { defaultValue: 'Cancelled Receipts' })}
-      subtitle={t('pos.report.cancelledReceipts.subtitle', { defaultValue: 'Posted POS receipts marked voided after reversal through the return path.' })}
+      title={t('pos:report.cancelledReceipts.title', { defaultValue: 'Cancelled Receipts' })}
+      subtitle={t('pos:report.cancelledReceipts.subtitle', { defaultValue: 'Posted POS receipts marked voided after reversal through the return path.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

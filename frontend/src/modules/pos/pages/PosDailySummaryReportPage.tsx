@@ -28,12 +28,12 @@ const PosDailySummaryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="py-2 px-2">Date</th>
-              <th className="py-2 px-2 text-right">Receipts</th>
-              <th className="py-2 px-2 text-right">Returns</th>
-              <th className="py-2 px-2 text-right">Gross</th>
-              <th className="py-2 px-2 text-right">Returns</th>
-              <th className="py-2 px-2 text-right">Net</th>
+              <th className="py-2 px-2">{t('pos:report.col.date')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.receipts')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.returnCount')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.gross')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.returns')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.net')}</th>
             </tr>
           </thead>
           <tbody>
@@ -55,8 +55,8 @@ const PosDailySummaryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.daily.title', { defaultValue: 'Daily POS Summary' })}
-      subtitle={t('pos.report.daily.subtitle', { defaultValue: 'Receipts and returns per day.' })}
+      title={t('pos:report.daily.title', { defaultValue: 'Daily POS Summary' })}
+      subtitle={t('pos:report.daily.subtitle', { defaultValue: 'Receipts and returns per day.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

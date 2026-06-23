@@ -8,6 +8,7 @@ import { IInventorySettingsRepository } from '../../../repository/interfaces/inv
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IAccountingBridge, IInventoryCore } from '../../system-core';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -77,7 +78,7 @@ export class PostPosReturnUseCase {
     const cogsCredits = new Map<string, number>();
     const postedLines: PostedPosReturnLine[] = [];
 
-    for (const sourceLine of input.lines) {
+    for (const [idx, sourceLine] of input.lines.entries()) {
       const receiptLine = input.originalReceipt.lines.find((line) => line.itemId === sourceLine.itemId);
       if (!receiptLine) throw new Error(`No matching receipt line for item ${sourceLine.itemId}.`);
       const item = await this.itemRepo.getItem(sourceLine.itemId);
@@ -111,7 +112,15 @@ export class PostPosReturnUseCase {
       }
 
       const revenueAccountId = (receiptLine as any).revenueAccountId || this.resolveRevenueAccount(item, categoryMap);
-      if (!revenueAccountId) throw new Error(`No revenue account configured for item ${item.code}`);
+      if (!revenueAccountId) {
+        throw new AccountMappingError({
+          companyId: input.companyId,
+          itemId: item.id,
+          accountRole: 'revenue',
+          fallbackChain: ['receiptLine.revenueAccountId', 'item.revenueAccountId', 'category.defaultRevenueAccountId'],
+          lineNo: idx + 1,
+        });
+      }
       addToBucket(revenueDebits, revenueAccountId, lineTotal);
 
       const taxAccountId = (receiptLine as any).taxAccountId;

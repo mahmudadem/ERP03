@@ -28,10 +28,10 @@ const PosCashierSalesReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="py-2 px-2">Cashier</th>
-              <th className="py-2 px-2 text-right">Shifts</th>
-              <th className="py-2 px-2 text-right">Receipts</th>
-              <th className="py-2 px-2 text-right">Gross</th>
+              <th className="py-2 px-2">{t('pos:report.col.cashier')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.shifts')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.receipts')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.gross')}</th>
             </tr>
           </thead>
           <tbody>
@@ -51,8 +51,8 @@ const PosCashierSalesReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.cashier.title', { defaultValue: 'Cashier Sales' })}
-      subtitle={t('pos.report.cashier.subtitle', { defaultValue: 'Totals per cashier (uid) for the period.' })}
+      title={t('pos:report.cashier.title', { defaultValue: 'Cashier Sales' })}
+      subtitle={t('pos:report.cashier.subtitle', { defaultValue: 'Totals per cashier (uid) for the period.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

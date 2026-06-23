@@ -13,6 +13,7 @@ import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig, PosNegativeStockPolicy } from '../../../domain/pos/entities/PosSettings';
 import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
 import { PosNegativeStockError } from '../../../domain/pos/errors/PosNegativeStockError';
+import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -227,7 +228,13 @@ export class PostPosSaleUseCase {
 
       const revenueAccountId = this.resolveRevenueAccount(item, categoryMap);
       if (!revenueAccountId) {
-        throw new Error(`No revenue account configured for item ${item.code}`);
+        throw new AccountMappingError({
+          companyId: input.companyId,
+          itemId: item.id,
+          accountRole: 'revenue',
+          fallbackChain: ['item.revenueAccountId', 'category.defaultRevenueAccountId', 'posSettings.defaultRevenueAccountId'],
+          lineNo: idx + 1,
+        });
       }
       addToBucket(revenueCredits, revenueAccountId, taxAmounts.lineTotalBase, baseCurrency);
       if (netDiscountBase > 0) {
@@ -236,7 +243,15 @@ export class PostPosSaleUseCase {
       }
       if (taxAmountBase > 0) {
         if (!tax.salesTaxAccountId) {
-          throw new Error(`Tax code ${tax.code || tax.id} has no Sales Tax Account configured.`);
+          const taxLabel = tax.code || tax.id;
+          throw new AccountMappingError({
+            companyId: input.companyId,
+            itemId: item.id,
+            accountRole: 'tax',
+            fallbackChain: ['taxCode.salesTaxAccountId'],
+            lineNo: idx + 1,
+            hint: `Tax code ${taxLabel} needs salesTaxAccountId configured.`,
+          });
         }
         addToBucket(taxCredits, tax.salesTaxAccountId, taxAmountBase, baseCurrency);
       }

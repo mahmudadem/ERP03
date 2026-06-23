@@ -49,11 +49,11 @@ const PosReprintAuditReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-slate-500">
-              <th className="px-2 py-2">Time</th>
-              <th className="px-2 py-2">Receipt</th>
-              <th className="px-2 py-2">Action</th>
-              <th className="px-2 py-2">Cashier</th>
-              <th className="px-2 py-2">Manager override</th>
+              <th className="px-2 py-2">{t('pos:report.col.time')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.receipt')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.action')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.cashier')}</th>
+              <th className="px-2 py-2">{t('pos:report.col.managerOverride')}</th>
             </tr>
           </thead>
           <tbody>
@@ -81,8 +81,8 @@ const PosReprintAuditReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.reprintAudit.title', { defaultValue: 'Reprint Audit' })}
-      subtitle={t('pos.report.reprintAudit.subtitle', { defaultValue: 'Receipt reprint events for duplicate-copy control.' })}
+      title={t('pos:report.reprintAudit.title', { defaultValue: 'Reprint Audit' })}
+      subtitle={t('pos:report.reprintAudit.subtitle', { defaultValue: 'Receipt reprint events for duplicate-copy control.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

@@ -21,7 +21,8 @@
     "confirm": {
       "title": "POS kurulumunu bitir?",
       "body": "Bu POS ayarlarını kaydeder ve bu şirket için POS modülünü başlatılmış olarak işaretler."
-    }
+    },
+    "loadFailed": "Mevcut POS ayarları yüklenemedi."
   },
   "home": {
     "title": "Satış Noktası",
@@ -84,7 +85,68 @@
     "bootstrapError": "POS verileri yüklenemedi.",
     "lastReceipt": "Son fiş",
     "receiptNumber": "Fiş",
-    "siNumber": "Satış faturası"
+    "siNumber": "Satış faturası",
+    "noTaxCode": "Vergi kodu yok",
+    "shortcutItemMissing": "Kısayol ürünü kullanılamıyor.",
+    "commandReady": "Komut hazır.",
+    "voidReasonRequired": "İptal nedeni girin.",
+    "lineVoided": "Satır iptal edildi.",
+    "noActiveLines": "Aktif satış satırı yok.",
+    "held": "Satış beklemeye alındı.",
+    "recallNeedsEmptyCart": "Geri çağırmak için sepet boş olmalı.",
+    "recalled": "Satış geri çağrıldı.",
+    "needOpenShiftHelp": "Satıştan önce POS vardiyası açın.",
+    "shiftOpen": "Vardiya açık",
+    "hold": "Beklet",
+    "recall": "Geri çağır",
+    "manageShift": "Vardiyayı yönet",
+    "shortcutsRoot": "Kök",
+    "shortcutGroup": "Grup",
+    "noResultsFor": "\"{{query}}\" için sonuç yok.",
+    "searchPrompt": "Ürün eklemek için okutun veya arayın",
+    "searchPromptHelp": "Siparişe eklemek için ürüne dokunun. En iyi eşleşmeyi eklemek için Enter tuşuna basın.",
+    "currentSale": "Geçerli satış",
+    "voidAll": "Tümünü iptal et",
+    "clear": "Temizle",
+    "cartEmptyHelp": "Ürün listesinden ürün ekleyin.",
+    "voided": "İptal edildi",
+    "editLine": "Satırı düzenle",
+    "hideDetails": "Detayları gizle",
+    "showDetails": "Detayları göster",
+    "balanceDue": "Kalan tutar",
+    "exact": "Tam",
+    "referenceOptional": "Referans isteğe bağlı",
+    "remove": "Kaldır",
+    "fullyPaid": "Tam ödendi",
+    "voidAllTitle": "Tüm satış satırları iptal edilsin mi?",
+    "voidLineTitle": "Satış satırı iptal edilsin mi?",
+    "voidAllMessage": "Bu, tüm mevcut satış satırlarını iptal olarak işaretler ve denetim izi tutar.",
+    "voidLineMessage": "Bu, seçili satırı iptal olarak işaretler ve denetim izi tutar.",
+    "voidReason": "İptal nedeni",
+    "voidLine": "Satırı iptal et",
+    "editLineTitle": "Satış satırını düzenle",
+    "taxCodeLabel": "Vergi kodu",
+    "unitPrice": "Birim fiyat",
+    "discountPercent": "İndirim %",
+    "lineDiscount": "Satır indirimi",
+    "taxAmount": "Vergi tutarı",
+    "uom": "ÖB",
+    "taxCode": "Vergi kodu",
+    "lineTotal": "Satır toplamı",
+    "heldCartsTitle": "Bekleyen satışlar",
+    "noHeldCarts": "Bekleyen satış yok.",
+    "lines": "Satırlar",
+    "unitShort": "BİRİM",
+    "priceShort": "FİYAT",
+    "taxShort": "VERGİ",
+    "discountPercentShort": "İND %",
+    "discountAmountShort": "İND TUT",
+    "editPrice": "Fiyatı düzenle",
+    "editTaxAmount": "Vergi tutarını düzenle",
+    "editDiscountPercent": "İndirim yüzdesini düzenle",
+    "editDiscountAmount": "İndirim tutarını düzenle",
+    "edit": "Düzenle",
+    "heldCancelled": "Bekleyen satış iptal edildi."
   },
   "settings": {
     "title": "POS Ayarları",
@@ -134,6 +196,43 @@
     "confirmAllowDirect": {
       "title": "POS doğrudan satışları değiştirilsin mi?",
       "body": "Bu, POS terminalinden doğrudan satışlara izin verilip verilmediğini değiştirecek."
+    },
+    "cashOverContext": "Gelir",
+    "cashShortContext": "Gider",
+    "cashierPolicies": {
+      "title": "Kasiyer rol politikaları",
+      "noRoles": "Kasiyer rolü bulunamadı.",
+      "directApproval": "Doğrudan satış için onay iste",
+      "overrideActions": "Yönetici onayı işlemleri",
+      "saleLimits": "Satış istisna sınırları",
+      "maxDiscountPercent": "Maksimum indirim %",
+      "maxDiscountAmount": "Maksimum indirim tutarı",
+      "allowPriceOverride": "Fiyat değişikliğine izin ver",
+      "allowTaxOverride": "Vergi değişikliğine izin ver"
+    },
+    "layouts": {
+      "created": "Düzen oluşturuldu.",
+      "nodeCreated": "Kısayol oluşturuldu.",
+      "buttonCreated": "Kontrol düğmesi oluşturuldu.",
+      "productLayoutName": "Yeni ürün kısayol düzeni",
+      "productLayouts": "Ürün kısayol düzenleri",
+      "nodeType": "Düğüm türü",
+      "parent": "Üst grup",
+      "root": "Kök",
+      "item": "Ürün",
+      "selectItem": "Ürün seç...",
+      "sortOrder": "Sıralama",
+      "addShortcut": "Kısayol ekle",
+      "controlLayoutName": "Yeni kontrol düğmesi düzeni",
+      "controlLayouts": "Kontrol düzenleri",
+      "command": "Komut",
+      "zone": "Bölge",
+      "addButton": "Düğme ekle",
+      "groupNode": "Grup",
+      "itemNode": "Ürün",
+      "type": "Tür",
+      "sort": "Sıra",
+      "permission": "İzin"
     }
   },
   "registers": {
@@ -161,8 +260,21 @@
       "branch": "Şube",
       "warehouse": "Depo",
       "cashAccount": "Kasa hesabı",
-      "status": "Durum"
-    }
+      "status": "Durum",
+      "priceList": "Fiyat listesi",
+      "cashiers": "Kasiyerler",
+      "hardware": "Donanım",
+      "settlementAccounts": "Nakit dışı hesaplar"
+    },
+    "priceListHelp": "Terminale özel fiyat listesi seçimi. Normal POS fiyatlandırması için boş bırakın.",
+    "hardwareHelp": "Fiş yazıcısı, kasa çekmecesi, tarayıcı ve müşteri ekranı eşlemesi.",
+    "allowedCashiers": "İzinli kasiyerler",
+    "allowAllCashiers": "Tümüne izin ver",
+    "noUsersLoaded": "Şirket kullanıcıları yüklenmedi. Tüm kasiyerlere izin vermek için boş bırakın.",
+    "allowedCashiersHelp": "Kullanıcı seçilmezse POS erişimi olan tüm kasiyerler bu kasada vardiya açabilir.",
+    "cashAccountContext": "Nakit/Banka varlığı",
+    "cashDrawerHelp": "Bu kasa için tüm nakit satışlar, nakit iadeler, nakit hareketleri ve fazla/eksik kapanış kayıtlarında kullanılır.",
+    "nonCashSettlementHelp": "Bu kasa bu nakit dışı yöntemi kabul ettiğinde kullanılır. Yöntem bu kasada kullanılmıyorsa boş bırakın."
   },
   "shift": {
     "title": "POS Vardiyası",
@@ -235,6 +347,13 @@
       "amount": "İade tutarı",
       "sr": "Satış iadesi #",
       "date": "Tarih"
+    },
+    "modeReturn": "İade",
+    "modeExchange": "Değişim",
+    "payment": {
+      "cash": "Nakit",
+      "card": "Kart",
+      "custom": "Özel"
     }
   },
   "shortcuts": {
@@ -326,6 +445,86 @@
     "receipts": {
       "title": "Fiş Geçmişi",
       "subtitle": "Dönemdeki tüm POS fişleri, bağlı fatura numarasıyla."
+    },
+    "cancelledReceipts": {
+      "title": "İptal Edilen Fişler",
+      "subtitle": "İade yolu ile ters çevrildikten sonra iptal edilmiş POS fişleri."
+    },
+    "overrideAudit": {
+      "title": "İstisna Denetimi",
+      "subtitle": "Yönetici incelemesi için iptaller, manuel indirimler, fiyat ve vergi değişiklikleri."
+    },
+    "reprintAudit": {
+      "title": "Yeniden Yazdırma Denetimi",
+      "subtitle": "Kopya kontrolü için fiş yeniden yazdırma olayları."
+    },
+    "topSellingItems": {
+      "title": "En Çok Satan Ürünler",
+      "subtitle": "Tamamlanan POS fişlerinden brüt satılan miktar ve tutar."
+    },
+    "col": {
+      "date": "Tarih",
+      "receipts": "Fişler",
+      "returnCount": "İade sayısı",
+      "returns": "İadeler",
+      "gross": "Brüt",
+      "net": "Net",
+      "shift": "Vardiya",
+      "register": "Kasa",
+      "cashier": "Kasiyer",
+      "closed": "Kapandı",
+      "expected": "Beklenen",
+      "counted": "Sayılan",
+      "variance": "Fark",
+      "voucher": "Fiş",
+      "receipt": "Fiş",
+      "status": "Durum",
+      "originalTotal": "Orijinal toplam",
+      "method": "Yöntem",
+      "amount": "Tutar",
+      "customer": "Müşteri",
+      "total": "Toplam",
+      "time": "Saat",
+      "action": "İşlem",
+      "managerOverride": "Yönetici istisnası",
+      "event": "Olay",
+      "item": "Ürün",
+      "qty": "Miktar",
+      "lineTotal": "Satır toplamı",
+      "reasonValue": "Neden / değer",
+      "override": "İstisna",
+      "si": "Satış faturası",
+      "shifts": "Vardiyalar",
+      "qtySold": "Satılan miktar",
+      "grossSales": "Brüt satışlar"
     }
+  },
+  "exchange": {
+    "enterItem": "Yedek ürünü arayıp seçin.",
+    "noItems": "Yedek ürün seçilmedi.",
+    "priceRequired": "Geçerli bir yedek satış fiyatı girin.",
+    "noReturnLines": "En az bir iade satırı seçin.",
+    "noReplacementLines": "En az bir yedek satış satırı ekleyin.",
+    "completed": "Değişim kaydedildi.",
+    "replacementTitle": "Yedek satış",
+    "searchPlaceholder": "Ürün kodu, adı veya barkodu ara",
+    "search": "Ara",
+    "item": "Ürün",
+    "qty": "Miktar",
+    "price": "Fiyat",
+    "total": "Toplam",
+    "salePaymentMethod": "Yedek ödeme yöntemi",
+    "salePaymentRef": "Ödeme referansı",
+    "returnValue": "İade değeri",
+    "replacementValue": "Yedek değeri",
+    "netDue": "Net tahsilat",
+    "netRefund": "Net iade",
+    "post": "Değişimi kaydet",
+    "confirmTitle": "Değişim kaydedilsin mi?",
+    "confirmBody": "Bu işlem tek değişim referansı altında POS iadesi ve yedek POS satışı kaydeder. Devam edilsin mi?",
+    "confirm": "Değişimi kaydet"
+  },
+  "common": {
+    "loading": "Yükleniyor..."
   }
 }

@@ -939,7 +939,12 @@ export class CreateSalesInvoiceUseCase {
     }
 
     if (!defaultRevenueAccountId) {
-      throw new Error(`No revenue account configured for item ${item.code}`);
+      throw new AccountMappingError({
+        companyId,
+        itemId: item.id,
+        accountRole: 'revenue',
+        fallbackChain: ['item.revenueAccountId', 'category.defaultRevenueAccountId', 'salesSettings.defaultRevenueAccountId'],
+      });
     }
 
     return defaultRevenueAccountId;

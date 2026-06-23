@@ -205,7 +205,20 @@
     "formsManagement": "Forms Management",
     "home": "Home",
     "search": "Search (Ctrl + G)",
-    "uiLab": "UI Lab"
+    "uiLab": "UI Lab",
+    "shift": "Shift",
+    "returns": "Returns",
+    "registers": "Registers",
+    "posZReport": "Z Report (by shift)",
+    "posDailySummary": "Daily Summary",
+    "posPaymentMethods": "Payment Methods",
+    "posCashierSales": "Cashier Sales",
+    "posCashOverShort": "Cash Over/Short",
+    "posReceiptHistory": "Receipt History",
+    "posCancelledReceipts": "Cancelled Receipts",
+    "posTopSellingItems": "Top Selling Items",
+    "posOverrideAudit": "Override Audit",
+    "posReprintAudit": "Reprint Audit"
   },
   "reportContainer": {
     "refresh": "Refresh",
@@ -4056,7 +4069,15 @@
     "view": "View",
     "post": "Post",
     "apply": "Apply",
-    "clearFilters": "Clear Filters"
+    "clearFilters": "Clear Filters",
+    "close": "Close",
+    "create": "Create",
+    "select": "Select",
+    "confirm": "Confirm",
+    "generate": "Generate",
+    "empty": "No rows.",
+    "processing": "Processing...",
+    "label": "Label"
   },
   "messaging": {
     "whatsapp": {

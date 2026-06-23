@@ -231,7 +231,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         if (data?.settings?.walkInCustomerId) setCustomerId(data.settings.walkInCustomerId);
       } catch (err) {
         console.error('Bootstrap failed', err);
-        toast.error(t('pos.terminal.bootstrapError', { defaultValue: 'Failed to load POS data.' }));
+        toast.error(t('pos:terminal.bootstrapError', { defaultValue: 'Failed to load POS data.' }));
       } finally {
         setLoading(false);
       }
@@ -342,7 +342,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const editingLine = useMemo(() => cart.find((line) => line.lineId === editingLineId && line.status !== 'VOIDED') || null, [cart, editingLineId]);
   const editingLineActiveIndex = editingLine ? activeCart.findIndex((line) => line.lineId === editingLine.lineId) : -1;
   const editingQuoteLine = editingLineActiveIndex >= 0 ? quote?.lines?.[editingLineActiveIndex] : undefined;
-  const editingTaxName = editingQuoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
+  const editingTaxName = editingQuoteLine?.taxCodeName || t('pos:terminal.noTaxCode', { defaultValue: 'No tax' });
   const editingTaxAmount = editingLine
     ? editingLine.taxOverride
       ? (editingLine.manualTaxAmount ?? editingQuoteLine?.taxAmount ?? 0)
@@ -377,7 +377,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const onAddToCart = (item: any) => {
     const unitPrice = Number(item.salePrice || 0);
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      toast.error(t('pos.terminal.priceRequired', { defaultValue: 'Set a sale price for this item before selling it in POS.' }));
+      toast.error(t('pos:terminal.priceRequired', { defaultValue: 'Set a sale price for this item before selling it in POS.' }));
       return;
     }
     setCart((prev) => {
@@ -416,7 +416,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       return;
     }
     if (!node.item) {
-      toast.error(t('pos.terminal.shortcutItemMissing', { defaultValue: 'Shortcut item is unavailable.' }));
+      toast.error(t('pos:terminal.shortcutItemMissing', { defaultValue: 'Shortcut item is unavailable.' }));
       return;
     }
     onAddToCart({
@@ -486,7 +486,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         navigate('/pos/shift');
         break;
       default:
-        toast(t('pos.terminal.commandReady', { defaultValue: 'Command is ready.' }));
+        toast(t('pos:terminal.commandReady', { defaultValue: 'Command is ready.' }));
         break;
     }
   };
@@ -614,7 +614,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const confirmVoid = () => {
     const reason = voidReason.trim();
     if (!voidTarget || !reason) {
-      toast.error(t('pos.terminal.voidReasonRequired', { defaultValue: 'Enter a reason before voiding the line.' }));
+      toast.error(t('pos:terminal.voidReasonRequired', { defaultValue: 'Enter a reason before voiding the line.' }));
       return;
     }
     const voidedAt = new Date().toISOString();
@@ -630,7 +630,7 @@ const PosTerminalPage: React.FC<Props> = () => {
     setVoidTarget(null);
     setVoidReason('');
     setVoidManagerOverride(null);
-    toast.success(t('pos.terminal.lineVoided', { defaultValue: 'Line voided.' }));
+    toast.success(t('pos:terminal.lineVoided', { defaultValue: 'Line voided.' }));
     searchRef.current?.focus();
   };
 
@@ -666,11 +666,11 @@ const PosTerminalPage: React.FC<Props> = () => {
     const register = bootstrap?.register;
     const shift = bootstrap?.openShift;
     if (!register || !shift) {
-      toast.error(t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      toast.error(t('pos:terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
       return;
     }
     if (activeCart.length === 0) {
-      toast.error(t('pos.terminal.noActiveLines', { defaultValue: 'Add at least one active line before holding the sale.' }));
+      toast.error(t('pos:terminal.noActiveLines', { defaultValue: 'Add at least one active line before holding the sale.' }));
       return;
     }
     try {
@@ -706,7 +706,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       setCart([]);
       setPayments([]);
       setSearchQuery('');
-      toast.success(t('pos.terminal.held', { defaultValue: 'Sale held.' }));
+      toast.success(t('pos:terminal.held', { defaultValue: 'Sale held.' }));
       await loadHeldCarts();
       searchRef.current?.focus();
     } catch (err: any) {
@@ -718,7 +718,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   const onRecallHeldCart = async (held: PosHeldCartDTO) => {
     if (activeCart.length > 0) {
-      toast.error(t('pos.terminal.recallNeedsEmptyCart', { defaultValue: 'Complete, hold, or void the current sale before recalling another one.' }));
+      toast.error(t('pos:terminal.recallNeedsEmptyCart', { defaultValue: 'Complete, hold, or void the current sale before recalling another one.' }));
       return;
     }
     try {
@@ -744,7 +744,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       })));
       setCustomerId(recalled.customerId || settings?.walkInCustomerId);
       setPayments([]);
-      toast.success(t('pos.terminal.recalled', { defaultValue: 'Held sale recalled.' }));
+      toast.success(t('pos:terminal.recalled', { defaultValue: 'Held sale recalled.' }));
       await loadHeldCarts();
       setShowHeldCarts(false);
     } catch (err: any) {
@@ -755,7 +755,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const onCancelHeldCart = async (held: PosHeldCartDTO) => {
     try {
       await posApi.cancelHeldCart(held.id, { reason: 'Cancelled from POS terminal' });
-      toast.success(t('pos.terminal.heldCancelled', { defaultValue: 'Held sale cancelled.' }));
+      toast.success(t('pos:terminal.heldCancelled', { defaultValue: 'Held sale cancelled.' }));
       await loadHeldCarts();
     } catch (err: any) {
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to cancel held sale.');
@@ -782,7 +782,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const addTender = () => {
     const amt = round2(Number(tenderAmount) || 0);
     if (amt <= 0) {
-      toast.error(t('pos.terminal.tenderNeedAmount', { defaultValue: 'Pick a method and amount.' }));
+      toast.error(t('pos:terminal.tenderNeedAmount', { defaultValue: 'Pick a method and amount.' }));
       return;
     }
     onAddPayment({ method: tenderMethod, amount: amt, reference: tenderRef || undefined });
@@ -806,15 +806,15 @@ const PosTerminalPage: React.FC<Props> = () => {
     const register = bootstrap?.register;
     const shift = bootstrap?.openShift;
     if (!register || !shift) {
-      toast.error(t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      toast.error(t('pos:terminal.needOpenShift', { defaultValue: 'No open shift for this register.' }));
       return;
     }
     if (activeCart.length === 0) {
-      toast.error(t('pos.terminal.noActiveLines', { defaultValue: 'Add at least one active line before taking payment.' }));
+      toast.error(t('pos:terminal.noActiveLines', { defaultValue: 'Add at least one active line before taking payment.' }));
       return;
     }
     if (Math.abs(paid - grandTotal) > 0.005) {
-      toast.error(t('pos.terminal.tenderMismatch', { defaultValue: 'Tendered total does not match grand total.' }));
+      toast.error(t('pos:terminal.tenderMismatch', { defaultValue: 'Tendered total does not match grand total.' }));
       return;
     }
     try {
@@ -848,7 +848,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       });
       const data = unwrap<any>(result);
       setLastReceipt(data);
-      toast.success(t('pos.terminal.completed', { defaultValue: 'Sale completed.' }));
+      toast.success(t('pos:terminal.completed', { defaultValue: 'Sale completed.' }));
       setCart([]);
       setPayments([]);
       setSaleManagerOverride(null);
@@ -885,16 +885,16 @@ const PosTerminalPage: React.FC<Props> = () => {
             <AlertTriangle className="h-6 w-6 text-amber-500" />
           </div>
           <p className="text-sm font-medium text-slate-700 dark:text-[var(--color-text-primary)]">
-            {t('pos.terminal.needOpenShift', { defaultValue: 'No open shift for this register.' })}
+            {t('pos:terminal.needOpenShift', { defaultValue: 'No open shift for this register.' })}
           </p>
           <p className="mt-1 text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
-            {t('pos.terminal.needOpenShiftHelp', { defaultValue: 'Open a shift to start taking sales on this till.' })}
+            {t('pos:terminal.needOpenShiftHelp', { defaultValue: 'Open a shift to start taking sales on this till.' })}
           </p>
           <button
             onClick={() => navigate('/pos/shift')}
             className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 cursor-pointer"
           >
-            {t('pos.terminal.openShiftCta', { defaultValue: 'Open a shift' })}
+            {t('pos:terminal.openShiftCta', { defaultValue: 'Open a shift' })}
           </button>
         </div>
       </div>
@@ -917,7 +917,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
               <span className="inline-flex items-center gap-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                {t('pos.terminal.shiftOpen', { defaultValue: 'Shift open' })}
+                {t('pos:terminal.shiftOpen', { defaultValue: 'Shift open' })}
               </span>
               <span className="text-slate-300 dark:text-[var(--color-border)]">·</span>
               <span className="truncate">{user?.email || userId}</span>
@@ -933,7 +933,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                 {lastReceipt.receipt?.receiptNumber || lastReceipt.salesInvoiceNumber}
               </span>
               <span className="text-emerald-600/80 dark:text-emerald-400/80">
-                {t('pos.terminal.change', { defaultValue: 'Change' })} {money(Number(lastReceipt.change || 0))}
+                {t('pos:terminal.change', { defaultValue: 'Change' })} {money(Number(lastReceipt.change || 0))}
               </span>
             </div>
           )}
@@ -945,14 +945,14 @@ const PosTerminalPage: React.FC<Props> = () => {
             <Archive className="h-3.5 w-3.5" />
             {holdingCart
               ? t('common.processing', { defaultValue: 'Processing…' })
-              : t('pos.terminal.hold', { defaultValue: 'Hold' })}
+              : t('pos:terminal.hold', { defaultValue: 'Hold' })}
           </button>
           <button
             onClick={openHeldCarts}
             className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
           >
             <RotateCcw className="h-3.5 w-3.5" />
-            {t('pos.terminal.recall', { defaultValue: 'Recall' })}
+            {t('pos:terminal.recall', { defaultValue: 'Recall' })}
             {heldCarts.length > 0 && (
               <span className="rounded-full bg-indigo-100 px-1.5 py-0.5 text-[10px] font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                 {heldCarts.length}
@@ -979,7 +979,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             onClick={() => navigate('/pos/shift')}
             className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
           >
-            {t('pos.terminal.manageShift', { defaultValue: 'Shift' })}
+            {t('pos:terminal.manageShift', { defaultValue: 'Shift' })}
           </button>
         </div>
       </header>
@@ -997,7 +997,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={onSearchKeyDown}
-                placeholder={t('pos.terminal.searchPlaceholder', { defaultValue: 'Scan barcode / search SKU or name' })}
+                placeholder={t('pos:terminal.searchPlaceholder', { defaultValue: 'Scan barcode / search SKU or name' })}
                 className="w-full rounded-xl border border-slate-300 bg-white py-2.5 pl-4 pr-9 text-sm text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
               />
               <ScanLine className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
@@ -1044,7 +1044,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                       </div>
                       <div className="mt-3 flex items-center justify-between">
                         <span className={`font-mono text-sm font-bold ${canSell ? 'text-slate-900 dark:text-[var(--color-text-primary)]' : 'text-rose-600 dark:text-rose-400'}`}>
-                          {canSell ? money(unitPrice) : t('pos.terminal.noSalePrice', { defaultValue: 'No price' })}
+                          {canSell ? money(unitPrice) : t('pos:terminal.noSalePrice', { defaultValue: 'No price' })}
                         </span>
                         <span className={`flex h-7 w-7 items-center justify-center rounded-full transition-colors dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-secondary)] ${
                           canSell
@@ -1069,7 +1069,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                     disabled={shortcutPath.length === 0}
                     className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
                   >
-                    {t('pos.terminal.shortcutsRoot', { defaultValue: 'Root' })}
+                    {t('pos:terminal.shortcutsRoot', { defaultValue: 'Root' })}
                   </button>
                   {shortcutPath.map((node, index) => (
                     <button
@@ -1111,7 +1111,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                           <div className="line-clamp-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">{node.label}</div>
                           <div className="truncate font-mono text-[11px] text-slate-500 dark:text-[var(--color-text-secondary)]">
                             {node.nodeType === 'GROUP'
-                              ? t('pos.terminal.shortcutGroup', { defaultValue: 'Group' })
+                              ? t('pos:terminal.shortcutGroup', { defaultValue: 'Group' })
                               : node.item?.code || node.itemId}
                           </div>
                         </div>
@@ -1134,7 +1134,7 @@ const PosTerminalPage: React.FC<Props> = () => {
               <div className="flex h-full flex-col items-center justify-center py-16 text-center">
                 <Search className="mb-3 h-10 w-10 text-slate-200 dark:text-[var(--color-border)]" />
                 <p className="text-sm font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.noResultsFor', { defaultValue: 'No matches for' })} “{searchQuery}”
+                  {t('pos:terminal.noResultsFor', { defaultValue: 'No matches for' })} “{searchQuery}”
                 </p>
               </div>
             )}
@@ -1143,10 +1143,10 @@ const PosTerminalPage: React.FC<Props> = () => {
               <div className="flex h-full flex-col items-center justify-center py-16 text-center">
                 <ScanLine className="mb-3 h-12 w-12 text-slate-200 dark:text-[var(--color-border)]" />
                 <p className="text-sm font-medium text-slate-600 dark:text-[var(--color-text-primary)]">
-                  {t('pos.terminal.searchPrompt', { defaultValue: 'Scan or search to add products' })}
+                  {t('pos:terminal.searchPrompt', { defaultValue: 'Scan or search to add products' })}
                 </p>
                 <p className="mt-1 text-xs text-slate-400 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.searchPromptHelp', { defaultValue: 'Tap a product to add it to the order. Press Enter to add the top match.' })}
+                  {t('pos:terminal.searchPromptHelp', { defaultValue: 'Tap a product to add it to the order. Press Enter to add the top match.' })}
                 </p>
               </div>
             )}
@@ -1158,7 +1158,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
               <Receipt className="h-4 w-4 text-indigo-600" />
-              {t('pos.terminal.currentSale', { defaultValue: 'Current sale' })}
+              {t('pos:terminal.currentSale', { defaultValue: 'Current sale' })}
               {itemCount > 0 && (
                 <span className="rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-700 dark:bg-indigo-500/20 dark:text-indigo-300">
                   {itemCount}
@@ -1172,8 +1172,8 @@ const PosTerminalPage: React.FC<Props> = () => {
               >
                 <Trash2 className="h-3.5 w-3.5" />
                 {activeCart.length > 0
-                  ? t('pos.terminal.voidAll', { defaultValue: 'Void all' })
-                  : t('pos.terminal.clear', { defaultValue: 'Clear' })}
+                  ? t('pos:terminal.voidAll', { defaultValue: 'Void all' })
+                  : t('pos:terminal.clear', { defaultValue: 'Clear' })}
               </button>
             )}
           </div>
@@ -1186,10 +1186,10 @@ const PosTerminalPage: React.FC<Props> = () => {
                   <ShoppingCart className="h-7 w-7 text-slate-300 dark:text-[var(--color-text-secondary)]" />
                 </div>
                 <p className="text-sm font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.cartEmpty', { defaultValue: 'Cart is empty' })}
+                  {t('pos:terminal.cartEmpty', { defaultValue: 'Cart is empty' })}
                 </p>
                 <p className="mt-1 text-xs text-slate-400 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.cartEmptyHelp', { defaultValue: 'Add items from the product list.' })}
+                  {t('pos:terminal.cartEmptyHelp', { defaultValue: 'Add items from the product list.' })}
                 </p>
               </div>
             ) : (
@@ -1198,7 +1198,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                   const isVoided = l.status === 'VOIDED';
                   const activeIndex = activeCart.findIndex((line) => line.lineId === l.lineId);
                   const quoteLine = activeIndex >= 0 ? quote?.lines?.[activeIndex] : undefined;
-                  const taxName = quoteLine?.taxCodeName || t('pos.terminal.noTaxCode', { defaultValue: 'No tax' });
+                  const taxName = quoteLine?.taxCodeName || t('pos:terminal.noTaxCode', { defaultValue: 'No tax' });
                   return (
                   <li key={l.lineId} className={`flex flex-col gap-3 px-2 sm:px-4 py-2 sm:py-3 ${isVoided ? 'bg-slate-50 opacity-75 dark:bg-[var(--color-bg-primary)]/50' : 'hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors'}`}>
                     {/* ROW 1: Single Row for all screens */}
@@ -1211,13 +1211,13 @@ const PosTerminalPage: React.FC<Props> = () => {
                         </span>
                         {isVoided && (
                           <span className="hidden sm:inline-block rounded border border-slate-200 bg-white px-1.5 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:border-[var(--color-border)] dark:bg-transparent">
-                            {t('pos.terminal.voided', { defaultValue: 'Voided' })}
+                            {t('pos:terminal.voided', { defaultValue: 'Voided' })}
                           </span>
                         )}
                         {!isVoided && (
                           <button
                             onClick={() => setEditingLineId(l.lineId)}
-                            aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
+                            aria-label={t('pos:terminal.editLine', { defaultValue: 'Edit line' })}
                             className="hidden xl:flex h-10 w-10 shrink-0 items-center justify-center rounded-md text-slate-400 transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
                           >
                             <Pencil className="h-5 w-5" />
@@ -1267,7 +1267,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                           {!isVoided && (
                             <button
                               onClick={() => setEditingLineId(l.lineId)}
-                              aria-label={t('pos.terminal.editLine', { defaultValue: 'Edit line' })}
+                              aria-label={t('pos:terminal.editLine', { defaultValue: 'Edit line' })}
                               className="flex xl:hidden h-8 w-8 sm:h-9 sm:w-9 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-slate-500 shadow-sm transition-colors hover:bg-indigo-50 hover:text-indigo-600 active:bg-indigo-100 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:hover:bg-indigo-500/10 dark:hover:text-indigo-400 cursor-pointer"
                             >
                               <Pencil className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1308,7 +1308,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">UNIT</label>
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.unitShort')}</label>
                         <div className="w-16">
                           <UomSelector
                             ref={(el) => { if (el) uomRefs.current[l.lineId] = el; }}
@@ -1327,12 +1327,12 @@ const PosTerminalPage: React.FC<Props> = () => {
                       <div
                         onClick={(e) => {
                           if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
-                            setNumberEditModal({ lineId: l.lineId, field: 'unitPrice', value: String(l.unitPrice), title: 'Edit Price' });
+                            setNumberEditModal({ lineId: l.lineId, field: 'unitPrice', value: String(l.unitPrice), title: t('pos:terminal.editPrice') });
                           }
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">PRICE</label>
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.priceShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1348,13 +1348,13 @@ const PosTerminalPage: React.FC<Props> = () => {
                       <div
                         onClick={(e) => {
                           if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
-                            setNumberEditModal({ lineId: l.lineId, field: 'manualTaxAmount', value: String(l.taxOverride ? (l.manualTaxAmount || 0) : (quoteLine?.taxAmount || 0)), title: 'Edit Tax Amount' });
+                            setNumberEditModal({ lineId: l.lineId, field: 'manualTaxAmount', value: String(l.taxOverride ? (l.manualTaxAmount || 0) : (quoteLine?.taxAmount || 0)), title: t('pos:terminal.editTaxAmount') });
                           }
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                         title={`${taxName}${quoteLine?.taxRate !== undefined ? ` ${(quoteLine.taxRate * 100).toFixed(2)}%` : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">TAX</label>
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.taxShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1370,12 +1370,12 @@ const PosTerminalPage: React.FC<Props> = () => {
                       <div
                         onClick={(e) => {
                           if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
-                            setNumberEditModal({ lineId: l.lineId, field: 'discountPercent', value: String(l.discountType === 'PERCENT' ? l.discountValue : 0), title: 'Edit Discount %' });
+                            setNumberEditModal({ lineId: l.lineId, field: 'discountPercent', value: String(l.discountType === 'PERCENT' ? l.discountValue : 0), title: t('pos:terminal.editDiscountPercent') });
                           }
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">DIS %</label>
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.discountPercentShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1391,12 +1391,12 @@ const PosTerminalPage: React.FC<Props> = () => {
                       <div
                         onClick={(e) => {
                           if ((e.target as HTMLElement).tagName !== 'INPUT' && !isVoided) {
-                            setNumberEditModal({ lineId: l.lineId, field: 'lineDiscount', value: String(l.lineDiscount), title: 'Edit Discount $' });
+                            setNumberEditModal({ lineId: l.lineId, field: 'lineDiscount', value: String(l.lineDiscount), title: t('pos:terminal.editDiscountAmount') });
                           }
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">DIS $</label>
+                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.discountAmountShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1429,12 +1429,12 @@ const PosTerminalPage: React.FC<Props> = () => {
             >
               {isTotalsExpanded ? (
                 <>
-                  {t('pos.terminal.hideDetails', { defaultValue: 'Hide Details' })}
+                  {t('pos:terminal.hideDetails', { defaultValue: 'Hide Details' })}
                   <ChevronUp className="ml-1 h-3 w-3" />
                 </>
               ) : (
                 <>
-                  {t('pos.terminal.showDetails', { defaultValue: 'Show Details' })}
+                  {t('pos:terminal.showDetails', { defaultValue: 'Show Details' })}
                   <ChevronDown className="ml-1 h-3 w-3" />
                 </>
               )}
@@ -1443,20 +1443,20 @@ const PosTerminalPage: React.FC<Props> = () => {
             <div className={`space-y-2 lg:space-y-3 ${isTotalsExpanded ? 'block' : 'hidden xl:block'}`}>
               <div className="space-y-1 text-xs sm:space-y-1.5 lg:text-sm">
                 <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                  <span>{t('pos.terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
+                  <span>{t('pos:terminal.subtotal', { defaultValue: 'Subtotal' })}</span>
                   <span className="font-mono">{money(subtotal)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                  <span>{t('pos.terminal.discount', { defaultValue: 'Discount' })}</span>
+                  <span>{t('pos:terminal.discount', { defaultValue: 'Discount' })}</span>
                   <span className="font-mono">{money(discountTotal)}</span>
                 </div>
                 <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                  <span>{t('pos.terminal.tax', { defaultValue: 'Tax' })}</span>
+                  <span>{t('pos:terminal.tax', { defaultValue: 'Tax' })}</span>
                   <span className="font-mono">{money(taxTotal)}</span>
                 </div>
                 <div className="mt-1 flex items-center justify-between border-t border-slate-200 pt-1 lg:pt-2 dark:border-[var(--color-border)]">
                   <span className="text-sm font-bold text-slate-900 lg:text-base dark:text-[var(--color-text-primary)]">
-                    {t('pos.terminal.grandTotal', { defaultValue: 'Total' })}
+                    {t('pos:terminal.grandTotal', { defaultValue: 'Total' })}
                   </span>
                   <span className="font-mono text-lg font-extrabold text-slate-900 lg:text-xl dark:text-[var(--color-text-primary)]">{money(grandTotal)}</span>
                 </div>
@@ -1464,7 +1464,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <div>
                 <label className="mb-0.5 block text-[10px] font-medium text-slate-500 lg:mb-1 lg:text-xs dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.customer', { defaultValue: 'Customer' })}
+                  {t('pos:terminal.customer', { defaultValue: 'Customer' })}
                 </label>
                 <PartySelector
                   role="CUSTOMER"
@@ -1495,7 +1495,7 @@ const PosTerminalPage: React.FC<Props> = () => {
               className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
             >
               <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
-              {t('pos.terminal.pay', { defaultValue: 'Pay' })}
+              {t('pos:terminal.pay', { defaultValue: 'Pay' })}
               <span className="font-mono">{money(grandTotal)}</span>
             </button>
           </div>
@@ -1505,7 +1505,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       <Modal
         isOpen={Boolean(numberEditModal)}
         onClose={() => setNumberEditModal(null)}
-        title={numberEditModal?.title || 'Edit'}
+        title={numberEditModal?.title || t('pos:terminal.edit')}
       >
         {numberEditModal && (
           <div className="space-y-4">
@@ -1578,13 +1578,13 @@ const PosTerminalPage: React.FC<Props> = () => {
       {/* Tender dialog */}
       <ConfirmDialog
         isOpen={showPayDialog}
-        title={t('pos.terminal.tenderTitle', { defaultValue: 'Take payment' })}
+        title={t('pos:terminal.tenderTitle', { defaultValue: 'Take payment' })}
         message={
           <div className="space-y-4">
             {/* Amount due banner */}
             <div className="flex items-center justify-between rounded-xl bg-slate-100 px-4 py-3 dark:bg-[var(--color-bg-tertiary)]">
               <span className="text-sm font-medium text-slate-600 dark:text-[var(--color-text-secondary)]">
-                {t('pos.terminal.balanceDue', { defaultValue: 'Balance due' })}
+                {t('pos:terminal.balanceDue', { defaultValue: 'Balance due' })}
               </span>
               <span className="font-mono text-lg font-bold text-slate-900 dark:text-[var(--color-text-primary)]">{money(balanceDue)}</span>
             </div>
@@ -1592,7 +1592,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             {/* Method buttons */}
             <div>
               <label className="mb-1.5 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                {t('pos.terminal.method', { defaultValue: 'Method' })}
+                {t('pos:terminal.method', { defaultValue: 'Method' })}
               </label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 {enabledMethods.map((m) => {
@@ -1622,7 +1622,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.amount', { defaultValue: 'Amount' })}
+                  {t('pos:terminal.amount', { defaultValue: 'Amount' })}
                 </label>
                 <div className="flex gap-2">
                   <input
@@ -1640,19 +1640,19 @@ const PosTerminalPage: React.FC<Props> = () => {
                     onClick={() => setTenderAmount(String(balanceDue))}
                     className="flex-none rounded-lg border border-slate-200 px-3 py-2 text-xs font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
                   >
-                    {t('pos.terminal.exact', { defaultValue: 'Exact' })}
+                    {t('pos:terminal.exact', { defaultValue: 'Exact' })}
                   </button>
                 </div>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.reference', { defaultValue: 'Reference' })}
+                  {t('pos:terminal.reference', { defaultValue: 'Reference' })}
                 </label>
                 <input
                   type="text"
                   value={tenderRef}
                   onChange={(e) => setTenderRef(e.target.value)}
-                  placeholder={t('pos.terminal.referenceOptional', { defaultValue: 'Optional' })}
+                  placeholder={t('pos:terminal.referenceOptional', { defaultValue: 'Optional' })}
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)] dark:text-[var(--color-text-primary)]"
                 />
               </div>
@@ -1663,19 +1663,19 @@ const PosTerminalPage: React.FC<Props> = () => {
               onClick={addTender}
               className="inline-flex items-center gap-1.5 rounded-lg bg-indigo-600 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-indigo-700 cursor-pointer"
             >
-              <Plus className="h-4 w-4" /> {t('pos.terminal.addTender', { defaultValue: 'Add payment' })}
+              <Plus className="h-4 w-4" /> {t('pos:terminal.addTender', { defaultValue: 'Add payment' })}
             </button>
 
             <div className="rounded-xl border border-amber-200 bg-amber-50/60 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
                   <div className="text-xs font-semibold text-amber-900">
-                    {t('pos.managerOverride.title', { defaultValue: 'Manager approval' })}
+                    {t('pos:managerOverride.title', { defaultValue: 'Manager approval' })}
                   </div>
                   <div className="mt-0.5 text-xs text-amber-800">
                     {saleManagerOverride
-                      ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', saleManagerOverride.managerOverrideId)
-                      : t('pos.managerOverride.saleHelp', { defaultValue: 'Capture approval before completing a sale with restricted discounts, price, tax, or void overrides.' })}
+                      ? t('pos:managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', saleManagerOverride.managerOverrideId)
+                      : t('pos:managerOverride.saleHelp', { defaultValue: 'Capture approval before completing a sale with restricted discounts, price, tax, or void overrides.' })}
                   </div>
                 </div>
                 <button
@@ -1684,8 +1684,8 @@ const PosTerminalPage: React.FC<Props> = () => {
                   className="rounded-lg border border-amber-300 bg-white px-3 py-1.5 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
                 >
                   {saleManagerOverride
-                    ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
-                    : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                    ? t('pos:managerOverride.replace', { defaultValue: 'Replace approval' })
+                    : t('pos:managerOverride.capture', { defaultValue: 'Capture approval' })}
                 </button>
               </div>
             </div>
@@ -1705,7 +1705,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                       <span className="font-mono font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">{money(p.amount)}</span>
                       <button
                         onClick={() => onRemovePayment(i)}
-                        aria-label={t('pos.terminal.remove', { defaultValue: 'Remove' })}
+                        aria-label={t('pos:terminal.remove', { defaultValue: 'Remove' })}
                         className="flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 transition-colors hover:bg-rose-50 hover:text-rose-600 dark:hover:bg-rose-500/10 cursor-pointer"
                       >
                         <Trash2 className="h-3.5 w-3.5" />
@@ -1719,18 +1719,18 @@ const PosTerminalPage: React.FC<Props> = () => {
             {/* Tender summary */}
             <div className="space-y-1 border-t border-slate-200 pt-3 text-sm dark:border-[var(--color-border)]">
               <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                <span>{t('pos.terminal.tendered', { defaultValue: 'Tendered' })}</span>
+                <span>{t('pos:terminal.tendered', { defaultValue: 'Tendered' })}</span>
                 <span className="font-mono">{money(tenderedTotal)}</span>
               </div>
               <div className="flex justify-between text-slate-600 dark:text-[var(--color-text-secondary)]">
-                <span>{t('pos.terminal.change', { defaultValue: 'Change' })}</span>
+                <span>{t('pos:terminal.change', { defaultValue: 'Change' })}</span>
                 <span className="font-mono">{money(change)}</span>
               </div>
               <div className={`flex justify-between font-bold ${balanceDue > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-emerald-600 dark:text-emerald-400'}`}>
                 <span>
                   {balanceDue > 0
-                    ? t('pos.terminal.balanceDue', { defaultValue: 'Balance due' })
-                    : t('pos.terminal.fullyPaid', { defaultValue: 'Fully paid' })}
+                    ? t('pos:terminal.balanceDue', { defaultValue: 'Balance due' })
+                    : t('pos:terminal.fullyPaid', { defaultValue: 'Fully paid' })}
                 </span>
                 <span className="font-mono">{money(balanceDue)}</span>
               </div>
@@ -1742,24 +1742,24 @@ const PosTerminalPage: React.FC<Props> = () => {
         onCancel={() => setShowPayDialog(false)}
         confirmLabel={completing
           ? t('common.processing', { defaultValue: 'Processing…' })
-          : t('pos.terminal.completeSale', { defaultValue: 'Complete sale' })}
+          : t('pos:terminal.completeSale', { defaultValue: 'Complete sale' })}
       />
 
       <ConfirmDialog
         isOpen={Boolean(voidTarget)}
         title={voidTarget?.all
-          ? t('pos.terminal.voidAllTitle', { defaultValue: 'Void current sale lines' })
-          : t('pos.terminal.voidLineTitle', { defaultValue: 'Void line' })}
+          ? t('pos:terminal.voidAllTitle', { defaultValue: 'Void current sale lines' })
+          : t('pos:terminal.voidLineTitle', { defaultValue: 'Void line' })}
         message={
           <div className="space-y-3">
             <p>
               {voidTarget?.all
-                ? t('pos.terminal.voidAllMessage', { defaultValue: 'Active lines will remain on the receipt audit trail but will not be posted to stock or accounting.' })
-                : t('pos.terminal.voidLineMessage', { defaultValue: 'The line will remain on the receipt audit trail but will not be posted to stock or accounting.' })}
+                ? t('pos:terminal.voidAllMessage', { defaultValue: 'Active lines will remain on the receipt audit trail but will not be posted to stock or accounting.' })
+                : t('pos:terminal.voidLineMessage', { defaultValue: 'The line will remain on the receipt audit trail but will not be posted to stock or accounting.' })}
             </p>
             <div>
               <label className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                {t('pos.terminal.voidReason', { defaultValue: 'Void reason' })}
+                {t('pos:terminal.voidReason', { defaultValue: 'Void reason' })}
               </label>
               <textarea
                 value={voidReason}
@@ -1772,8 +1772,8 @@ const PosTerminalPage: React.FC<Props> = () => {
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="text-xs text-amber-900">
                   {voidManagerOverride
-                    ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', voidManagerOverride.managerOverrideId)
-                    : t('pos.managerOverride.voidHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for line voids.' })}
+                    ? t('pos:managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', voidManagerOverride.managerOverrideId)
+                    : t('pos:managerOverride.voidHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for line voids.' })}
                 </span>
                 <button
                   type="button"
@@ -1781,8 +1781,8 @@ const PosTerminalPage: React.FC<Props> = () => {
                   className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
                 >
                   {voidManagerOverride
-                    ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
-                    : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                    ? t('pos:managerOverride.replace', { defaultValue: 'Replace approval' })
+                    : t('pos:managerOverride.capture', { defaultValue: 'Capture approval' })}
                 </button>
               </div>
             </div>
@@ -1795,14 +1795,14 @@ const PosTerminalPage: React.FC<Props> = () => {
           setVoidReason('');
         }}
         confirmLabel={voidTarget?.all
-          ? t('pos.terminal.voidAll', { defaultValue: 'Void all' })
-          : t('pos.terminal.voidLine', { defaultValue: 'Void line' })}
+          ? t('pos:terminal.voidAll', { defaultValue: 'Void all' })
+          : t('pos:terminal.voidLine', { defaultValue: 'Void line' })}
       />
 
       <ManagerOverrideCapture
         isOpen={showVoidManagerOverride}
         action="VOID_LINE"
-        title={t('pos.managerOverride.voidTitle', { defaultValue: 'Approve line void' })}
+        title={t('pos:managerOverride.voidTitle', { defaultValue: 'Approve line void' })}
         context={{ registerId: register?.id, shiftId: shift?.id, lineId: voidTarget?.lineId, all: voidTarget?.all === true }}
         onCancel={() => setShowVoidManagerOverride(false)}
         onApproved={(override) => {
@@ -1814,7 +1814,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       <ManagerOverrideCapture
         isOpen={showSaleManagerOverride}
         action="DISCOUNT_OVERRIDE"
-        title={t('pos.managerOverride.saleTitle', { defaultValue: 'Approve sale override' })}
+        title={t('pos:managerOverride.saleTitle', { defaultValue: 'Approve sale override' })}
         context={{ registerId: register?.id, shiftId: shift?.id, lineCount: activeCart.length, total: grandTotal }}
         onCancel={() => setShowSaleManagerOverride(false)}
         onApproved={applySaleManagerOverride}
@@ -1823,7 +1823,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       <Modal
         isOpen={Boolean(editingLine)}
         onClose={() => setEditingLineId(null)}
-        title={t('pos.terminal.editLineTitle', { defaultValue: 'Edit sale line' })}
+        title={t('pos:terminal.editLineTitle', { defaultValue: 'Edit sale line' })}
       >
         {editingLine && (
           <div className="space-y-4">
@@ -1835,7 +1835,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                 <span className="flex-none font-mono">{editingLine.itemCode}</span>
                 <span className="h-4 w-px flex-none bg-slate-200 dark:bg-[var(--color-border)]" />
                 <span className="min-w-0 truncate">
-                  {t('pos.terminal.taxCodeLabel', { defaultValue: 'Tax' })}: {editingTaxName}
+                  {t('pos:terminal.taxCodeLabel', { defaultValue: 'Tax' })}: {editingTaxName}
                   {editingQuoteLine?.taxRate !== undefined ? ` ${(editingQuoteLine.taxRate * 100).toFixed(2)}%` : ''}
                 </span>
               </div>
@@ -1846,7 +1846,7 @@ const PosTerminalPage: React.FC<Props> = () => {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.unitPrice', { defaultValue: 'Unit price' })}
+                  {t('pos:terminal.unitPrice', { defaultValue: 'Unit price' })}
                 </span>
                 <input
                   type="number"
@@ -1860,7 +1860,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.discountPercent', { defaultValue: 'Discount percent' })}
+                  {t('pos:terminal.discountPercent', { defaultValue: 'Discount percent' })}
                 </span>
                 <div className="flex h-12 rounded-lg border border-slate-300 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-500/20 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]">
                   <input
@@ -1877,7 +1877,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.lineDiscount', { defaultValue: 'Line discount' })}
+                  {t('pos:terminal.lineDiscount', { defaultValue: 'Line discount' })}
                 </span>
                 <input
                   type="number"
@@ -1891,7 +1891,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.taxAmount', { defaultValue: 'Tax amount' })}
+                  {t('pos:terminal.taxAmount', { defaultValue: 'Tax amount' })}
                 </span>
                 <input
                   type="number"
@@ -1905,7 +1905,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.qty', { defaultValue: 'Quantity' })}
+                  {t('pos:terminal.qty', { defaultValue: 'Quantity' })}
                 </span>
                 <input
                   type="number"
@@ -1919,7 +1919,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.uom', { defaultValue: 'Unit' })}
+                  {t('pos:terminal.uom', { defaultValue: 'Unit' })}
                 </span>
                 <UomSelector
                   itemId={editingLine.itemId}
@@ -1934,7 +1934,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
               <label className="block">
                 <span className="mb-1 block text-xs font-medium text-slate-500 dark:text-[var(--color-text-secondary)]">
-                  {t('pos.terminal.taxCode', { defaultValue: 'Tax code' })}
+                  {t('pos:terminal.taxCode', { defaultValue: 'Tax code' })}
                 </span>
                 <TaxCodeSelector
                   options={taxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
@@ -1948,7 +1948,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
             <div className="flex items-center justify-between rounded-lg bg-slate-50 px-3 py-2 text-sm dark:bg-[var(--color-bg-tertiary)]">
               <span className="text-slate-500 dark:text-[var(--color-text-secondary)]">
-                {t('pos.terminal.lineTotal', { defaultValue: 'Line total' })}
+                {t('pos:terminal.lineTotal', { defaultValue: 'Line total' })}
               </span>
               <span className="font-mono text-base font-bold text-slate-900 dark:text-[var(--color-text-primary)]">
                 {money(editingLine.lineTotal)}
@@ -1960,7 +1960,7 @@ const PosTerminalPage: React.FC<Props> = () => {
 
       <ConfirmDialog
         isOpen={showHeldCarts}
-        title={t('pos.terminal.heldCartsTitle', { defaultValue: 'Held sales' })}
+        title={t('pos:terminal.heldCartsTitle', { defaultValue: 'Held sales' })}
         message={
           <div className="max-h-[60vh] space-y-3 overflow-y-auto">
             {heldLoading ? (
@@ -1970,7 +1970,7 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             ) : heldCarts.length === 0 ? (
               <p className="text-sm text-slate-500 dark:text-[var(--color-text-secondary)]">
-                {t('pos.terminal.noHeldCarts', { defaultValue: 'No held sales for this shift.' })}
+                {t('pos:terminal.noHeldCarts', { defaultValue: 'No held sales for this shift.' })}
               </p>
             ) : (
               <ul className="space-y-2">
@@ -1982,7 +1982,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">
                         <div className="truncate text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
-                          {held.lines.length} {t('pos.terminal.lines', { defaultValue: 'lines' })}
+                          {held.lines.length} {t('pos:terminal.lines', { defaultValue: 'lines' })}
                         </div>
                         <div className="mt-0.5 font-mono text-xs text-slate-500 dark:text-[var(--color-text-secondary)]">
                           {new Date(held.createdAt).toLocaleString()} · {money(held.grandTotal)}
@@ -1995,7 +1995,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                           className="inline-flex items-center gap-1 rounded-lg bg-indigo-600 px-2.5 py-1.5 text-xs font-semibold text-white transition-colors hover:bg-indigo-700 cursor-pointer"
                         >
                           <RotateCcw className="h-3.5 w-3.5" />
-                          {t('pos.terminal.recall', { defaultValue: 'Recall' })}
+                          {t('pos:terminal.recall', { defaultValue: 'Recall' })}
                         </button>
                         <button
                           type="button"
