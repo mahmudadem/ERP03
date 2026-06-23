@@ -4751,3 +4751,10 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** UI localization and action feedback only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
 - **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed.
 - **Time spent:** ~0.2h.
+### Session: 2026-06-23 (Task 259 follow-up — full POS localization pass)
+
+- **Goal:** Fix the POS module appearing untranslated in Arabic/Turkish.
+- **What was done:** Corrected POS i18n namespace usage across POS pages/components, translated POS report table headers, terminal line-edit labels, legacy layout/settings labels, exchange/return labels, POS sidebar/report menu entries, and added missing English/Arabic/Turkish POS/common locale keys. Existing POS strings now resolve from the `pos` namespace instead of falling back to English default values.
+- **Accounting/ERP impact:** UI localization only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
+- **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
+- **Time spent:** ~0.8h.
