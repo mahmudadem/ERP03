@@ -1,5 +1,20 @@
 # 🎯 Current Focus
 
+## Task 264 — Shared below-cost Selling Policy for POS + Sales (2026-06-23)
+
+**Status:** ✅ Built on `main` (uncommitted). 261 + 262 + 263 are now **committed** (`b917f3c4`, `039b0594`).
+
+- **Why:** Owner QA hit "below allowed cost/margin and requires approval" (INFRA_999) at POS. This is a *business rule*, not a bug — but it was hardcoded into POS only, unconfigurable, and absent from Sales. Owner asked for one shared, configurable policy consumed by both apps via the engine architecture.
+- **What:** New company-wide **SellingPolicy** (`belowCostMode` = BLOCK / REQUIRE_APPROVAL / ALLOW, `minMarginPercent?`, `allowManagerOverride`). `CommercialCore.validateCostMargin` is policy-aware (self-resolves via DI delegate → **POS unchanged**). `PolicyEngine` gained `scope:'commercial', action:'belowCostSale'`. **Sales attached** in `PostSalesInvoiceUseCase` (line revenue vs line cost, blocks before vouchers). API `GET/PUT /tenant/sales/selling-policy`; UI card in **Sales → Settings → Sales Policy** (governs POS too). Default `REQUIRE_APPROVAL` preserves prior POS behaviour; now also guards Sales (pre-alpha, no migration).
+- **Verification:** 20 new tests; sweep system-core + sales + pos = 72 suites / 618 tests green; backend+frontend typecheck + `npm run build` clean.
+- **Docs:** [done/264](./done/264-shared-below-cost-selling-policy.md); `docs/architecture/system-core.md` (Selling Policy) + `sales.md` + `pos.md`; user guide `docs/user-guide/sales/below-cost-selling-policy.md`.
+
+### Next action
+
+Commit Task 264 on `main`. Owner: set the policy to **Allow** in Sales → Settings → Sales Policy to clear the below-cost block during QA, then re-run a full POS sale + a below-cost Sales invoice to confirm both honour the setting. The pre-existing POS-settings WIP + unrelated frontend WIP remain uncommitted by design.
+
+---
+
 ## Task 263 — Fix `Receipt requires depositToAccountId` (INFRA_999) on POS settlement/refund (2026-06-23)
 
 **Status:** ✅ Fixed on `main` (uncommitted, with 261 + 262 and the pre-existing POS-settings WIP).

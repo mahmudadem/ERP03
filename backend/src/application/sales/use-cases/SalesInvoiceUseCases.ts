@@ -27,6 +27,7 @@ import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
 import { IInventoryCore, InventoryCOGSBucketLine, ensureInventoryCore, cloneStockLevel, createStockLevel, computeStockOutMovement } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { ICommercialCore } from '../../system-core/contracts/ICommercialCore';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -983,7 +984,8 @@ export class PostSalesInvoiceUseCase {
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
     private readonly numberingEngine?: INumberingEngine,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly accountingBridge?: IAccountingBridge,
+    private readonly commercialCore?: ICommercialCore
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
     this.accountingPostingService = accountingPostingService;
@@ -1262,6 +1264,36 @@ export class PostSalesInvoiceUseCase {
       const costingStats = buildUpdatedItemCostingStats(item, avgCost, { lastSalePrice: salePricePoint });
       item.costingStats = costingStats;
       itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
+    }
+
+    // PHASE 1D-bis: SHARED BELOW-COST / MARGIN GUARD (Commercial Core).
+    // The same company-wide SellingPolicy the POS till honours is applied here so
+    // Sales and POS agree. Compares line net revenue vs line cost (both base
+    // currency, so UOM-agnostic). Skips service/zero-cost and free/promo lines.
+    // The Commercial Core resolves the policy mode (BLOCK / REQUIRE_APPROVAL /
+    // ALLOW); only a blocked verdict throws.
+    if (this.commercialCore) {
+      for (const line of si.lines) {
+        if (!line.trackInventory) continue;
+        const unitCostBase = line.lineCostBase;
+        const lineRevenueBase = line.lineTotalBase;
+        if (!(unitCostBase > 0) || !(lineRevenueBase > 0)) continue;
+        const margin = await this.commercialCore.validateCostMargin({
+          companyId,
+          itemId: line.itemId,
+          unitPriceBase: lineRevenueBase,
+          quantity: line.invoicedQty,
+          unitCostBase,
+          actorUserId: si.createdBy,
+          approvedOverride: (line as any).approvedCostMarginOverride === true,
+          source: 'sales',
+        });
+        if (!margin.allowed) {
+          throw new Error(
+            `Sales invoice line ${line.itemCode || line.itemName || line.itemId} is below allowed cost/margin and requires approval.`
+          );
+        }
+      }
     }
 
     // PHASE 1E: PRE-RESOLVE ALL ACCOUNT IDS (bare reads before transaction)

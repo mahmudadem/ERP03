@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-23 (Task 264 — shared below-cost Selling Policy for POS + Sales)
+
+- **Context:** Owner QA hit "POS sale line ITEM-001 is below allowed cost/margin and requires approval" (INFRA_999). Unlike Tasks 261–263 (transaction-path bugs), this is a **business rule firing as designed** — but it was hardcoded into POS only (always REQUIRE_APPROVAL) with no way to configure it and no equivalent on Sales. Owner asked for a shared, configurable policy consumed by both apps via the new engine architecture.
+- **Architecture finding:** The Policy Engine is already multi-module (`scope` + `action` → uniform `{allowed, requiresApproval, resolvedBy}`; POS/Accounting/Sales/Purchases all consume it). `validateCostMargin` lived only in POS; Sales had **no** below-cost guard at all.
+- **What was built:** New company-wide **SellingPolicy** (`domain/system-core/entities/SellingPolicy.ts` + `ISellingPolicyRepository` + Firestore repo) with `belowCostMode` = `BLOCK | REQUIRE_APPROVAL | ALLOW`, optional `minMarginPercent`, `allowManagerOverride`. `CommercialCore.validateCostMargin` is now policy-aware (resolves the SellingPolicy via a DI delegate; 3-mode logic) — so the **POS path needed zero changes**. `PolicyEngine` gained `scope:'commercial', action:'belowCostSale'` (cross-module façade delegating to the Commercial Core). **Sales attached:** `PostSalesInvoiceUseCase` runs the guard after Phase 1D (line net revenue vs line cost, UOM-agnostic) and throws before any voucher when blocked. API: `GET/PUT /tenant/sales/selling-policy`. UI: a "Below-cost selling policy" card in **Sales → Settings → Sales Policy** (states it also governs POS).
+- **Default & behavior change:** Default mode is `REQUIRE_APPROVAL` (preserves POS's prior behaviour). This now **also** guards Sales invoices, which were previously unguarded — pre-alpha, no production data, so no migration. Owner can set `ALLOW` to unblock below-cost selling everywhere from one place.
+- **Accounting/ERP impact:** None to posting math — same accounts, amounts, vouchers. Only adds a pre-posting gate whose strictness the owner controls. The existing `below_cost_sale` Approval Engine routing is unchanged for `REQUIRE_APPROVAL`.
+- **Verification:** New tests — `SellingPolicy` entity (6), `CommercialCoreBelowCostPolicy` 3-mode (9), `PolicyEngineCommercialBelowCost` façade (3), Sales attach block+allow (2, cloned from PostSI test 7). Broad sweep system-core + sales + pos = 72 suites / 618 tests green. Backend + frontend typecheck clean; `npm run build` clean → emulator `lib/` serves it.
+- **Docs:** [done/264](./done/264-shared-below-cost-selling-policy.md); `docs/architecture/system-core.md` (Selling Policy), `sales.md`, `pos.md`; user guide `docs/user-guide/sales/below-cost-selling-policy.md`.
+
 ### Session: 2026-06-23 (Task 263 — fix `Receipt requires depositToAccountId` (INFRA_999) on POS settlement/refund)
 
 - **Context:** Third blocker in the POS posting chain (each prior fix advanced posting to the next gap). After inventory + revenue/COGS posted, the settlement leg threw "Receipt requires depositToAccountId (Deposit To account)" (INFRA_999).

@@ -176,6 +176,18 @@ The Customers list page at `/sales/customers` is a filtered view of the Party AP
 
 ## Approval before posting (2026-06-03)
 
+### Below-cost / margin guard (shared Selling Policy, Task 264)
+
+`PostSalesInvoiceUseCase` enforces the company-wide **SellingPolicy** below-cost /
+minimum-margin rule — the same policy the POS till honours, so Sales and POS never
+disagree. After line cost is computed (Phase 1D), it calls
+`CommercialCore.validateCostMargin(...)` per tracked line (comparing line net
+revenue vs line cost in base currency, so it is UOM-agnostic) and throws before
+any voucher is written when the policy verdict is blocked. Mode `ALLOW` skips the
+check; `REQUIRE_APPROVAL` routes through the `below_cost_sale` approval subject;
+`BLOCK` refuses outright. Configured at **Sales → Settings → Sales Policy**. See
+`docs/architecture/system-core.md` → *Selling Policy* for the full model.
+
 In Stage 2b, the Sales module is decoupled entirely from settings-based approval flags.
 
 - **Decoupled Posting Flow:** `PostSalesInvoiceUseCase` does NOT read local settings or check approval flags. It simply attempts to post the document, passing the real approval state (`approved: !!approvalContext`) directly to the `SubledgerVoucherPostingService`.

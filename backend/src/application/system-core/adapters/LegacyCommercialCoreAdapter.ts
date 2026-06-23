@@ -10,7 +10,12 @@ import {
 } from '../contracts/ICommercialCore';
 import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
 import { IApprovalEngine } from '../contracts/IApprovalEngine';
-import { CommercialCore, CommercialCostResolver, CommercialPriceResolver } from '../commercial/CommercialCore';
+import {
+  CommercialCore,
+  CommercialCostResolver,
+  CommercialPriceResolver,
+  CommercialSellingPolicyResolver,
+} from '../commercial/CommercialCore';
 
 export type ResolvePriceDelegate = CommercialPriceResolver;
 
@@ -20,9 +25,15 @@ export class LegacyCommercialCoreAdapter implements ICommercialCore {
   constructor(
     resolvePriceDelegate?: ResolvePriceDelegate,
     resolveCostDelegate?: CommercialCostResolver,
-    approvalEngine?: IApprovalEngine
+    approvalEngine?: IApprovalEngine,
+    resolveSellingPolicyDelegate?: CommercialSellingPolicyResolver
   ) {
-    this.core = new CommercialCore(resolvePriceDelegate, resolveCostDelegate, approvalEngine);
+    this.core = new CommercialCore(
+      resolvePriceDelegate,
+      resolveCostDelegate,
+      approvalEngine,
+      resolveSellingPolicyDelegate
+    );
   }
 
   async resolvePrice(context: ResolvePriceContext): Promise<number | null> {

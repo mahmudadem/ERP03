@@ -171,6 +171,15 @@ can require a manager's approval. Two engines split the decision:
   Approval Engine unchanged (it has no plugin and keeps the generic `requiresApproval → PENDING`
   fallback). See [Task 257](../../planning/tasks/257-pos-manager-override-via-approval-engine.md).
 
+  **Below-cost rule is now a shared policy (Task 264):** the below-cost / min-margin
+  check `PostPosSaleUseCase` runs via `CommercialCore.validateCostMargin(...)` is
+  driven by the company-wide **SellingPolicy** (`BLOCK` / `REQUIRE_APPROVAL` /
+  `ALLOW`), the *same* policy the Sales invoice path honours. The POS call is
+  unchanged — the Commercial Core self-resolves the policy — so a company can set
+  the till to allow below-cost sales (or block them outright) from one place:
+  **Sales → Settings → Sales Policy**. See `docs/architecture/system-core.md` →
+  *Selling Policy*.
+
 ## 7. Reports (10 POS + 1 link)
 
 | Report | Route | Permission | Source use case |

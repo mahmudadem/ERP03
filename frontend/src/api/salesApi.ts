@@ -729,6 +729,15 @@ export interface PartyAccountsBackfillResult {
   }>;
 }
 
+export type SellingBelowCostMode = 'BLOCK' | 'REQUIRE_APPROVAL' | 'ALLOW';
+
+export interface SellingPolicyDTO {
+  companyId: string;
+  belowCostMode: SellingBelowCostMode;
+  minMarginPercent?: number;
+  allowManagerOverride: boolean;
+}
+
 export const salesApi = {
   initializeSales: (payload: InitializeSalesPayload): Promise<SalesSettingsDTO> =>
     client.post('/tenant/sales/initialize', payload),
@@ -741,6 +750,13 @@ export const salesApi = {
 
   backfillPartyAccounts: (): Promise<PartyAccountsBackfillResult> =>
     client.post('/tenant/sales/settings/backfill-party-accounts', {}).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  // Shared selling policy (below-cost / minimum-margin). Company-wide, also honoured by POS.
+  getSellingPolicy: (): Promise<SellingPolicyDTO> =>
+    client.get('/tenant/sales/selling-policy').then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  updateSellingPolicy: (payload: Partial<SellingPolicyDTO>): Promise<SellingPolicyDTO> =>
+    client.put('/tenant/sales/selling-policy', payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createSO: (payload: CreateSalesOrderPayload): Promise<SalesOrderDTO> =>
     client.post('/tenant/sales/orders', payload),

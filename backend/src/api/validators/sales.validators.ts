@@ -427,6 +427,22 @@ export const validateUpdateSalesSettingsInput = (body: any) => {
   if (body.srNumberNextSeq !== undefined) ensurePositiveNumber(body.srNumberNextSeq, 'srNumberNextSeq');
 };
 
+const SELLING_POLICY_BELOW_COST_MODES = ['BLOCK', 'REQUIRE_APPROVAL', 'ALLOW'];
+export const validateUpdateSellingPolicyInput = (body: any) => {
+  if (!body || typeof body !== 'object') throw ApiError.badRequest('Request body is required');
+  if (body.belowCostMode !== undefined && !SELLING_POLICY_BELOW_COST_MODES.includes(body.belowCostMode)) {
+    throw ApiError.badRequest(`belowCostMode must be one of: ${SELLING_POLICY_BELOW_COST_MODES.join(', ')}`);
+  }
+  if (body.allowManagerOverride !== undefined) ensureBoolean(body.allowManagerOverride, 'allowManagerOverride');
+  if (
+    body.minMarginPercent !== undefined &&
+    body.minMarginPercent !== null &&
+    body.minMarginPercent !== ''
+  ) {
+    ensureNonNegativeNumber(body.minMarginPercent, 'minMarginPercent');
+  }
+};
+
 export const validateCreateSalesOrderInput = (body: any) => {
   ensureRequiredString(body.customerId, 'customerId');
   ensureIsoDate(body.orderDate, 'orderDate');

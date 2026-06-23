@@ -27,6 +27,10 @@ router.use(moduleInitializedGuard('sales'));
 router.put('/settings', SalesController.updateSettings);
 router.post('/settings/backfill-party-accounts', SalesController.backfillPartyAccounts);
 
+// Shared selling policy (below-cost / minimum-margin). Company-wide, also honoured by POS.
+router.get('/selling-policy', SalesController.getSellingPolicy);
+router.put('/selling-policy', SalesController.updateSellingPolicy);
+
 // Manage Voucher Types — used by the per-module settings page to install
 // additional types after the init wizard. Route param `module` is injected.
 router.get(

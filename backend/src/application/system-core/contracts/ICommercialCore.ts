@@ -33,6 +33,15 @@ export interface CommercialLineCalculationContext {
   currency?: string;
 }
 
+/**
+ * Below-cost / minimum-margin enforcement mode. Sourced from the shared
+ * company-level SellingPolicy unless explicitly overridden in the context.
+ *  - BLOCK            — refuse the line; no override can let it through.
+ *  - REQUIRE_APPROVAL — block pending a manager approval/override (default).
+ *  - ALLOW            — never block on cost/margin.
+ */
+export type CommercialBelowCostMode = 'BLOCK' | 'REQUIRE_APPROVAL' | 'ALLOW';
+
 export interface CostMarginValidationContext {
   companyId: string;
   itemId: string;
@@ -40,6 +49,13 @@ export interface CostMarginValidationContext {
   quantity?: number;
   unitCostBase?: number;
   minimumMarginPct?: number;
+  /**
+   * Explicit mode override. When omitted, the Commercial Core resolves it from
+   * the company's shared SellingPolicy (defaulting to REQUIRE_APPROVAL).
+   */
+  belowCostMode?: CommercialBelowCostMode;
+  /** When false, an approved override cannot bypass a violation. Defaults true. */
+  allowManagerOverride?: boolean;
   actorUserId?: string;
   approvedOverride?: boolean;
   source?: string;
