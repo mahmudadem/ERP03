@@ -13,8 +13,20 @@ import { PosPaymentMethod } from '../../../domain/pos/entities/PosPayment';
 import { PosPaymentMethodConfig, PosNegativeStockPolicy } from '../../../domain/pos/entities/PosSettings';
 import { CommercialPromotionRule } from '../../system-core/contracts/ICommercialCore';
 import { PosNegativeStockError } from '../../../domain/pos/errors/PosNegativeStockError';
+import { NegativeStockError } from '../../../domain/inventory/errors/NegativeStockError';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
+import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
+import {
+  cloneStockLevel,
+  computeStockOutMovement,
+  createStockLevel,
+} from '../../inventory/contracts/InventoryIntegrationContracts';
+import {
+  buildAverageCostPoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 
 export interface PostPosSaleLineInput {
   itemId: string;
@@ -148,12 +160,33 @@ export class PostPosSaleUseCase {
       itemMap.set(item.id, item);
     }
     const saleLines = await this.applyPromotions(input, itemMap);
-    await this.assertNegativeStockAllowed(input, saleLines, itemMap);
+    await this.assertNegativeStockAllowed(input, saleLines, itemMap, invSettings);
     const postedLines: PostedPosSaleLine[] = [];
     const revenueCredits = new Map<string, number>();
     const taxCredits = new Map<string, number>();
     const cogsDebits = new Map<string, number>();
     const inventoryCredits = new Map<string, number>();
+
+    // POS posts inside a Firestore transaction, and Firestore forbids any read
+    // after the first write in a transaction. So — exactly like the Sales invoice
+    // path — we pre-fetch stock levels with bare (non-transactional) reads up
+    // front, compute every OUT movement with the pure `computeStockOutMovement`
+    // helper (mutating an in-memory level that is threaded across lines of the
+    // same item/warehouse), and defer the actual writes to a write-only phase
+    // after the compute loop. This keeps the whole transaction read-free.
+    const computeInventory = !input.dryRun;
+    const costingBasis: 'GLOBAL' | 'WAREHOUSE' = invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
+    const stockLevelMap = new Map<string, StockLevel>();
+    const levelsByItemMap = new Map<string, StockLevel[]>();
+    const stockMovements: StockMovement[] = [];
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
+    if (computeInventory) {
+      for (const item of itemMap.values()) {
+        if (!item.trackInventory) continue;
+        const existingLevels = await this.inventoryCore.preFetchLevelsByItem(input.companyId, item.id);
+        levelsByItemMap.set(item.id, existingLevels.map(cloneStockLevel));
+      }
+    }
 
     for (const [idx, sourceLine] of saleLines.entries()) {
       const item = itemMap.get(sourceLine.itemId);
@@ -186,22 +219,51 @@ export class PostPosSaleUseCase {
       let lineCostBase = 0;
       let cogsAccountId: string | undefined;
       let inventoryAccountId: string | undefined;
-      if (item.trackInventory && !input.dryRun) {
-        const movement = await this.inventoryCore.processOUT({
+      if (item.trackInventory && computeInventory) {
+        const warehouseId = sourceLine.warehouseId;
+        const stockLevelKey = `${item.id}|${warehouseId}`;
+        let level = stockLevelMap.get(stockLevelKey);
+        if (!level) {
+          const itemLevels = levelsByItemMap.get(item.id) || [];
+          level = itemLevels.find((l) => l.warehouseId === warehouseId);
+          if (!level) {
+            level = createStockLevel(input.companyId, item.id, warehouseId);
+            itemLevels.push(level);
+            levelsByItemMap.set(item.id, itemLevels);
+          }
+          stockLevelMap.set(stockLevelKey, level);
+        }
+
+        // Pure compute (no I/O): mutates `level` in place so repeated lines of
+        // the same item/warehouse thread the running balance correctly.
+        const { movement, unitCostBase: outUnitCostBase, lineCostBase: outLineCostBase } = computeStockOutMovement({
           companyId: input.companyId,
-          itemId: item.id,
-          warehouseId: sourceLine.warehouseId,
-          qty: sourceLine.qty,
+          item,
+          level,
+          warehouseId,
+          qtyInBaseUom: sourceLine.qty,
           date: input.date,
+          createdBy: input.createdBy,
           movementType: 'SALES_DELIVERY',
-          refs: { type: 'POS_DIRECT_SALE', docId: documentId, lineId },
-          currentUser: input.createdBy,
-          transaction: input.transaction,
+          referenceType: 'POS_DIRECT_SALE',
+          referenceId: documentId,
+          referenceLineId: lineId,
+          costSource: 'PURCHASE',
           metadata: { sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' },
         });
+        stockMovements.push(movement);
         stockMovementId = movement.id;
-        unitCostBase = roundMoney(movement.unitCostBase || 0, baseCurrency);
-        lineCostBase = roundMoney(movement.totalCostBase || unitCostBase * sourceLine.qty, baseCurrency);
+        unitCostBase = roundMoney(outUnitCostBase || 0, baseCurrency);
+        lineCostBase = roundMoney(outLineCostBase || unitCostBase * sourceLine.qty, baseCurrency);
+
+        // Recompute item costing stats from the (now-mutated) levels — mirrors the
+        // Sales path so POS sales keep `item.costingStats` consistent. The last
+        // line of an item wins, after every decrement for that item is applied.
+        const itemLevels = levelsByItemMap.get(item.id) || [];
+        const avgCost = buildAverageCostPoint(itemLevels, item, baseCurrency, costingBasis, item.costingStats?.avgCost);
+        const costingStats = buildUpdatedItemCostingStats(item, avgCost);
+        item.costingStats = costingStats;
+        itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
 
         const cogsAccounts = this.resolveCogsAccounts(item, categoryMap, invSettings);
         if (lineCostBase > 0 && cogsAccounts) {
@@ -310,6 +372,24 @@ export class PostPosSaleUseCase {
       };
     }
 
+    // ── Inventory write phase (write-only; safe inside the Firestore txn) ──
+    // Every inventory read happened up front via bare reads, so emitting the
+    // writes here never trips Firestore's "all reads before all writes" rule.
+    for (const movement of stockMovements) {
+      await this.inventoryCore.writeStockMovement(movement, input.transaction);
+    }
+    for (const level of stockLevelMap.values()) {
+      await this.inventoryCore.writeStockLevel(level, input.transaction);
+    }
+    for (const [itemId, update] of itemCostingStatsUpdates) {
+      await this.itemRepo.updateItemInTransaction(
+        input.companyId,
+        itemId,
+        { costingStats: update.costingStats, updatedAt: update.updatedAt } as Partial<Item>,
+        input.transaction
+      );
+    }
+
     const cashRoundingAccountId = input.cashRoundingAccountId?.trim();
     if (cashRoundingAdjustmentBase !== 0 && !cashRoundingAccountId) {
       throw new Error('POS cash rounding requires a configured rounding gain/loss account.');
@@ -412,9 +492,13 @@ export class PostPosSaleUseCase {
           description: `Receipt for POS Sale ${input.documentNumber}`,
           currency: baseCurrency,
           exchangeRate: 1,
+          // `amount` is required so ReceiptVoucherStrategy treats these as
+          // canonical JV-style lines (side/accountId/amount) and posts them
+          // verbatim; without it the strategy falls back to its
+          // depositToAccountId/source builder and throws INFRA_999.
           lines: [
-            { accountId, side: 'Debit', baseAmount: amount, docAmount: amount, notes: `POS ${payment.method} receipt` },
-            { accountId: arAccountId, side: 'Credit', baseAmount: amount, docAmount: amount, notes: `POS settlement ${input.documentNumber}` },
+            { accountId, side: 'Debit', amount, baseAmount: amount, docAmount: amount, notes: `POS ${payment.method} receipt` },
+            { accountId: arAccountId, side: 'Credit', amount, baseAmount: amount, docAmount: amount, notes: `POS settlement ${input.documentNumber}` },
           ],
           metadata: {
             sourceModule: 'pos',
@@ -534,9 +618,17 @@ export class PostPosSaleUseCase {
   private async assertNegativeStockAllowed(
     input: PostPosSaleInput,
     saleLines: PostPosSaleLineInput[],
-    itemMap: Map<string, Item>
+    itemMap: Map<string, Item>,
+    invSettings?: { allowNegativeStock?: boolean } | null
   ): Promise<void> {
-    if (input.negativeStockPolicy !== 'BLOCK') return;
+    const posBlocks = input.negativeStockPolicy === 'BLOCK';
+    // When POS does not block, the company-wide `allowNegativeStock` flag still
+    // governs. That used to be enforced inside the inventory OUT
+    // (RecordStockMovementUseCase.processOUT); now that POS computes movements
+    // with the pure helper, POS re-asserts the company flag here so the Task 258
+    // behaviour ("ALLOW defers to the company flag") is preserved.
+    const companyBlocks = invSettings?.allowNegativeStock === false;
+    if (!posBlocks && !companyBlocks) return;
 
     const requestedByKey = new Map<string, { itemId: string; warehouseId: string; qty: number }>();
     for (const line of saleLines) {
@@ -558,7 +650,7 @@ export class PostPosSaleUseCase {
       // Tolerance guards against floating-point dust on fractional quantities.
       if (resultingQty < -1e-9) {
         const item = itemMap.get(itemId);
-        throw new PosNegativeStockError({
+        const details = {
           companyId: input.companyId,
           itemId,
           warehouseId,
@@ -567,7 +659,11 @@ export class PostPosSaleUseCase {
           resultingQty,
           itemCode: item?.code,
           itemName: item?.name,
-        });
+        };
+        // POS BLOCK gets the POS-accurate message (points at POS Settings); a
+        // company-flag block reuses the inventory-domain error (points at
+        // Inventory Settings) — matching what processOUT used to throw.
+        throw posBlocks ? new PosNegativeStockError(details) : new NegativeStockError(details);
       }
     }
   }

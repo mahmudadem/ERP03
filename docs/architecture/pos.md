@@ -59,9 +59,9 @@ POS is a standalone application over System Core engines. A completed sale is a 
 
 `CompletePosSaleUseCase` validates the open shift, cashier, POS policy, register, tender rows, change, cash rounding, and receipt number. It then calls `PostPosSaleUseCase`, which uses shared engines directly:
 
-- `IInventoryCore.processOUT` for stock items.
+- `IInventoryCore` for stock items — see the transaction-safety note below.
 - `ITaxEngine` for line tax math.
-- `IAccountingBridge.recordFinancialEvent` for revenue, COGS, settlement, and cash rounding events.
+- `IAccountingBridge.recordFinancialEvent` for revenue, COGS, settlement, and cash rounding events. The settlement (`RECEIPT`) and refund (`PAYMENT`) legs are posted as **canonical JV-style lines** — each line carries `amount` (alongside `baseAmount`/`docAmount`). `amount` is mandatory: `ReceiptVoucherStrategy` / `PaymentVoucherStrategy` only treat lines as canonical when `amount > 0`, otherwise they fall back to their `depositToAccountId` / `payFromAccountId` builder and throw INFRA_999. (Revenue/COGS legs use the `SALES_INVOICE` / `SALES_RETURN` strategies, which read `baseAmount` directly.)
 - `IPolicyEngine` for POS direct-sale permission.
 - `INumberingEngine` for receipt numbering.
 - `IAuditEngine` for receipt audit.
@@ -71,6 +71,8 @@ POS identity is preserved in stock movement refs and ledger metadata:
 - stock OUT refs use `POS_DIRECT_SALE`.
 - POS return stock IN refs use `POS_RETURN`.
 - accounting metadata uses `sourceModule: 'pos'`, `sourceType: 'POS_SALE' | 'POS_RETURN'`, and `documentPersona: 'POS_DIRECT_SALE'`.
+
+**Transaction safety (Firestore "all reads before all writes").** `CompletePosSaleUseCase` runs the whole posting inside one Firestore transaction. Firestore forbids any read through the transaction object after the first write in that transaction. So POS follows the same pattern as the Sales invoice path rather than the stateful `processOUT`/`processIN` (which read the stock level *inside* the transaction and would fail on a multi-line cart): `PostPosSaleUseCase` and `PostPosReturnUseCase` pre-fetch stock levels with **bare (non-transactional) reads**, compute every movement with the **pure** `computeStockOutMovement` / `computeStockReturnInMovement` helpers (each mutates an in-memory level threaded across lines of the same item/warehouse), recompute `item.costingStats`, and then run a **write-only phase** (`writeStockMovement` + `writeStockLevel` + `itemRepo.updateItemInTransaction`) before the accounting bridge posts the vouchers (whose own reads are non-transactional). Negative-stock enforcement also moves up front: `PostPosSaleUseCase.assertNegativeStockAllowed` blocks the POS-specific `BLOCK` policy *and* re-asserts the company `allowNegativeStock` flag (which `processOUT` used to enforce) using bare reads, before any write.
 
 Settlement accounts are resolved from the active register, not from company-level POS Settings:
 

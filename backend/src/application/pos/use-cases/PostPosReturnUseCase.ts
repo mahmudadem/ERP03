@@ -10,6 +10,17 @@ import { ICompanyCurrencyRepository } from '../../../repository/interfaces/accou
 import { IAccountingBridge, IInventoryCore } from '../../system-core';
 import { AccountMappingError } from '../../../domain/accounting/errors/AccountMappingError';
 import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
+import { Item } from '../../../domain/inventory/entities/Item';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
+import { StockMovement } from '../../../domain/inventory/entities/StockMovement';
+import {
+  computeStockReturnInMovement,
+  createStockLevel,
+} from '../../inventory/contracts/InventoryIntegrationContracts';
+import {
+  buildAverageCostPoint,
+  buildUpdatedItemCostingStats,
+} from '../../inventory/services/ItemCostingStatsService';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -84,6 +95,16 @@ export class PostPosReturnUseCase {
     const cogsCredits = new Map<string, number>();
     const postedLines: PostedPosReturnLine[] = [];
 
+    // Same Firestore "all reads before all writes" constraint as the sale path:
+    // compute every RETURN_IN movement with the pure helper (mutating an
+    // in-memory level threaded across lines of the same item/warehouse) using
+    // bare reads, then defer the actual writes to a write-only phase after the
+    // loop. See PostPosSaleUseCase for the mirror of this pattern.
+    const costingBasis: 'GLOBAL' | 'WAREHOUSE' = invSettings?.costingBasis === 'GLOBAL' ? 'GLOBAL' : 'WAREHOUSE';
+    const stockLevelMap = new Map<string, StockLevel>();
+    const stockMovements: StockMovement[] = [];
+    const itemCostingStatsUpdates = new Map<string, { costingStats: Item['costingStats']; updatedAt: Date }>();
+
     for (const [idx, sourceLine] of input.lines.entries()) {
       const receiptLine = input.originalReceipt.lines.find((line) => line.itemId === sourceLine.itemId);
       if (!receiptLine) throw new Error(`No matching receipt line for item ${sourceLine.itemId}.`);
@@ -99,22 +120,44 @@ export class PostPosReturnUseCase {
       const unitCostBase = round2((receiptLine as any).unitCostBase || (sourceLine.qty > 0 ? lineCostBase / sourceLine.qty : 0));
 
       if (item.trackInventory) {
-        await this.inventoryCore.processIN({
+        const warehouseId = input.warehouseId;
+        const stockLevelKey = `${item.id}|${warehouseId}`;
+        let level = stockLevelMap.get(stockLevelKey);
+        if (!level) {
+          // Bare (non-transactional) read — allowed at any point in the txn.
+          const existing = await this.inventoryCore.preFetchStockLevel(input.companyId, item.id, warehouseId);
+          level = existing ?? createStockLevel(input.companyId, item.id, warehouseId);
+          stockLevelMap.set(stockLevelKey, level);
+        }
+
+        // Pure compute (no I/O): mutates `level` in place (weighted-average cost
+        // recompute), threading repeated lines of the same item/warehouse.
+        const { movement } = computeStockReturnInMovement({
           companyId: input.companyId,
-          itemId: item.id,
-          warehouseId: input.warehouseId,
-          qty: sourceLine.qty,
+          item,
+          level,
+          warehouseId,
+          qtyInBaseUom: sourceLine.qty,
           date: input.date,
-          movementType: 'RETURN_IN',
-          refs: { type: 'POS_RETURN', docId: returnId, lineId: receiptLine.salesInvoiceLineId || sourceLine.itemId },
-          currentUser: input.createdBy,
+          createdBy: input.createdBy,
+          unitCostBase,
           unitCostInMoveCurrency: unitCostBase,
-          moveCurrency: baseCurrency,
           fxRateMovToBase: 1,
           fxRateCCYToBase: 1,
-          transaction: input.transaction,
+          movementCurrency: baseCurrency,
+          referenceType: 'POS_RETURN',
+          referenceId: returnId,
+          referenceLineId: receiptLine.salesInvoiceLineId || sourceLine.itemId,
           metadata: { sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' },
         });
+        stockMovements.push(movement);
+
+        // Keep item costing stats consistent with the (now-mutated) level — a
+        // RETURN_IN changes the moving average, so this is not a no-op.
+        const avgCost = buildAverageCostPoint([level], item, baseCurrency, costingBasis, item.costingStats?.avgCost);
+        const costingStats = buildUpdatedItemCostingStats(item, avgCost);
+        item.costingStats = costingStats;
+        itemCostingStatsUpdates.set(item.id, { costingStats, updatedAt: new Date() });
       }
 
       const revenueAccountId = (receiptLine as any).revenueAccountId || this.resolveRevenueAccount(item, categoryMap, posSettings?.defaultRevenueAccountId);
@@ -154,6 +197,22 @@ export class PostPosReturnUseCase {
         taxAmount,
         lineCostBase,
       });
+    }
+
+    // ── Inventory write phase (write-only; safe inside the Firestore txn) ──
+    for (const movement of stockMovements) {
+      await this.inventoryCore.writeStockMovement(movement, input.transaction);
+    }
+    for (const level of stockLevelMap.values()) {
+      await this.inventoryCore.writeStockLevel(level, input.transaction);
+    }
+    for (const [itemId, update] of itemCostingStatsUpdates) {
+      await this.itemRepo.updateItemInTransaction(
+        input.companyId,
+        itemId,
+        { costingStats: update.costingStats, updatedAt: update.updatedAt } as Partial<Item>,
+        input.transaction
+      );
     }
 
     const refundTotal = round2(postedLines.reduce((sum, line) => sum + line.lineTotal + line.taxAmount, 0));
@@ -231,9 +290,13 @@ export class PostPosReturnUseCase {
           description: `Refund for POS Return ${input.returnNumber}`,
           currency: baseCurrency,
           exchangeRate: 1,
+          // `amount` is required so PaymentVoucherStrategy treats these as
+          // canonical JV-style lines (side/accountId/amount) and posts them
+          // verbatim; without it the strategy falls back to its
+          // payFromAccountId/allocation builder and throws INFRA_999.
           lines: [
-            { accountId: customer.defaultARAccountId, side: 'Debit', baseAmount: refundTotal, docAmount: refundTotal },
-            { accountId: input.settlementAccountId, side: 'Credit', baseAmount: refundTotal, docAmount: refundTotal },
+            { accountId: customer.defaultARAccountId, side: 'Debit', amount: refundTotal, baseAmount: refundTotal, docAmount: refundTotal },
+            { accountId: input.settlementAccountId, side: 'Credit', amount: refundTotal, baseAmount: refundTotal, docAmount: refundTotal },
           ],
           metadata: {
             sourceModule: 'pos',

@@ -1,5 +1,52 @@
 # 🎯 Current Focus
 
+## Task 263 — Fix `Receipt requires depositToAccountId` (INFRA_999) on POS settlement/refund (2026-06-23)
+
+**Status:** ✅ Fixed on `main` (uncommitted, with 261 + 262 and the pre-existing POS-settings WIP).
+
+- **Why:** Owner QA — POS sale failed at the settlement leg with "Receipt requires depositToAccountId" (INFRA_999); third blocker in the posting chain.
+- **Root cause:** `ReceiptVoucherStrategy` only treats pre-built lines as canonical when each has `amount > 0`. POS settlement (`RECEIPT`) and refund (`PAYMENT`) lines carried `baseAmount`/`docAmount` but no `amount`, so the strategy fell into its `depositToAccountId`/`payFromAccountId` builder and threw.
+- **Fix:** Added `amount` to the POS settlement + refund canonical lines (documented canonical contract). No shared accounting-strategy change.
+- **Verification:** new `PosCanonicalVoucherLines.test.ts` (real strategies) + pos/accounting sweep = 52 suites / 348 tests green; `npm run build` clean.
+- **Docs:** [done/263](./done/263-pos-settlement-refund-canonical-voucher-lines.md); `docs/architecture/pos.md` §3.
+
+### Next action
+
+Commit 261 + 262 + 263 (+ the staged POS-settings WIP if intended) on `main`. Re-run a full POS sale end-to-end in the terminal to confirm the whole chain now posts. Discard the superseded `PostPosReturn.test.ts` worktree.
+
+---
+
+## Task 262 — Fix Firestore `all reads before writes` (INFRA_005) on POS posting (2026-06-23)
+
+**Status:** ✅ Fixed on `main` (uncommitted, with the 261 fix and the pre-existing POS-settings WIP).
+
+- **Why:** Owner QA hit a blocking INFRA_005 ("Firestore transactions require all reads to be executed before all writes") when completing a POS sale.
+- **Root cause:** POS posted inventory via the stateful `processOUT`, which reads the stock level *through* the transaction then writes; a multi-line cart therefore read after a write — forbidden by Firestore.
+- **Fix:** POS sale + return now follow the Sales pattern — bare-read prefetch, pure `computeStockOutMovement` / `computeStockReturnInMovement`, write-only transaction phase. Negative-stock enforcement (POS BLOCK + company flag) moved up front. No costing/accounting math change.
+- **Verification:** pos+sales+inventory+architecture = 62 suites / 517 tests green; `npm run build` clean → `lib/` updated.
+- **Docs:** [done/262](./done/262-pos-posting-firestore-read-before-write.md); `docs/architecture/pos.md` §3.
+
+### Next action
+
+Commit 261 + 262 (+ the staged POS-settings WIP if intended) on `main`. Discard the superseded `PostPosReturn.test.ts` worktree.
+
+---
+
+## Task 261 — Fix `Invalid referenceType: POS_DIRECT_SALE` at POS posting (2026-06-23)
+
+**Status:** ✅ Fixed on `main` (uncommitted with the other dirty POS-settings changes).
+
+- **Why:** Owner QA hit a blocking "Critical Error — Invalid referenceType: POS_DIRECT_SALE" (INFRA_999) when completing a POS sale.
+- **Root cause:** Validation drift in `backend/src/domain/inventory/entities/StockMovement.ts` — the `ReferenceType` type had `POS_DIRECT_SALE` / `POS_RETURN`, but the runtime `REFERENCE_TYPES` guard array (checked by the entity constructor) did not. Added both values.
+- **Verification:** `PostPosSale.test.ts` + `RecordStockMovementUseCase.test.ts` green (38); backend `npm run build` clean → recompiled to `lib/`.
+- **Docs:** [done/261](./done/261-pos-direct-sale-referencetype-validation.md); `docs/modules/inventory/SCHEMAS.md` enum aligned.
+
+### Next action
+
+Commit this fix (plus the staged POS-settings WIP if intended) on `main`. Separately: repair the stale `PostPosReturn.test.ts` constructor (needs the 8th `posSettingsRepo` arg) — test-only, production wiring already correct.
+
+---
+
 ## Task 259 — POS shortcuts and control buttons (2026-06-23)
 
 **Status:** ✅ Implemented on branch `codex/pos-shortcuts-control-buttons`.

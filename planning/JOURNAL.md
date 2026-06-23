@@ -2,6 +2,35 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-23 (Task 263 — fix `Receipt requires depositToAccountId` (INFRA_999) on POS settlement/refund)
+
+- **Context:** Third blocker in the POS posting chain (each prior fix advanced posting to the next gap). After inventory + revenue/COGS posted, the settlement leg threw "Receipt requires depositToAccountId (Deposit To account)" (INFRA_999).
+- **Root cause:** POS posts the settlement as a `RECEIPT` voucher with pre-built `{accountId, side, baseAmount, docAmount}` lines. `ReceiptVoucherStrategy`'s canonical-line detector only accepts a line when it has `amount > 0`; POS lines lacked `amount`, so it fell into payload mode and demanded `depositToAccountId` (which POS doesn't supply). The revenue/COGS legs use the `SALES_INVOICE` strategy (reads `baseAmount`), so only settlement broke. The refund leg (`PAYMENT` voucher) had the same latent bug via `PaymentVoucherStrategy`.
+- **Fix:** Added `amount` (alongside the existing `baseAmount`/`docAmount`) to the POS settlement and refund canonical lines — the documented canonical-line contract (`side/accountId/amount`). No shared accounting strategy changed; the shift over/short JE voucher already carried `amount`.
+- **Accounting/ERP impact:** None — same accounts, sides, amounts; the strategy now posts the POS-built lines verbatim instead of erroring.
+- **Verification:** New `PosCanonicalVoucherLines.test.ts` runs the **real** Receipt/Payment strategies against the POS shape (accepts new shape; regression proves old shape still throws). Broad sweep pos + domain/accounting + application/accounting = 52 suites / 348 tests green. `npm run build` clean → emulator `lib/` serves it.
+- **Docs:** [done/263](./done/263-pos-settlement-refund-canonical-voucher-lines.md); `docs/architecture/pos.md` §3.
+
+### Session: 2026-06-23 (Task 262 — fix Firestore `all reads before writes` (INFRA_005) on POS posting)
+
+- **Context:** Immediately after Task 261, owner QA hit a new blocking "Firestore transactions require all reads to be executed before all writes" (INFRA_005) when completing a POS sale.
+- **Root cause:** `CompletePosSaleUseCase` posts inside one Firestore transaction. POS used the stateful `IInventoryCore.processOUT`, which reads the stock level **through the transaction** then writes. Fine for a single line; for a **multi-line** cart, line 2's transactional read runs after line 1's writes — which Firestore forbids. (The accounting bridge was already txn-safe: its reads are non-transactional; only ledger/voucher writes use the txn.)
+- **Fix:** Aligned POS with the proven Sales pattern. `PostPosSaleUseCase` / `PostPosReturnUseCase` now pre-fetch stock levels with **bare (non-transactional) reads**, compute movements with the **pure** `computeStockOutMovement` / `computeStockReturnInMovement` helpers (in-memory level threaded across same-item lines), recompute `item.costingStats`, then run a **write-only phase** (`writeStockMovement` + `writeStockLevel` + `itemRepo.updateItemInTransaction`) before the accounting bridge posts vouchers. Negative-stock enforcement moved up front: `assertNegativeStockAllowed` now blocks the POS `BLOCK` policy **and** re-asserts the company `allowNegativeStock` flag (previously enforced inside `processOUT`), preserving Task 258.
+- **Accounting/ERP impact:** None — identical costing math, vouchers, and POS identity stamping; only read/write ordering inside the txn changed.
+- **Verification:** POS suite 15/15 (109 tests), incl. two suites that were previously uncompilable (stale 8-arg constructor + `processOUT` mocks now updated to the write seams). Broad sweep pos+sales+inventory+architecture = 62 suites / 517 tests green. Architecture guard 251 updated to assert POS identity via `referenceType` and reject `SALES_*`. `npm run build` clean → emulator `lib/` serves it.
+- **Docs:** [done/262](./done/262-pos-posting-firestore-read-before-write.md); `docs/architecture/pos.md` §3 transaction-safety note.
+- **Note:** The earlier spun-off worktree to fix `PostPosReturn.test.ts`'s stale constructor is superseded by this task and can be discarded.
+
+### Session: 2026-06-23 (Task 261 — fix `Invalid referenceType: POS_DIRECT_SALE` at POS posting)
+
+- **Context:** Owner QA on the POS terminal hit a blocking "Critical Error — Invalid referenceType: POS_DIRECT_SALE" (INFRA_999) on sale completion.
+- **Root cause:** Validation drift in `backend/src/domain/inventory/entities/StockMovement.ts`. The `ReferenceType` **type** already listed `POS_DIRECT_SALE` / `POS_RETURN` (so tsc passed), but the parallel **runtime guard array** `REFERENCE_TYPES` — the list the entity constructor checks against — was never updated when the native POS posting path landed (Epic 250 / Task 250d). `PostPosSaleUseCase` posts the stock-OUT movement with `refs.type = 'POS_DIRECT_SALE'`, which failed the membership check and threw.
+- **Fix:** Added `'POS_DIRECT_SALE'` and `'POS_RETURN'` to the runtime array so it matches the type (and existing test expectations). `MOVEMENT_TYPES` already had `SALES_DELIVERY` / `RETURN_IN`, so no movement-type change needed. One-line, behavior-restoring.
+- **Verification:** `PostPosSale.test.ts` + `RecordStockMovementUseCase.test.ts` green (38 tests); backend `npm run build` (tsc) clean and recompiled to `lib/` so the emulator serves it.
+- **Accounting/ERP impact:** None — restores the intended native POS posting path (POS posts as itself, never converted to a sales invoice — independence gate #8). No GL/tax/COGS/valuation/settlement/period-lock change.
+- **Docs:** [done/261](./done/261-pos-direct-sale-referencetype-validation.md); `docs/modules/inventory/SCHEMAS.md` `ReferenceType` enum aligned (it was stale, missing several values).
+- **Follow-up flagged:** `PostPosReturn.test.ts` fails to compile (stale 7-arg constructor; class now needs 8 — `posSettingsRepo`). Production wiring is correct; test-only fix tracked separately.
+
 ### Session: 2026-06-23 (Task 258 owner-QA fix — POS-accurate negative-stock message)
 
 - **Context:** Owner ran live QA with company `allowNegativeStock` ON and an item already at −22. POS correctly **blocked** a sale that would reach −23 (proves POS is independently strict), but the toast reused the inventory-domain `NegativeStockError` message ("Negative stock is disabled for this company. Enable allowNegativeStock…") — misleading, since the flag was already ON and the **POS** policy is what blocked.

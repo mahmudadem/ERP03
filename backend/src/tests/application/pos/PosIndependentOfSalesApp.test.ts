@@ -3,7 +3,18 @@ import * as path from 'path';
 import { PostPosSaleUseCase } from '../../../application/pos/use-cases/PostPosSaleUseCase';
 import { TaxEngine } from '../../../application/system-core/tax/TaxEngine';
 import { Item } from '../../../domain/inventory/entities/Item';
+import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { Party } from '../../../domain/shared/entities/Party';
+
+const makeLevel = (qty: number, avg: number) => {
+  const level = StockLevel.createNew('cmp_test', 'item_1', 'wh1');
+  level.qtyOnHand = qty;
+  level.avgCostBase = avg;
+  level.avgCostCCY = avg;
+  level.lastCostBase = avg;
+  level.lastCostCCY = avg;
+  return level;
+};
 
 /**
  * Gate #10 — POS must work with the Sales App disabled.
@@ -70,7 +81,10 @@ const makeParty = () =>
  * repositories. Deliberately nothing from the Sales App is wired in.
  */
 const wirePosWithoutSalesApp = () => {
-  const itemRepo = { getItem: jest.fn().mockResolvedValue(makeItem()) };
+  const itemRepo = {
+    getItem: jest.fn().mockResolvedValue(makeItem()),
+    updateItemInTransaction: jest.fn().mockResolvedValue(undefined),
+  };
   const itemCategoryRepo = { getCompanyCategories: jest.fn().mockResolvedValue([]) };
   const inventorySettingsRepo = {
     getSettings: jest.fn().mockResolvedValue({
@@ -82,11 +96,15 @@ const wirePosWithoutSalesApp = () => {
   const taxCodeRepo = { getById: jest.fn().mockResolvedValue(null) };
   const companyCurrencyRepo = { getBaseCurrency: jest.fn().mockResolvedValue('USD') };
   const inventoryCore = {
-    processOUT: jest.fn().mockResolvedValue({ id: 'sm_1', unitCostBase: 4, totalCostBase: 8 }),
+    preFetchLevelsByItem: jest.fn().mockResolvedValue([makeLevel(100, 4)]),
+    preFetchStockLevel: jest.fn().mockResolvedValue(null),
+    writeStockMovement: jest.fn().mockResolvedValue(undefined),
+    writeStockLevel: jest.fn().mockResolvedValue(undefined),
   };
   const accountingBridge = {
     recordFinancialEvent: jest.fn().mockResolvedValue({ mode: 'full', voucher: { id: 'v_1' } }),
   };
+  const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(null) };
 
   const useCase = new PostPosSaleUseCase(
     itemRepo as any,
@@ -97,7 +115,8 @@ const wirePosWithoutSalesApp = () => {
     companyCurrencyRepo as any,
     inventoryCore as any,
     accountingBridge as any,
-    new TaxEngine()
+    new TaxEngine(),
+    posSettingsRepo as any
     // NOTE: no commercialCore, no promotionRuleReader, and crucially no Sales
     // collaborator of any kind.
   );
@@ -129,11 +148,15 @@ describe('Gate #10: POS is independent of the Sales App', () => {
     expect(result.voucherIds).toContain('v_1');
 
     // Stock OUT went through the inventory core, stamped with the POS persona.
-    expect(inventoryCore.processOUT).toHaveBeenCalledWith(expect.objectContaining({
-      movementType: 'SALES_DELIVERY',
-      refs: expect.objectContaining({ type: 'POS_DIRECT_SALE' }),
-      metadata: expect.objectContaining({ sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' }),
-    }));
+    expect(inventoryCore.writeStockMovement).toHaveBeenCalledWith(
+      expect.objectContaining({
+        direction: 'OUT',
+        movementType: 'SALES_DELIVERY',
+        referenceType: 'POS_DIRECT_SALE',
+        metadata: expect.objectContaining({ sourceModule: 'pos', documentPersona: 'POS_DIRECT_SALE' }),
+      }),
+      { tx: true }
+    );
 
     // All financial events went through the accounting bridge, never a Sales poster.
     const kinds = accountingBridge.recordFinancialEvent.mock.calls.map((call: any[]) => call[0].kind);
