@@ -4744,3 +4744,10 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** Data-entry UX and terminal configuration only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
 - **Verification:** Backend typecheck passed. Frontend typecheck passed. Focused POS layout test passed (`PosLayoutUseCases.test.ts`: 1 suite / 4 tests). Backend build passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
 - **Time spent:** ~1.4h.
+### Session: 2026-06-23 (Task 259 follow-up — POS Shortcuts translations)
+
+- **Goal:** Verify whether the new POS Shortcuts page was fully translated.
+- **What was done:** Found the new page still had several hardcoded English labels and was using the wrong key shape for the POS namespace. Moved the page to the POS namespace keys, added English/Arabic/Turkish `shortcuts` translations, translated the new sidebar label, and added success/error feedback for shortcut enable/disable/delete actions.
+- **Accounting/ERP impact:** UI localization and action feedback only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
+- **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed.
+- **Time spent:** ~0.2h.

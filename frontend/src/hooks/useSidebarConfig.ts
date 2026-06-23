@@ -118,6 +118,7 @@ export const useSidebarConfig = () => {
     Payroll: 'sidebar.payroll',
     Leads: 'sidebar.leads',
     Terminal: 'sidebar.terminal',
+    Shortcuts: 'sidebar.shortcuts',
     Sessions: 'sidebar.sessions',
     'Work Orders': 'sidebar.workOrders',
     BOM: 'sidebar.bom',
