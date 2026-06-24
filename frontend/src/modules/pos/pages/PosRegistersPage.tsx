@@ -16,7 +16,8 @@ import { WarehouseSelector } from '../../../components/shared/selectors/Warehous
 import { AccountSelector } from '../../../modules/accounting/components/shared/AccountSelector';
 import { errorHandler } from '../../../services/errorHandler';
 import { useConfirm } from '../../../hooks/useConfirm';
-import { Edit2, Power, PowerOff } from 'lucide-react';
+import { PosKeyboardShortcutsDialog } from '../components/PosKeyboardShortcutsDialog';
+import { Edit2, Power, PowerOff, X, ArrowRight, ArrowLeft, Keyboard } from 'lucide-react';
 
 interface Props { isWindow?: boolean }
 
@@ -32,6 +33,7 @@ const PosRegistersPage: React.FC<Props> = () => {
   const [accounts, setAccounts] = useState<AccountDTO[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
   const { confirm: confirmDialog } = useConfirm();
 
   const load = async () => {
@@ -70,6 +72,7 @@ const PosRegistersPage: React.FC<Props> = () => {
       cashDrawerAccountId: '',
       settlementAccountIds: {},
       status: 'ACTIVE',
+      keyboardShortcuts: {},
     });
     setShowForm(true);
   };
@@ -172,30 +175,30 @@ const PosRegistersPage: React.FC<Props> = () => {
     { key: 'toggle', label: t('pos:registers.toggleStatus.title', { defaultValue: 'Toggle status' }), icon: Power, onClick: onToggleStatus },
   ];
 
-  return (
-    <div className="p-6">
-      <OperationalListLayout<PosRegisterDTO>
-        title={t('pos:registers.title', { defaultValue: 'POS Registers' })}
-        subtitle={t('pos:registers.subtitle', { defaultValue: 'Tills. Each register is tied to a warehouse and a cash-drawer account.' })}
-        newButtonLabel={t('pos:registers.new', { defaultValue: 'New Register' })}
-        onNewClick={onNew}
-        onRefresh={load}
-        data={list}
-        columns={columns}
-        loading={loading}
-        idKey="id"
-        emptyMessage={t('pos:registers.empty', { defaultValue: 'No registers yet. Create one to start selling.' })}
-        rowActions={rowActions}
-      />
 
-      <Modal
-        isOpen={showForm}
-        onClose={() => { setShowForm(false); setEditing(null); }}
-        title={editing?.id ? t('pos:registers.editTitle', { defaultValue: 'Edit Register' }) : t('pos:registers.newTitle', { defaultValue: 'New Register' })}
-      >
+
+  const isRtl = document.documentElement.dir === 'rtl';
+
+  return showForm && editing ? (
+    <div className="p-6 max-w-4xl mx-auto space-y-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => { setShowForm(false); setEditing(null); }}
+            className="p-2 -ml-2 rounded-full hover:bg-slate-100 text-slate-500 transition-colors"
+          >
+            {isRtl ? <ArrowRight size={20} /> : <ArrowLeft size={20} />}
+          </button>
+          <h2 className="text-2xl font-bold text-slate-800">
+            {editing.id ? t('pos:registers.editTitle', { defaultValue: 'Edit Register' }) : t('pos:registers.newTitle', { defaultValue: 'New Register' })}
+          </h2>
+        </div>
+      </div>
+      
+      <Card className="p-6">
         {editing && (
-          <div className="space-y-3">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium mb-1">{t('pos:registers.col.code', { defaultValue: 'Code' })} *</label>
                 <input
@@ -277,7 +280,7 @@ const PosRegistersPage: React.FC<Props> = () => {
                     companyUsers.map((u) => {
                       const checked = (editing.allowedCashierUserIds || []).includes(u.userId);
                       return (
-                        <label key={u.userId} className="flex items-center gap-2 text-sm text-slate-700">
+                        <label key={u.userId} className="flex items-center justify-start gap-2 text-sm text-slate-700 cursor-pointer">
                           <input
                             type="checkbox"
                             checked={checked}
@@ -291,8 +294,8 @@ const PosRegistersPage: React.FC<Props> = () => {
                               });
                             }}
                           />
-                          <span className="truncate">{u.email || u.userId}</span>
-                          {u.roleName ? <span className="text-xs text-slate-400">{u.roleName}</span> : null}
+                          <span className="truncate" dir="ltr">{u.email || u.userId}</span>
+                          {u.roleName ? <span className="text-xs text-slate-400">{t(`common.${u.roleName.toLowerCase()}`, { defaultValue: u.roleName })}</span> : null}
                         </label>
                       );
                     })
@@ -343,25 +346,82 @@ const PosRegistersPage: React.FC<Props> = () => {
                   </div>
                 </div>
               ))}
+
+              <div className="md:col-span-2 border-t border-slate-100 pt-4 mt-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-sm font-medium text-slate-800">{t('pos:registers.shortcuts.title', { defaultValue: 'Keyboard Shortcuts' })}</h3>
+                    <p className="text-xs text-slate-500 mt-1">
+                      {t('pos:registers.shortcuts.help', { defaultValue: 'Override default keyboard shortcuts for this specific register.' })}
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setShowShortcutsDialog(true)}
+                    className="flex items-center gap-2 px-3 py-1.5 text-sm font-medium text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded-lg transition-colors"
+                  >
+                    <Keyboard className="w-4 h-4" />
+                    {t('pos:registers.shortcuts.configure', { defaultValue: 'Configure' })}
+                  </button>
+                </div>
+                {editing.keyboardShortcuts && Object.keys(editing.keyboardShortcuts).length > 0 && (
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {Object.entries(editing.keyboardShortcuts).map(([action, key]) => (
+                      <span key={action} className="inline-flex items-center gap-1.5 px-2 py-1 rounded bg-slate-100 text-xs font-medium text-slate-600">
+                        <span className="text-slate-400">{action}:</span>
+                        <kbd className="px-1.5 py-0.5 rounded bg-white border border-slate-200">{key as string}</kbd>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
+
             </div>
-            <div className="flex justify-end gap-2 pt-2">
+            <div className="flex justify-end gap-2 pt-6 mt-6 border-t border-slate-100">
               <button
                 onClick={() => { setShowForm(false); setEditing(null); }}
-                className="px-3 py-1.5 rounded border border-slate-300 text-sm"
+                className="px-4 py-2 rounded border border-slate-300 text-sm font-medium hover:bg-slate-50 transition-colors"
               >
                 {t('common.cancel', { defaultValue: 'Cancel' })}
               </button>
               <button
                 onClick={onSave}
                 disabled={saving}
-                className="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm disabled:opacity-50"
+                className="px-4 py-2 rounded bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50"
               >
                 {saving ? t('common.saving', { defaultValue: 'Saving…' }) : t('common.save', { defaultValue: 'Save' })}
               </button>
             </div>
           </div>
         )}
-      </Modal>
+      </Card>
+      
+      {editing && (
+        <PosKeyboardShortcutsDialog
+          isOpen={showShortcutsDialog}
+          onClose={() => setShowShortcutsDialog(false)}
+          initialShortcuts={editing.keyboardShortcuts || {}}
+          onSave={(shortcuts) => setEditing({ ...editing, keyboardShortcuts: shortcuts })}
+          title={t('pos:registers.shortcuts.dialogTitle', { defaultValue: 'Register Shortcuts' })}
+          subtitle={t('pos:registers.shortcuts.dialogSubtitle', { defaultValue: 'These shortcuts will apply to any cashier using this register, overriding global defaults.' })}
+        />
+      )}
+    </div>
+  ) : (
+    <div className="p-6">
+      <OperationalListLayout<PosRegisterDTO>
+        title={t('pos:registers.title', { defaultValue: 'POS Registers' })}
+        subtitle={t('pos:registers.subtitle', { defaultValue: 'Tills. Each register is tied to a warehouse and a cash-drawer account.' })}
+        newButtonLabel={t('pos:registers.new', { defaultValue: 'New Register' })}
+        onNewClick={onNew}
+        onRefresh={load}
+        data={list}
+        columns={columns}
+        loading={loading}
+        idKey="id"
+        emptyMessage={t('pos:registers.empty', { defaultValue: 'No registers yet. Create one to start selling.' })}
+        rowActions={rowActions}
+      />
     </div>
   );
 };

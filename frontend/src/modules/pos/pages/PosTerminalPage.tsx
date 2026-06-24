@@ -58,7 +58,13 @@ import {
   Minimize,
   ChevronDown,
   ChevronUp,
+  MonitorSmartphone,
+  Keyboard,
 } from 'lucide-react';
+
+import { usePosKeyboardShortcuts } from '../hooks/usePosKeyboardShortcuts';
+import { PosKeyboardShortcutsDialog } from '../components/PosKeyboardShortcutsDialog';
+import { userPreferencesApi } from '../../../api/userPreferencesApi';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
@@ -133,6 +139,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const userId = user?.uid || '';
 
   const [bootstrap, setBootstrap] = useState<{ register: PosRegisterDTO | null; openShift: PosShiftDTO | null; settings: PosSettingsDTO | null } | null>(null);
+  const [userPreferences, setUserPreferences] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<CartLine[]>([]);
   const [payments, setPayments] = useState<Payment[]>([]);
@@ -158,6 +165,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [showHeldCarts, setShowHeldCarts] = useState(false);
   const [runtimeLayout, setRuntimeLayout] = useState<PosRuntimeLayoutDTO | null>(null);
   const [shortcutPath, setShortcutPath] = useState<PosProductShortcutNodeDTO[]>([]);
+  const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
 
   const uomRefs = useRef<Record<string, UomSelectorHandle>>({});
 
@@ -201,6 +209,50 @@ const PosTerminalPage: React.FC<Props> = () => {
 
   const searchRef = useRef<HTMLInputElement>(null);
 
+  const { activeShortcuts } = usePosKeyboardShortcuts({
+    register: bootstrap?.register || null,
+    userPreferences,
+    onAction: (action) => {
+      switch (action) {
+        case 'SEARCH_ITEMS':
+          searchRef.current?.focus();
+          break;
+        case 'CHECKOUT':
+          if (cart.length > 0) setShowPayDialog(true);
+          break;
+        case 'VOID_SALE':
+          if (cart.length > 0) setVoidTarget({ all: true });
+          break;
+        case 'HOLD_CART':
+          // Hold Cart uses a form submit or API call, we can trigger the button
+          const holdBtn = document.getElementById('btn-hold-cart');
+          if (holdBtn) holdBtn.click();
+          break;
+        case 'ADD_CUSTOM_ITEM':
+          toast(t('pos:shortcuts.customItemNotImplemented', { defaultValue: 'Custom item shortcut not yet implemented' }), { icon: 'ℹ️' });
+          break;
+        case 'APPLY_DISCOUNT':
+          if (cart.length > 0) {
+            setNumberEditModal({ lineId: cart[0].lineId, field: 'lineDiscount', value: String(cart[0].lineDiscount), title: t('pos:terminal.editDiscountAmount') });
+          }
+          break;
+        case 'CASH_PAYMENT':
+          if (cart.length > 0) {
+            setTenderMethod('CASH');
+            setShowPayDialog(true);
+          }
+          break;
+        case 'CARD_PAYMENT':
+          if (cart.length > 0) {
+            setTenderMethod('CARD');
+            setShowPayDialog(true);
+          }
+          break;
+      }
+    },
+    disabled: showPayDialog || Boolean(numberEditModal) || showVoidManagerOverride || showSaleManagerOverride || showShortcutsDialog || showHeldCarts,
+  });
+
   // Sales-scoped tax codes for the line-edit tax selector (same source the Sales Invoice uses).
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const salesTaxCodeOptions = useMemo(
@@ -221,12 +273,14 @@ const PosTerminalPage: React.FC<Props> = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const [result, permissions] = await Promise.all([
+        const [result, permissions, prefsResult] = await Promise.all([
           posApi.getBootstrap({ cashierUserId: userId }),
           authApi.getMyPermissions().catch(() => null),
+          import('../../../api/userPreferencesApi').then(m => m.userPreferencesApi.get()).catch(() => null)
         ]);
         const data = unwrap<any>(result);
         setBootstrap(data);
+        setUserPreferences(prefsResult);
         setCashierRoleId(permissions?.roleId || undefined);
         if (data?.settings?.walkInCustomerId) setCustomerId(data.settings.walkInCustomerId);
       } catch (err) {
@@ -907,7 +961,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
-            <ShoppingCart className="h-5 w-5" />
+            <MonitorSmartphone className="h-5 w-5" />
           </div>
           <div className="leading-tight">
             <div className="text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
@@ -969,9 +1023,16 @@ const PosTerminalPage: React.FC<Props> = () => {
             </button>
           ))}
           <button
+            onClick={() => setShowShortcutsDialog(true)}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-primary)] sm:text-xs xl:px-3 xl:py-2"
+            title={t('pos:terminal.keyboardShortcuts', { defaultValue: 'Keyboard Shortcuts' })}
+          >
+            <Keyboard className="h-3.5 w-3.5 xl:h-4 xl:w-4" />
+            <span className="hidden xl:inline">{t('pos:terminal.shortcuts', { defaultValue: 'Shortcuts' })}</span>
+          </button>
+          <button
             onClick={toggleFullscreen}
-            className="inline-flex items-center gap-1.5 rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-tertiary)] cursor-pointer"
-            title={isFullscreen ? 'Exit Fullscreen' : 'Enter Fullscreen'}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-2 py-1.5 text-[11px] font-semibold text-slate-600 transition-colors hover:bg-slate-50 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-secondary)] dark:hover:bg-[var(--color-bg-primary)] sm:text-xs xl:px-3 xl:py-2"
           >
             {isFullscreen ? <Minimize className="h-3.5 w-3.5" /> : <Maximize className="h-3.5 w-3.5" />}
           </button>
@@ -1205,7 +1266,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                     <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
                       {/* Left Side: Name, Edit (Desktop), Code, DefPrice, DefTax */}
                       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
-                        <span className={`truncate text-sm sm:text-[16px] font-semibold ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-slate-900 dark:text-[var(--color-text-primary)]'}`} title={l.itemName}>
+                        <span className={`inline-block whitespace-normal break-words rounded bg-indigo-50/60 px-2 py-1 text-sm sm:text-[16px] font-semibold border border-indigo-100/60 dark:border-indigo-500/20 dark:bg-indigo-500/10 ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-indigo-950 dark:text-indigo-50'}`} title={l.itemName}>
                           <span className="mr-1 sm:mr-1.5 text-[12px] sm:text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
                           {l.itemName}
                         </span>
@@ -1308,7 +1369,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.unitShort')}</label>
+                        <label className="cursor-pointer whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.unitShort')}</label>
                         <div className="w-16">
                           <UomSelector
                             ref={(el) => { if (el) uomRefs.current[l.lineId] = el; }}
@@ -1332,7 +1393,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.priceShort')}</label>
+                        <label className="cursor-pointer whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.priceShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1354,7 +1415,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                         title={`${taxName}${quoteLine?.taxRate !== undefined ? ` ${(quoteLine.taxRate * 100).toFixed(2)}%` : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.taxShort')}</label>
+                        <label className="cursor-pointer whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.taxShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1375,7 +1436,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.discountPercentShort')}</label>
+                        <label className="cursor-pointer whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.discountPercentShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1396,7 +1457,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                         }}
                         className={`flex items-center gap-1.5 rounded border border-slate-100 bg-slate-50 px-1.5 py-1 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/50 ${!isVoided ? 'cursor-pointer hover:bg-slate-100 dark:hover:bg-[var(--color-bg-primary)]' : ''}`}
                       >
-                        <label className="cursor-pointer text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.discountAmountShort')}</label>
+                        <label className="cursor-pointer whitespace-nowrap text-[10px] font-bold tracking-wider text-slate-400">{t('pos:terminal.discountAmountShort')}</label>
                         <input
                           type="number"
                           min="0"
@@ -1421,7 +1482,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
 
           {/* Totals + customer + pay */}
-          <div className="flex-none space-y-2 border-t border-slate-100 bg-slate-50/60 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-primary)]/40">
+          <div className="flex-none space-y-2 border-t border-slate-200 bg-slate-100 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)]">
             {/* Mobile Expand Toggle */}
             <button
               onClick={() => setIsTotalsExpanded(!isTotalsExpanded)}
@@ -2020,6 +2081,21 @@ const PosTerminalPage: React.FC<Props> = () => {
         onConfirm={() => setShowHeldCarts(false)}
         onCancel={() => setShowHeldCarts(false)}
         confirmLabel={t('common.close', { defaultValue: 'Close' })}
+      />
+
+      <PosKeyboardShortcutsDialog
+        isOpen={showShortcutsDialog}
+        onClose={() => setShowShortcutsDialog(false)}
+        initialShortcuts={userPreferences?.posShortcuts || {}}
+        onSave={async (shortcuts) => {
+          try {
+            const updated = await userPreferencesApi.upsert({ posShortcuts: shortcuts });
+            setUserPreferences(updated);
+            toast.success(t('pos:shortcuts.saved', { defaultValue: 'Keyboard shortcuts saved.' }));
+          } catch (err: any) {
+            errorHandler.showError(err?.message || 'Failed to save shortcuts');
+          }
+        }}
       />
     </div>
   );

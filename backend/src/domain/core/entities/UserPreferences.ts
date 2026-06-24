@@ -17,6 +17,7 @@ export class UserPreferences {
     public createdAt: Date = new Date(),
     public updatedAt: Date = new Date(),
     public layoutMode: LayoutMode = 'legacy',
+    public posShortcuts: Record<string, string> = {},
   ) {}
 }
 

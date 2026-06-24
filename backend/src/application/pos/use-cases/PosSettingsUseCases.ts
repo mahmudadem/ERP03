@@ -17,6 +17,7 @@ export interface UpdatePosSettingsInput {
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix?: string;
   receiptNextSeq?: number;
   cashRounding?: PosCashRounding;
@@ -79,6 +80,9 @@ export class UpdatePosSettingsUseCase {
     if (input.cashShortAccountId) {
       await this.assertAccount(input.companyId, input.cashShortAccountId, 'cashShortAccountId');
     }
+    if (input.defaultRevenueAccountId) {
+      await this.assertAccount(input.companyId, input.defaultRevenueAccountId, 'defaultRevenueAccountId');
+    }
     if (Array.isArray(input.paymentMethods)) {
       for (const m of input.paymentMethods) {
         if (m.settlementAccountId) {
@@ -93,6 +97,7 @@ export class UpdatePosSettingsUseCase {
       walkInCustomerId: input.walkInCustomerId !== undefined ? input.walkInCustomerId : current.walkInCustomerId,
       cashOverAccountId: input.cashOverAccountId !== undefined ? input.cashOverAccountId : current.cashOverAccountId,
       cashShortAccountId: input.cashShortAccountId !== undefined ? input.cashShortAccountId : current.cashShortAccountId,
+      defaultRevenueAccountId: input.defaultRevenueAccountId !== undefined ? input.defaultRevenueAccountId : current.defaultRevenueAccountId,
       receiptPrefix: input.receiptPrefix !== undefined ? input.receiptPrefix : current.receiptPrefix,
       receiptNextSeq: input.receiptNextSeq !== undefined ? input.receiptNextSeq : current.receiptNextSeq,
       cashRounding: input.cashRounding !== undefined ? input.cashRounding : current.cashRounding,

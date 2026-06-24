@@ -12,6 +12,7 @@ export interface UserPreferencesDTO {
   notificationCategoryOverrides?: Record<string, boolean>;
   showWidgetsOnMobile?: boolean;
   showTopbarActionsOnMobile?: boolean;
+  posShortcuts?: Record<string, string>;
   createdAt?: string;
   updatedAt?: string;
 }

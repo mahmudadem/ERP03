@@ -72,6 +72,16 @@ export function validateUpsertPosRegisterInput(body: any): void {
       }
     }
   }
+  if (body.keyboardShortcuts !== undefined) {
+    if (!body.keyboardShortcuts || typeof body.keyboardShortcuts !== 'object' || Array.isArray(body.keyboardShortcuts)) {
+      throw new Error('keyboardShortcuts must be an object');
+    }
+    for (const [action, shortcut] of Object.entries(body.keyboardShortcuts)) {
+      if (typeof shortcut !== 'string') {
+        throw new Error(`keyboardShortcuts.${action} must be a string`);
+      }
+    }
+  }
 }
 
 export function validateUpdatePosSettingsInput(body: any): void {
@@ -91,8 +101,11 @@ export function validateUpdatePosSettingsInput(body: any): void {
       // Account assignment is register-level. POS Settings only controls method behavior.
     }
   }
+  // Default revenue account for POS sales (fallback when item/category have none).
+  // Existence is validated in the use case; here we only enforce the shape.
+  optionalString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
   // Unused-but-typed access to keep the linter quiet about unused fields.
-  void optionalString; void optionalNumber; void optionalBoolean;
+  void optionalNumber; void optionalBoolean;
 }
 
 export function validateUpdatePosPolicyInput(body: any): void {

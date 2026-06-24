@@ -22,6 +22,7 @@ export interface PosRegisterProps {
   cashDrawerAccountId: string;
   settlementAccountIds?: PosRegisterSettlementAccounts;
   status: PosRegisterStatus;
+  keyboardShortcuts?: Record<string, string>;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -39,6 +40,7 @@ export class PosRegister {
   cashDrawerAccountId: string;
   settlementAccountIds: PosRegisterSettlementAccounts;
   status: PosRegisterStatus;
+  keyboardShortcuts: Record<string, string>;
   readonly createdAt: Date;
   updatedAt: Date;
 
@@ -67,6 +69,7 @@ export class PosRegister {
         .filter(([, accountId]) => !!accountId)
     ) as PosRegisterSettlementAccounts;
     this.status = status;
+    this.keyboardShortcuts = props.keyboardShortcuts || {};
     this.createdAt = props.createdAt;
     this.updatedAt = props.updatedAt;
   }
@@ -93,6 +96,7 @@ export class PosRegister {
       cashDrawerAccountId: this.cashDrawerAccountId,
       settlementAccountIds: this.settlementAccountIds,
       status: this.status,
+      keyboardShortcuts: this.keyboardShortcuts,
       createdAt: this.createdAt.toISOString(),
       updatedAt: this.updatedAt.toISOString(),
     };
@@ -112,6 +116,7 @@ export class PosRegister {
       cashDrawerAccountId: data.cashDrawerAccountId,
       settlementAccountIds: data.settlementAccountIds,
       status: data.status,
+      keyboardShortcuts: data.keyboardShortcuts,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
       updatedAt: data.updatedAt ? new Date(data.updatedAt) : new Date(),
     });

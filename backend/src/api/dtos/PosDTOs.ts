@@ -25,6 +25,7 @@ export interface PosRegisterDTO {
   cashDrawerAccountId: string;
   settlementAccountIds?: Partial<Record<'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM', string>>;
   status: 'ACTIVE' | 'INACTIVE';
+  keyboardShortcuts?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -44,6 +45,7 @@ export interface PosSettingsDTO {
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix: string;
   receiptNextSeq: number;
   cashRounding: 'none' | 'nearest_05' | 'nearest_1';
@@ -89,6 +91,7 @@ export class PosDTOMapper {
       cashDrawerAccountId: register.cashDrawerAccountId,
       settlementAccountIds: register.settlementAccountIds,
       status: register.status,
+      keyboardShortcuts: register.keyboardShortcuts,
       createdAt: register.createdAt.toISOString(),
       updatedAt: register.updatedAt.toISOString(),
     };
@@ -101,6 +104,7 @@ export class PosDTOMapper {
       walkInCustomerId: settings.walkInCustomerId,
       cashOverAccountId: settings.cashOverAccountId,
       cashShortAccountId: settings.cashShortAccountId,
+      defaultRevenueAccountId: settings.defaultRevenueAccountId,
       receiptPrefix: settings.receiptPrefix,
       receiptNextSeq: settings.receiptNextSeq,
       cashRounding: settings.cashRounding,
