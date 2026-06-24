@@ -2,6 +2,25 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-24 (Task 267 — System Core engine management execution plan)
+
+- **Context:** Owner asked for a detailed, low-mistake plan that cheaper executor agents can follow to complete the System Core/module independence work and that a starter/reviewer agent can audit.
+- **What changed:** Added `planning/tasks/267-system-core-engine-management-execution-plan.md` with the architecture rules, current-state snapshot, engine UI management model, execution slices, executor prompts, backend builder prompt, and reviewer audit prompt. Added `planning/briefs/20260624-system-core-engine-management-agent-brief.md` as the copy-paste read-only executor brief. Added `planning/audits/.gitkeep` so the required audit output directory exists.
+- **Accounting impact:** Planning only. No posting, tax, stock, approval, policy, settlement, ledger, or valuation behavior changed.
+- **Verification:** File creation/readback completed. No tests were required because no application code changed.
+- **Actual time:** ~0.4h.
+- **Next:** Run Slice 267-A: create `planning/audits/267-system-core-boundary-inventory.md` from live repo evidence and run `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts`.
+
+### Session: 2026-06-24 (Task 266 — POS tax-account configuration error clarity)
+
+- **Context:** Owner QA hit POS posting error: `No tax account configured ... Tax code undefined needs salesTaxAccountId configured.` This is an accounting configuration gate, not a case where POS should invent a tax account.
+- **What changed:** Kept the strict `TaxCode.salesTaxAccountId` requirement for output tax, but tightened `PostPosSaleUseCase` so positive POS tax with no resolved active Sales/Both tax code now says to assign the item's default Sales Tax Code or select an active tax code. If a tax code is resolved but lacks `salesTaxAccountId`, the message still names that tax code. Added focused regressions for both cases.
+- **Accounting impact:** No posting math/account fallback changed. POS still blocks before stock, receipt, settlement, or ledger writes when output tax cannot map to a Sales Tax Account.
+- **Verification:** `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` passed (20/20); `npm run build` passed.
+- **Docs:** `planning/done/266-pos-tax-account-error-message.md`, `docs/architecture/pos.md`, `docs/user-guide/pos/selling.md`.
+- **Actual time:** ~0.5h.
+- **Next:** Owner should set **Settings → Tax Codes → Sales Tax Account** for the item's default sales tax code, confirm the item has **Default Sales Tax Code**, then rerun the POS sale.
+
 ### Session: 2026-06-23 (Task 265 — POS Keyboard Shortcuts)
 
 - **Context:** The owner requested keyboard shortcuts in the POS terminal for faster actions (F12 for pay, Delete for void, etc.). They specified a three-tier configuration: system defaults, register-level overrides (manager controlled), and user preferences (cashier controlled).

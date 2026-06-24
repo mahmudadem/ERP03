@@ -1,5 +1,37 @@
 # 🎯 Current Focus
 
+## Task 267 — System Core engine management execution plan (2026-06-24)
+
+**Status:** ✅ Plan/brief created (planning-only, uncommitted).
+
+- **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
+- **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md) and an executor brief at [briefs/20260624-system-core-engine-management-agent-brief](./briefs/20260624-system-core-engine-management-agent-brief.md).
+- **Scope:** No implementation yet. The next agent should start with Slice 267-A: read-only engine boundary inventory.
+- **Estimated time:** 267-A audit 1.5-2.5h; full remediation 4-8 slices over roughly 2-5 days depending on accounting golden tests.
+
+### Next action
+
+Run **Slice 267-A — Read-Only Engine Boundary Inventory** from the task plan. It must create `planning/audits/267-system-core-boundary-inventory.md`, run the architecture boundary test, and make no source-code changes.
+
+---
+
+## Task 266 — POS tax-account configuration error clarity (2026-06-24)
+
+**Status:** ✅ Fixed on `main` (uncommitted).
+
+- **Why:** Owner QA hit POS posting error: `No tax account configured ... Tax code undefined needs salesTaxAccountId configured.` The accounting gate was correct, but the message was not actionable when tax was manually entered without a resolved active Sales/Both tax code.
+- **What:** POS still requires output tax to map through `TaxCode.salesTaxAccountId`. `PostPosSaleUseCase` now distinguishes:
+  - resolved tax code exists but lacks Sales Tax Account → name that tax code;
+  - positive tax amount but no active Sales/Both tax code resolved → tell the user to assign the item default Sales Tax Code or select an active sales tax code before posting.
+- **Verification:** `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` passed (20/20); backend `npm run build` passed.
+- **Docs:** [done/266](./done/266-pos-tax-account-error-message.md); `docs/architecture/pos.md`; `docs/user-guide/pos/selling.md`.
+
+### Next action
+
+Owner: open **Settings → Tax Codes**, set **Sales Tax Account** for the tax code used by item `e9a00617-1aaf-4719-bd3f-bf9ba877cbd3`, confirm the item has that **Default Sales Tax Code**, then rerun the POS sale. This should either post or expose the next real POS configuration blocker.
+
+---
+
 ## Task 265 — POS Keyboard Shortcuts (2026-06-23)
 
 **Status:** ✅ Built on `main` (uncommitted).

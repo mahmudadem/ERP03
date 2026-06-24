@@ -61,6 +61,7 @@ POS is a standalone application over System Core engines. A completed sale is a 
 
 - `IInventoryCore` for stock items — see the transaction-safety note below.
 - `ITaxEngine` for line tax math.
+- Output tax account mapping remains tax-code-owned. When a POS line has positive tax, `PostPosSaleUseCase` posts that tax to `TaxCode.salesTaxAccountId` from the resolved active Sales/Both tax code (`line.taxCodeId` first, then `Item.defaultSalesTaxCodeId`). If no active sales tax code is resolved, or the resolved tax code has no Sales Tax Account, POS throws `ACCOUNT_MAPPING_MISSING` before stock, receipt, settlement, or ledger writes. There is intentionally no POS default tax-account fallback because that would hide VAT/output-tax misconfiguration.
 - `IAccountingBridge.recordFinancialEvent` for revenue, COGS, settlement, and cash rounding events. The settlement (`RECEIPT`) and refund (`PAYMENT`) legs are posted as **canonical JV-style lines** — each line carries `amount` (alongside `baseAmount`/`docAmount`). `amount` is mandatory: `ReceiptVoucherStrategy` / `PaymentVoucherStrategy` only treat lines as canonical when `amount > 0`, otherwise they fall back to their `depositToAccountId` / `payFromAccountId` builder and throw INFRA_999. (Revenue/COGS legs use the `SALES_INVOICE` / `SALES_RETURN` strategies, which read `baseAmount` directly.)
 - `IPolicyEngine` for POS direct-sale permission.
 - `INumberingEngine` for receipt numbering.

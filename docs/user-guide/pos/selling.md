@@ -36,6 +36,18 @@ Until POS-specific item fields are added to the item master screen, advanced fla
 
 These flags are enforced by the sale posting path, including exchanges.
 
+## Tax setup for POS sales
+
+When a POS line has tax, the tax account comes from the selected tax code. Normally the item supplies this through its default Sales Tax Code.
+
+Before selling taxable items:
+
+1. Open **Settings → Tax Codes**.
+2. Edit the sales tax code and set **Sales Tax Account**.
+3. Open the item card and set **Default Sales Tax Code** for taxable items.
+
+If a cashier enters a manual tax amount but the line has no active Sales tax code, the sale is blocked before posting. This is intentional: the system cannot post output tax to the ledger without knowing which tax code/account owns it.
+
 ## Hold and recall a sale
 
 Use **Hold** when the customer needs to pause before payment. The current active cart lines are saved to the server for the open shift, then the terminal clears so the cashier can serve the next customer.
