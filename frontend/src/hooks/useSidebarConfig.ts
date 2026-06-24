@@ -145,6 +145,7 @@ export const useSidebarConfig = () => {
     'UI Lab 🎨': 'sidebar.uiLab',
     'Demo': 'sidebar.demo',
     'New': 'sidebar.new',
+    'Home': 'sidebar.home',
     // Sales items
     'Products & Services': 'sidebar.productsAndServices',
     'Sales Orders': 'sidebar.salesOrders',
