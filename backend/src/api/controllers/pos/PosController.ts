@@ -88,6 +88,8 @@ import {
   validateUpdatePosPolicyInput,
   validateUpsertPosRegisterInput,
 } from '../../validators/pos.validators';
+import { validateUpdateSellingPolicyInput } from '../../validators/sellingPolicy.validators';
+import { SellingPolicy } from '../../../domain/system-core/entities/SellingPolicy';
 
 export class PosController {
   private static readonly printLayoutCore = new PrintLayoutCore();
@@ -191,6 +193,44 @@ export class PosController {
       });
       await diContainer.posPolicyRepository.savePolicy(policy);
       (res as any).json({ success: true, data: policy.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ===== Selling Policy (shared, company-wide below-cost rule) =====
+  // POS owns its own doorway to the shared SellingPolicy so a POS-only tenant
+  // (Sales module disabled) can still configure the rule. It reads/writes the
+  // exact same store as Sales → Settings (diContainer.sellingPolicyRepository),
+  // so there is a single source of truth — only the entry point is per-module.
+
+  static async getSellingPolicy(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const policy = (await diContainer.sellingPolicyRepository.getPolicy(companyId))
+        || SellingPolicy.createDefault(companyId);
+      (res as any).json({ success: true, data: policy.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSellingPolicy(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateSellingPolicyInput((req as any).body);
+      const companyId = PosController.getCompanyId(req);
+      const body = (req as any).body || {};
+      const current = (await diContainer.sellingPolicyRepository.getPolicy(companyId))
+        || SellingPolicy.createDefault(companyId);
+      const next_ = new SellingPolicy({
+        companyId,
+        belowCostMode: body.belowCostMode !== undefined ? body.belowCostMode : current.belowCostMode,
+        minMarginPercent: body.minMarginPercent !== undefined ? body.minMarginPercent : current.minMarginPercent,
+        allowManagerOverride: body.allowManagerOverride !== undefined ? body.allowManagerOverride : current.allowManagerOverride,
+        createdAt: current.createdAt,
+      });
+      await diContainer.sellingPolicyRepository.savePolicy(next_);
+      (res as any).json({ success: true, data: next_.toJSON() });
     } catch (error) {
       next(error);
     }

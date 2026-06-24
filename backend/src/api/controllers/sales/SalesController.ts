@@ -84,8 +84,8 @@ import {
   validateUpdateSalesInvoicePaymentStatusInput,
   validateUpdateSalesOrderInput,
   validateUpdateSalesSettingsInput,
-  validateUpdateSellingPolicyInput,
 } from '../../validators/sales.validators';
+import { validateUpdateSellingPolicyInput } from '../../validators/sellingPolicy.validators';
 import { ApiError } from '../../errors/ApiError';
 import { SellingPolicy } from '../../../domain/system-core/entities/SellingPolicy';
 

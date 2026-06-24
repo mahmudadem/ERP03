@@ -23,6 +23,7 @@ import {
   PosSettingsDTO,
   PosCashierRolePolicyDTO,
   PosManagerOverrideAction,
+  SellingPolicyDTO,
 } from '../../../api/posApi';
 import { errorHandler } from '../../../services/errorHandler';
 import { Info, Save, Shield, ShieldCheck, UserCog } from 'lucide-react';
@@ -46,6 +47,8 @@ const PosSettingsPage: React.FC<Props> = () => {
   const [original, setOriginal] = useState<PosSettingsDTO | null>(null);
   const [policy, setPolicy] = useState<PosPolicyDTO | null>(null);
   const [originalPolicy, setOriginalPolicy] = useState<PosPolicyDTO | null>(null);
+  const [sellingPolicy, setSellingPolicy] = useState<SellingPolicyDTO | null>(null);
+  const [originalSellingPolicy, setOriginalSellingPolicy] = useState<SellingPolicyDTO | null>(null);
   const [roles, setRoles] = useState<CompanyRole[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -109,10 +112,11 @@ const PosSettingsPage: React.FC<Props> = () => {
     const load = async () => {
       try {
         setLoading(true);
-        const [normalized, loadedPolicy, loadedRoles] = await Promise.all([
+        const [normalized, loadedPolicy, loadedRoles, loadedSellingPolicy] = await Promise.all([
           loadSettings(),
           posApi.getPolicy().catch(() => null),
           listRoles().catch(() => [] as CompanyRole[]),
+          posApi.getSellingPolicy().catch(() => null),
         ]);
         const normalizedPolicy = normalizePolicy(loadedPolicy, normalized.companyId);
         setSettings(normalized);
@@ -120,6 +124,10 @@ const PosSettingsPage: React.FC<Props> = () => {
         setPolicy(normalizedPolicy);
         setOriginalPolicy(normalizedPolicy);
         setRoles(loadedRoles || []);
+        if (loadedSellingPolicy) {
+          setSellingPolicy(loadedSellingPolicy);
+          setOriginalSellingPolicy(loadedSellingPolicy);
+        }
       } catch (err) {
         console.error('Failed to load POS settings', err);
         toast.error(t('pos:settings.loadError', { defaultValue: 'Failed to load POS settings.' }));
@@ -212,7 +220,10 @@ const PosSettingsPage: React.FC<Props> = () => {
     upsertRolePolicy(roleId, { managerOverrideActions: next });
   };
 
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(original) || JSON.stringify(policy) !== JSON.stringify(originalPolicy);
+  const hasChanges =
+    JSON.stringify(settings) !== JSON.stringify(original) ||
+    JSON.stringify(policy) !== JSON.stringify(originalPolicy) ||
+    JSON.stringify(sellingPolicy) !== JSON.stringify(originalSellingPolicy);
 
   const onToggleAllowDirect = (next: boolean) => {
     setPendingAllowDirect(next);
@@ -238,6 +249,15 @@ const PosSettingsPage: React.FC<Props> = () => {
             maxLineDiscountAmount: p.maxLineDiscountAmount === undefined ? undefined : Number(p.maxLineDiscountAmount),
           })),
         });
+      }
+      if (sellingPolicy && JSON.stringify(sellingPolicy) !== JSON.stringify(originalSellingPolicy)) {
+        const savedSellingPolicy = await posApi.updateSellingPolicy({
+          belowCostMode: sellingPolicy.belowCostMode,
+          minMarginPercent: sellingPolicy.minMarginPercent,
+          allowManagerOverride: sellingPolicy.allowManagerOverride,
+        });
+        setSellingPolicy(savedSellingPolicy);
+        setOriginalSellingPolicy(savedSellingPolicy);
       }
       const [next, nextPolicy] = await Promise.all([loadSettings(), posApi.getPolicy().catch(() => policy)]);
       setSettings(next);
@@ -346,6 +366,7 @@ const PosSettingsPage: React.FC<Props> = () => {
         onDiscard={() => {
           setSettings(original);
           setPolicy(originalPolicy);
+          setSellingPolicy(originalSellingPolicy);
         }}
         saving={saving}
         hasChanges={hasChanges}
@@ -442,6 +463,102 @@ const PosSettingsPage: React.FC<Props> = () => {
                   {t('pos:settings.negativeStockPolicyHelp', {
                     defaultValue:
                       'Block keeps the till from overselling even when the company allows negative stock for back-office sales. Allow defers to the company inventory setting.',
+                  })}
+                </div>
+              </div>
+
+              {sellingPolicy && (
+                <div className="md:col-span-2 rounded-lg border border-slate-200 bg-slate-50/60 p-4">
+                  <div className="text-sm font-semibold text-slate-800">
+                    {t('pos:settings.belowCost.title', { defaultValue: 'Below-cost selling policy' })}
+                  </div>
+                  <div className="text-xs text-slate-500 mt-0.5 mb-3">
+                    {t('pos:settings.belowCost.subtitle', {
+                      defaultValue:
+                        'Company-wide rule for selling at or below cost. Shared with Sales — changing it here changes it everywhere.',
+                    })}
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('pos:settings.belowCost.mode', { defaultValue: 'When a line is below cost' })}
+                      </label>
+                      <select
+                        value={sellingPolicy.belowCostMode}
+                        onChange={(e) =>
+                          setSellingPolicy((prev) =>
+                            prev ? { ...prev, belowCostMode: e.target.value as SellingPolicyDTO['belowCostMode'] } : prev
+                          )
+                        }
+                        className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      >
+                        <option value="BLOCK">{t('pos:settings.belowCost.block', { defaultValue: 'Block — never sell below cost' })}</option>
+                        <option value="REQUIRE_APPROVAL">{t('pos:settings.belowCost.requireApproval', { defaultValue: 'Require approval — block until a manager approves' })}</option>
+                        <option value="ALLOW">{t('pos:settings.belowCost.allow', { defaultValue: 'Allow — sell below cost freely' })}</option>
+                      </select>
+                      <label className="mt-3 flex items-start gap-2 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          className="mt-0.5 h-4 w-4 rounded border-slate-300"
+                          checked={sellingPolicy.allowManagerOverride !== false}
+                          disabled={sellingPolicy.belowCostMode === 'ALLOW'}
+                          onChange={(e) =>
+                            setSellingPolicy((prev) => (prev ? { ...prev, allowManagerOverride: e.target.checked } : prev))
+                          }
+                        />
+                        <span className="text-xs text-slate-600">
+                          {t('pos:settings.belowCost.allowOverride', {
+                            defaultValue: 'Allow manager override (off = absolute block; even an approved override cannot pass).',
+                          })}
+                        </span>
+                      </label>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium mb-1">
+                        {t('pos:settings.belowCost.minMargin', { defaultValue: 'Minimum gross margin (%)' })}
+                      </label>
+                      <input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        placeholder={t('pos:settings.belowCost.minMarginPlaceholder', { defaultValue: 'No minimum' })}
+                        value={sellingPolicy.minMarginPercent ?? ''}
+                        onChange={(e) =>
+                          setSellingPolicy((prev) =>
+                            prev
+                              ? { ...prev, minMarginPercent: e.target.value === '' ? undefined : Number(e.target.value) }
+                              : prev
+                          )
+                        }
+                        className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                      />
+                      <div className="text-xs text-slate-500 mt-1">
+                        {t('pos:settings.belowCost.minMarginHelp', {
+                          defaultValue:
+                            'Optional. A line below this margin is treated like a below-cost line. Leave blank to only guard against selling below cost.',
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium mb-1">
+                  {t('pos:settings.defaultRevenueAccount', { defaultValue: 'Default revenue account' })}
+                </label>
+                <AccountSelector
+                  value={settings.defaultRevenueAccountId}
+                  onChange={(a) => update('defaultRevenueAccountId', a?.id || '')}
+                  allowedClassifications={['REVENUE']}
+                  contextLabel={t('pos:settings.defaultRevenueContext', { defaultValue: 'Revenue' })}
+                  enforceClassification
+                  enforceScope
+                />
+                <div className="text-xs text-slate-500 mt-1">
+                  {t('pos:settings.defaultRevenueAccountHelp', {
+                    defaultValue:
+                      'Fallback revenue account for POS sales when an item (and its category) has none. Resolution order at the till: item → item category → this default.',
                   })}
                 </div>
               </div>

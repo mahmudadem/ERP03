@@ -2,6 +2,20 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-23 (Task 265 — POS Keyboard Shortcuts)
+
+- **Context:** The owner requested keyboard shortcuts in the POS terminal for faster actions (F12 for pay, Delete for void, etc.). They specified a three-tier configuration: system defaults, register-level overrides (manager controlled), and user preferences (cashier controlled).
+- **What was built:** Added `keyboardShortcuts` (JSON) to `PosRegister` schema and `posShortcuts` (JSON) to `UserPreferences`. Updated Prisma and Firestore repositories to persist them. Built `usePosKeyboardShortcuts` hook that intercepts `keydown` events globally, ignoring inputs/textareas, and merges configuration with priority: User Preferences > Register Defaults > System Defaults. Added `PosKeyboardShortcutsDialog.tsx` for capturing and editing keys. Integrated it into `PosRegistersPage` for manager configuration and `PosTerminalPage` context bar for cashier personal preferences.
+- **Verification:** Successfully compiled frontend (`npm run build`) with no TS or syntax errors.
+- **Docs:** `planning/done/265-pos-keyboard-shortcuts.md`, `docs/architecture/pos.md`, and `docs/user-guide/pos/keyboard-shortcuts.md`.
+
+### Session: 2026-06-24 (Task 264 follow-up — POS-independent doorway + module-independence rule documented)
+
+- **Owner feedback (firm):** "modules are independent — a POS-only user must be able to work!" Task 264 shipped the shared SellingPolicy editor + API route **only under Sales** (`/tenant/sales/selling-policy`, behind `moduleInitializedGuard('sales')`), so a POS-only tenant could not configure it. Real defect, not a nicety.
+- **Fix:** Gave POS its own independent doorway to the **same** shared store — `GET/PUT /tenant/pos/selling-policy` (`pos.settings.manage`) + a "Below-cost selling policy" card in **POS → Settings**. Extracted the validator to a neutral `api/validators/sellingPolicy.validators.ts` so POS's controller never imports Sales code. One source of truth (`SellingPolicy` doc); two per-module entry points.
+- **Rule documented for all agents:** Added a 🚩 rule to `AGENTS.md` → *Engines vs Modules* ("a shared setting needs a doorway in EVERY consuming module, not just one") + a planning-checklist step + a litmus ("if this tenant had ONLY POS enabled, could a POS-only user still set this?"). Saved to auto-memory too. This keeps biting us; it's now a written planning requirement.
+- **Verification:** backend + frontend typecheck clean; `npm run build` clean; affected suites (sales posting + commercial below-cost + policy engine) = 40 tests green.
+
 ### Session: 2026-06-23 (Task 264 — shared below-cost Selling Policy for POS + Sales)
 
 - **Context:** Owner QA hit "POS sale line ITEM-001 is below allowed cost/margin and requires approval" (INFRA_999). Unlike Tasks 261–263 (transaction-path bugs), this is a **business rule firing as designed** — but it was hardcoded into POS only (always REQUIRE_APPROVAL) with no way to configure it and no equivalent on Sales. Owner asked for a shared, configurable policy consumed by both apps via the new engine architecture.

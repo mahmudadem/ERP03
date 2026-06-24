@@ -66,12 +66,23 @@ export interface PosSettingsDTO {
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix: string;
   receiptNextSeq: number;
   cashRounding: PosCashRounding;
   allowPosDirectSales: boolean;
   negativeStockPolicy: PosNegativeStockPolicy;
   paymentMethods: PosPaymentMethodDTO[];
+}
+
+export type SellingBelowCostMode = 'BLOCK' | 'REQUIRE_APPROVAL' | 'ALLOW';
+
+/** Shared company-wide selling policy (below-cost / minimum-margin). Same store as Sales. */
+export interface SellingPolicyDTO {
+  companyId: string;
+  belowCostMode: SellingBelowCostMode;
+  minMarginPercent?: number;
+  allowManagerOverride: boolean;
 }
 
 export interface PosRegisterDTO {
@@ -87,6 +98,7 @@ export interface PosRegisterDTO {
   cashDrawerAccountId: string;
   settlementAccountIds?: Partial<Record<PosPaymentMethodCode, string>>;
   status: PosRegisterStatus;
+  keyboardShortcuts?: Record<string, string>;
   createdAt: string;
   updatedAt: string;
 }
@@ -270,6 +282,14 @@ export const posApi = {
 
   updatePolicy: async (payload: Partial<PosPolicyDTO>): Promise<PosPolicyDTO> =>
     ok(client.put('/tenant/pos/policy', payload)),
+
+  // Shared company-wide selling policy (below-cost / margin). POS reads/writes the
+  // same store as Sales; this is POS's own independent doorway to it.
+  getSellingPolicy: async (): Promise<SellingPolicyDTO> =>
+    ok(client.get('/tenant/pos/selling-policy')),
+
+  updateSellingPolicy: async (payload: Partial<SellingPolicyDTO>): Promise<SellingPolicyDTO> =>
+    ok(client.put('/tenant/pos/selling-policy', payload)),
 
   listRegisters: async (): Promise<PosRegisterDTO[]> =>
     ok(client.get('/tenant/pos/registers')),

@@ -103,6 +103,7 @@ Item selling-policy guards run in `PostPosSaleUseCase`, not only in the terminal
 - **Bootstrap (`GetPosBootstrapUseCase`)** hydrates the terminal in one call. The cashier screen calls it with only `cashierUserId` (no register picker), so the use case resolves the **active register itself**: an explicit `registerId` wins, else a lone `ACTIVE` register (else a lone register of any status). The open shift is then read for that register, with a fallback to the cashier's own open shift (whose register is hydrated if none was picked). Without this resolution the terminal wrongly shows "No open shift for this register."
 - **`posApi` unwrap contract:** the global axios response interceptor (`setupErrorInterceptor`) already unwraps the `{ success, data }` envelope to the bare payload. Any per-module helper must therefore use the resilient `r?.data?.data ?? r?.data ?? r` form (falls through to the already-unwrapped value). A 2-level `r.data.data ?? r.data` form silently resolves to `undefined` and makes every read look "not persisted." All POS reads go through `ok()`, which uses the resilient form.
 - **`PosTerminalPage`** is a product-grid + order-panel checkout (search/scan tiles → cart with qty steppers → totals → green Pay → React-state tender dialog driven by the enabled payment methods). It never posts directly — `previewSale` supplies the authoritative tax-inclusive quote and `completeSale` posts the POS direct sale. Items with a non-positive sale price are blocked from the cart. Removing a line opens a reason dialog and marks the line voided instead of deleting it from the sale audit trail.
+- **Keyboard Shortcuts** are managed by `usePosKeyboardShortcuts` which intercepts key presses globally (when not typing in an input). Shortcut configuration merges in priority order: User Preferences (highest) → Register Defaults → System Defaults (lowest). The cashier can edit their personal overrides via the keyboard icon in the top right of the terminal, while the register defaults are maintained in `PosRegistersPage`.
 
 ## 4. Money / stock safety
 
@@ -176,9 +177,12 @@ can require a manager's approval. Two engines split the decision:
   driven by the company-wide **SellingPolicy** (`BLOCK` / `REQUIRE_APPROVAL` /
   `ALLOW`), the *same* policy the Sales invoice path honours. The POS call is
   unchanged — the Commercial Core self-resolves the policy — so a company can set
-  the till to allow below-cost sales (or block them outright) from one place:
-  **Sales → Settings → Sales Policy**. See `docs/architecture/system-core.md` →
-  *Selling Policy*.
+  the till to allow below-cost sales (or block them outright). Because the policy
+  is **shared but POS-independent**, it has its own POS doorway — **POS → Settings
+  → Below-cost selling policy** (route `GET/PUT /tenant/pos/selling-policy`,
+  `pos.settings.manage`) — editing the *same* store as **Sales → Settings → Sales
+  Policy**. A POS-only tenant (Sales module disabled) can therefore still configure
+  it. See `docs/architecture/system-core.md` → *Selling Policy*.
 
 ## 7. Reports (10 POS + 1 link)
 

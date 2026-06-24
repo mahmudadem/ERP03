@@ -1,6 +1,19 @@
 # 🎯 Current Focus
 
-## Task 264 — Shared below-cost Selling Policy for POS + Sales (2026-06-23)
+## Task 265 — POS Keyboard Shortcuts (2026-06-23)
+
+**Status:** ✅ Built on `main` (uncommitted).
+
+- **Why:** Faster actions at the POS terminal using keyboard shortcuts (F12, Delete, etc.). The owner requested shortcuts with default bindings, register-level overrides, and user-level preferences so cashiers can personalize their terminal flow.
+- **What:** Added `keyboardShortcuts` JSON to `PosRegister` schema and `posShortcuts` JSON to `UserPreferences`. Built `usePosKeyboardShortcuts` hook to intercept keystrokes with priority (User > Register > Default). Built `PosKeyboardShortcutsDialog.tsx` for capturing keys. Added configuration to `PosRegistersPage` for managers and `PosTerminalPage` context bar for cashiers.
+- **Verification:** Frontend built successfully (`npm run build`). No typescript or syntax errors.
+- **Docs:** [done/265](./done/265-pos-keyboard-shortcuts.md); `docs/architecture/pos.md` (Frontend Data Contract); user guide `docs/user-guide/pos/keyboard-shortcuts.md`.
+
+### Next action
+
+Commit Task 265 on `main`. Owner: Review the shortcuts dialog in the POS terminal and test keybindings like `F12` to trigger the Payment dialog.
+
+---## Task 264 — Shared below-cost Selling Policy for POS + Sales (2026-06-23)
 
 **Status:** ✅ Built on `main` (uncommitted). 261 + 262 + 263 are now **committed** (`b917f3c4`, `039b0594`).
 
@@ -9,9 +22,11 @@
 - **Verification:** 20 new tests; sweep system-core + sales + pos = 72 suites / 618 tests green; backend+frontend typecheck + `npm run build` clean.
 - **Docs:** [done/264](./done/264-shared-below-cost-selling-policy.md); `docs/architecture/system-core.md` (Selling Policy) + `sales.md` + `pos.md`; user guide `docs/user-guide/sales/below-cost-selling-policy.md`.
 
+**Follow-up (2026-06-24):** Owner flagged that the policy was only editable from Sales — breaks POS independence. Fixed: POS now has its own doorway (**POS → Settings → Below-cost selling policy**, `GET/PUT /tenant/pos/selling-policy`) to the same shared store; neutral validator so POS doesn't import Sales. Documented the rule in `AGENTS.md` (🚩 shared-config doorway) + auto-memory.
+
 ### Next action
 
-Commit Task 264 on `main`. Owner: set the policy to **Allow** in Sales → Settings → Sales Policy to clear the below-cost block during QA, then re-run a full POS sale + a below-cost Sales invoice to confirm both honour the setting. The pre-existing POS-settings WIP + unrelated frontend WIP remain uncommitted by design.
+Commit Task 264 (incl. the POS doorway + AGENTS.md rule) on `main`. Owner: set the policy to **Allow** from **POS → Settings → Below-cost selling policy** (or Sales Settings) to clear the below-cost block during QA, then re-run a full POS sale + a below-cost Sales invoice to confirm both honour it. Pre-existing POS-settings WIP + unrelated frontend WIP remain uncommitted by design.
 
 ---
 

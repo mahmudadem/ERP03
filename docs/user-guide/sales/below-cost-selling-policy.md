@@ -7,7 +7,13 @@ so you set it once and both behave the same way.
 
 ## Where to find it
 
-**Sales → Settings → Sales Policy → Below-cost selling policy**
+You can set it from **either** module — it's the same setting either way:
+
+- **Sales → Settings → Sales Policy → Below-cost selling policy**
+- **POS → Settings → Below-cost selling policy**
+
+Changing it in one place changes it in both. (If you only use POS, set it from POS
+Settings — you don't need the Sales module at all.)
 
 ## The three choices
 

@@ -45,13 +45,14 @@ Answer: yes — the Policy Engine is already multi-module. So below-cost was pro
 - **POS** — `PostPosSaleUseCase` is **unchanged**; because the Commercial Core self-resolves the policy, the existing `validateCostMargin` call is now policy-driven.
 - **Sales** — `PostSalesInvoiceUseCase` gains an optional `commercialCore` and, after Phase 1D computes line cost, runs the guard per tracked line comparing **line net revenue vs line cost** (both base currency, so UOM-agnostic), throwing before any voucher is written when blocked. Both `SalesController` construction sites pass `diContainer.commercialCore`.
 
-**API + UI:**
-- `GET/PUT /tenant/sales/selling-policy` (`SalesController.getSellingPolicy`/`updateSellingPolicy`, validator `validateUpdateSellingPolicyInput`, route in `sales.routes.ts`).
-- Frontend `salesApi.getSellingPolicy`/`updateSellingPolicy` + `SellingPolicyDTO`; a "Below-cost selling policy" card in **Sales → Settings → Sales Policy** (mode dropdown, min-margin %, allow-override toggle). The card states it is company-wide and also governs POS.
+**API + UI — a doorway in EVERY consuming module (not just one):**
+- `GET/PUT /tenant/sales/selling-policy` (`SalesController`, `sales.routes.ts`) **and** `GET/PUT /tenant/pos/selling-policy` (`PosController`, `pos.routes.ts`, `pos.settings.manage`). Both read/write the same `SellingPolicy` store — single source of truth, per-module entry points.
+- Validator extracted to a neutral `api/validators/sellingPolicy.validators.ts` so neither module's controller imports the other's code (POS independence).
+- Frontend: `salesApi`/`posApi` each get `getSellingPolicy`/`updateSellingPolicy` + a `SellingPolicyDTO`; a "Below-cost selling policy" card in **Sales → Settings → Sales Policy** *and* in **POS → Settings** (mode dropdown, min-margin %, allow-override toggle). Each card states it is company-wide and shared.
 
-### Why the policy lives in Sales Settings (not POS Settings)
+### Why it is its own shared store with a doorway in each module
 
-It is a single company-wide commercial control. Putting it on `PosSettings` or `SalesSettings` alone would let two module settings drift. It is its own `SellingPolicy` store; the UI is hosted in Sales (the canonical commercial module) but the route comment, card copy, and docs all make the cross-module ownership explicit. Sales had no below-cost guard before, so there was nothing there to toggle — confirming the rule's home is the shared engine layer.
+It is a single company-wide commercial control, so it is its own `SellingPolicy` store (not stored on `PosSettings`/`SalesSettings`, which would let two settings drift). But **modules are independent** — a POS-only tenant (Sales disabled) must still be able to configure it. The initial version shipped the editor under Sales only, which broke that; the corrected design gives **each** consuming module its own permission-gated doorway to the one shared store. This is now a written rule in `AGENTS.md` (🚩 *shared-config doorway*).
 
 ### Default & behaviour change
 
@@ -88,7 +89,7 @@ You can now decide what happens when something is sold **at or below its cost** 
 
 ### How to Use It
 
-1. Go to **Sales → Settings → Sales Policy**.
+1. Go to **Sales → Settings → Sales Policy** *or* **POS → Settings** (same setting either way; POS-only users use the POS screen).
 2. Find **Below-cost selling policy** and pick:
    - **Block** — below-cost sales are never allowed.
    - **Require approval** — below-cost sales are stopped until a manager approves (this is how the till behaved before).

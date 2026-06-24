@@ -16,6 +16,10 @@ router.get('/settings', permissionGuard('pos.settings.manage'), PosController.ge
 router.put('/settings', permissionGuard('pos.settings.manage'), PosController.updateSettings);
 router.get('/policy', permissionGuard('pos.settings.manage'), PosController.getPolicy);
 router.put('/policy', permissionGuard('pos.settings.manage'), PosController.updatePolicy);
+// Shared company-wide selling policy (below-cost / margin). POS-independent doorway
+// to the same store Sales edits, so a POS-only tenant can configure it.
+router.get('/selling-policy', permissionGuard('pos.settings.manage'), PosController.getSellingPolicy);
+router.put('/selling-policy', permissionGuard('pos.settings.manage'), PosController.updateSellingPolicy);
 
 // Registers
 router.get('/registers', permissionGuard('pos.registers.manage'), PosController.listRegisters);

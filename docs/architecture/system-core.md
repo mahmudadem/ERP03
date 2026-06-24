@@ -208,9 +208,18 @@ the same verdict (mirrors how `scope: 'accounting'` approval policy is shared).
 **Attach points.** POS: `PostPosSaleUseCase` (unchanged call, now policy-driven).
 Sales: `PostSalesInvoiceUseCase` runs the guard after Phase 1D computes line cost,
 comparing line net revenue vs line cost (both base currency, so UOM-agnostic) and
-throwing before any voucher is written when the verdict is blocked. The policy is
-edited in **Sales → Settings → Sales Policy** (company-wide; the card states it
-also governs POS).
+throwing before any voucher is written when the verdict is blocked.
+
+**Editing doorways (one store, per-module entry points).** The policy is a single
+shared store, but — because modules are independent — it has a doorway in **every**
+consuming module, never just one: **Sales → Settings → Sales Policy**
+(`GET/PUT /tenant/sales/selling-policy`) and **POS → Settings → Below-cost selling
+policy** (`GET/PUT /tenant/pos/selling-policy`), each gated by its own module
+permission and reachable even if the other module is disabled. Both read/write the
+same `SellingPolicy` doc, so there is one source of truth. The request validator
+lives in a neutral `api/validators/sellingPolicy.validators.ts` so neither
+module's controller imports the other's. See `AGENTS.md` → *Engines vs Modules*
+(🚩 shared-config doorway rule).
 
 250l-3 moves promotion evaluation behind `ICommercialCore.applyPromotions(...)`. The neutral core model supports the existing rule mechanics without importing Sales internals:
 
