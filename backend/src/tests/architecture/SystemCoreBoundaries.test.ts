@@ -233,6 +233,28 @@ describe('Architecture guard: system core boundaries', () => {
       expect(content).not.toContain('interface COGSBucketLine');
     }
   });
+
+  /**
+   * Task 267-C — non-failing export/structure guard. The Policy Resolution
+   * Engine foundation introduces a typed policy config model and resolver.
+   * This guard verifies the foundation files exist where the architecture
+   * expects them, so a future refactor that drops one is caught immediately.
+   * It does not assert behavior (those are pinned in PolicyResolver.test.ts
+   * and PolicyEngineTypedResolution.test.ts).
+   */
+  it('267-C: Policy Resolution Engine foundation files are in place', () => {
+    const expected = [
+      'domain/system-core/entities/PolicyConfig.ts',
+      'repository/interfaces/system-core/IPolicyConfigRepository.ts',
+      'application/system-core/contracts/IPolicyEngine.ts',
+      'application/system-core/policy/PolicyResolver.ts',
+      'application/system-core/PolicyEngine.ts',
+    ];
+    for (const rel of expected) {
+      const abs = path.resolve(SRC, rel);
+      expect(fs.existsSync(abs)).toBe(true);
+    }
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

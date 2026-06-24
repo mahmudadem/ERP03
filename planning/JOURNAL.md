@@ -2,6 +2,29 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-C — Policy Resolution Engine foundation)
+
+- **Context:** Per `planning/audits/267-system-core-boundary-inventory.md` and the builder brief at `planning/briefs/20260624-policy-resolution-engine-builder-brief.md`, the policy-resolution concern was the largest hybrid on the engine map. Owner goal: a typed, data-driven precedence engine that lets a POS-only tenant, a Sales-only tenant, and a Purchases-only tenant all answer the same policy question the same way — without losing the existing `POSPolicy` / `SellingPolicy` / `AccountingPolicyRegistry` / `DocumentPolicyResolver` compatibility sources.
+- **What changed:**
+  - New `PolicyConfig` entity (`backend/src/domain/system-core/entities/PolicyConfig.ts`) — typed rule records (`id + module + action + scope + effect + isHard + requireApprovalAbove + conditions + approvalSubject + reasonCode + priority`).
+  - New neutral store interface `IPolicyConfigRepository` (`backend/src/repository/interfaces/system-core/IPolicyConfigRepository.ts`). No Firestore implementation yet — deliberately deferred to a persistence slice so this slice stays pure.
+  - `IPolicyEngine` contract extended **additively** (`backend/src/application/system-core/contracts/IPolicyEngine.ts`): `PolicyResolveResult` gains optional `decision?`, `reasonCode?`, `effectiveRuleId?`, `approvalSubject?`; new `TypedPolicyResolveRequest`; new `resolveTyped(request)` method.
+  - New pure precedence engine `PolicyResolver` (`backend/src/application/system-core/policy/PolicyResolver.ts`) — hard → tenant → module → role → user → context → approved-override, with a per-rule `trace` for audit. Most restrictive wins at each level; more-specific levels override less-specific ones; hard rules are absolute.
+  - `PolicyEngine` extended **additively** (`backend/src/application/system-core/PolicyEngine.ts`): optional 4th ctor arg `IPolicyConfigRepository`; new `resolveTyped(...)` method. Legacy `resolve(...)` body is **byte-for-byte unchanged** so every existing caller keeps behaving exactly as before.
+  - `LegacyPolicyEngineAdapter` extended with a default-allow `resolveTyped` so it still satisfies the extended `IPolicyEngine` interface.
+  - New tests: `PolicyResolver.test.ts` (14 precedence tests pinning the brief's required scenarios) and `PolicyEngineTypedResolution.test.ts` (7 wired-engine tests for `resolveTyped` end-to-end).
+  - New non-failing architecture guard: `'267-C: Policy Resolution Engine foundation files are in place'` (positive export/structure check). No existing guard was weakened, skipped, or deleted.
+  - New docs: `docs/architecture/policy-engine.md` (precedence contract, compatibility sources, files added/changed, what is NOT in this slice, test coverage, next-slice roadmap). New completion report: `planning/done/267-policy-resolution-engine-foundation.md`.
+- **Accounting impact:** None. The legacy `IPolicyEngine.resolve(...)` outputs are byte-for-byte identical. No `POSPolicy` or `SellingPolicy` persistence is removed. No `SubledgerVoucherPostingService`, `PostingGateway`, `StockMovement`, or `StockLevel` is touched. No frontend is touched. No item / catalog route is touched. The new path is additive; modules opt in by calling `engine.resolveTyped(...)` or by registering adapter rules in a future slice.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core` — PolicyResolver 14/14, PolicyEngineTypedResolution 7/7, PolicyEngineCommercialBelowCost 3/3, CommercialCoreBelowCostPolicy 8/8, plus every other existing system-core suite green.
+  - `npm --prefix backend test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/system-core/PolicyEngineCommercialBelowCost.test.ts` — 4/4 + 3/3 pass, **no source changes** to either file.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 14 existing guards pass, 1 new non-failing export guard added and passes.
+  - `npm --prefix backend run build` — tsc clean, `lib/` rebuilt.
+- **Reviewer-blocker check (from the brief):** posting output unchanged? **no.** source module gains new shared policy logic outside System Core? **no.** existing POS / SellingPolicy behavior changed? **no.** unknown old `scope/action` default-allow preserved? **no.** tests / boundary guards weakened? **no.** docs missing? **no.**
+- **Actual time:** ~3.0h.
+- **Next:** A CTO audit pass against this slice. Then **Slice 267-D — Engine management API doorways** (`GET/PUT /tenant/settings/controls/policies` + per-module policy routes, each permission-gated to its own module and never behind another module's `moduleInitializedGuard`). Persistence (Firestore `PolicyConfig`) and `bindRepositories` wiring can land in the same slice as the doorways, or be split — owner's call.
+
 ### Session: 2026-06-24 (Task 267-A — System Core boundary audit)
 
 - **Context:** Owner corrected the delegation plan: architecture auditing and planning must stay with Codex/CTO, while cheaper agents should receive narrow implementation briefs.

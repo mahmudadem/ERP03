@@ -1,17 +1,31 @@
 # 🎯 Current Focus
 
-## Task 267 — System Core engine management execution plan (2026-06-24)
+## Task 267-C — Policy Resolution Engine foundation (2026-06-25)
 
-**Status:** ✅ 267-A audit completed on `codex/267-system-core-boundary-audit` (uncommitted).
+**Status:** ✅ Built on `codex/267-system-core-boundary-audit` (uncommitted). CTO audit pending.
 
-- **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
-- **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md), completed the engine-boundary audit at [audits/267](./audits/267-system-core-boundary-inventory.md), and wrote the first implementation brief at [briefs/20260624-policy-resolution-engine-builder-brief](./briefs/20260624-policy-resolution-engine-builder-brief.md).
-- **Scope:** No application implementation yet. The next cheaper builder should implement only the Policy Resolution Engine foundation from the builder brief.
-- **Estimated time:** 267-A audit 1.5-2.5h; full remediation 4-8 slices over roughly 2-5 days depending on accounting golden tests.
+- **Why:** The policy-resolution concern was the largest hybrid on the engine boundary map. A typed, data-driven precedence engine is the smallest change that makes the owner-flagged POS-vs-Sales-vs-Purchases approval example (POS terminal direct sale can post without approval; Sales / Purchases invoice posting requires approval over a threshold) expressible as one rule per module — and the smallest change that stops modules from growing the old `switch` over `(scope, action)` tuples.
+- **What:** New `PolicyConfig` entity, neutral `IPolicyConfigRepository` interface, pure `PolicyResolver` precedence engine (hard → tenant → module → role → user → context → approved override), `IPolicyEngine.resolveTyped(...)` extension, and 21 new tests. The legacy `IPolicyEngine.resolve({ scope, action, ... })` facade is preserved byte-for-byte. No posting, inventory movement/costing, frontend, or catalog is touched.
+- **Verification:** All four required commands green — `application/system-core` full sweep, `PolicyEnginePosPolicy` + `PolicyEngineCommercialBelowCost`, `SystemCoreBoundaries`, `npm run build`. 14 existing architecture guards still pass; one new non-failing export guard added.
+- **Docs:** [done/267](./done/267-policy-resolution-engine-foundation.md); `docs/architecture/policy-engine.md`.
 
 ### Next action
 
-Assign a backend builder to `D:\DEV2026\ERP03-267-engine-audit` for **Policy Resolution Engine foundation only**. They must follow `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` and must not touch posting, inventory movement/costing, frontend UI, or catalog/items.
+CTO audit pass against Task 267-C. After audit acceptance, **Slice 267-D — Engine management API doorways** (`GET/PUT /tenant/settings/controls/policies` + per-module policy routes, each permission-gated to its own module and never behind another module's `moduleInitializedGuard`). The Firestore `PolicyConfig` repository and `bindRepositories` wiring can land in 267-D or be split into a separate persistence slice — owner's call.
+
+---
+
+## Task 267 — System Core engine management execution plan (2026-06-24)
+
+**Status:** ✅ 267-A audit completed on `codex/267-system-core-boundary-audit` (uncommitted). ✅ 267-C foundation completed on the same branch (CTO audit pending).
+
+- **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
+- **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md), completed the engine-boundary audit at [audits/267](./audits/267-system-core-boundary-inventory.md), wrote the first implementation brief at [briefs/20260624-policy-resolution-engine-builder-brief](./briefs/20260624-policy-resolution-engine-builder-brief.md), and implemented the typed Policy Resolution Engine foundation (267-C) per that brief.
+- **Scope:** Foundation is shipped (additive, behaviour-preserving). Remaining work in this epic: 267-D (engine management API doorways), 267-E (management UI), 267-F (Accounting bridge migration with golden tests), 267-G (Inventory core ownership completion), 267-H (Catalog/Item engine plan + implementation).
+
+### Next action
+
+A CTO / reviewer agent should audit Task 267-C against `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` (reviewer-blockers list at the bottom of that file). After audit acceptance, assign a backend builder to **Slice 267-D — Engine management API doorways**.
 
 ---
 
