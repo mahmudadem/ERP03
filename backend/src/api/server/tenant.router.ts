@@ -24,6 +24,10 @@ import currencyRoutes from '../routes/currency.routes';
 import designerRoutes from '../routes/designer.routes';
 import communicationsRoutes from '../routes/communications.routes';
 import printLayoutRoutes from '../routes/print-layout.routes';
+// Task 267-D: company-wide Controls & Policies doorway (engine-owned
+// PolicyConfig full-matrix). Mounted at /settings/controls so the final
+// route is /tenant/settings/controls/policies.
+import settingsControlsRoutes from '../routes/settings.controls.routes';
 
 const router = Router();
 
@@ -55,6 +59,7 @@ router.use('/designer', companyContextMiddleware, designerRoutes);
 router.use('/print-layouts', companyContextMiddleware, printLayoutRoutes);
 router.use('/shared', sharedRoutes);
 router.use('/rbac', rbacRoutes);
+router.use('/settings/controls', settingsControlsRoutes);
 router.use(companyModuleSettingsRoutes);
 router.use(notificationRoutes);
 

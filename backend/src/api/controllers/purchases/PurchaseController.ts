@@ -89,6 +89,8 @@ import {
   validateUpdatePurchaseReturnInput,
   validateUpdatePurchaseSettingsInput,
 } from '../../validators/purchases.validators';
+import { validateAndFilterModuleRules } from '../../validators/policyConfig.validators';
+import { PolicyConfig } from '../../../domain/system-core/entities/PolicyConfig';
 
 const PO_STATUSES: POStatus[] = [
   'DRAFT',
@@ -1319,6 +1321,64 @@ export class PurchaseController {
         success: true,
         data: PurchaseDTOMapper.toPurchaseReturnDTO(pr),
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Task 267-D: engine-owned typed PolicyConfig (Purchases-scoped). The
+   * Purchases module owns its own doorway to the same `PolicyConfig`
+   * document the company-wide settings matrix writes. Rules are filtered
+   * to `module: 'purchases'` by the neutral validator; cross-module
+   * rules are rejected with 400. No dependency on POS / Sales /
+   * Accounting doorways.
+   */
+  static async getPolicies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const config = await diContainer.policyConfigRepository.getConfig(companyId);
+      // Return ONLY the rules explicitly tagged with module: 'purchases'.
+      // The company-wide matrix owns unscoped TENANT/company-wide rules;
+      // this doorway must NEVER rewrite or steal them. (CTO review
+      // feedback 267-D: a module GET must not include unscoped rules and
+      // must not mutate the module tag on rules that already exist in the
+      // store.)
+      const filtered = (config ?? PolicyConfig.createDefault(companyId)).rules
+        .filter((rule) => rule.module === 'purchases');
+      (res as any).json({
+        success: true,
+        data: { companyId, rules: filtered },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePolicies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const incoming = validateAndFilterModuleRules((req as any).body || {}, 'purchases') as any[];
+
+      // Load the full company config and replace ONLY the Purchases-tagged
+      // rules. EVERY OTHER RULE — unscoped TENANT rules, pos-tagged
+      // rules, sales-tagged rules, accounting-tagged rules, hard rules —
+      // must be preserved untouched. (CTO review feedback 267-D: the
+      // previous `rule.module !== undefined && rule.module !== 'purchases'`
+      // filter silently DELETED unscoped TENANT rules.)
+      const existing = await diContainer.policyConfigRepository.getConfig(companyId);
+      const preservedRules = (existing?.rules ?? []).filter(
+        (rule) => rule.module !== 'purchases'
+      );
+      const createdAt = existing?.createdAt;
+
+      const nextConfig = new PolicyConfig({
+        companyId,
+        rules: [...preservedRules, ...incoming] as any,
+        ...(createdAt ? { createdAt } : {}),
+      });
+      await diContainer.policyConfigRepository.saveConfig(nextConfig);
+      (res as any).json({ success: true, data: nextConfig.toJSON() });
     } catch (error) {
       next(error);
     }

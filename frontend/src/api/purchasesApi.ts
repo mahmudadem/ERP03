@@ -1,5 +1,6 @@
 import client from './client';
 import { PartyAccountsBackfillResult, WorkflowMode } from './salesApi';
+import type { PolicyConfigDTO, PolicyRule } from './controlsPoliciesApi';
 
 export type POStatus =
   | 'DRAFT'
@@ -776,6 +777,17 @@ export const purchasesApi = {
 
   updateSettings: (payload: Partial<PurchaseSettingsDTO>): Promise<PurchaseSettingsDTO> =>
     client.put('/tenant/purchase/settings', payload),
+
+  // Typed Controls (Task 267-E): Purchases-only doorway to the engine-owned
+  // typed PolicyConfig. Backend returns ONLY module:'purchases' rules and
+  // force-stamps the 'purchases' tag on PUT. Unscoped TENANT/company-wide
+  // rules never appear. (Note: backend mounts under /tenant/purchase not
+  // /tenant/purchases.)
+  getPolicies: (): Promise<PolicyConfigDTO> =>
+    client.get('/tenant/purchase/policies').then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  updatePolicies: (payload: { rules: PolicyRule[] }): Promise<PolicyConfigDTO> =>
+    client.put('/tenant/purchase/policies', payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   listVendorGroups: (opts?: { status?: string; includeInactive?: boolean; limit?: number; offset?: number }): Promise<VendorGroupDTO[]> =>
     client.get('/tenant/purchase/vendor-groups', { params: opts }).then((r: any) => r?.data?.data ?? r?.data ?? r),

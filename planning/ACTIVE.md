@@ -1,8 +1,38 @@
 # 🎯 Current Focus
 
-## Task 267-C — Policy Resolution Engine foundation (2026-06-25)
+## Task 267-E — Engine Management Frontend (2026-06-25) [committed a3fde36e]
 
-**Status:** ✅ Built on `codex/267-system-core-boundary-audit` (uncommitted). CTO audit pending.
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`a3fde36e`). `opencode.json` not touched.
+
+- **Why:** The typed `PolicyConfig` store (267-C) and its four API doorways (267-D) had no user-facing surface. Each consuming module needs its own permission-gated Controls screen so a POS-only / Sales-only / Purchases-only tenant can each manage the rules it consumes, while company-wide rules live in a single matrix page. The 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") now passes at the UI layer.
+- **What:** Four UI doorways, all using business wording (the word "engine" never appears in user copy):
+  - **Company Settings → Controls and Policies** — new page `ControlsAndPoliciesPage.tsx` at `/settings/controls-and-policies` (gated `system.company.manage`), linked from the Settings home "workflow" group. Full matrix editor over `GET/PUT /tenant/settings/controls/policies`, including unscoped TENANT rules.
+  - **POS → Settings → Controls** tab, **Sales → Settings → Controls** tab, **Purchases → Settings → Controls** tab — each renders a self-contained `ModuleControlsTab` that calls its own `/tenant/{pos,sales,purchase}/policies` doorway. The module tag is locked in the shared `PolicyRulesEditor`; the backend already filters GET to module-tagged rules only and force-stamps / rejects cross-module tags on PUT.
+  - New shared `controls` i18n namespace (en/ar/tr) holding every visible string (titles, columns, action labels, scope/effect labels, toasts, confirmations). Registered in `i18n/config.ts`. Plus one new `settings.home.links.controls.title` per locale.
+  - New neutral API client `controlsPoliciesApi.ts` (company-wide) and `getPolicies`/`updatePolicies` on `posApi` / `salesApi` / `purchasesApi`. No frontend ever sends a `companyId` in the request body — the axios client attaches `x-company-id` from the active-company context.
+  - Shared components: `PolicyRulesEditor.tsx` (business-language matrix table + add/delete + Advanced accordion) and `ModuleControlsTab.tsx` (load/save/discard body), both under `frontend/src/components/shared/`.
+  - Docs: `docs/architecture/policy-engine.md` §9 added (UI doorway file map, invariants, permissions); user guides `docs/user-guide/{settings,pos,sales,purchases}/controls*.md`; completion report `planning/done/267-engine-management-frontend.md`.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix frontend run typecheck` — tsc --noEmit PASS.
+  - `npm --prefix frontend run build` — vite build PASS (`built in 28.79s`; only the pre-existing chunk-size warning remains).
+  - `npm --prefix backend test -- --runInBand src/tests/api/controllers/pos src/tests/api/controllers/sales src/tests/api/controllers/purchases src/tests/api/controllers/system-core src/tests/infrastructure/firestore/system-core` — 5 suites / 30 tests PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 16/16 PASS (no backend guard weakened; the slice is UI-only).
+
+### Next action
+
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**. Verify that every document poster (SI, PI, SR, PR, DN, GRN, stock adjustments, opening stock, revaluation) routes through `IAccountingBridge` with golden voucher-output parity tests.
+
+---
+
+## Task 267-D — Engine Management API Doorways (2026-06-25) [CTO corrections applied 2026-06-25, committed a3fde36e]
+
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`a3fde36e`).
+
+---
+
+## Task 267-C — Policy Resolution Engine foundation (2026-06-25) [committed a3fde36e]
+
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`a3fde36e`).
 
 - **Why:** The policy-resolution concern was the largest hybrid on the engine boundary map. A typed, data-driven precedence engine is the smallest change that makes the owner-flagged POS-vs-Sales-vs-Purchases approval example (POS terminal direct sale can post without approval; Sales / Purchases invoice posting requires approval over a threshold) expressible as one rule per module — and the smallest change that stops modules from growing the old `switch` over `(scope, action)` tuples.
 - **What:** New `PolicyConfig` entity, neutral `IPolicyConfigRepository` interface, pure `PolicyResolver` precedence engine (hard → tenant → module → role → user → context → approved override), `IPolicyEngine.resolveTyped(...)` extension, and 21 new tests. The legacy `IPolicyEngine.resolve({ scope, action, ... })` facade is preserved byte-for-byte. No posting, inventory movement/costing, frontend, or catalog is touched.
@@ -11,13 +41,13 @@
 
 ### Next action
 
-CTO audit pass against Task 267-C. After audit acceptance, **Slice 267-D — Engine management API doorways** (`GET/PUT /tenant/settings/controls/policies` + per-module policy routes, each permission-gated to its own module and never behind another module's `moduleInitializedGuard`). The Firestore `PolicyConfig` repository and `bindRepositories` wiring can land in 267-D or be split into a separate persistence slice — owner's call.
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**.
 
 ---
 
 ## Task 267 — System Core engine management execution plan (2026-06-24)
 
-**Status:** ✅ 267-A audit completed on `codex/267-system-core-boundary-audit` (uncommitted). ✅ 267-C foundation completed on the same branch (CTO audit pending).
+**Status:** ✅ 267-A audit completed. ✅ 267-C (foundation), 267-D (API doorways), 267-E (UI doorways) all committed in `a3fde36e` on `codex/267-system-core-boundary-audit`.
 
 - **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
 - **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md), completed the engine-boundary audit at [audits/267](./audits/267-system-core-boundary-inventory.md), wrote the first implementation brief at [briefs/20260624-policy-resolution-engine-builder-brief](./briefs/20260624-policy-resolution-engine-builder-brief.md), and implemented the typed Policy Resolution Engine foundation (267-C) per that brief.
@@ -25,7 +55,7 @@ CTO audit pass against Task 267-C. After audit acceptance, **Slice 267-D — Eng
 
 ### Next action
 
-A CTO / reviewer agent should audit Task 267-C against `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` (reviewer-blockers list at the bottom of that file). After audit acceptance, assign a backend builder to **Slice 267-D — Engine management API doorways**.
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**. All of 267-C/D/E are committed in `a3fde36e`.
 
 ---
 

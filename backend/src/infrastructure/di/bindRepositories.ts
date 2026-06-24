@@ -344,6 +344,8 @@ import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/Fi
 import { FirestorePosPolicyRepository } from '../firestore/repositories/pos/FirestorePosPolicyRepository';
 import { FirestoreSellingPolicyRepository } from '../firestore/repositories/system-core/FirestoreSellingPolicyRepository';
 import { ISellingPolicyRepository } from '../../repository/interfaces/system-core/ISellingPolicyRepository';
+import { FirestorePolicyConfigRepository } from '../firestore/repositories/system-core/FirestorePolicyConfigRepository';
+import { IPolicyConfigRepository } from '../../repository/interfaces/system-core/IPolicyConfigRepository';
 import { FirestorePosShiftRepository } from '../firestore/repositories/pos/FirestorePosShiftRepository';
 import { FirestorePosCashMovementRepository } from '../firestore/repositories/pos/FirestorePosCashMovementRepository';
 import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
@@ -1046,6 +1048,13 @@ export const diContainer = {
     // Firestore-only for now (no Prisma/SQL path yet — pre-alpha, no production data).
     return new FirestoreSellingPolicyRepository(getDb());
   },
+  // Task 267-D: engine-owned PolicyConfig (typed precedence model). The same
+  // document is read/written by every module's policy doorway (POS / Sales /
+  // Purchases / company settings) and is the single source of truth that
+  // `IPolicyEngine.resolveTyped(...)` consults. Firestore-only for now.
+  get policyConfigRepository(): IPolicyConfigRepository {
+    return new FirestorePolicyConfigRepository(getDb());
+  },
   get commercialCore(): ICommercialCore {
     return new LegacyCommercialCoreAdapter(
       async (context) => {
@@ -1070,7 +1079,16 @@ export const diContainer = {
     );
   },
   get policyEngine(): IPolicyEngine {
-    return new PolicyEngine(this.posPolicyRepository, this.policyRegistry, this.commercialCore);
+    // Task 267-D: wire the optional 4th constructor argument so
+    // `PolicyEngine.resolveTyped(...)` consults the typed `PolicyConfig`
+    // store. The constructor argument is optional and existing call sites
+    // compile unchanged; the wiring is purely additive.
+    return new PolicyEngine(
+      this.posPolicyRepository,
+      this.policyRegistry,
+      this.commercialCore,
+      this.policyConfigRepository
+    );
   },
   get approvalEngine(): IApprovalEngine {
     const { PosManagerOverrideApprovalPlugin } = require('../../application/system-core/approval/plugins/PosManagerOverrideApprovalPlugin');

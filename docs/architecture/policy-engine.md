@@ -149,8 +149,46 @@ The foundation explicitly does NOT change the legacy `resolve(...)` outputs. The
 
 ## 8. Next slices (NOT in this one)
 
-- **267-D** — Engine management API doorways. `GET/PUT /tenant/settings/controls/policies` and per-module policy routes. Each route is permission-gated to its own module and never hidden behind another module's `moduleInitializedGuard`.
-- **267-E** — Engine management UI. Business-language labels, full matrix page + module-specific controls.
+- **267-D** — Engine management API doorways. `GET/PUT /tenant/settings/controls/policies` and per-module policy routes. Each route is permission-gated to its own module and never hidden behind another module's `moduleInitializedGuard`. ✅ Done (CTO-corrected).
+- **267-E** — Engine management UI. Business-language labels, full matrix page + module-specific controls. ✅ Done — see §9 below.
 - **267-F** — Accounting bridge migration with golden voucher-output tests.
 - **267-G** — Inventory core ownership completion for purchase-side stock movement.
 - **267-H** — Catalog / item engine plan and implementation.
+
+## 9. Engine management UI doorways (Task 267-E)
+
+The typed `PolicyConfig` store has four equidistant, independent entry points in the UI. The store is single-source-of-truth; the doorways do not own data, they only edit the slice they are allowed to see.
+
+### 9.1 File map
+
+| Concern | API | Route | Component |
+|---|---|---|---|
+| Company-wide matrix (full + unscoped TENANT rules) | `GET/PUT /tenant/settings/controls/policies` | `/settings/controls-and-policies` | `frontend/src/modules/settings/pages/ControlsAndPoliciesPage.tsx` |
+| POS controls (POS-tagged rules only) | `GET/PUT /tenant/pos/policies` | `/pos/settings` → **Controls** tab | `frontend/src/components/shared/ModuleControlsTab.tsx` |
+| Sales controls | `GET/PUT /tenant/sales/policies` | `/sales/settings` → **Controls** tab | `frontend/src/components/shared/ModuleControlsTab.tsx` |
+| Purchases controls | `GET/PUT /tenant/purchase/policies` | `/purchases/settings` → **Controls** tab | `frontend/src/components/shared/ModuleControlsTab.tsx` |
+
+Shared building blocks:
+- `frontend/src/components/shared/PolicyRulesEditor.tsx` — business-language matrix table + add/delete, with `allowedModule` to lock the module tag for module doorways.
+- `frontend/src/components/shared/ModuleControlsTab.tsx` — self-contained load/save/discard body a module settings tab hosts.
+- `frontend/src/api/controlsPoliciesApi.ts` — neutral company-wide client (not owned by any module).
+- `posApi.getPolicies/updatePolicies`, `salesApi.getPolicies/updatePolicies`, `purchasesApi.getPolicies/updatePolicies` — module-local clients.
+
+### 9.2 Invariants enforced by the UI
+
+- **No forged `companyId`.** None of the API clients put a `companyId` in the request body; the shared axios client attaches `x-company-id` from the active-company context interceptor. The backend ignores any body-level `companyId` and resolves `companyId` from `tenantContext.companyId` (or `user.companyId`), so a client cannot address another tenant's store.
+- **Module doorways never show or persist unscoped / other-module rules.** The backend already (a) returns only `module === <module>` rules on GET (CTO 267-D fix) and (b) force-stamps the module tag and rejects cross-module tags with 400 on PUT, while preserving unscoped TENANT rules untouched. The UI renders exactly what the module doorway returns, so unscoped company-wide rules never round-trip from a module editor.
+- **Business wording.** The word "engine" never appears in user copy (AGENTS.md rule). All visible strings live in the shared `controls` i18n namespace (`frontend/src/locales/{en,ar,tr}/controls.json`), registered in `i18n/config.ts` alongside the existing namespaces.
+- **Toast on every save.** `react-hot-toast` `success` / `error` on each doorway save, matching the existing module-settings convention.
+- **Zero posting/tax/stock/ledger/approval behavior changes.** This slice is UI-only; backend regression suites and the `SystemCoreBoundaries` guard are unchanged.
+
+### 9.3 Permissions
+
+| Doorway | Permission | Gate |
+|---|---|---|
+| Company matrix | `system.company.manage` (owner bypass) | `ownerOrPermissionGuard` |
+| POS controls | `pos.settings.manage` | `permissionGuard` |
+| Sales controls | `sales.settings.manage` | `permissionGuard` |
+| Purchases controls | `purchase.settings.manage` | `permissionGuard` |
+
+A POS-only tenant with `pos.settings.manage` reaches its Controls tab even when Sales, Purchases, and the Company matrix screens are not entitled — the 🚩 litmus test passes for every consuming module.

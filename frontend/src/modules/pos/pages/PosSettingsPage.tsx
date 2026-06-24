@@ -26,7 +26,8 @@ import {
   SellingPolicyDTO,
 } from '../../../api/posApi';
 import { errorHandler } from '../../../services/errorHandler';
-import { Info, Save, Shield, ShieldCheck, UserCog } from 'lucide-react';
+import { Info, Save, Shield, ShieldCheck, UserCog, ListChecks } from 'lucide-react';
+import { ModuleControlsTab } from '../../../components/shared/ModuleControlsTab';
 
 interface Props { isWindow?: boolean }
 
@@ -339,6 +340,7 @@ const PosSettingsPage: React.FC<Props> = () => {
     { id: 'payments', label: t('pos:settings.paymentMethods.title', { defaultValue: 'Payment Methods' }), icon: Shield },
     { id: 'overShort', label: t('pos:settings.overShort.title', { defaultValue: 'Cash Over/Short' }), icon: ShieldCheck },
     { id: 'cashierPolicies', label: t('pos:settings.cashierPolicies.title', { defaultValue: 'Cashier Policies' }), icon: UserCog },
+    { id: 'controls', label: t('pos:settings.controls.title', { defaultValue: 'Controls' }), icon: ListChecks },
   ];
 
   return (
@@ -975,6 +977,15 @@ const PosSettingsPage: React.FC<Props> = () => {
               </div>
             </Card>
           </div>
+        )}
+
+        {activeTab === 'controls' && (
+          <ModuleControlsTab
+            module="pos"
+            load={posApi.getPolicies}
+            save={posApi.updatePolicies}
+            knownActions={['directSale', 'return', 'reprint', 'priceOverride', 'discountOverride', 'taxOverride', 'voidLine', 'belowCostSale']}
+          />
         )}
       </ModuleSettingsLayout>
 

@@ -9,6 +9,7 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
+import { ModuleControlsTab } from '../../../components/shared/ModuleControlsTab';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import toast from 'react-hot-toast';
@@ -68,7 +69,7 @@ const normalizePurchaseDirectPolicy = (settings: PurchaseSettingsDTO | null): Pu
   };
 };
 
-type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
+type TabId = 'policy' | 'accounts' | 'numbering' | 'governance' | 'controls';
 
 const PurchaseSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -301,6 +302,7 @@ const PurchaseSettingsPage: React.FC = () => {
     { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
     { id: 'numbering', label: 'No. Series', icon: Hash },
     { id: 'governance', label: 'Governance', icon: Shield },
+    { id: 'controls', label: t('controls:settingsTabLabel'), icon: ShieldCheck },
   ];
 
   return (
@@ -898,6 +900,15 @@ const PurchaseSettingsPage: React.FC = () => {
             </Card>
           </div>
         </SettingsSection>
+      )}
+
+      {activeTab === 'controls' && (
+        <ModuleControlsTab
+          module="purchases"
+          load={purchasesApi.getPolicies}
+          save={purchasesApi.updatePolicies}
+          knownActions={['invoicePosting', 'return']}
+        />
       )}
       </ModuleSettingsLayout>
       <ConfirmDialog

@@ -10,6 +10,7 @@ import { WarehouseSelector } from '../../../components/shared/selectors/Warehous
 import { useAccounts } from '../../../context/AccountsContext';
 import { Loader2, Settings, ShieldCheck, DollarSign, Hash, Info, Shield, Plus, Trash2, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
+import { ModuleControlsTab } from '../../../components/shared/ModuleControlsTab';
 import { AccountingIntegrationStatus } from '../../../components/shared/AccountingIntegrationStatus';
 import { errorHandler } from '../../../services/errorHandler';
 import toast from 'react-hot-toast';
@@ -29,7 +30,7 @@ const newClientId = (): string => {
 };
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-type TabId = 'policy' | 'accounts' | 'numbering' | 'governance';
+type TabId = 'policy' | 'accounts' | 'numbering' | 'governance' | 'controls';
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
 const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; label: string }> = [
   { template: '{parent}-{partyCode}', label: 'Parent-Party  (10401-C001)' },
@@ -305,6 +306,7 @@ const SalesSettingsPage: React.FC = () => {
     { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
     { id: 'numbering', label: 'No. Series', icon: Hash },
     { id: 'governance', label: 'Governance', icon: Shield },
+    { id: 'controls', label: t('controls:settingsTabLabel'), icon: ShieldCheck },
   ];
 
   return (
@@ -1049,6 +1051,15 @@ const SalesSettingsPage: React.FC = () => {
             </Card>
           </div>
         </SettingsSection>
+      )}
+
+      {activeTab === 'controls' && (
+        <ModuleControlsTab
+          module="sales"
+          load={salesApi.getPolicies}
+          save={salesApi.updatePolicies}
+          knownActions={['invoicePosting', 'return', 'belowCostSale']}
+        />
       )}
       </ModuleSettingsLayout>
     <ConfirmDialog

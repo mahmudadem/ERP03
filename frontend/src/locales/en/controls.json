@@ -1,0 +1,88 @@
+{
+  "pageTitle": "Controls and Policies",
+  "pageSubtitle": "Company-wide rules that decide what is allowed and what needs approval across sales, purchases, and the till.",
+  "toastSaved": "Controls and policies saved.",
+  "toastSaveError": "Failed to save controls and policies.",
+  "toastLoadError": "Failed to load controls and policies.",
+  "discardInfo": "Changes discarded",
+  "loading": "Loading…",
+  "save": "Save",
+  "saving": "Saving...",
+  "discard": "Discard",
+  "empty": {
+    "title": "No rules yet",
+    "description": "Add a rule to set who can do what and when it needs approval. Rules with no override work alongside your existing module settings."
+  },
+  "addRule": "Add rule",
+  "removeRule": "Remove",
+  "advanced": "Advanced",
+  "scopes": {
+    "TENANT": "Whole company",
+    "MODULE": "This area only",
+    "ROLE": "Specific role",
+    "USER": "Specific user",
+    "CONTEXT": "Specific place (register, warehouse, branch)"
+  },
+  "effects": {
+    "ALLOW": "Allow",
+    "BLOCK": "Block",
+    "REQUIRE_APPROVAL": "Require approval"
+  },
+  "columns": {
+    "whatItControls": "What it controls",
+    "appliesTo": "Applies to",
+    "behaviour": "Behaviour",
+    "when": "When (optional)",
+    "cannotBeOverridden": "Cannot be overridden?",
+    "approvalCeiling": "Only above amount",
+    "priority": "Priority",
+    "id": "Rule id",
+    "reasonCode": "Reason code",
+    "actions": "Actions"
+  },
+  "settingsTabLabel": "Controls",
+  "fields": {
+    "actionPlaceholder": "Choose what this rule controls",
+    "scopePlaceholder": "Choose who it applies to",
+    "effectPlaceholder": "Choose what happens",
+    "amountOp": "Comparison",
+    "amountValue": "Amount",
+    "addMatchCondition": "Match by place (optional)",
+    "requireApprovalAbove": "Only require approval above this amount",
+    "reasonCodePlaceholder": "e.g. PERIOD_LOCKED"
+  },
+  "companyMatrixTitle": "All company rules",
+  "companyMatrixSubtitle": "These rules apply across every area. Add rules for a specific area (Sales, Purchases, or the till) from that area's own Controls screen.",
+  "moduleMatrixTitle": "Controls for {{module}}",
+  "moduleMatrixSubtitle": "Only the rules that belong to {{module}}. Company-wide rules are managed from Company Settings.",
+  "moduleTagLocked": "Locked to {{module}}",
+  "actionLabels": {
+    "directSale": "Direct sale at the till",
+    "invoicePosting": "Posting an invoice",
+    "return": "Processing a return",
+    "reprint": "Reprinting a receipt",
+    "priceOverride": "Changing a price",
+    "discountOverride": "Applying a discount",
+    "taxOverride": "Changing tax",
+    "voidLine": "Voiding a line",
+    "belowCostSale": "Selling below cost"
+  },
+  "moduleLabels": {
+    "pos": "POS (the till)",
+    "sales": "Sales",
+    "purchases": "Purchases",
+    "accounting": "Accounting"
+  },
+  "confirmRemove": {
+    "title": "Remove this rule?",
+    "message": "This control will stop applying. You can always add it again.",
+    "confirm": "Remove",
+    "cancel": "Keep"
+  },
+  "validator": {
+    "idRequired": "A short id is required so this rule can be audited.",
+    "actionRequired": "Choose what this rule controls.",
+    "amountNumber": "Amount must be a number.",
+    "amountOpRequired": "Choose a comparison for the amount condition."
+  }
+}

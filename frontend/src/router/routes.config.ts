@@ -87,6 +87,7 @@ const CommunicationsSettingsPage = lazy(() => import('../modules/settings/pages/
 const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/AppearanceSettingsPage'));
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
+const ControlsAndPoliciesPage = lazy(() => import('../modules/settings/pages/ControlsAndPoliciesPage'));
 const NotificationSettingsPage = lazy(() => import('../modules/settings/pages/NotificationSettingsPage'));
 const TaxCodesPage = lazy(() => import('../modules/settings/pages/TaxCodesPage'));
 
@@ -310,6 +311,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/communications', label: 'Communications', component: CommunicationsSettingsPage, section: 'SETTINGS' },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
+  { path: '/settings/controls-and-policies', label: 'Controls and Policies', component: ControlsAndPoliciesPage, section: 'SETTINGS', requiredPermission: 'system.company.manage' },
   { path: '/settings/tax-codes', label: 'Tax Codes', component: TaxCodesPage, section: 'SETTINGS' },
   { path: '/system/currencies', label: 'Currencies', component: CompanyCurrencySettings, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
 

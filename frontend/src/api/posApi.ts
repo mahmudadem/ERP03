@@ -5,6 +5,7 @@
  * (PosModule) auto-registers behind `companyModuleGuard('pos')`.
  */
 import client from './client';
+import type { PolicyConfigDTO, PolicyRule } from './controlsPoliciesApi';
 
 export type PosPaymentMethodCode = 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM';
 export type PosCashRounding = 'none' | 'nearest_05' | 'nearest_1';
@@ -282,6 +283,15 @@ export const posApi = {
 
   updatePolicy: async (payload: Partial<PosPolicyDTO>): Promise<PosPolicyDTO> =>
     ok(client.put('/tenant/pos/policy', payload)),
+
+  // Typed Controls (Task 267-E): POS-only doorway to the engine-owned typed
+  // PolicyConfig. Backend returns ONLY module:'pos' rules and force-stamps the
+  // 'pos' tag on PUT. Unscoped TENANT/company-wide rules never appear here.
+  getPolicies: async (): Promise<PolicyConfigDTO> =>
+    ok(client.get('/tenant/pos/policies')),
+
+  updatePolicies: async (payload: { rules: PolicyRule[] }): Promise<PolicyConfigDTO> =>
+    ok(client.put('/tenant/pos/policies', payload)),
 
   // Shared company-wide selling policy (below-cost / margin). POS reads/writes the
   // same store as Sales; this is POS's own independent doorway to it.

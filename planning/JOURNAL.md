@@ -2,6 +2,108 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267 — commit)
+
+- **What happened:** Task 267-D (engine management API doorways) and Task 267-E (engine management frontend) were committed as one bundle, together with the pre-existing 267-C (policy resolution engine).
+- **Commit hash:** `a3fde36e` — 46 files, +3343/−10.
+- **Not pushed.**
+- **Next recommended slice:** 267-F — Accounting bridge migration with golden voucher-output tests. Every document poster (SI, PI, SR, PR, DN, GRN, stock adjustments, opening stock, revaluation) should be verified to route through `IAccountingBridge` with golden voucher-output parity tests.
+
+### Session: 2026-06-25 (Task 267-E — Engine Management Frontend)
+
+- **Context:** After 267-D's CTO-corrected backend doorways were green, the typed `PolicyConfig` store still had no user-facing surface. Owner asked for the four UI doorways (Company-wide matrix + POS/Sales/Purchases Controls tabs) with business wording, full i18n, toast feedback on every save, and zero posting/tax/stock/ledger/approval behavior changes. The 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") had to pass at the UI layer too.
+- **What changed:**
+  - New `controls` i18n namespace (`frontend/src/locales/{en,ar,tr}/controls.json`) holding every visible string (titles, columns, action labels, scope/effect labels, toasts, confirmations, empty states). Registered in `frontend/src/i18n/config.ts` resources + `ns`. Plus one new `settings.home.links.controls.title` key per locale.
+  - New neutral API client `frontend/src/api/controlsPoliciesApi.ts` (`getControlsPolicies` / `updateControlsPolicies` against `/tenant/settings/controls/policies`). No `companyId` in the body — the axios client attaches `x-company-id` from the active-company context. Added `getPolicies` / `updatePolicies` to `posApi.ts` (`/tenant/pos/policies`), `salesApi.ts` (`/tenant/sales/policies`), and `purchasesApi.ts` (`/tenant/purchase/policies` — the module id is `purchase`, singular).
+  - New shared `frontend/src/components/shared/PolicyRulesEditor.tsx` — reusable business-language matrix table (What it controls / Applies to / Behaviour / When / Cannot be overridden) with add/delete and an "Advanced" accordion (id, priority, reasonCode). `allowedModule` prop locks the module tag for module doorways; when omitted (company-wide) the "Applies to area" dropdown lets the user pick any module or "Whole company".
+  - New shared `frontend/src/components/shared/ModuleControlsTab.tsx` — self-contained load/save/discard body a module Settings tab hosts. Toast success/error/info on every action.
+  - New `frontend/src/modules/settings/pages/ControlsAndPoliciesPage.tsx` — company-wide matrix page mounted at `/settings/controls-and-policies` (gated `system.company.manage`), lazy-imported in `router/routes.config.ts` and linked from `SettingsHomePage.tsx` "workflow" group with a `ListChecks` icon.
+  - Added a **Controls** tab to `PosSettingsPage.tsx`, `SalesSettingsPage.tsx` (plus `TabId` update), and `PurchaseSettingsPage.tsx` (plus `TabId` update). Each tab renders `<ModuleControlsTab module="…" load={…getPolicies} save={…updatePolicies} knownActions=… />`.
+  - Docs: `docs/architecture/policy-engine.md` §9 (UI doorway file map, invariants, permissions table); user guides `docs/user-guide/{settings,pos,sales,purchases}/controls*.md`; completion report `planning/done/267-engine-management-frontend.md`.
+- **Accounting / control impact:** None. No backend code touched in this slice. The slice is UI-only; the typed `PolicyConfig` store, the four doorways, the validator, the repository, and the architecture guards are byte-for-byte the 267-D state. No posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock, or approval behavior changed.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix frontend run typecheck` — PASS (tsc --noEmit, no errors).
+  - `npm --prefix frontend run build` — PASS (vite build `built in 28.79s`; only the pre-existing chunk-size warning remains).
+  - `npm --prefix backend test -- --runInBand src/tests/api/controllers/pos src/tests/api/controllers/sales src/tests/api/controllers/purchases src/tests/api/controllers/system-core src/tests/infrastructure/firestore/system-core` — 5 suites / **30 tests** PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — **16/16 PASS** (14 existing + 267-C + 267-D guards; no guard weakened).
+- **Reviewer-blocker check:**
+  - module route hidden behind another module's enablement? — **no** (each module's Controls tab lives in its own settings page, already gated to that module).
+  - module UI shows or persists unscoped / other-module rules? — **no** (the module doorway GET already filters to module-tagged rules only; the UI only renders what GET returns; the module editor never round-trips unscoped TENANT rules).
+  - frontend sends a forged `companyId`? — **no** (no API client puts `companyId` in the body; axios attaches `x-company-id` from the active-company context; the backend resolves `companyId` from `tenantContext.companyId` and ignores body-level companyId).
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.**
+  - tests or boundary guards weakened? — **no** (all 16 architecture guards still pass; no backend code touched).
+  - `opencode.json` modified? — **no** (forbidden, not touched — verified via `git status`).
+  - user-facing strings outside i18n? — **no** (controls namespace covers every visible string; `defaultValue` fallbacks are only for resilience).
+- **Actual time:** ~2.1h (clarification + exploration + i18n + 2 shared components + 1 company page + 3 module tabs + typecheck/build + backend regression + docs).
+- **Next:** Commit Task 267-E (when owner approves); not committed by owner instruction. Then choose the next epic slice — 267-F (Accounting bridge migration w/ golden voucher-output tests), 267-G (Inventory core ownership completion), or 267-H (Catalog/Item engine plan).
+
+### Session: 2026-06-25 (Task 267-D — CTO review corrections applied)
+
+- **Context:** CTO review of Task 267-D flagged two bugs that had to be fixed before merge:
+  1. **Module doorway GET corrupted company-wide/tenant rules.** `PosController.getPolicies` / `SalesController.getPolicies` / `PurchaseController.getPolicies` were filtering `rule.module === undefined || rule.module === '<module>'` and then `.map((rule) => ({ ...rule, module: '<module>' }))`. That returned unscoped TENANT/company-wide rules to a module editor AND silently rewrote their module tag, so a single module GET could mutate unscoped rules in the response payload. A hard period-lock TENANT rule could be presented as a module-scoped rule on every save.
+  2. **Module doorway PUT silently DELETED unscoped TENANT rules.** The preservation filter was `rule.module !== undefined && rule.module !== '<module>'` — every rule without a defined module tag (e.g. a hard unscoped TENANT period lock) was dropped on every module save. The `Get/Set roundtrip` in the company-wide matrix would then show the rule gone, with no audit trail.
+  3. **`FirestorePolicyConfigRepository.getConfig` failed open on a corrupt document.** The `try { return PolicyConfig.fromJSON(data); } catch { return PolicyConfig.createDefault(companyId); }` block silently coerced a corrupt payload (e.g. `rules: 'not-an-array'`) into an empty rule set, which the engine treated as "no rules → ALLOW" — a fail-open grant of permissions the tenant never configured. The engine's `resolveTyped` repositoryError fail-closed path was unreachable from this scenario.
+- **What changed:**
+  - `backend/src/api/controllers/pos/PosController.ts` — `getPolicies` filter is now `rule.module === 'pos'` (no `undefined` branch, no `map` rewrite). `updatePolicies` `preservedRules` filter is now `rule.module !== 'pos'` so unscoped rules survive. Both changes are pure bug fixes; the controller contract and route surface are unchanged.
+  - `backend/src/api/controllers/sales/SalesController.ts` — same fix for the `'sales'` module tag.
+  - `backend/src/api/controllers/purchases/PurchaseController.ts` — same fix for the `'purchases'` module tag.
+  - `backend/src/infrastructure/firestore/repositories/system-core/FirestorePolicyConfigRepository.ts` — `getConfig` now runs a strict shape check (`isPolicyConfigShape`) on the raw Firestore payload BEFORE the lenient `PolicyConfig.fromJSON`. A missing document is still `null` (default-allow fallback is correct for "no config yet"). A present-but-corrupt document now throws an `Error` with a descriptive message; the engine's `resolveTyped` catches it and returns `PolicyConfig.repositoryError` (BLOCK). The fail-closed audit chain is now reachable.
+  - `backend/src/tests/api/controllers/pos/PosPolicyConfigController.test.ts` — renamed "GET returns ONLY POS-tagged rules" to assert `tenant-default` is NOT in the response and the rule list is exactly `['pos-direct-sale']`. Added a new test "PUT preserves an existing unscoped TENANT hard rule (CTO 267-D)" that pins the unscoped-TENANT preservation.
+  - `backend/src/tests/api/controllers/sales/SalesPolicyConfigController.test.ts` — same corrections and new test.
+  - `backend/src/tests/api/controllers/purchases/PurchasePolicyConfigController.test.ts` — same corrections and new test.
+  - `backend/src/tests/infrastructure/firestore/system-core/FirestorePolicyConfigRepository.test.ts` — renamed "falls back to a default (empty) config when the stored document is malformed" → "THROWS on a malformed stored document so the engine fails closed (CTO 267-D)" with `await expect(...).rejects.toBeDefined()`. Added a second new test "THROWS on a stored document whose rules fail entity validation (e.g. missing id)" so the entity-boundary guard is pinned at the repository level too. The "returns null when no document exists" test is unchanged (missing ≠ corrupt).
+- **Accounting / control impact:** Improved. The previous behaviour was a tenant-isolation / accounting-control risk: a corrupt stored document was treated as "no config" (default-allow), and a module save could delete unscoped company-wide hard rules without an audit trail. The fix is fail-closed at both the repository (throws on corrupt) and the module doorways (preserve unscoped rules). No posting, settlement, or valuation behavior changed; the change is in the policy-config persistence path only.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/api/controllers/pos src/tests/api/controllers/sales src/tests/api/controllers/purchases src/tests/api/controllers/system-core src/tests/infrastructure/firestore/system-core` — 5 suites / **30 tests** pass (was 26 before the fix). +4 from the new unscoped-TENANT preservation tests and the renamed/expanded repository tests.
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core src/tests/domain/system-core/PolicyConfig.test.ts` — 13 suites / 82 tests pass (no regression; the engine contract and the entity contract are unchanged).
+  - `npm --prefix backend test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/system-core/PolicyEngineCommercialBelowCost.test.ts` — 2 suites / 7 tests pass (legacy `resolve(...)` facade is byte-for-byte unchanged).
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 16/16 pass (no guard weakened; 1 new 267-C guard + 1 new 267-D guard still in place).
+  - `npm --prefix backend run build` — TypeScript clean.
+  - Wider regression sweeps: `application/pos` 15/15 / 111, `application/sales` 26/26 / 280, `application/purchases` 9/9 / 85, `infrastructure` 2/2 / 11, `api` 9/9 / 42, `architecture` 3/3 / 24, full `application` sweep 127/127 / 1225.
+- **Reviewer-blocker re-check (from the brief):**
+  - module doorway corrupts unscoped company-wide/tenant rules? — **No longer** (bug fixed and pinned by 3 new tests).
+  - repository fails open on malformed document? — **No longer** (bug fixed and pinned by 2 new tests; the engine's `repositoryError` fail-closed path is now reachable).
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.**
+  - direct new `SubledgerVoucherPostingService` or `PostingGateway` source-module usage introduced? — **no.**
+  - new `StockMovement` / `StockLevel` construction introduced outside inventory core? — **no.**
+  - tests or boundary guards weakened? — **no** (existing 16 architecture guards still pass; the corrected behaviour is fully pinned by 4 new tests).
+  - legacy `POSPolicy` / `SellingPolicy` doorways changed? — **no.**
+  - `opencode.json` modified? — **no** (verified via `git status`).
+- **Actual time:** ~0.6h for the corrections (focused diff: 6 production files + 4 test files; build + verification).
+- **Next:** Re-submit Task 267-D for CTO audit pass. After audit acceptance, **Slice 267-E — Engine Management Frontend** (Company Settings → Controls and Policies, POS → Controls, Sales → Controls, Purchases → Controls; business-language labels; i18n complete; no "engine" wording in user copy).
+
+### Session: 2026-06-25 (Task 267-D — Engine Management API Doorways)
+
+- **Context:** Per `planning/tasks/267-system-core-engine-management-execution-plan.md` and the audit at `planning/audits/267-system-core-boundary-inventory.md`, the typed `PolicyConfig` foundation (Task 267-C) needed safe backend API doorways so every consuming module can manage the rules it consumes without depending on another module being enabled. The brief's 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") had to pass for POS, Sales, and Purchases. Same neutral store, module-local doorways, no cross-module validator/controller imports.
+- **What changed:**
+  - New `FirestorePolicyConfigRepository` (`backend/src/infrastructure/firestore/repositories/system-core/FirestorePolicyConfigRepository.ts`) — one `PolicyConfig` document per company, key path `companies/{companyId}/systemCorePolicies/{companyId}`. Falls back to a default empty config when the stored document is malformed (defensive — a bad write must not crash the resolver path).
+  - New neutral validator `policyConfig.validators.ts` (`backend/src/api/validators/policyConfig.validators.ts`) — exports `validateUpdatePolicyConfigInput` (full-matrix shape) and `validateAndFilterModuleRules(body, moduleName)` (per-module filter that force-stamps the module tag and rejects cross-module tags with 400). Lives in the neutral `api/validators/` directory so no module imports another module's validator.
+  - New company-wide `PolicyConfigController` (`backend/src/api/controllers/system-core/PolicyConfigController.ts`) and `settings.controls.routes.ts` (`backend/src/api/routes/settings.controls.routes.ts`) — mounted at `/settings/controls` on the tenant router, so the final route is `/tenant/settings/controls/policies`. Gated by `ownerOrPermissionGuard('system.company.manage')` so owners automatically bypass the permission check.
+  - Module-local `getPolicies` / `updatePolicies` static methods on `PosController` / `SalesController` / `PurchaseController`, plus `GET/PUT /policies` routes in `pos.routes.ts` / `sales.routes.ts` / `purchases.routes.ts`, each gated by its own `*.settings.manage` permission and never behind another module's `moduleInitializedGuard`. Each doorway reads the shared `PolicyConfig`, filters to its own module's rules on GET, and merges on PUT (saving a POS rule does NOT erase a Sales rule).
+  - `bindRepositories.ts` now wires the new repository into the existing optional 4th constructor argument of `PolicyEngine`, so `PolicyEngine.resolveTyped(...)` is backed by persisted rules out of the box. Pure additive change — the 4th argument was already optional in 267-C and the existing DI call site was already passing three arguments; we now pass four.
+  - 26 new tests: `FirestorePolicyConfigRepository.test.ts` (6 — save/load, malformed fallback, entity-boundary guard, multi-rule round-trip, transaction path); `PolicyConfigController.test.ts` (5 — company-wide GET, default empty GET, full multi-module PUT, malformed rule rejection, forged-companyId rejection); `PosPolicyConfigController.test.ts` / `SalesPolicyConfigController.test.ts` / `PurchasePolicyConfigController.test.ts` (5 each — module-only filter, default empty GET, cross-module rule preservation, cross-module tag rejection, forged-companyId rejection).
+  - One new non-failing architecture guard: `'267-D: Engine management PolicyConfigRepository (Firestore) file is in place'`. No existing guard was weakened, skipped, or deleted.
+  - New completion report: `planning/done/267-engine-management-api-doorways.md`.
+- **Accounting / control impact:** None. The legacy `IPolicyEngine.resolve(...)` outputs are byte-for-byte identical. No `POSPolicy` or `SellingPolicy` persistence is removed; their routes, controllers, and validators are byte-for-byte unchanged. No `SubledgerVoucherPostingService`, `PostingGateway`, `StockMovement`, `StockLevel`, item/catalog, or frontend code is touched. The new doorways read/write the SAME `PolicyConfig` document that `PolicyEngine.resolveTyped(...)` consults — single source of truth, multiple entry points.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core src/tests/domain/system-core/PolicyConfig.test.ts` — 13 suites / 82 tests pass (every existing system-core suite green; 267-C PolicyResolver + PolicyEngineTypedResolution + PolicyEngineCommercialBelowCost + CommercialCoreBelowCostPolicy + everything else).
+  - `npm --prefix backend test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/system-core/PolicyEngineCommercialBelowCost.test.ts` — 4/4 + 3/3 pass, **no source changes** to either file.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 16/16 pass (14 existing + 1 new 267-C guard + 1 new 267-D guard). No existing guard weakened.
+  - `npm --prefix backend run build` — tsc clean, `lib/` rebuilt.
+  - Wider sweeps for regression confidence: `application/pos` 15/15 / 111 tests, `application/sales` 26/26 / 280 tests, `application/purchases` 9/9 / 85 tests, `infrastructure` 2/2 / 10 tests, `api` 9/9 / 39 tests, full `application` sweep 127/127 / 1225 tests.
+- **Reviewer-blocker check (from the brief):**
+  - shared logic added inside Sales/Purchases/POS/Inventory instead of System Core? — **no.** All shared logic lives in `application/system-core/*`, `domain/system-core/*`, and `infrastructure/firestore/repositories/system-core/*`. The new controller `PolicyConfigController` lives in `api/controllers/system-core/`, mirroring the engine-owned seam.
+  - module route hidden behind another module's enablement? — **no.** Each module route is gated by its own `permissionGuard` (and the existing per-module `moduleInitializedGuard` for Sales/Purchases — never for another module). The POS route has no `moduleInitializedGuard`, matching the existing POS pattern (POS has no setup wizard).
+  - POS-only / Sales-only / Purchases-only tenant can manage the policy it consumes? — **yes.** Each module's `/policies` route is reachable when only that module is enabled; the test suite pins this for every module.
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.**
+  - direct new `SubledgerVoucherPostingService` or `PostingGateway` source-module usage introduced? — **no.** Architecture guard `250k: POS financial events must route through IAccountingBridge` still passes.
+  - new `StockMovement` / `StockLevel` construction introduced outside inventory core? — **no.** Architecture guard `FUP-4: Sales must not construct inventory sub-ledger movements/levels` still passes.
+  - tests or boundary guards weakened? — **no.** All 14 existing architecture guards still pass; 2 new non-failing guards added (one from 267-C, one from 267-D).
+  - legacy `POSPolicy` / `SellingPolicy` doorways changed? — **no.** Their routes, controllers, repositories, and validators are byte-for-byte unchanged.
+  - `opencode.json` modified? — **no.** Forbidden, not touched.
+- **Actual time:** ~1.7h (one focused implementation pass + tests + verification).
+- **Next:** CTO audit pass against Task 267-D. After audit acceptance, **Slice 267-E — Engine Management Frontend** (Company Settings → Controls and Policies, POS → Controls, Sales → Controls, Purchases → Controls; business-language labels; i18n complete; toast feedback on save; no "engine" wording in user copy). The Accounting doorway stays out of scope per the brief ("only if it fits existing accounting settings patterns without broad refactor").
+
 ### Session: 2026-06-25 (Task 267-C — Policy Resolution Engine foundation)
 
 - **Context:** Per `planning/audits/267-system-core-boundary-inventory.md` and the builder brief at `planning/briefs/20260624-policy-resolution-engine-builder-brief.md`, the policy-resolution concern was the largest hybrid on the engine map. Owner goal: a typed, data-driven precedence engine that lets a POS-only tenant, a Sales-only tenant, and a Purchases-only tenant all answer the same policy question the same way — without losing the existing `POSPolicy` / `SellingPolicy` / `AccountingPolicyRegistry` / `DocumentPolicyResolver` compatibility sources.

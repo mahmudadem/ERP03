@@ -30,6 +30,11 @@ router.post('/settings/backfill-party-accounts', SalesController.backfillPartyAc
 // Shared selling policy (below-cost / minimum-margin). Company-wide, also honoured by POS.
 router.get('/selling-policy', SalesController.getSellingPolicy);
 router.put('/selling-policy', SalesController.updateSellingPolicy);
+// Task 267-D: engine-owned typed PolicyConfig (Sales-scoped). Same
+// `PolicyConfig` store as POS / Purchases / company-wide; only the entry
+// point and the module permission are Sales-local.
+router.get('/policies', permissionGuard('sales.settings.manage'), SalesController.getPolicies);
+router.put('/policies', permissionGuard('sales.settings.manage'), SalesController.updatePolicies);
 
 // Manage Voucher Types — used by the per-module settings page to install
 // additional types after the init wizard. Route param `module` is injected.

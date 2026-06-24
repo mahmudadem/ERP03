@@ -23,6 +23,12 @@ router.use(moduleInitializedGuard('purchase'));
 router.put('/settings', PurchaseController.updateSettings);
 router.post('/settings/backfill-party-accounts', PurchaseController.backfillPartyAccounts);
 
+// Task 267-D: engine-owned typed PolicyConfig (Purchases-scoped). Same
+// `PolicyConfig` store as POS / Sales / company-wide; only the entry
+// point and the module permission are Purchases-local.
+router.get('/policies', permissionGuard('purchase.settings.manage'), PurchaseController.getPolicies);
+router.put('/policies', permissionGuard('purchase.settings.manage'), PurchaseController.updatePolicies);
+
 // Manage Voucher Types — used by the per-module settings page to install
 // additional types after the init wizard. Route param `module` is injected.
 router.get(

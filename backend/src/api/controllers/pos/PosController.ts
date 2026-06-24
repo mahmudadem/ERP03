@@ -89,6 +89,8 @@ import {
   validateUpsertPosRegisterInput,
 } from '../../validators/pos.validators';
 import { validateUpdateSellingPolicyInput } from '../../validators/sellingPolicy.validators';
+import { validateAndFilterModuleRules } from '../../validators/policyConfig.validators';
+import { PolicyConfig } from '../../../domain/system-core/entities/PolicyConfig';
 import { SellingPolicy } from '../../../domain/system-core/entities/SellingPolicy';
 
 export class PosController {
@@ -231,6 +233,76 @@ export class PosController {
       });
       await diContainer.sellingPolicyRepository.savePolicy(next_);
       (res as any).json({ success: true, data: next_.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  // ===== Typed PolicyConfig (Task 267-D) =====
+  // POS owns its own doorway to the engine-owned typed `PolicyConfig` store
+  // so a POS-only tenant can manage POS-relevant typed rules (e.g.
+  // `directSale`, `priceOverride`, `discountOverride`, `taxOverride`,
+  // `return`, `reprint`) without depending on the Sales, Purchases, or
+  // Accounting module. The store is the SAME `PolicyConfig` document
+  // that the company-wide settings matrix and the Sales/Purchases
+  // doorways write to — only the entry point is module-local.
+  //
+  // POS module rules are filtered to `module: 'pos'` by the neutral
+  // `validateAndFilterModuleRules` helper. Rules tagged for another
+  // module are rejected with a 400 so a POS-only tenant cannot
+  // accidentally (or maliciously) rewrite another module's rules.
+
+  static async getPolicies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      const config = await diContainer.policyConfigRepository.getConfig(companyId);
+      // Return ONLY the rules explicitly tagged with module: 'pos'. The
+      // company-wide matrix owns unscoped TENANT/company-wide rules; this
+      // doorway must NEVER rewrite or steal them. (CTO review feedback
+      // 267-D: a module GET must not include unscoped rules and must not
+      // mutate the module tag on rules that already exist in the store.)
+      const filtered = (config ?? PolicyConfig.createDefault(companyId)).rules
+        .filter((rule) => rule.module === 'pos');
+      (res as any).json({
+        success: true,
+        data: {
+          companyId,
+          rules: filtered,
+        },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePolicies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PosController.getCompanyId(req);
+      // Shape + module-tag filter in one call. The validator REJECTS rules
+      // with `module: 'sales' | 'purchases' | 'accounting'` and force-stamps
+      // `module: 'pos'` on every accepted rule. Untagged incoming rules
+      // are also force-stamped to 'pos' (validator contract).
+      const incoming = validateAndFilterModuleRules((req as any).body || {}, 'pos') as any[];
+
+      // Load the full company config and replace ONLY the POS-tagged
+      // rules. EVERY OTHER RULE — unscoped TENANT rules, sales-tagged
+      // rules, purchases-tagged rules, accounting-tagged rules, hard
+      // rules — must be preserved untouched. (CTO review feedback
+      // 267-D: the previous `rule.module !== undefined && rule.module !== 'pos'`
+      // filter silently DELETED unscoped TENANT rules.)
+      const existing = await diContainer.policyConfigRepository.getConfig(companyId);
+      const preservedRules = (existing?.rules ?? []).filter(
+        (rule) => rule.module !== 'pos'
+      );
+      const createdAt = existing?.createdAt;
+
+      const nextConfig = new PolicyConfig({
+        companyId,
+        rules: [...preservedRules, ...incoming] as any,
+        ...(createdAt ? { createdAt } : {}),
+      });
+      await diContainer.policyConfigRepository.saveConfig(nextConfig);
+      (res as any).json({ success: true, data: nextConfig.toJSON() });
     } catch (error) {
       next(error);
     }

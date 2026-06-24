@@ -255,6 +255,26 @@ describe('Architecture guard: system core boundaries', () => {
       expect(fs.existsSync(abs)).toBe(true);
     }
   });
+
+  /**
+   * Task 267-D — non-failing export/structure guard. The engine management
+   * API doorways introduce a Firestore implementation of
+   * `IPolicyConfigRepository` and per-module doorways that write the same
+   * `PolicyConfig` document. This guard verifies the new repository file
+   * exists where the architecture expects it, so a future refactor that
+   * drops it is caught immediately. Behavior is pinned in
+   * FirestorePolicyConfigRepository.test.ts and the per-module controller
+   * tests.
+   */
+  it('267-D: Engine management PolicyConfigRepository (Firestore) file is in place', () => {
+    const expected = [
+      'infrastructure/firestore/repositories/system-core/FirestorePolicyConfigRepository.ts',
+    ];
+    for (const rel of expected) {
+      const abs = path.resolve(SRC, rel);
+      expect(fs.existsSync(abs)).toBe(true);
+    }
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {
