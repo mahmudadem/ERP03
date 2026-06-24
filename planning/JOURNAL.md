@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-24 (Task 267-A — System Core boundary audit)
+
+- **Context:** Owner corrected the delegation plan: architecture auditing and planning must stay with Codex/CTO, while cheaper agents should receive narrow implementation briefs.
+- **What changed:** Completed the System Core boundary audit in `planning/audits/267-system-core-boundary-inventory.md`. The audit classifies current engines as extracted/hybrid/wrapper/missing, names specific violations with file/line evidence, and sets the implementation order. Added `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` so the next cheaper agent can implement only the Policy Resolution Engine foundation without touching posting, inventory movement/costing, frontend UI, or catalog/items.
+- **Key findings:** POS is the cleanest engine consumer. Remaining risk is concentrated in missing generic policy resolution, Sales/Purchases/Inventory direct posting paths, Purchases stock movement construction, module-gated item/catalog setup, and incomplete shared-setting doorway enforcement.
+- **Accounting impact:** Audit/planning only. No posting, tax, stock, approval, policy, settlement, ledger, or valuation behavior changed.
+- **Verification:** `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` passed in `D:\DEV2026\ERP03-267-engine-audit` (14/14).
+- **Actual time:** ~0.8h.
+- **Next:** Backend builder should implement `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` in the isolated worktree.
+
 ### Session: 2026-06-24 (Task 267 — System Core engine management execution plan)
 
 - **Context:** Owner asked for a detailed, low-mistake plan that cheaper executor agents can follow to complete the System Core/module independence work and that a starter/reviewer agent can audit.

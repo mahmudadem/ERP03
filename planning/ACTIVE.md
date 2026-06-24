@@ -2,16 +2,16 @@
 
 ## Task 267 — System Core engine management execution plan (2026-06-24)
 
-**Status:** ✅ Plan/brief created (planning-only, uncommitted).
+**Status:** ✅ 267-A audit completed on `codex/267-system-core-boundary-audit` (uncommitted).
 
 - **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
-- **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md) and an executor brief at [briefs/20260624-system-core-engine-management-agent-brief](./briefs/20260624-system-core-engine-management-agent-brief.md).
-- **Scope:** No implementation yet. The next agent should start with Slice 267-A: read-only engine boundary inventory.
+- **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md), completed the engine-boundary audit at [audits/267](./audits/267-system-core-boundary-inventory.md), and wrote the first implementation brief at [briefs/20260624-policy-resolution-engine-builder-brief](./briefs/20260624-policy-resolution-engine-builder-brief.md).
+- **Scope:** No application implementation yet. The next cheaper builder should implement only the Policy Resolution Engine foundation from the builder brief.
 - **Estimated time:** 267-A audit 1.5-2.5h; full remediation 4-8 slices over roughly 2-5 days depending on accounting golden tests.
 
 ### Next action
 
-Run **Slice 267-A — Read-Only Engine Boundary Inventory** from the task plan. It must create `planning/audits/267-system-core-boundary-inventory.md`, run the architecture boundary test, and make no source-code changes.
+Assign a backend builder to `D:\DEV2026\ERP03-267-engine-audit` for **Policy Resolution Engine foundation only**. They must follow `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` and must not touch posting, inventory movement/costing, frontend UI, or catalog/items.
 
 ---
 
