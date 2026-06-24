@@ -208,6 +208,7 @@ This project uses an OpenCode multi-agent workflow defined in `opencode.json`. T
 - **Two flags, never conflated:** `initialized` = "engine has the data it needs" (a readiness fact; kept always-true by auto-init) — real work checks this. `isEnabled` = "user can see/reach this module's screens" (security + visibility) — must **never** gate engine behavior.
 - **Four litmus tests** for any capability: (1) *turn the module off — must this still be correct?* → engine. (2) *will more than one module need it?* → engine (shared). (3) *is it the canonical record others depend on?* → engine owns the data. (4) *is it presentation / navigation / one user's workflow?* → module. A feature with both halves gets **split**.
 - **Signals are engine-owned** (low-stock is just one example). If a consumer must *ask* the engine or be *warned* by it, that query/signal is the engine's; the widget is the module's.
+- **🚩 A shared setting needs a doorway in EVERY module that uses it — not just one.** When an engine-owned policy/config is editable (a settings screen + an API route), hosting that doorway under a single module silently breaks the others. A user who has only module X enabled (every other module off) must still be able to **reach, view, and change** any shared setting that affects module X. Concretely: the API route must be reachable with that module's own permission and must **not** sit behind another module's `moduleInitializedGuard`/`isEnabled`; and the settings screen must exist inside that module too. The shared *store* stays single-source-of-truth — only the entry points are per-module. **Litmus: "If this tenant had ONLY the POS module enabled, could a POS-only user still set this?" If no, you have not finished the feature.** (We have repeatedly shipped shared settings reachable from only one module — treat this as a blocking defect, not a nicety.)
 - **Open gaps (tracked):** posting still gates on `isEnabled` not `initialized` ([253](planning/tasks/253-posting-engine-always-acts.md)); item management still locked behind the Inventory module ([254](planning/tasks/254-items-stock-catalog-always-on.md)); FX duplicated across `core` + `accounting` ([255](planning/tasks/255-currency-fx-shared-engine.md)).
 
 ### New Feature — "Where does this logic go?" (decide BEFORE coding)
@@ -226,7 +227,8 @@ Before implementing any feature, classify each piece of logic:
    - **Add a guard to `SystemCoreBoundaries.test.ts`** so the boundary is enforced, not just documented.
    - Document it in `docs/architecture/system-core.md`.
 4. **Module-specific orchestration only** (wiring engines together, request/response shaping, status transitions) → stays in the module's use-case. That's what modules are *for*.
-5. **Unsure which bucket?** STOP and ask. Misplacing shared logic is the exact mistake Epic 250 existed to fix — guessing wrong is expensive to undo.
+5. **If the shared thing is user-configurable, plan its doorway in every consuming module up front.** A shared engine policy/config is not "done" when only one module can edit it. During planning, list every module that consumes it and give each its own settings entry point + API route (module-permission-gated, never behind another module's enablement). See the 🚩 rule above. Put this in the task plan, not as an afterthought.
+6. **Unsure which bucket?** STOP and ask. Misplacing shared logic is the exact mistake Epic 250 existed to fix — guessing wrong is expensive to undo.
 
 ### Shared UI Components — MANDATORY REUSE
 

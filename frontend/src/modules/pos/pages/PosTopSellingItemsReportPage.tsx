@@ -51,10 +51,10 @@ const PosTopSellingItemsReportPage: React.FC<{ isWindow?: boolean }> = ({ isWind
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b text-left text-xs text-slate-500">
-              <th className="px-2 py-2">Item</th>
-              <th className="px-2 py-2 text-right">Qty sold</th>
-              <th className="px-2 py-2 text-right">Gross sales</th>
-              <th className="px-2 py-2 text-right">Receipts</th>
+              <th className="px-2 py-2">{t('pos:report.col.item')}</th>
+              <th className="px-2 py-2 text-right">{t('pos:report.col.qtySold')}</th>
+              <th className="px-2 py-2 text-right">{t('pos:report.col.grossSales')}</th>
+              <th className="px-2 py-2 text-right">{t('pos:report.col.receipts')}</th>
             </tr>
           </thead>
           <tbody>
@@ -77,8 +77,8 @@ const PosTopSellingItemsReportPage: React.FC<{ isWindow?: boolean }> = ({ isWind
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.topSellingItems.title', { defaultValue: 'Top Selling Items' })}
-      subtitle={t('pos.report.topSellingItems.subtitle', { defaultValue: 'Gross sold quantity and amount from completed POS receipts.' })}
+      title={t('pos:report.topSellingItems.title', { defaultValue: 'Top Selling Items' })}
+      subtitle={t('pos:report.topSellingItems.subtitle', { defaultValue: 'Gross sold quantity and amount from completed POS receipts.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

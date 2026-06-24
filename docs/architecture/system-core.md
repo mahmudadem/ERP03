@@ -180,6 +180,47 @@ Accounting boundary: 250l-1 is intended as an ownership move. Golden SI/PI line-
 
 POS sale posting now invokes `validateCostMargin(...)` after Inventory Core resolves actual unit cost for a stock OUT. Pending approval blocks the POS sale before vouchers are emitted; an approved override lets posting continue. Normal sale totals and voucher math are unchanged.
 
+### Selling Policy (shared below-cost rule, Task 264)
+
+The below-cost / minimum-margin rule is configured by a single company-wide
+**SellingPolicy** (`domain/system-core/entities/SellingPolicy.ts`, stored via
+`ISellingPolicyRepository`). It is owned by no module and consumed by several —
+the same store drives the POS till and the Sales invoice posting path, so they
+can never disagree. It carries:
+
+- `belowCostMode`: `BLOCK` (refuse outright), `REQUIRE_APPROVAL` (block pending a
+  manager approval/override — the default, matching pre-policy POS behaviour), or
+  `ALLOW` (sell below cost freely).
+- `minMarginPercent` (optional): a line below this gross margin is treated like a
+  below-cost line.
+- `allowManagerOverride` (default true): when false, even an approved override
+  cannot bypass a violation (absolute control).
+
+**Consumption.** `CommercialCore.validateCostMargin(...)` resolves this policy
+through a DI delegate (unless the caller pins the mode in the context) and does
+the margin math + mode application + `below_cost_sale` approval routing. Because
+the Commercial Core self-resolves the policy, the POS path needs no change to
+honour it. The Policy Engine additionally exposes the rule as a cross-module
+façade — `resolve({ scope: 'commercial', action: 'belowCostSale', ... })` —
+delegating to the Commercial Core so any module can ask the same question and get
+the same verdict (mirrors how `scope: 'accounting'` approval policy is shared).
+
+**Attach points.** POS: `PostPosSaleUseCase` (unchanged call, now policy-driven).
+Sales: `PostSalesInvoiceUseCase` runs the guard after Phase 1D computes line cost,
+comparing line net revenue vs line cost (both base currency, so UOM-agnostic) and
+throwing before any voucher is written when the verdict is blocked.
+
+**Editing doorways (one store, per-module entry points).** The policy is a single
+shared store, but — because modules are independent — it has a doorway in **every**
+consuming module, never just one: **Sales → Settings → Sales Policy**
+(`GET/PUT /tenant/sales/selling-policy`) and **POS → Settings → Below-cost selling
+policy** (`GET/PUT /tenant/pos/selling-policy`), each gated by its own module
+permission and reachable even if the other module is disabled. Both read/write the
+same `SellingPolicy` doc, so there is one source of truth. The request validator
+lives in a neutral `api/validators/sellingPolicy.validators.ts` so neither
+module's controller imports the other's. See `AGENTS.md` → *Engines vs Modules*
+(🚩 shared-config doorway rule).
+
 250l-3 moves promotion evaluation behind `ICommercialCore.applyPromotions(...)`. The neutral core model supports the existing rule mechanics without importing Sales internals:
 
 - Rules evaluate by ascending priority.

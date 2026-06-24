@@ -2,6 +2,82 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-23 (Task 265 — POS Keyboard Shortcuts)
+
+- **Context:** The owner requested keyboard shortcuts in the POS terminal for faster actions (F12 for pay, Delete for void, etc.). They specified a three-tier configuration: system defaults, register-level overrides (manager controlled), and user preferences (cashier controlled).
+- **What was built:** Added `keyboardShortcuts` (JSON) to `PosRegister` schema and `posShortcuts` (JSON) to `UserPreferences`. Updated Prisma and Firestore repositories to persist them. Built `usePosKeyboardShortcuts` hook that intercepts `keydown` events globally, ignoring inputs/textareas, and merges configuration with priority: User Preferences > Register Defaults > System Defaults. Added `PosKeyboardShortcutsDialog.tsx` for capturing and editing keys. Integrated it into `PosRegistersPage` for manager configuration and `PosTerminalPage` context bar for cashier personal preferences.
+- **Verification:** Successfully compiled frontend (`npm run build`) with no TS or syntax errors.
+- **Docs:** `planning/done/265-pos-keyboard-shortcuts.md`, `docs/architecture/pos.md`, and `docs/user-guide/pos/keyboard-shortcuts.md`.
+
+### Session: 2026-06-24 (Task 264 follow-up — POS-independent doorway + module-independence rule documented)
+
+- **Owner feedback (firm):** "modules are independent — a POS-only user must be able to work!" Task 264 shipped the shared SellingPolicy editor + API route **only under Sales** (`/tenant/sales/selling-policy`, behind `moduleInitializedGuard('sales')`), so a POS-only tenant could not configure it. Real defect, not a nicety.
+- **Fix:** Gave POS its own independent doorway to the **same** shared store — `GET/PUT /tenant/pos/selling-policy` (`pos.settings.manage`) + a "Below-cost selling policy" card in **POS → Settings**. Extracted the validator to a neutral `api/validators/sellingPolicy.validators.ts` so POS's controller never imports Sales code. One source of truth (`SellingPolicy` doc); two per-module entry points.
+- **Rule documented for all agents:** Added a 🚩 rule to `AGENTS.md` → *Engines vs Modules* ("a shared setting needs a doorway in EVERY consuming module, not just one") + a planning-checklist step + a litmus ("if this tenant had ONLY POS enabled, could a POS-only user still set this?"). Saved to auto-memory too. This keeps biting us; it's now a written planning requirement.
+- **Verification:** backend + frontend typecheck clean; `npm run build` clean; affected suites (sales posting + commercial below-cost + policy engine) = 40 tests green.
+
+### Session: 2026-06-23 (Task 264 — shared below-cost Selling Policy for POS + Sales)
+
+- **Context:** Owner QA hit "POS sale line ITEM-001 is below allowed cost/margin and requires approval" (INFRA_999). Unlike Tasks 261–263 (transaction-path bugs), this is a **business rule firing as designed** — but it was hardcoded into POS only (always REQUIRE_APPROVAL) with no way to configure it and no equivalent on Sales. Owner asked for a shared, configurable policy consumed by both apps via the new engine architecture.
+- **Architecture finding:** The Policy Engine is already multi-module (`scope` + `action` → uniform `{allowed, requiresApproval, resolvedBy}`; POS/Accounting/Sales/Purchases all consume it). `validateCostMargin` lived only in POS; Sales had **no** below-cost guard at all.
+- **What was built:** New company-wide **SellingPolicy** (`domain/system-core/entities/SellingPolicy.ts` + `ISellingPolicyRepository` + Firestore repo) with `belowCostMode` = `BLOCK | REQUIRE_APPROVAL | ALLOW`, optional `minMarginPercent`, `allowManagerOverride`. `CommercialCore.validateCostMargin` is now policy-aware (resolves the SellingPolicy via a DI delegate; 3-mode logic) — so the **POS path needed zero changes**. `PolicyEngine` gained `scope:'commercial', action:'belowCostSale'` (cross-module façade delegating to the Commercial Core). **Sales attached:** `PostSalesInvoiceUseCase` runs the guard after Phase 1D (line net revenue vs line cost, UOM-agnostic) and throws before any voucher when blocked. API: `GET/PUT /tenant/sales/selling-policy`. UI: a "Below-cost selling policy" card in **Sales → Settings → Sales Policy** (states it also governs POS).
+- **Default & behavior change:** Default mode is `REQUIRE_APPROVAL` (preserves POS's prior behaviour). This now **also** guards Sales invoices, which were previously unguarded — pre-alpha, no production data, so no migration. Owner can set `ALLOW` to unblock below-cost selling everywhere from one place.
+- **Accounting/ERP impact:** None to posting math — same accounts, amounts, vouchers. Only adds a pre-posting gate whose strictness the owner controls. The existing `below_cost_sale` Approval Engine routing is unchanged for `REQUIRE_APPROVAL`.
+- **Verification:** New tests — `SellingPolicy` entity (6), `CommercialCoreBelowCostPolicy` 3-mode (9), `PolicyEngineCommercialBelowCost` façade (3), Sales attach block+allow (2, cloned from PostSI test 7). Broad sweep system-core + sales + pos = 72 suites / 618 tests green. Backend + frontend typecheck clean; `npm run build` clean → emulator `lib/` serves it.
+- **Docs:** [done/264](./done/264-shared-below-cost-selling-policy.md); `docs/architecture/system-core.md` (Selling Policy), `sales.md`, `pos.md`; user guide `docs/user-guide/sales/below-cost-selling-policy.md`.
+
+### Session: 2026-06-23 (Task 263 — fix `Receipt requires depositToAccountId` (INFRA_999) on POS settlement/refund)
+
+- **Context:** Third blocker in the POS posting chain (each prior fix advanced posting to the next gap). After inventory + revenue/COGS posted, the settlement leg threw "Receipt requires depositToAccountId (Deposit To account)" (INFRA_999).
+- **Root cause:** POS posts the settlement as a `RECEIPT` voucher with pre-built `{accountId, side, baseAmount, docAmount}` lines. `ReceiptVoucherStrategy`'s canonical-line detector only accepts a line when it has `amount > 0`; POS lines lacked `amount`, so it fell into payload mode and demanded `depositToAccountId` (which POS doesn't supply). The revenue/COGS legs use the `SALES_INVOICE` strategy (reads `baseAmount`), so only settlement broke. The refund leg (`PAYMENT` voucher) had the same latent bug via `PaymentVoucherStrategy`.
+- **Fix:** Added `amount` (alongside the existing `baseAmount`/`docAmount`) to the POS settlement and refund canonical lines — the documented canonical-line contract (`side/accountId/amount`). No shared accounting strategy changed; the shift over/short JE voucher already carried `amount`.
+- **Accounting/ERP impact:** None — same accounts, sides, amounts; the strategy now posts the POS-built lines verbatim instead of erroring.
+- **Verification:** New `PosCanonicalVoucherLines.test.ts` runs the **real** Receipt/Payment strategies against the POS shape (accepts new shape; regression proves old shape still throws). Broad sweep pos + domain/accounting + application/accounting = 52 suites / 348 tests green. `npm run build` clean → emulator `lib/` serves it.
+- **Docs:** [done/263](./done/263-pos-settlement-refund-canonical-voucher-lines.md); `docs/architecture/pos.md` §3.
+
+### Session: 2026-06-23 (Task 262 — fix Firestore `all reads before writes` (INFRA_005) on POS posting)
+
+- **Context:** Immediately after Task 261, owner QA hit a new blocking "Firestore transactions require all reads to be executed before all writes" (INFRA_005) when completing a POS sale.
+- **Root cause:** `CompletePosSaleUseCase` posts inside one Firestore transaction. POS used the stateful `IInventoryCore.processOUT`, which reads the stock level **through the transaction** then writes. Fine for a single line; for a **multi-line** cart, line 2's transactional read runs after line 1's writes — which Firestore forbids. (The accounting bridge was already txn-safe: its reads are non-transactional; only ledger/voucher writes use the txn.)
+- **Fix:** Aligned POS with the proven Sales pattern. `PostPosSaleUseCase` / `PostPosReturnUseCase` now pre-fetch stock levels with **bare (non-transactional) reads**, compute movements with the **pure** `computeStockOutMovement` / `computeStockReturnInMovement` helpers (in-memory level threaded across same-item lines), recompute `item.costingStats`, then run a **write-only phase** (`writeStockMovement` + `writeStockLevel` + `itemRepo.updateItemInTransaction`) before the accounting bridge posts vouchers. Negative-stock enforcement moved up front: `assertNegativeStockAllowed` now blocks the POS `BLOCK` policy **and** re-asserts the company `allowNegativeStock` flag (previously enforced inside `processOUT`), preserving Task 258.
+- **Accounting/ERP impact:** None — identical costing math, vouchers, and POS identity stamping; only read/write ordering inside the txn changed.
+- **Verification:** POS suite 15/15 (109 tests), incl. two suites that were previously uncompilable (stale 8-arg constructor + `processOUT` mocks now updated to the write seams). Broad sweep pos+sales+inventory+architecture = 62 suites / 517 tests green. Architecture guard 251 updated to assert POS identity via `referenceType` and reject `SALES_*`. `npm run build` clean → emulator `lib/` serves it.
+- **Docs:** [done/262](./done/262-pos-posting-firestore-read-before-write.md); `docs/architecture/pos.md` §3 transaction-safety note.
+- **Note:** The earlier spun-off worktree to fix `PostPosReturn.test.ts`'s stale constructor is superseded by this task and can be discarded.
+
+### Session: 2026-06-23 (Task 261 — fix `Invalid referenceType: POS_DIRECT_SALE` at POS posting)
+
+- **Context:** Owner QA on the POS terminal hit a blocking "Critical Error — Invalid referenceType: POS_DIRECT_SALE" (INFRA_999) on sale completion.
+- **Root cause:** Validation drift in `backend/src/domain/inventory/entities/StockMovement.ts`. The `ReferenceType` **type** already listed `POS_DIRECT_SALE` / `POS_RETURN` (so tsc passed), but the parallel **runtime guard array** `REFERENCE_TYPES` — the list the entity constructor checks against — was never updated when the native POS posting path landed (Epic 250 / Task 250d). `PostPosSaleUseCase` posts the stock-OUT movement with `refs.type = 'POS_DIRECT_SALE'`, which failed the membership check and threw.
+- **Fix:** Added `'POS_DIRECT_SALE'` and `'POS_RETURN'` to the runtime array so it matches the type (and existing test expectations). `MOVEMENT_TYPES` already had `SALES_DELIVERY` / `RETURN_IN`, so no movement-type change needed. One-line, behavior-restoring.
+- **Verification:** `PostPosSale.test.ts` + `RecordStockMovementUseCase.test.ts` green (38 tests); backend `npm run build` (tsc) clean and recompiled to `lib/` so the emulator serves it.
+- **Accounting/ERP impact:** None — restores the intended native POS posting path (POS posts as itself, never converted to a sales invoice — independence gate #8). No GL/tax/COGS/valuation/settlement/period-lock change.
+- **Docs:** [done/261](./done/261-pos-direct-sale-referencetype-validation.md); `docs/modules/inventory/SCHEMAS.md` `ReferenceType` enum aligned (it was stale, missing several values).
+- **Follow-up flagged:** `PostPosReturn.test.ts` fails to compile (stale 7-arg constructor; class now needs 8 — `posSettingsRepo`). Production wiring is correct; test-only fix tracked separately.
+
+### Session: 2026-06-23 (Task 258 owner-QA fix — POS-accurate negative-stock message)
+
+- **Context:** Owner ran live QA with company `allowNegativeStock` ON and an item already at −22. POS correctly **blocked** a sale that would reach −23 (proves POS is independently strict), but the toast reused the inventory-domain `NegativeStockError` message ("Negative stock is disabled for this company. Enable allowNegativeStock…") — misleading, since the flag was already ON and the **POS** policy is what blocked.
+- **Fix:** New `domain/pos/errors/PosNegativeStockError.ts` (`POS_NEGATIVE_STOCK_BLOCKED`) with a POS-accurate, actionable message pointing at *"Negative stock at the till" in POS Settings*, not the company flag. `PostPosSaleUseCase` throws it; test asserts the message references POS Settings and not `allowNegativeStock`. User-guide troubleshooting updated. Backend `npm run build` re-run so the emulator `lib/` serves it.
+- **Verification:** `PostPosSale.test.ts` 18/18; backend typecheck + build clean.
+
+### Session: 2026-06-22 (Task 257 — POS manager overrides via the Approval Engine)
+
+- **Context:** Owner said "do it all" after Task 258. Committed the 258 + POS readiness WIP bundle on branch `feat/pos-readiness-and-negative-stock`, then implemented Task 257 directly on top (the 251 override-flag work it depends on is present uncommitted in the same tree, so no concurrent-edit collision; the original "wait for 251 merge" caveat was waived by owner direction).
+- **What changed:** POS manager overrides now route through `IApprovalEngine.evaluate(...)` instead of a token-presence check. New `PosManagerOverrideApprovalPlugin` (subjects `pos_manager_override`/`price_override`/`discount_override`/`tax_override`) returns PENDING (no approver) / REJECTED (self-approval, or approver lacking `pos.override.approve`) / APPROVED (distinct authorised manager). `CreatePosManagerOverrideUseCase` mints the `approvedOverrideId` token **only on APPROVED**. New permission `pos.override.approve`; plugin registered on the shared `ApprovalEngine` in DI with authority bound to `PermissionChecker.hasPermission`. Policy Engine still owns *whether* approval is required; Approval Engine owns *who* + outcome (seam documented). `below_cost_sale` unchanged.
+- **Verification:** 23 suites / 144 tests green (pos + system-core + permission-catalog); backend typecheck + build clean.
+- **Accounting/ERP impact:** Control hardening only — no GL/tax/COGS/valuation/settlement/period-lock change.
+- **Docs:** [tasks/257](./tasks/257-pos-manager-override-via-approval-engine.md), [done/257](./done/257-pos-manager-override-via-approval-engine.md), `docs/architecture/pos.md` §6a.
+
+### Session: 2026-06-22 (Task 258 — POS-specific negative-stock policy)
+
+- **Context:** Closed "the remaining backend safety gap" from the POS commercial-rules audit (§C rows 70–71, §J answer 6). POS was inheriting the company-wide `InventorySettings.allowNegativeStock` flag, so a company allowing negative stock for back-office invoicing would let the physical till oversell.
+- **What changed:** Added `PosSettings.negativeStockPolicy` (`BLOCK` default | `ALLOW`). `PostPosSaleUseCase.assertNegativeStockAllowed` pre-fetches the selling-warehouse level via `IInventoryCore.preFetchStockLevel`, aggregates requested qty per (item, warehouse), and throws `NegativeStockError` before any stock/ledger write **and** on the dry-run preview — so the terminal blocks before tendering. `ALLOW`/absent defers to the company flag. POS can only be the same as or stricter than the company flag. Threaded through `CompletePosSaleUseCase` (preview + real), the update use-case, validator, DTO, settings UI, and en/ar/tr i18n. Reused the inventory-domain `NegativeStockError` for a consistent named message.
+- **Deferred:** `ALLOW_WITH_APPROVAL` intentionally left to Task 257 (Approval Engine owns *who* approves) to avoid colliding with that in-flight override-flag path.
+- **Verification:** `PostPosSale.test.ts` 18/18 (+5 new); full POS suite 14 suites / 97 tests green; backend typecheck + build clean; POS frontend files typecheck clean (pre-existing unrelated `UserPreferencesContext.tsx` WIP errors remain in the working tree); en/ar/tr `pos.json` parse-validated.
+- **Accounting/ERP impact:** Control hardening only — no GL/tax/COGS/valuation/settlement/period-lock/approval-semantics change.
+- **Docs:** [tasks/258](./tasks/258-pos-negative-stock-policy.md), [done/258](./done/258-pos-negative-stock-policy.md), `docs/architecture/pos.md` §4a, `docs/user-guide/pos/setup.md`.
+
 ### Session: 2026-06-22 (Engines-always-on trio — Tasks 253 / 254 / 255 implemented)
 
 - **Context:** Following the engines-vs-modules clarification, the owner directed "do all the fixing." Implemented all three tasks on branch `feat/engines-always-on`, behaviour-preserving, each committed separately.
@@ -13,8 +89,9 @@
 
 ### Session: 2026-06-22 (Task 256 — Shared Print Layout Engine and Designer)
 
+- **Follow-up improvement:** Added useful bill-table tools before POS/Sales runtime wiring: header background/text color, row height, preview row count, overflow behavior (`continue`, `clip`, `shrink`), and repeat-header metadata for page breaks. Backend validation now rejects invalid table behavior options from imported JSON.
 - **What was done:** Implemented V1 of a company-level, always-on Print Layout Engine rather than a POS-only receipt template. Added `IPrintLayoutCore`, layout validation, data schemas for `POS_RECEIPT` and `SALES_INVOICE`, company template persistence under `companies/{companyId}/core/Settings/print_layouts`, `/tenant/print-layouts` API routes, and a shared Tools page at `/tools/print-layout-designer`.
-- **Designer scope:** Paper presets, visible safe area, drag/resize components, text/field/table/box/logo/QR placeholders, style controls, editable bill-table columns, save/load defaults, and JSON import/export.
+- **Designer scope:** Paper presets, visible safe area, drag/resize components, text/field/table/box/logo/QR placeholders, style controls, editable bill-table columns, long-bill behavior, save/load defaults, and JSON import/export.
 - **Control decision:** No custom scripts/formulas in V1. Layouts bind only to approved schema fields and table columns; backend rejects unknown bindings and out-of-paper components.
 - **Accounting/ERP impact:** No posting, tax, COGS, settlement, AR/AP, inventory, approval, or period-lock behavior changed. This is a shared print-template engine and UI surface only.
 - **Verification:** Focused backend print-layout tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.
@@ -4694,3 +4771,43 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** `npx npm@10.8.2 ci` passed. Backend build passed. Full backend suite passed: 195 passed / 197 total suites, 1683 passed / 1701 total tests, with existing 2 skipped suites / 18 skipped tests.
 - **Time spent:** ~0.4h.
 - **Next:** Push the lockfile fix and wait for PR #35 CI to turn green before merging.
+
+### Session: 2026-06-23 (Task 259 — POS shortcuts and control buttons)
+
+- **Goal:** Implement the owner-requested POS shortcuts/control-buttons package one slice at a time.
+- **What was done:** Added backend POS layout entities, validation, repository contract, Firestore repository, DI binding, admin CRUD use cases, runtime layout resolver, command registry, and safe command execution use case. Added routes for runtime layout, commands, product shortcut layouts/nodes, control button layouts/buttons, and receipt print. Integrated terminal runtime shortcuts/control buttons and a POS Settings `Layouts` tab. Wired receipt print/reprint responses to the shared print-layout engine while preserving reprint approval/audit controls.
+- **Accounting/ERP impact:** UI/configuration and controlled print payload preparation only. No sale posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval-engine semantics changed.
+- **Verification:** Backend typecheck passed; frontend typecheck passed; focused POS layout test passed (`PosLayoutUseCases.test.ts`: 1 suite / 4 tests). Backend build passed. Frontend build passed; existing browser-data/chunk-size warnings remain. `graphify update .` could not run because `graphify` is not installed in this shell.
+- **Docs:** Added `docs/architecture/pos-shortcuts-control-buttons.md`, `docs/user-guide/pos/shortcuts-and-control-buttons.md`, `planning/tasks/259-pos-shortcuts-control-buttons.md`, and `planning/done/259-pos-shortcuts-control-buttons.md`.
+- **Time spent:** ~4.4h.
+- **Next:** Review diff, commit, and merge if clean.
+
+### Session: 2026-06-23 (Task 259 follow-up — item selector for shortcut buttons)
+
+- **Goal:** Replace raw item id entry in POS shortcut setup with the shared item selector.
+- **What was done:** Updated the POS Settings `Layouts` tab so ITEM shortcut buttons use `ItemSelector`; selecting an item stores the canonical item id and can fill the shortcut label from the item name. Updated the user guide and completion report to remove the raw-id limitation.
+- **Accounting/ERP impact:** Data-entry quality only. No posting, tax, inventory valuation, settlement routing, period-lock, voucher, or approval behavior changed.
+- **Verification:** Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
+- **Time spent:** ~0.2h.
+
+### Session: 2026-06-23 (Task 259 follow-up — dedicated POS Shortcuts page)
+
+- **Goal:** Replace the ambiguous POS Settings layout editor with a dedicated shortcut management surface and fix terminal layout selection ambiguity.
+- **What was done:** Added `POS -> Shortcuts` route/sidebar page. The page manages terminal shortcut layouts, makes a selected layout active/default, creates groups, bulk-selects many inventory items into a group/root, and edits/enables/disables/deletes groups and item buttons. Backend layout creation/update now clears other default layouts when one layout is marked default, preventing older empty defaults from winning runtime resolution. Removed the old Layouts tab from POS Settings navigation.
+- **Accounting/ERP impact:** Data-entry UX and terminal configuration only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
+- **Verification:** Backend typecheck passed. Frontend typecheck passed. Focused POS layout test passed (`PosLayoutUseCases.test.ts`: 1 suite / 4 tests). Backend build passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
+- **Time spent:** ~1.4h.
+### Session: 2026-06-23 (Task 259 follow-up — POS Shortcuts translations)
+
+- **Goal:** Verify whether the new POS Shortcuts page was fully translated.
+- **What was done:** Found the new page still had several hardcoded English labels and was using the wrong key shape for the POS namespace. Moved the page to the POS namespace keys, added English/Arabic/Turkish `shortcuts` translations, translated the new sidebar label, and added success/error feedback for shortcut enable/disable/delete actions.
+- **Accounting/ERP impact:** UI localization and action feedback only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
+- **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed.
+- **Time spent:** ~0.2h.
+### Session: 2026-06-23 (Task 259 follow-up — full POS localization pass)
+
+- **Goal:** Fix the POS module appearing untranslated in Arabic/Turkish.
+- **What was done:** Corrected POS i18n namespace usage across POS pages/components, translated POS report table headers, terminal line-edit labels, legacy layout/settings labels, exchange/return labels, POS sidebar/report menu entries, and added missing English/Arabic/Turkish POS/common locale keys. Existing POS strings now resolve from the `pos` namespace instead of falling back to English default values.
+- **Accounting/ERP impact:** UI localization only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
+- **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
+- **Time spent:** ~0.8h.

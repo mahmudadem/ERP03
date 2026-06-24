@@ -64,6 +64,14 @@ const SAMPLE_VALUES: Record<string, string> = {
 const SAMPLE_ROWS: Record<string, string>[] = [
   { itemCode: 'A-100', itemName: 'Notebook', description: 'Notebook', qty: '2', unitPrice: '25.00', discount: '0.00', tax: '5.00', lineTotal: '55.00' },
   { itemCode: 'B-200', itemName: 'Pen set', description: 'Pen set', qty: '1', unitPrice: '70.00', discount: '5.00', tax: '7.00', lineTotal: '72.00' },
+  { itemCode: 'C-300', itemName: 'USB cable', description: 'USB cable', qty: '3', unitPrice: '8.00', discount: '0.00', tax: '2.40', lineTotal: '26.40' },
+  { itemCode: 'D-400', itemName: 'Thermal roll', description: 'Thermal roll', qty: '5', unitPrice: '4.00', discount: '0.00', tax: '2.00', lineTotal: '22.00' },
+  { itemCode: 'E-500', itemName: 'Folder', description: 'Folder', qty: '4', unitPrice: '3.50', discount: '1.00', tax: '1.30', lineTotal: '14.30' },
+  { itemCode: 'F-600', itemName: 'Marker', description: 'Marker', qty: '2', unitPrice: '6.00', discount: '0.00', tax: '1.20', lineTotal: '13.20' },
+  { itemCode: 'G-700', itemName: 'Stapler', description: 'Stapler', qty: '1', unitPrice: '18.00', discount: '0.00', tax: '1.80', lineTotal: '19.80' },
+  { itemCode: 'H-800', itemName: 'Tape', description: 'Tape', qty: '2', unitPrice: '5.00', discount: '0.00', tax: '1.00', lineTotal: '11.00' },
+  { itemCode: 'I-900', itemName: 'Paper pack', description: 'Paper pack', qty: '1', unitPrice: '45.00', discount: '2.00', tax: '4.30', lineTotal: '47.30' },
+  { itemCode: 'J-1000', itemName: 'Envelope', description: 'Envelope', qty: '10', unitPrice: '0.80', discount: '0.00', tax: '0.80', lineTotal: '8.80' },
 ];
 
 const newId = (type: string) => `${type}_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
@@ -144,6 +152,14 @@ export default function PrintLayoutDesignerPage() {
         fieldPath: column.path,
         width: index === 0 ? 42 : 18,
       })) : undefined,
+      tableOptions: type === 'table' ? {
+        headerBackgroundColor: '#E4E4E7',
+        headerTextColor: '#18181B',
+        rowHeight: layout.paper.type.startsWith('RECEIPT') ? 6 : 8,
+        overflowMode: 'continue',
+        repeatHeaderOnPageBreak: true,
+        maxPreviewRows: 12,
+      } : undefined,
       style: { fontSize: 10, fontWeight: 'normal', fontStyle: 'normal', color: '#18181B', textAlign: 'left', borderColor: '#D4D4D8', borderWidth: type === 'table' || type === 'box' ? 1 : 0 },
     };
     setLayout((current) => ({ ...current, components: [...current.components, component] }));
@@ -395,7 +411,7 @@ function CanvasComponent(props: {
       }}
       onMouseDown={(event) => onMouseDown(event, 'move')}
     >
-      <ComponentPreview component={component} />
+      <ComponentPreview component={component} scale={scale} />
       {selected && (
         <span
           className="absolute bottom-0 right-0 h-3 w-3 cursor-nwse-resize bg-zinc-900"
@@ -406,13 +422,53 @@ function CanvasComponent(props: {
   );
 }
 
-function ComponentPreview({ component }: { component: PrintLayoutComponent }) {
+function ComponentPreview({ component, scale }: { component: PrintLayoutComponent; scale: number }) {
   if (component.type === 'table') {
+    const options = component.tableOptions || {};
+    const rowHeight = options.rowHeight || 7;
+    const previewRows = SAMPLE_ROWS.slice(0, options.maxPreviewRows || 12);
+    const visibleBodyRows = Math.max(1, Math.floor((component.height - rowHeight) / rowHeight));
+    const hasOverflow = previewRows.length > visibleBodyRows;
+    const rowStyle = { height: rowHeight * scale } as React.CSSProperties;
     return (
-      <table className="h-full w-full table-fixed border-collapse text-[inherit]">
-        <thead><tr>{(component.columns || []).map((column) => <th key={column.id} className="border border-zinc-300 px-1 text-left">{column.label}</th>)}</tr></thead>
-        <tbody>{SAMPLE_ROWS.map((row, index) => <tr key={index}>{(component.columns || []).map((column) => <td key={column.id} className="border border-zinc-200 px-1">{row[column.fieldPath] ?? '-'}</td>)}</tr>)}</tbody>
-      </table>
+      <div className="relative h-full w-full">
+        <table className="w-full table-fixed border-collapse text-[inherit]">
+          <thead>
+            <tr style={rowStyle}>
+              {(component.columns || []).map((column) => (
+                <th
+                  key={column.id}
+                  className="border border-zinc-300 px-1 text-left"
+                  style={{
+                    width: `${column.width}%`,
+                    backgroundColor: options.headerBackgroundColor || '#E4E4E7',
+                    color: options.headerTextColor || '#18181B',
+                  }}
+                >
+                  {column.label}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {previewRows.map((row, index) => (
+              <tr key={index} style={rowStyle}>
+                {(component.columns || []).map((column) => <td key={column.id} className="border border-zinc-200 px-1">{row[column.fieldPath] ?? '-'}</td>)}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        {hasOverflow && options.overflowMode === 'continue' && (
+          <div className="absolute bottom-0 left-0 right-0 bg-amber-100/95 px-1 py-0.5 text-center text-[10px] font-semibold text-amber-900">
+            Continues on next page / receipt length
+          </div>
+        )}
+        {hasOverflow && options.overflowMode === 'clip' && (
+          <div className="absolute bottom-0 left-0 right-0 bg-red-100/95 px-1 py-0.5 text-center text-[10px] font-semibold text-red-800">
+            Extra rows clipped
+          </div>
+        )}
+      </div>
     );
   }
   if (component.type === 'field') {
@@ -436,6 +492,8 @@ function PropertyPanel(props: {
   if (!component) return <div className="text-sm text-zinc-500">Select a component to edit its size, binding, and styling.</div>;
   const style = component.style || {};
   const updateStyle = (patch: Record<string, any>) => onChange({ style: { ...style, ...patch } });
+  const tableOptions = component.tableOptions || {};
+  const updateTableOptions = (patch: Record<string, any>) => onChange({ tableOptions: { ...tableOptions, ...patch } });
   const tableSchema = schema?.tables.find((table) => table.path === component.tablePath) || schema?.tables[0];
 
   return (
@@ -502,6 +560,45 @@ function PropertyPanel(props: {
               <option value="">Add table column</option>
               {tableSchema.columns.map((column) => <option key={column.path} value={column.path}>{column.label}</option>)}
             </select>
+          </div>
+          <div className="mt-4 rounded-md border border-zinc-200 p-3">
+            <div className="mb-2 text-xs font-semibold uppercase text-zinc-500">Long bill behavior</div>
+            <label className="block text-xs font-medium text-zinc-600">
+              Overflow
+              <select
+                className="mt-1 h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm"
+                value={tableOptions.overflowMode || 'continue'}
+                onChange={(event) => updateTableOptions({ overflowMode: event.target.value })}
+              >
+                <option value="continue">Continue to next page / extend receipt</option>
+                <option value="clip">Clip extra rows</option>
+                <option value="shrink">Shrink rows to fit frame</option>
+              </select>
+            </label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="text-xs font-medium text-zinc-600">
+                Row height
+                <input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-2 text-sm" type="number" min={3} max={40} value={tableOptions.rowHeight || 7} onChange={(event) => updateTableOptions({ rowHeight: Number(event.target.value) })} />
+              </label>
+              <label className="text-xs font-medium text-zinc-600">
+                Preview rows
+                <input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-2 text-sm" type="number" min={1} max={200} value={tableOptions.maxPreviewRows || 12} onChange={(event) => updateTableOptions({ maxPreviewRows: Number(event.target.value) })} />
+              </label>
+            </div>
+            <label className="mt-2 flex items-center gap-2 text-xs font-medium text-zinc-600">
+              <input type="checkbox" checked={tableOptions.repeatHeaderOnPageBreak !== false} onChange={(event) => updateTableOptions({ repeatHeaderOnPageBreak: event.target.checked })} />
+              Repeat table header after page break
+            </label>
+            <div className="mt-2 grid grid-cols-2 gap-2">
+              <label className="text-xs font-medium text-zinc-600">
+                Header bg
+                <input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-1" type="color" value={tableOptions.headerBackgroundColor || '#E4E4E7'} onChange={(event) => updateTableOptions({ headerBackgroundColor: event.target.value })} />
+              </label>
+              <label className="text-xs font-medium text-zinc-600">
+                Header text
+                <input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-1" type="color" value={tableOptions.headerTextColor || '#18181B'} onChange={(event) => updateTableOptions({ headerTextColor: event.target.value })} />
+              </label>
+            </div>
           </div>
         </div>
       )}

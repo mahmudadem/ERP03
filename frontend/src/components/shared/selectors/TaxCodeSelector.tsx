@@ -30,7 +30,7 @@ interface TaxCodeSelectorProps {
 const normalize = (value?: string | null) => (value || '').trim().toUpperCase();
 
 export function TaxCodeSelector({
-  options,
+  options = [],
   valueId,
   onChange,
   disabled = false,

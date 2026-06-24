@@ -40,7 +40,7 @@ const buildCreateSeed = (rawSearch: string): CreateWarehouseFormState => {
 export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorProps>(({
   value,
   onChange,
-  placeholder = 'Select warehouse...',
+  placeholder,
   disabled = false,
   className = '',
   noBorder = false,
@@ -50,6 +50,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
 }, ref) => {
   const { t } = useTranslation('inventory');
   const { hasPermission } = useRBAC();
+  const actualPlaceholder = placeholder || t('Select warehouse...', { defaultValue: 'Select warehouse...' });
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -317,7 +318,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
           onFocus={(e) => { try { e.currentTarget.select(); } catch { /* noop */ } }}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          placeholder={placeholder}
+          placeholder={actualPlaceholder}
           disabled={disabled}
           className={`w-full transition-all duration-200 outline-none
             ${noBorder

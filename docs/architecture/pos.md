@@ -59,9 +59,9 @@ POS is a standalone application over System Core engines. A completed sale is a 
 
 `CompletePosSaleUseCase` validates the open shift, cashier, POS policy, register, tender rows, change, cash rounding, and receipt number. It then calls `PostPosSaleUseCase`, which uses shared engines directly:
 
-- `IInventoryCore.processOUT` for stock items.
+- `IInventoryCore` for stock items — see the transaction-safety note below.
 - `ITaxEngine` for line tax math.
-- `IAccountingBridge.recordFinancialEvent` for revenue, COGS, settlement, and cash rounding events.
+- `IAccountingBridge.recordFinancialEvent` for revenue, COGS, settlement, and cash rounding events. The settlement (`RECEIPT`) and refund (`PAYMENT`) legs are posted as **canonical JV-style lines** — each line carries `amount` (alongside `baseAmount`/`docAmount`). `amount` is mandatory: `ReceiptVoucherStrategy` / `PaymentVoucherStrategy` only treat lines as canonical when `amount > 0`, otherwise they fall back to their `depositToAccountId` / `payFromAccountId` builder and throw INFRA_999. (Revenue/COGS legs use the `SALES_INVOICE` / `SALES_RETURN` strategies, which read `baseAmount` directly.)
 - `IPolicyEngine` for POS direct-sale permission.
 - `INumberingEngine` for receipt numbering.
 - `IAuditEngine` for receipt audit.
@@ -71,6 +71,8 @@ POS identity is preserved in stock movement refs and ledger metadata:
 - stock OUT refs use `POS_DIRECT_SALE`.
 - POS return stock IN refs use `POS_RETURN`.
 - accounting metadata uses `sourceModule: 'pos'`, `sourceType: 'POS_SALE' | 'POS_RETURN'`, and `documentPersona: 'POS_DIRECT_SALE'`.
+
+**Transaction safety (Firestore "all reads before all writes").** `CompletePosSaleUseCase` runs the whole posting inside one Firestore transaction. Firestore forbids any read through the transaction object after the first write in that transaction. So POS follows the same pattern as the Sales invoice path rather than the stateful `processOUT`/`processIN` (which read the stock level *inside* the transaction and would fail on a multi-line cart): `PostPosSaleUseCase` and `PostPosReturnUseCase` pre-fetch stock levels with **bare (non-transactional) reads**, compute every movement with the **pure** `computeStockOutMovement` / `computeStockReturnInMovement` helpers (each mutates an in-memory level threaded across lines of the same item/warehouse), recompute `item.costingStats`, and then run a **write-only phase** (`writeStockMovement` + `writeStockLevel` + `itemRepo.updateItemInTransaction`) before the accounting bridge posts the vouchers (whose own reads are non-transactional). Negative-stock enforcement also moves up front: `PostPosSaleUseCase.assertNegativeStockAllowed` blocks the POS-specific `BLOCK` policy *and* re-asserts the company `allowNegativeStock` flag (which `processOUT` used to enforce) using bare reads, before any write.
 
 Settlement accounts are resolved from the active register, not from company-level POS Settings:
 
@@ -101,6 +103,7 @@ Item selling-policy guards run in `PostPosSaleUseCase`, not only in the terminal
 - **Bootstrap (`GetPosBootstrapUseCase`)** hydrates the terminal in one call. The cashier screen calls it with only `cashierUserId` (no register picker), so the use case resolves the **active register itself**: an explicit `registerId` wins, else a lone `ACTIVE` register (else a lone register of any status). The open shift is then read for that register, with a fallback to the cashier's own open shift (whose register is hydrated if none was picked). Without this resolution the terminal wrongly shows "No open shift for this register."
 - **`posApi` unwrap contract:** the global axios response interceptor (`setupErrorInterceptor`) already unwraps the `{ success, data }` envelope to the bare payload. Any per-module helper must therefore use the resilient `r?.data?.data ?? r?.data ?? r` form (falls through to the already-unwrapped value). A 2-level `r.data.data ?? r.data` form silently resolves to `undefined` and makes every read look "not persisted." All POS reads go through `ok()`, which uses the resilient form.
 - **`PosTerminalPage`** is a product-grid + order-panel checkout (search/scan tiles → cart with qty steppers → totals → green Pay → React-state tender dialog driven by the enabled payment methods). It never posts directly — `previewSale` supplies the authoritative tax-inclusive quote and `completeSale` posts the POS direct sale. Items with a non-positive sale price are blocked from the cart. Removing a line opens a reason dialog and marks the line voided instead of deleting it from the sale audit trail.
+- **Keyboard Shortcuts** are managed by `usePosKeyboardShortcuts` which intercepts key presses globally (when not typing in an input). Shortcut configuration merges in priority order: User Preferences (highest) → Register Defaults → System Defaults (lowest). The cashier can edit their personal overrides via the keyboard icon in the top right of the terminal, while the register defaults are maintained in `PosRegistersPage`.
 
 ## 4. Money / stock safety
 
@@ -110,6 +113,17 @@ Item selling-policy guards run in `PostPosSaleUseCase`, not only in the terminal
 - All POS money in/out is register-attributed: cash drawer, non-cash settlement accounts, sale cash movements, refunds, and shift close variance all carry the register context.
 - `allowPosDirectSales` toggle writes POS policy and is the **only** way to let POS post direct sales. `workflowMode` is never touched.
 - Cash math: `expectedCash = openingFloat + SALE_CASH − REFUND_CASH + PAYIN − PAYOUT − DROP`.
+
+### 4a. POS-specific negative-stock policy
+
+The company-wide `InventorySettings.allowNegativeStock` flag governs every stock OUT inside `RecordStockMovementUseCase` (throwing `NegativeStockError` when off). That flag is correct for back-office, invoice-driven sales — where invoicing ahead of a goods receipt is legitimate — but a POS sale is a physical hand-over at the till, so it must be able to refuse overselling **even when the company allows negative stock**.
+
+`PosSettings.negativeStockPolicy` (`BLOCK` | `ALLOW`, default **`BLOCK`**) is that independent control:
+
+- **`BLOCK`** — `PostPosSaleUseCase.assertNegativeStockAllowed` pre-fetches the selling-warehouse level (`IInventoryCore.preFetchStockLevel`) for every tracked line, aggregates requested quantity per (item, warehouse) — so a manual line plus a promotion free-good of the same item are checked together — and throws `NegativeStockError` if the result would fall below zero. The check runs **before any stock or ledger write** and also on the **dry-run preview**, so the terminal blocks before the cashier tenders.
+- **`ALLOW`** — POS adds no extra block and defers to the company flag enforced inside the inventory OUT.
+
+POS can therefore only be the **same as or stricter than** the company flag, never looser. The policy is threaded from `CompletePosSaleUseCase` into both the preview and the real post; `PostPosSaleUseCase` treats an absent policy as `ALLOW` so its use-case contract stays backward compatible (the safe `BLOCK` default lives in `PosSettings`). "Allow with manager approval" is a reserved future value that will land with the Approval-Engine override work (Task 257) — the Policy Engine decides *whether* approval is required, the Approval Engine *who* approves.
 
 ## 5. Tenant isolation
 
@@ -124,6 +138,7 @@ pos.terminal.access  Access POS Terminal (sell)
 pos.shift.open       Open POS Shift
 pos.shift.close      Close own POS Shift
 pos.shift.forceClose Force-close any POS Shift (manager)
+pos.override.approve Approve POS manager overrides (manager)
 pos.cash.movement    Record POS Cash Movement
 pos.return.create    Process POS Returns
 pos.receipt.reprint  Reprint POS Receipts
@@ -131,6 +146,43 @@ pos.registers.manage Manage POS Registers
 pos.settings.manage  Manage POS Settings
 pos.reports.view     View POS Reports
 ```
+
+## 6a. Manager-override approval seam (Policy Engine vs Approval Engine)
+
+Sensitive POS actions — void a paid line, price/discount/tax override, return, reprint —
+can require a manager's approval. Two engines split the decision:
+
+- **Policy Engine decides *whether* approval is required.** `IPolicyEngine.resolve(scope:'pos',
+  action:'managerOverride' | 'saleLineControls')` reads `CashierRolePolicy.managerOverrideActions`
+  / discount-and-override limits and answers "does this action need a manager?" plus "is an
+  approval token present?".
+- **Approval Engine decides *who* may approve and the outcome.** `CreatePosManagerOverrideUseCase`
+  routes the action through `IApprovalEngine.evaluate(...)` using the reserved subject types
+  (`pos_manager_override`, `price_override`, `discount_override`, `tax_override`).
+  `PosManagerOverrideApprovalPlugin` returns:
+  - **PENDING** — approval required but no approver yet,
+  - **REJECTED** — the approver is the acting cashier (no self-approval), or the approver does
+    not hold `pos.override.approve` authority (verified server-side via the RBAC permission
+    resolver, **not** a client token),
+  - **APPROVED** — a distinct, authorised manager.
+
+  The `approvedOverrideId` token is **only minted on APPROVED** and is what the Policy Engine
+  later checks at sale/return/reprint time. This replaces the previous trust-the-screen gate
+  (token presence) with a real workflow. `below_cost_sale` continues to route through the
+  Approval Engine unchanged (it has no plugin and keeps the generic `requiresApproval → PENDING`
+  fallback). See [Task 257](../../planning/tasks/257-pos-manager-override-via-approval-engine.md).
+
+  **Below-cost rule is now a shared policy (Task 264):** the below-cost / min-margin
+  check `PostPosSaleUseCase` runs via `CommercialCore.validateCostMargin(...)` is
+  driven by the company-wide **SellingPolicy** (`BLOCK` / `REQUIRE_APPROVAL` /
+  `ALLOW`), the *same* policy the Sales invoice path honours. The POS call is
+  unchanged — the Commercial Core self-resolves the policy — so a company can set
+  the till to allow below-cost sales (or block them outright). Because the policy
+  is **shared but POS-independent**, it has its own POS doorway — **POS → Settings
+  → Below-cost selling policy** (route `GET/PUT /tenant/pos/selling-policy`,
+  `pos.settings.manage`) — editing the *same* store as **Sales → Settings → Sales
+  Policy**. A POS-only tenant (Sales module disabled) can therefore still configure
+  it. See `docs/architecture/system-core.md` → *Selling Policy*.
 
 ## 7. Reports (10 POS + 1 link)
 

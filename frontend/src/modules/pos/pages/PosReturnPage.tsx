@@ -81,7 +81,7 @@ const PosReturnPage: React.FC<Props> = () => {
 
   const onLookup = async () => {
     if (!receiptNumber.trim()) {
-      toast.error(t('pos.return.enterReceipt', { defaultValue: 'Enter a receipt number.' }));
+      toast.error(t('pos:return.enterReceipt', { defaultValue: 'Enter a receipt number.' }));
       return;
     }
     try {
@@ -119,13 +119,13 @@ const PosReturnPage: React.FC<Props> = () => {
     if (!receipt) return;
     const returnLines = lines.filter((l) => l.returnQty > 0);
     if (returnLines.length === 0) {
-      toast.error(t('pos.return.noLines', { defaultValue: 'Pick at least one line to return.' }));
+      toast.error(t('pos:return.noLines', { defaultValue: 'Pick at least one line to return.' }));
       return;
     }
     const openShift = bootstrap?.openShift;
     const register = bootstrap?.register;
     if (!openShift || !register) {
-      toast.error(t('pos.return.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      toast.error(t('pos:return.needOpenShift', { defaultValue: 'No open shift for this register.' }));
       return;
     }
     try {
@@ -138,7 +138,7 @@ const PosReturnPage: React.FC<Props> = () => {
         refundMethod,
         managerOverrideId: managerOverride?.managerOverrideId,
       });
-      toast.success(t('pos.return.completed', {
+      toast.success(t('pos:return.completed', {
         defaultValue: 'Return posted. Refund: {{amount}}.',
       }).replace('{{amount}}', String((result as any).refundTotal || 0)));
       setReceipt(null);
@@ -158,7 +158,7 @@ const PosReturnPage: React.FC<Props> = () => {
   const onSearchReplacement = async () => {
     const q = replacementSearch.trim();
     if (!q) {
-      toast.error(t('pos.exchange.enterItem', { defaultValue: 'Enter an item code or name.' }));
+      toast.error(t('pos:exchange.enterItem', { defaultValue: 'Enter an item code or name.' }));
       return;
     }
     try {
@@ -166,7 +166,7 @@ const PosReturnPage: React.FC<Props> = () => {
       const result = await posApi.searchProducts(q, 20);
       setReplacementResults(result.items || []);
       if (!result.items?.length) {
-        toast(t('pos.exchange.noItems', { defaultValue: 'No matching items.' }), { icon: 'ℹ️' });
+        toast(t('pos:exchange.noItems', { defaultValue: 'No matching items.' }), { icon: 'ℹ️' });
       }
     } catch (err: any) {
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to search POS items.');
@@ -178,7 +178,7 @@ const PosReturnPage: React.FC<Props> = () => {
   const addReplacementLine = (item: any) => {
     const unitPrice = Number(item.salePrice || 0);
     if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      toast.error(t('pos.exchange.priceRequired', { defaultValue: 'Set a sale price for this item before using it as a replacement.' }));
+      toast.error(t('pos:exchange.priceRequired', { defaultValue: 'Set a sale price for this item before using it as a replacement.' }));
       return;
     }
     setReplacementLines((prev) => {
@@ -217,17 +217,17 @@ const PosReturnPage: React.FC<Props> = () => {
     if (!receipt) return;
     const returnLines = lines.filter((l) => l.returnQty > 0);
     if (returnLines.length === 0) {
-      toast.error(t('pos.exchange.noReturnLines', { defaultValue: 'Pick at least one line to return for the exchange.' }));
+      toast.error(t('pos:exchange.noReturnLines', { defaultValue: 'Pick at least one line to return for the exchange.' }));
       return;
     }
     if (replacementLines.length === 0) {
-      toast.error(t('pos.exchange.noReplacementLines', { defaultValue: 'Add at least one replacement item.' }));
+      toast.error(t('pos:exchange.noReplacementLines', { defaultValue: 'Add at least one replacement item.' }));
       return;
     }
     const openShift = bootstrap?.openShift;
     const register = bootstrap?.register;
     if (!openShift || !register) {
-      toast.error(t('pos.return.needOpenShift', { defaultValue: 'No open shift for this register.' }));
+      toast.error(t('pos:return.needOpenShift', { defaultValue: 'No open shift for this register.' }));
       return;
     }
     try {
@@ -258,7 +258,7 @@ const PosReturnPage: React.FC<Props> = () => {
       });
       const due = Number((result as any).netDueFromCustomer || 0);
       const refund = Number((result as any).netRefundToCustomer || 0);
-      toast.success(t('pos.exchange.completed', {
+      toast.success(t('pos:exchange.completed', {
         defaultValue: 'Exchange posted. Due: {{due}}, refund: {{refund}}.',
       }).replace('{{due}}', due.toFixed(2)).replace('{{refund}}', refund.toFixed(2)));
       setReceipt(null);
@@ -280,12 +280,12 @@ const PosReturnPage: React.FC<Props> = () => {
   };
 
   const returnColumns: ColumnDefinition<any>[] = [
-    { key: 'returnNumber', label: t('pos.return.col.number', { defaultValue: 'Return # '}), width: '160px', priority: 1, accessor: (r) => r.returnNumber },
-    { key: 'originalReceiptNumber', label: t('pos.return.col.original', { defaultValue: 'Original receipt' }), width: '160px', priority: 1, accessor: (r) => r.originalReceiptNumber },
-    { key: 'refundMethod', label: t('pos.return.col.method', { defaultValue: 'Refund method' }), width: '120px', priority: 1, accessor: (r) => r.refundMethod },
-    { key: 'refundTotal', label: t('pos.return.col.amount', { defaultValue: 'Refund' }), width: '120px', priority: 1, accessor: (r) => Number(r.refundTotal || 0).toFixed(2) },
-    { key: 'salesReturnNumber', label: t('pos.return.col.sr', { defaultValue: 'Sales Return #' }), width: '160px', priority: 1, accessor: (r) => r.salesReturnNumber || '—' },
-    { key: 'createdAt', label: t('pos.return.col.date', { defaultValue: 'Date' }), width: '160px', priority: 2, accessor: (r) => new Date(r.createdAt).toLocaleString() },
+    { key: 'returnNumber', label: t('pos:return.col.number', { defaultValue: 'Return # '}), width: '160px', priority: 1, accessor: (r) => r.returnNumber },
+    { key: 'originalReceiptNumber', label: t('pos:return.col.original', { defaultValue: 'Original receipt' }), width: '160px', priority: 1, accessor: (r) => r.originalReceiptNumber },
+    { key: 'refundMethod', label: t('pos:return.col.method', { defaultValue: 'Refund method' }), width: '120px', priority: 1, accessor: (r) => r.refundMethod },
+    { key: 'refundTotal', label: t('pos:return.col.amount', { defaultValue: 'Refund' }), width: '120px', priority: 1, accessor: (r) => Number(r.refundTotal || 0).toFixed(2) },
+    { key: 'salesReturnNumber', label: t('pos:return.col.sr', { defaultValue: 'Sales Return #' }), width: '160px', priority: 1, accessor: (r) => r.salesReturnNumber || '—' },
+    { key: 'createdAt', label: t('pos:return.col.date', { defaultValue: 'Date' }), width: '160px', priority: 2, accessor: (r) => new Date(r.createdAt).toLocaleString() },
   ];
 
   return (
@@ -294,7 +294,7 @@ const PosReturnPage: React.FC<Props> = () => {
         <div className="p-4 space-y-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Undo2 className="w-5 h-5 text-indigo-600" /> {t('pos.return.title', { defaultValue: 'Process return' })}
+              <Undo2 className="w-5 h-5 text-indigo-600" /> {t('pos:return.title', { defaultValue: 'Process return' })}
             </h2>
             <div className="inline-flex rounded border border-slate-300 p-0.5 text-xs">
               <button
@@ -302,14 +302,14 @@ const PosReturnPage: React.FC<Props> = () => {
                 onClick={() => setMode('RETURN')}
                 className={`rounded px-3 py-1 ${mode === 'RETURN' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
               >
-                {t('pos.return.modeReturn', { defaultValue: 'Return' })}
+                {t('pos:return.modeReturn', { defaultValue: 'Return' })}
               </button>
               <button
                 type="button"
                 onClick={() => setMode('EXCHANGE')}
                 className={`rounded px-3 py-1 ${mode === 'EXCHANGE' ? 'bg-indigo-600 text-white' : 'text-slate-600 hover:bg-slate-100'}`}
               >
-                {t('pos.return.modeExchange', { defaultValue: 'Exchange' })}
+                {t('pos:return.modeExchange', { defaultValue: 'Exchange' })}
               </button>
             </div>
           </div>
@@ -318,7 +318,7 @@ const PosReturnPage: React.FC<Props> = () => {
               type="text"
               value={receiptNumber}
               onChange={(e) => setReceiptNumber(e.target.value)}
-              placeholder={t('pos.return.receiptPlaceholder', { defaultValue: 'Receipt number or ID' })}
+              placeholder={t('pos:return.receiptPlaceholder', { defaultValue: 'Receipt number or ID' })}
               className="flex-1 rounded border border-slate-300 px-3 py-1.5 text-sm"
             />
             <button
@@ -327,24 +327,24 @@ const PosReturnPage: React.FC<Props> = () => {
               className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-indigo-600 text-white text-sm disabled:opacity-50"
             >
               {loading ? <Spinner size="sm" variant="white" /> : <Search className="w-4 h-4" />}
-              {t('pos.return.lookup', { defaultValue: 'Look up' })}
+              {t('pos:return.lookup', { defaultValue: 'Look up' })}
             </button>
           </div>
           {receipt && (
             <div className="space-y-3">
               <div className="text-xs text-slate-500">
                 <Receipt className="inline w-3.5 h-3.5 mr-1" />
-                {t('pos.return.receiptFor', { defaultValue: 'Receipt' })}: <span className="font-mono">{receipt.receiptNumber}</span> — {t('pos.return.si', { defaultValue: 'SI' })}: <span className="font-mono">{receipt.salesInvoiceNumber}</span>
+                {t('pos:return.receiptFor', { defaultValue: 'Receipt' })}: <span className="font-mono">{receipt.receiptNumber}</span> — {t('pos:return.si', { defaultValue: 'SI' })}: <span className="font-mono">{receipt.salesInvoiceNumber}</span>
               </div>
               <div className="border rounded">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="text-left text-xs text-slate-500 border-b">
-                      <th className="py-2 px-2">{t('pos.return.item', { defaultValue: 'Item' })}</th>
-                      <th className="py-2 px-2 text-right">{t('pos.return.sold', { defaultValue: 'Sold' })}</th>
-                      <th className="py-2 px-2 text-right">{t('pos.return.return', { defaultValue: 'Return' })}</th>
-                      <th className="py-2 px-2 text-right">{t('pos.return.price', { defaultValue: 'Price' })}</th>
-                      <th className="py-2 px-2 text-right">{t('pos.return.lineTotal', { defaultValue: 'Line total' })}</th>
+                      <th className="py-2 px-2">{t('pos:return.item', { defaultValue: 'Item' })}</th>
+                      <th className="py-2 px-2 text-right">{t('pos:return.sold', { defaultValue: 'Sold' })}</th>
+                      <th className="py-2 px-2 text-right">{t('pos:return.return', { defaultValue: 'Return' })}</th>
+                      <th className="py-2 px-2 text-right">{t('pos:return.price', { defaultValue: 'Price' })}</th>
+                      <th className="py-2 px-2 text-right">{t('pos:return.lineTotal', { defaultValue: 'Line total' })}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -377,28 +377,28 @@ const PosReturnPage: React.FC<Props> = () => {
                 </table>
               </div>
               <div className="flex justify-between text-sm pt-2">
-                <span>{t('pos.return.refundMethod', { defaultValue: 'Refund method' })}:</span>
+                <span>{t('pos:return.refundMethod', { defaultValue: 'Refund method' })}:</span>
                 <select
                   value={refundMethod}
                   onChange={(e) => setRefundMethod(e.target.value as any)}
                   className="rounded border border-slate-300 px-2 py-1 text-sm"
                 >
-                  <option value="CASH">CASH</option>
-                  <option value="CARD">CARD</option>
+                  <option value="CASH">{t('pos:return.payment.cash', { defaultValue: 'Cash' })}</option>
+                  <option value="CARD">{t('pos:return.payment.card', { defaultValue: 'Card' })}</option>
                   <option value="BANK_TRANSFER">BANK_TRANSFER</option>
-                  <option value="CUSTOM">CUSTOM</option>
+                  <option value="CUSTOM">{t('pos:return.payment.custom', { defaultValue: 'Custom' })}</option>
                 </select>
               </div>
               <div className="flex justify-between text-lg font-bold">
-                <span>{t('pos.return.total', { defaultValue: 'Refund total' })}:</span>
+                <span>{t('pos:return.total', { defaultValue: 'Refund total' })}:</span>
                 <span className="font-mono">{total.toFixed(2)}</span>
               </div>
               <div className="rounded border border-amber-200 bg-amber-50 px-3 py-2">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <div className="text-xs text-amber-900">
                     {managerOverride
-                      ? t('pos.managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', managerOverride.managerOverrideId)
-                      : t('pos.managerOverride.returnHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for returns or exchanges.' })}
+                      ? t('pos:managerOverride.attached', { defaultValue: 'Approval attached: {{id}}' }).replace('{{id}}', managerOverride.managerOverrideId)
+                      : t('pos:managerOverride.returnHelp', { defaultValue: 'Capture manager approval if the cashier role requires approval for returns or exchanges.' })}
                   </div>
                   <button
                     type="button"
@@ -406,8 +406,8 @@ const PosReturnPage: React.FC<Props> = () => {
                     className="rounded border border-amber-300 bg-white px-2.5 py-1 text-xs font-semibold text-amber-800 transition-colors hover:bg-amber-100 cursor-pointer"
                   >
                     {managerOverride
-                      ? t('pos.managerOverride.replace', { defaultValue: 'Replace approval' })
-                      : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+                      ? t('pos:managerOverride.replace', { defaultValue: 'Replace approval' })
+                      : t('pos:managerOverride.capture', { defaultValue: 'Capture approval' })}
                   </button>
                 </div>
               </div>
@@ -415,7 +415,7 @@ const PosReturnPage: React.FC<Props> = () => {
                 <div className="space-y-3 rounded border border-indigo-100 bg-indigo-50/40 p-3">
                   <div className="flex items-center gap-2 text-sm font-semibold text-slate-800">
                     <RefreshCcw className="h-4 w-4 text-indigo-600" />
-                    {t('pos.exchange.replacementTitle', { defaultValue: 'Replacement sale' })}
+                    {t('pos:exchange.replacementTitle', { defaultValue: 'Replacement sale' })}
                   </div>
                   <div className="flex gap-2">
                     <input
@@ -423,7 +423,7 @@ const PosReturnPage: React.FC<Props> = () => {
                       value={replacementSearch}
                       onChange={(e) => setReplacementSearch(e.target.value)}
                       onKeyDown={(e) => { if (e.key === 'Enter') void onSearchReplacement(); }}
-                      placeholder={t('pos.exchange.searchPlaceholder', { defaultValue: 'Search replacement item' })}
+                      placeholder={t('pos:exchange.searchPlaceholder', { defaultValue: 'Search replacement item' })}
                       className="flex-1 rounded border border-slate-300 px-3 py-1.5 text-sm"
                     />
                     <button
@@ -433,7 +433,7 @@ const PosReturnPage: React.FC<Props> = () => {
                       className="inline-flex items-center gap-1 rounded bg-indigo-600 px-3 py-1.5 text-sm text-white disabled:opacity-50"
                     >
                       {replacementSearching ? <Spinner size="sm" variant="white" /> : <Search className="h-4 w-4" />}
-                      {t('pos.exchange.search', { defaultValue: 'Search' })}
+                      {t('pos:exchange.search', { defaultValue: 'Search' })}
                     </button>
                   </div>
                   {replacementResults.length > 0 && (
@@ -459,10 +459,10 @@ const PosReturnPage: React.FC<Props> = () => {
                       <table className="w-full text-sm">
                         <thead>
                           <tr className="border-b text-left text-xs text-slate-500">
-                            <th className="px-2 py-2">{t('pos.exchange.item', { defaultValue: 'Replacement item' })}</th>
-                            <th className="px-2 py-2 text-right">{t('pos.exchange.qty', { defaultValue: 'Qty' })}</th>
-                            <th className="px-2 py-2 text-right">{t('pos.exchange.price', { defaultValue: 'Price' })}</th>
-                            <th className="px-2 py-2 text-right">{t('pos.exchange.total', { defaultValue: 'Total' })}</th>
+                            <th className="px-2 py-2">{t('pos:exchange.item', { defaultValue: 'Replacement item' })}</th>
+                            <th className="px-2 py-2 text-right">{t('pos:exchange.qty', { defaultValue: 'Qty' })}</th>
+                            <th className="px-2 py-2 text-right">{t('pos:exchange.price', { defaultValue: 'Price' })}</th>
+                            <th className="px-2 py-2 text-right">{t('pos:exchange.total', { defaultValue: 'Total' })}</th>
                             <th className="px-2 py-2" />
                           </tr>
                         </thead>
@@ -515,7 +515,7 @@ const PosReturnPage: React.FC<Props> = () => {
                   )}
                   <div className="grid gap-3 text-sm md:grid-cols-2">
                     <label className="space-y-1">
-                      <span className="block text-xs font-medium text-slate-600">{t('pos.exchange.salePaymentMethod', { defaultValue: 'Replacement payment method' })}</span>
+                      <span className="block text-xs font-medium text-slate-600">{t('pos:exchange.salePaymentMethod', { defaultValue: 'Replacement payment method' })}</span>
                       <select
                         value={replacementPaymentMethod}
                         onChange={(e) => setReplacementPaymentMethod(e.target.value as any)}
@@ -525,7 +525,7 @@ const PosReturnPage: React.FC<Props> = () => {
                       </select>
                     </label>
                     <label className="space-y-1">
-                      <span className="block text-xs font-medium text-slate-600">{t('pos.exchange.salePaymentRef', { defaultValue: 'Payment reference' })}</span>
+                      <span className="block text-xs font-medium text-slate-600">{t('pos:exchange.salePaymentRef', { defaultValue: 'Payment reference' })}</span>
                       <input
                         type="text"
                         value={replacementPaymentRef}
@@ -536,15 +536,15 @@ const PosReturnPage: React.FC<Props> = () => {
                   </div>
                   <div className="grid gap-2 rounded border border-slate-200 bg-white p-3 text-sm md:grid-cols-3">
                     <div>
-                      <div className="text-xs text-slate-500">{t('pos.exchange.returnValue', { defaultValue: 'Return value' })}</div>
+                      <div className="text-xs text-slate-500">{t('pos:exchange.returnValue', { defaultValue: 'Return value' })}</div>
                       <div className="font-mono font-semibold">{total.toFixed(2)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-500">{t('pos.exchange.replacementValue', { defaultValue: 'Replacement value' })}</div>
+                      <div className="text-xs text-slate-500">{t('pos:exchange.replacementValue', { defaultValue: 'Replacement value' })}</div>
                       <div className="font-mono font-semibold">{replacementTotal.toFixed(2)}</div>
                     </div>
                     <div>
-                      <div className="text-xs text-slate-500">{netDueFromCustomer > 0 ? t('pos.exchange.netDue', { defaultValue: 'Net due' }) : t('pos.exchange.netRefund', { defaultValue: 'Net refund' })}</div>
+                      <div className="text-xs text-slate-500">{netDueFromCustomer > 0 ? t('pos:exchange.netDue', { defaultValue: 'Net due' }) : t('pos:exchange.netRefund', { defaultValue: 'Net refund' })}</div>
                       <div className="font-mono font-semibold">{(netDueFromCustomer || netRefundToCustomer).toFixed(2)}</div>
                     </div>
                   </div>
@@ -556,8 +556,8 @@ const PosReturnPage: React.FC<Props> = () => {
                 className={`w-full rounded px-3 py-2 text-sm text-white disabled:opacity-50 ${mode === 'RETURN' ? 'bg-rose-600' : 'bg-indigo-600'}`}
               >
                 {mode === 'RETURN'
-                  ? t('pos.return.post', { defaultValue: 'Post return' })
-                  : <span className="inline-flex items-center justify-center gap-2"><ShoppingCart className="h-4 w-4" /> {t('pos.exchange.post', { defaultValue: 'Post exchange' })}</span>}
+                  ? t('pos:return.post', { defaultValue: 'Post return' })
+                  : <span className="inline-flex items-center justify-center gap-2"><ShoppingCart className="h-4 w-4" /> {t('pos:exchange.post', { defaultValue: 'Post exchange' })}</span>}
               </button>
             </div>
           )}
@@ -565,8 +565,8 @@ const PosReturnPage: React.FC<Props> = () => {
       </Card>
 
       <OperationalListLayout<any>
-        title={t('pos.return.historyTitle', { defaultValue: 'Return history' })}
-        subtitle={t('pos.return.historySubtitle', { defaultValue: 'Recent returns for this company.' })}
+        title={t('pos:return.historyTitle', { defaultValue: 'Return history' })}
+        subtitle={t('pos:return.historySubtitle', { defaultValue: 'Recent returns for this company.' })}
         onRefresh={async () => {
           const list = await posApi.listReturns({ limit: 50 }).catch(() => []);
           setReturns((list as any) || []);
@@ -574,33 +574,33 @@ const PosReturnPage: React.FC<Props> = () => {
         data={returns}
         columns={returnColumns}
         idKey="id"
-        emptyMessage={t('pos.return.empty', { defaultValue: 'No returns yet.' })}
+        emptyMessage={t('pos:return.empty', { defaultValue: 'No returns yet.' })}
       />
 
       <ConfirmDialog
         isOpen={showConfirm}
-        title={t('pos.return.confirmTitle', { defaultValue: 'Post return?' })}
-        message={t('pos.return.confirmBody', { defaultValue: 'This posts a sales return, reverses revenue/tax, restocks inventory (per policy), and (for CASH) reduces the shift drawer. Continue?' })}
+        title={t('pos:return.confirmTitle', { defaultValue: 'Post return?' })}
+        message={t('pos:return.confirmBody', { defaultValue: 'This posts a sales return, reverses revenue/tax, restocks inventory (per policy), and (for CASH) reduces the shift drawer. Continue?' })}
         tone="warning"
         onConfirm={onSubmit}
         onCancel={() => setShowConfirm(false)}
-        confirmLabel={submitting ? '…' : t('pos.return.confirm', { defaultValue: 'Post return' })}
+        confirmLabel={submitting ? '…' : t('pos:return.confirm', { defaultValue: 'Post return' })}
       />
       <ConfirmDialog
         isOpen={showExchangeConfirm}
-        title={t('pos.exchange.confirmTitle', { defaultValue: 'Post exchange?' })}
-        message={t('pos.exchange.confirmBody', { defaultValue: 'This posts one POS return and one replacement POS sale linked by the same exchange id. Stock, tax, settlement, and receipt audit follow the normal POS posting rules. Continue?' })}
+        title={t('pos:exchange.confirmTitle', { defaultValue: 'Post exchange?' })}
+        message={t('pos:exchange.confirmBody', { defaultValue: 'This posts one POS return and one replacement POS sale linked by the same exchange id. Stock, tax, settlement, and receipt audit follow the normal POS posting rules. Continue?' })}
         tone="warning"
         onConfirm={onSubmitExchange}
         onCancel={() => setShowExchangeConfirm(false)}
-        confirmLabel={submitting ? '…' : t('pos.exchange.confirm', { defaultValue: 'Post exchange' })}
+        confirmLabel={submitting ? '…' : t('pos:exchange.confirm', { defaultValue: 'Post exchange' })}
       />
       <ManagerOverrideCapture
         isOpen={showManagerOverride}
         action="RETURN"
         title={mode === 'EXCHANGE'
-          ? t('pos.managerOverride.exchangeTitle', { defaultValue: 'Approve exchange' })
-          : t('pos.managerOverride.returnTitle', { defaultValue: 'Approve return' })}
+          ? t('pos:managerOverride.exchangeTitle', { defaultValue: 'Approve exchange' })
+          : t('pos:managerOverride.returnTitle', { defaultValue: 'Approve return' })}
         context={{
           receiptId: receipt?.id,
           receiptNumber: receipt?.receiptNumber,

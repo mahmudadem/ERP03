@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeHandle } from 'react';
 import { ExternalLink, RefreshCw, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,10 @@ import {
 } from '../../../modules/inventory/utils/uomOptions';
 import { useSelectorModalFocus } from './useSelectorModalFocus';
 
+export interface UomSelectorHandle {
+  openPicker: () => void;
+}
+
 interface UomSelectorProps {
   item?: InventoryItemDTO | null;
   itemId?: string;
@@ -22,12 +26,13 @@ interface UomSelectorProps {
   noBorder?: boolean;
   className?: string;
   placeholder?: string;
+  hideIcon?: boolean;
 }
 
 const normalize = (value?: string | null) => (value || '').trim().toUpperCase();
 const unwrapApiPayload = <T,>(payload: any): T => (payload?.data?.data ?? payload?.data ?? payload) as T;
 
-export function UomSelector({
+export const UomSelector = forwardRef<UomSelectorHandle, UomSelectorProps>(({
   item,
   itemId,
   valueId,
@@ -38,7 +43,8 @@ export function UomSelector({
   noBorder = false,
   className = '',
   placeholder,
-}: UomSelectorProps) {
+  hideIcon = false,
+}, ref) => {
   const { t } = useTranslation('common');
   const [currentItem, setCurrentItem] = useState<InventoryItemDTO | null>(item || null);
   const [conversions, setConversions] = useState<UomConversionDTO[]>([]);
@@ -123,6 +129,10 @@ export function UomSelector({
     setModalOpen(true);
   };
 
+  useImperativeHandle(ref, () => ({
+    openPicker: () => openPicker('')
+  }));
+
   const resolveInput = () => {
     const query = normalize(inputValue);
     if (!query) {
@@ -166,13 +176,13 @@ export function UomSelector({
               openPicker();
             }
           }}
-          className={`h-9 w-full bg-transparent px-2 pr-8 uppercase text-slate-900 outline-none transition-colors dark:text-slate-100 ${
+          className={`h-9 w-full bg-transparent px-2 ${hideIcon ? '' : 'pr-8'} uppercase text-slate-900 outline-none transition-colors dark:text-slate-100 ${
             noBorder
               ? 'border-0 [font-size:inherit] [font-family:inherit] focus:bg-blue-50/40 dark:focus:bg-blue-950/20'
               : 'text-xs rounded border border-slate-200 bg-white focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 dark:border-slate-700 dark:bg-slate-900'
           } ${!effectiveItemId ? 'cursor-not-allowed text-transparent' : ''}`}
         />
-        {!disabled && effectiveItemId && (
+        {!disabled && !hideIcon && effectiveItemId && (
           <button
             type="button"
             onMouseDown={(event) => event.preventDefault()}
@@ -293,6 +303,6 @@ export function UomSelector({
       )}
     </>
   );
-}
+});
 
 export default UomSelector;

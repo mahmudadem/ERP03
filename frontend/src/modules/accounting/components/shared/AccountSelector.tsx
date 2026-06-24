@@ -63,7 +63,7 @@ const matchesClassification = (account: Account, allowed: AccountClassification[
 export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps>(({
   value,
   onChange,
-  placeholder = 'Account code...',
+  placeholder,
   disabled = false,
   className = '',
   noBorder = false,

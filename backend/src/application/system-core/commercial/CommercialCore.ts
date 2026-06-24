@@ -1,6 +1,7 @@
 import { CalculatedTaxLineAmounts } from '../contracts/ITaxEngine';
 import {
   ApplyPromotionsContext,
+  CommercialBelowCostMode,
   CommercialDiscountType,
   CommercialLineCalculationContext,
   CommercialPromotionApplicationResult,
@@ -50,6 +51,16 @@ export const __setPromotionsEnabledForTest = (value: boolean | null): void => {
 
 export type CommercialPriceResolver = (context: ResolvePriceContext) => Promise<number | null>;
 export type CommercialCostResolver = (context: CostMarginValidationContext) => Promise<number | null>;
+
+/** Resolved shared SellingPolicy snapshot for a company (below-cost rule). */
+export interface CommercialSellingPolicySnapshot {
+  belowCostMode?: CommercialBelowCostMode;
+  minMarginPercent?: number;
+  allowManagerOverride?: boolean;
+}
+export type CommercialSellingPolicyResolver = (
+  companyId: string
+) => Promise<CommercialSellingPolicySnapshot | null>;
 
 /**
  * FUP-2: canonical line trade-discount resolver. Given an already-computed gross
@@ -186,7 +197,8 @@ export class CommercialCore implements ICommercialCore {
   constructor(
     private readonly resolvePriceDelegate?: CommercialPriceResolver,
     private readonly resolveCostDelegate?: CommercialCostResolver,
-    private readonly approvalEngine?: IApprovalEngine
+    private readonly approvalEngine?: IApprovalEngine,
+    private readonly resolveSellingPolicyDelegate?: CommercialSellingPolicyResolver
   ) {}
 
   async resolvePrice(context: ResolvePriceContext): Promise<number | null> {
@@ -216,11 +228,19 @@ export class CommercialCore implements ICommercialCore {
       return { allowed: true, requiresApproval: false, reason: 'NO_COST' };
     }
 
+    // Resolve the shared SellingPolicy (company-wide), unless the caller pinned
+    // values explicitly in the context. Default mode preserves the protective
+    // pre-policy behaviour (below-cost requires approval).
+    const policy = await this.resolveSellingPolicy(context);
+    const mode: CommercialBelowCostMode = policy.belowCostMode;
+    const minimumMarginPct = context.minimumMarginPct ?? policy.minMarginPercent;
+    const allowManagerOverride = policy.allowManagerOverride !== false;
+
     const marginPct = unitPriceBase === 0
       ? -100
       : roundMoney(((unitPriceBase - resolvedCost) / unitPriceBase) * 100);
     const belowCost = unitPriceBase < resolvedCost;
-    const belowMinimum = context.minimumMarginPct !== undefined && marginPct < numeric(context.minimumMarginPct);
+    const belowMinimum = minimumMarginPct !== undefined && marginPct < numeric(minimumMarginPct);
     if (!belowCost && !belowMinimum) {
       return {
         allowed: true,
@@ -232,7 +252,15 @@ export class CommercialCore implements ICommercialCore {
     }
 
     const reason = belowCost ? 'BELOW_COST' : 'BELOW_MIN_MARGIN';
-    if (context.approvedOverride === true) {
+
+    // ALLOW: cost/margin is never enforced.
+    if (mode === 'ALLOW') {
+      return { allowed: true, requiresApproval: false, reason, unitCostBase: resolvedCost, marginPct };
+    }
+
+    // An approved manager override clears the violation, unless the policy makes
+    // the control absolute (allowManagerOverride === false).
+    if (context.approvedOverride === true && allowManagerOverride) {
       return {
         allowed: true,
         requiresApproval: false,
@@ -242,6 +270,12 @@ export class CommercialCore implements ICommercialCore {
       };
     }
 
+    // BLOCK: hard refusal — do not route to the approval engine.
+    if (mode === 'BLOCK') {
+      return { allowed: false, requiresApproval: false, reason, unitCostBase: resolvedCost, marginPct };
+    }
+
+    // REQUIRE_APPROVAL (default): route through the Approval Engine.
     const approval = await this.approvalEngine?.evaluate({
       type: 'below_cost_sale',
       id: `${context.source || 'commercial'}:${context.itemId}`,
@@ -267,6 +301,34 @@ export class CommercialCore implements ICommercialCore {
       unitCostBase: resolvedCost,
       marginPct,
       approval,
+    };
+  }
+
+  /**
+   * Resolve the effective below-cost rule: explicit context values win, then the
+   * shared company SellingPolicy (via delegate), then the protective default.
+   */
+  private async resolveSellingPolicy(
+    context: CostMarginValidationContext
+  ): Promise<{ belowCostMode: CommercialBelowCostMode; minMarginPercent?: number; allowManagerOverride?: boolean }> {
+    let belowCostMode = context.belowCostMode;
+    let minMarginPercent = context.minimumMarginPct;
+    let allowManagerOverride = context.allowManagerOverride;
+
+    const needsPolicy = belowCostMode === undefined || allowManagerOverride === undefined || minMarginPercent === undefined;
+    if (needsPolicy && this.resolveSellingPolicyDelegate && context.companyId) {
+      const snapshot = await this.resolveSellingPolicyDelegate(context.companyId);
+      if (snapshot) {
+        belowCostMode = belowCostMode ?? snapshot.belowCostMode;
+        minMarginPercent = minMarginPercent ?? snapshot.minMarginPercent;
+        allowManagerOverride = allowManagerOverride ?? snapshot.allowManagerOverride;
+      }
+    }
+
+    return {
+      belowCostMode: belowCostMode ?? 'REQUIRE_APPROVAL',
+      minMarginPercent,
+      allowManagerOverride,
     };
   }
 }

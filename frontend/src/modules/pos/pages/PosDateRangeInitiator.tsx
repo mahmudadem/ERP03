@@ -35,13 +35,13 @@ export const PosDateRangeInitiator: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-            {t('pos.report.dateFrom', { defaultValue: 'Date from' })}
+            {t('pos:report.dateFrom', { defaultValue: 'Date from' })}
           </label>
           <DatePicker value={from} onChange={setFrom} className="w-full" />
         </div>
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-            {t('pos.report.dateTo', { defaultValue: 'Date to' })}
+            {t('pos:report.dateTo', { defaultValue: 'Date to' })}
           </label>
           <DatePicker value={to} onChange={setTo} className="w-full" />
         </div>

@@ -102,6 +102,52 @@ accounting/inventory decision.
 This extends the "Where does this logic go?" protocol in `AGENTS.md` with a sharper
 always-on/ownership test.
 
+## Engine maturity scorecard — extracted vs wrapper
+
+Every engine is reached through a contract (`contracts/I*.ts`) and a `Legacy*Adapter`. But the
+adapter pattern hides an important distinction the rest of these docs only state per-phase: an
+adapter can forward to **new logic that was genuinely moved into System Core**, or it can be a
+**front-door over pre-existing code that still lives in its old home**. Both are valid — the
+seam is what makes a module independent — but they are *not* the same level of "done", and the
+plan is to march everything toward full extraction over time.
+
+Three states:
+
+- **Extracted** — the business logic physically lives in a System Core engine file. The adapter
+  is just dependency-injection wiring. Changing the rule means editing the engine, once.
+- **Hybrid** — System Core owns a real engine for the *new* surface (e.g. subject-agnostic
+  approvals, POS policy), but the *original* path is still wrapped from legacy code for behaviour
+  parity. Partly moved.
+- **Wrapper** — the engine is today only a stable interface (and, in some cases, real new routing
+  logic) in front of code that still lives in its old module. The internals are slated to be
+  replaced "one task at a time" per the Adapter Rule in [system-core.md](system-core.md).
+
+| Engine | State | What that means today | Path to standalone |
+|---|---|---|---|
+| **Money Core** | ✅ Extracted | All rounding lives in `money/roundMoney.ts`; module copies deleted | done |
+| **Tax Engine** | ✅ Extracted | `tax/TaxEngine.ts` owns line/charge tax; adapter is `extends TaxEngine` | done |
+| **Numbering Engine** | ✅ Extracted | `numbering/NumberingEngine.ts` is the allocator; adapter is a fallback shim | done |
+| **Commercial Core** | ✅ Extracted | `commercial/CommercialCore.ts` owns discount/price/margin/promotions; adapter does `new CommercialCore(...)` | done |
+| **Document Core** | ✅ Extracted | Persona enum + editability rules are System-Core-owned | done |
+| **Inventory Core** | 🟡 Hybrid | COGS account resolution + bucketing moved in (250j); stock *movement/costing* still delegates to `RecordStockMovementUseCase` | finish moving movement/costing into the core |
+| **Approval Engine** | 🟡 Hybrid | Real subject-agnostic `approval/ApprovalEngine.ts` + plugins; accounting-voucher path wraps legacy `ApprovalPolicyService` via `LedgerCustodyApprovalPlugin` | reimplement custody approval natively |
+| **Policy Engine** | 🟡 Hybrid | Real `PolicyEngine.ts` for POS policy; accounting/document policy wraps `AccountingPolicyRegistry` + `DocumentPolicyResolver` | absorb the legacy resolvers |
+| **Accounting Bridge** | 🟠 Wrapper | Real full/minimal **routing brain** lives here, but full-mode posting delegates to legacy `SubledgerVoucherPostingService`; only POS/document posters routed so far | route all source modules; later own the posting internals |
+| **Audit Engine** | 🟠 Wrapper | Stable `record(...)` seam in front of legacy `RecordChangeService` | reimplement the audit writer natively |
+| **FX Engine** | 🟠 Wrapper | `IFxEngine` over the already-centralized `core` exchange-rate use-cases (no real duplication — that logic was already in one place) | optional; low urgency since `core` is already the single home |
+
+**How to read this:** ✅ rows are finished extractions — safe to treat as the real, single home of
+that logic. 🟡/🟠 rows are architecturally sound (every module depends on the *interface*, not on
+another module) but still have legacy internals behind the door. None of them is a regression or a
+half-built feature — they are deliberate, behaviour-preserving stopping points. The "Path to
+standalone" column is the remaining work if/when we choose to make each one fully self-contained;
+none of it blocks shipping features today.
+
+> **Yes — the plan is that all of these can become standalone.** The wrappers exist so modules
+> could be decoupled *now* without rewriting working logic all at once. Each wrapper can later have
+> its internals replaced with no change to any module, because the module only ever sees the
+> interface.
+
 ## Current gaps (tracked tasks)
 
 The principle is mostly realized — the engines exist. The remaining work is decoupling the

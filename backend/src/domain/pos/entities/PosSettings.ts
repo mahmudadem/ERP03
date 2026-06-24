@@ -23,21 +23,41 @@ export interface PosPaymentMethodConfig {
 
 export type PosCashRounding = 'none' | 'nearest_05' | 'nearest_1';
 
+/**
+ * POS-specific negative-stock policy. This is deliberately distinct from the
+ * company-wide `InventorySettings.allowNegativeStock` flag: a POS sale is a
+ * physical hand-over at the till, so it must be able to refuse overselling even
+ * when back-office (invoice-driven) sales are allowed to go negative.
+ *
+ *  - `BLOCK` (default) — POS refuses a sale that would drive on-hand below zero,
+ *    regardless of the company inventory flag. POS is independently strict.
+ *  - `ALLOW`           — POS defers to the company inventory flag (which may
+ *    still block via `NegativeStockError` inside the inventory OUT).
+ *
+ * POS can therefore only be the *same as* or *stricter than* the company flag,
+ * never looser. ("Allow with manager approval" is a reserved future value that
+ * will land with the Approval-Engine override work — see Task 257.)
+ */
+export type PosNegativeStockPolicy = 'BLOCK' | 'ALLOW';
+
 export interface PosSettingsProps {
   companyId: string;
   requireOpenShift?: boolean;
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix?: string;
   receiptNextSeq?: number;
   cashRounding?: PosCashRounding;
   allowPosDirectSales?: boolean;
+  negativeStockPolicy?: PosNegativeStockPolicy;
   paymentMethods?: PosPaymentMethodConfig[];
 }
 
 const VALID_METHODS: PosPaymentMethodCode[] = ['CASH', 'CARD', 'BANK_TRANSFER', 'CUSTOM'];
 const VALID_ROUNDING: PosCashRounding[] = ['none', 'nearest_05', 'nearest_1'];
+const VALID_NEGATIVE_STOCK_POLICIES: PosNegativeStockPolicy[] = ['BLOCK', 'ALLOW'];
 
 export class PosSettings {
   readonly companyId: string;
@@ -45,10 +65,12 @@ export class PosSettings {
   walkInCustomerId?: string;
   cashOverAccountId?: string;
   cashShortAccountId?: string;
+  defaultRevenueAccountId?: string;
   receiptPrefix: string;
   receiptNextSeq: number;
   cashRounding: PosCashRounding;
   allowPosDirectSales: boolean;
+  negativeStockPolicy: PosNegativeStockPolicy;
   paymentMethods: PosPaymentMethodConfig[];
 
   constructor(props: PosSettingsProps) {
@@ -78,10 +100,16 @@ export class PosSettings {
     this.walkInCustomerId = props.walkInCustomerId?.trim() || undefined;
     this.cashOverAccountId = props.cashOverAccountId?.trim() || undefined;
     this.cashShortAccountId = props.cashShortAccountId?.trim() || undefined;
+    this.defaultRevenueAccountId = props.defaultRevenueAccountId?.trim() || undefined;
     this.receiptPrefix = props.receiptPrefix?.trim() || 'R';
     this.receiptNextSeq = Number.isFinite(props.receiptNextSeq) ? Number(props.receiptNextSeq) : 1;
     this.cashRounding = rounding;
     this.allowPosDirectSales = props.allowPosDirectSales === true;
+    // Default to BLOCK: POS never silently oversells, even if the company has
+    // turned on negative stock for back-office invoice-driven sales.
+    this.negativeStockPolicy = VALID_NEGATIVE_STOCK_POLICIES.includes(props.negativeStockPolicy as PosNegativeStockPolicy)
+      ? (props.negativeStockPolicy as PosNegativeStockPolicy)
+      : 'BLOCK';
     this.paymentMethods = normalized;
   }
 
@@ -93,6 +121,7 @@ export class PosSettings {
       receiptNextSeq: 1,
       cashRounding: 'none',
       allowPosDirectSales: false,
+      negativeStockPolicy: 'BLOCK',
       paymentMethods: [
         // CASH is the only always-on method; settlementAccountId empty until the
         // operator configures it on the POS settings page.
@@ -120,10 +149,12 @@ export class PosSettings {
       walkInCustomerId: this.walkInCustomerId,
       cashOverAccountId: this.cashOverAccountId,
       cashShortAccountId: this.cashShortAccountId,
+      defaultRevenueAccountId: this.defaultRevenueAccountId,
       receiptPrefix: this.receiptPrefix,
       receiptNextSeq: this.receiptNextSeq,
       cashRounding: this.cashRounding,
       allowPosDirectSales: this.allowPosDirectSales,
+      negativeStockPolicy: this.negativeStockPolicy,
       paymentMethods: this.paymentMethods,
     };
   }
@@ -135,10 +166,12 @@ export class PosSettings {
       walkInCustomerId: data.walkInCustomerId,
       cashOverAccountId: data.cashOverAccountId,
       cashShortAccountId: data.cashShortAccountId,
+      defaultRevenueAccountId: data.defaultRevenueAccountId,
       receiptPrefix: data.receiptPrefix || 'R',
       receiptNextSeq: Number(data.receiptNextSeq) || 1,
       cashRounding: VALID_ROUNDING.includes(data.cashRounding) ? data.cashRounding : 'none',
       allowPosDirectSales: data.allowPosDirectSales === true,
+      negativeStockPolicy: VALID_NEGATIVE_STOCK_POLICIES.includes(data.negativeStockPolicy) ? data.negativeStockPolicy : 'BLOCK',
       paymentMethods: Array.isArray(data.paymentMethods) ? data.paymentMethods : [],
     });
   }

@@ -737,6 +737,78 @@ describe('Sales posting use-cases (Phase 2)', () => {
     expect(ledgerRepo.recordForVoucher).toHaveBeenCalledTimes(2);
   });
 
+  // Task 264 — shared below-cost selling policy attached to Sales posting.
+  const makePostSIForBelowCost = (commercialCore: any) => {
+    const settings = makeSettings('SIMPLE');
+    const customer = makeCustomer();
+    const stockItem = makeItem('stock-7c', {
+      trackInventory: true,
+      cogsAccountId: 'COGS-700',
+      inventoryAssetAccountId: 'INV-700',
+      revenueAccountId: 'REV-700',
+    });
+    const si = makeSI({ id: 'si-7c', item: stockItem, invoicedQty: 2, unitPriceDoc: 15, warehouseId: 'wh-1' });
+    const inventoryService = makeInventoryService();
+    const invoiceStore = new Map([[si.id, si]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+    const useCase = new PostSalesInvoiceUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository() as any,
+      {
+        getById: jest.fn(async (_companyId: string, id: string) => invoiceStore.get(id) ?? null),
+        update: jest.fn(async (entity: SalesInvoice) => { invoiceStore.set(entity.id, entity); }),
+      } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => customer) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      makeItemRepo(stockItem) as any,
+      { getCategory: jest.fn(async () => null), getCompanyCategories: jest.fn(async () => []) } as any,
+      { getWarehouse: jest.fn(async () => ({ id: 'wh-1', companyId: COMPANY_ID })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      inventoryService as any,
+      makeCompanyModuleRepo() as any,
+      new SubledgerVoucherPostingService(
+        voucherRepo as any,
+        ledgerRepo as any,
+        { getBaseCurrency: jest.fn(async () => 'USD') } as any
+      ),
+      undefined,
+      makeTransactionManager() as any,
+      undefined, undefined, undefined, undefined, undefined,
+      undefined, undefined, undefined, undefined, undefined,
+      commercialCore
+    );
+    return { useCase, si, voucherRepo, inventoryService };
+  };
+
+  it('7c) PostSI blocks a below-cost line when the selling policy denies it (no vouchers)', async () => {
+    const commercialCore = {
+      validateCostMargin: jest.fn(async (_ctx: any) => ({ allowed: false, requiresApproval: true, reason: 'BELOW_COST' })),
+    };
+    const { useCase, si, voucherRepo } = makePostSIForBelowCost(commercialCore);
+
+    await expect(useCase.execute(COMPANY_ID, si.id)).rejects.toThrow(/below allowed cost\/margin/i);
+    expect(commercialCore.validateCostMargin).toHaveBeenCalledWith(
+      expect.objectContaining({ source: 'sales', itemId: 'stock-7c' })
+    );
+    expect(voucherRepo.save).not.toHaveBeenCalled();
+  });
+
+  it('7d) PostSI posts normally when the selling policy allows the line', async () => {
+    const commercialCore = {
+      validateCostMargin: jest.fn(async (_ctx: any) => ({ allowed: true, requiresApproval: false, reason: 'OK' })),
+    };
+    const { useCase, si, voucherRepo } = makePostSIForBelowCost(commercialCore);
+
+    const posted = await useCase.execute(COMPANY_ID, si.id);
+    expect(posted.status).toBe('POSTED');
+    expect(commercialCore.validateCostMargin).toHaveBeenCalled();
+    expect(voucherRepo.save).toHaveBeenCalledTimes(2);
+  });
+
   it('7b) PostSI in PERIODIC mode posts only revenue voucher, still moves quantity, and creates no COGS/inventory GL lines', async () => {
     const settings = makeSettings('SIMPLE', {
       defaultRevenueAccountId: 'SALES-700',

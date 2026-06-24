@@ -84,11 +84,11 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
 
   const onSubmit = async () => {
     if (!managerUserId) {
-      toast.error(t('pos.managerOverride.managerRequired', { defaultValue: 'Select the approving manager.' }));
+      toast.error(t('pos:managerOverride.managerRequired', { defaultValue: 'Select the approving manager.' }));
       return;
     }
     if (!reason.trim()) {
-      toast.error(t('pos.managerOverride.reasonRequired', { defaultValue: 'Enter the approval reason.' }));
+      toast.error(t('pos:managerOverride.reasonRequired', { defaultValue: 'Enter the approval reason.' }));
       return;
     }
     try {
@@ -100,7 +100,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
         reason: reason.trim(),
         context,
       });
-      toast.success(t('pos.managerOverride.approved', { defaultValue: 'Manager approval captured.' }));
+      toast.success(t('pos:managerOverride.approved', { defaultValue: 'Manager approval captured.' }));
       onApproved({
         managerOverrideId: created.managerOverrideId,
         managerUserId: created.managerUserId,
@@ -119,7 +119,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
   return (
     <ConfirmDialog
       isOpen={isOpen}
-      title={title || t('pos.managerOverride.title', { defaultValue: 'Manager approval' })}
+      title={title || t('pos:managerOverride.title', { defaultValue: 'Manager approval' })}
       icon={<ShieldCheck className="h-5 w-5" />}
       tone="warning"
       isConfirming={submitting}
@@ -127,17 +127,17 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
       onConfirm={onSubmit}
       confirmLabel={submitting
         ? t('common.saving', { defaultValue: 'Saving...' })
-        : t('pos.managerOverride.capture', { defaultValue: 'Capture approval' })}
+        : t('pos:managerOverride.capture', { defaultValue: 'Capture approval' })}
       cancelLabel={t('common.cancel', { defaultValue: 'Cancel' })}
       message={
         <div className="space-y-3">
           <div className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700">
-            <span className="font-semibold">{t('pos.managerOverride.action', { defaultValue: 'Action' })}:</span>{' '}
+            <span className="font-semibold">{t('pos:managerOverride.action', { defaultValue: 'Action' })}:</span>{' '}
             {actionLabel(action)}
           </div>
           <div>
             <label htmlFor="pos-manager-override-user" className="mb-1 block text-xs font-medium text-slate-600">
-              {t('pos.managerOverride.manager', { defaultValue: 'Approving manager' })}
+              {t('pos:managerOverride.manager', { defaultValue: 'Approving manager' })}
             </label>
             <select
               id="pos-manager-override-user"
@@ -149,7 +149,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
               <option value="">
                 {loadingUsers
                   ? t('common.loading', { defaultValue: 'Loading...' })
-                  : t('pos.managerOverride.selectManager', { defaultValue: 'Select manager' })}
+                  : t('pos:managerOverride.selectManager', { defaultValue: 'Select manager' })}
               </option>
               {activeUsers.map((user) => (
                 <option key={user.userId} value={user.userId}>
@@ -160,7 +160,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
           </div>
           <div>
             <label htmlFor="pos-manager-override-reason" className="mb-1 block text-xs font-medium text-slate-600">
-              {t('pos.managerOverride.reason', { defaultValue: 'Reason' })}
+              {t('pos:managerOverride.reason', { defaultValue: 'Reason' })}
             </label>
             <textarea
               id="pos-manager-override-reason"

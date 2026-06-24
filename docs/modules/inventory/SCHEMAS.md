@@ -158,11 +158,24 @@ type MovementType =
 
 type ReferenceType =
   | 'PURCHASE_INVOICE'
+  | 'PURCHASE_ORDER'
+  | 'GOODS_RECEIPT'
+  | 'PURCHASE_RETURN'
+  | 'SALES_ORDER'
+  | 'DELIVERY_NOTE'
   | 'SALES_INVOICE'
+  | 'SALES_RETURN'
+  | 'POS_DIRECT_SALE'     // POS posts natively as itself (POS independence gate #8)
+  | 'POS_RETURN'
   | 'STOCK_ADJUSTMENT'
   | 'STOCK_TRANSFER'
   | 'OPENING'
   | 'MANUAL';
+
+// NOTE: the runtime guard array `REFERENCE_TYPES` in
+// backend/src/domain/inventory/entities/StockMovement.ts must list every value
+// above — the type checks compile-time call sites; the array checks runtime
+// construction. Keep them in sync.
 
 type CostSource =
   | 'PURCHASE'            // Cost from a purchase document

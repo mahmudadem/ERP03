@@ -112,6 +112,7 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
             { id: 'pos.shift.open',       label: 'Open POS Shift' },
             { id: 'pos.shift.close',      label: 'Close own POS Shift' },
             { id: 'pos.shift.forceClose', label: 'Force-close any POS Shift (manager)' },
+            { id: 'pos.override.approve', label: 'Approve POS manager overrides (manager)' },
             { id: 'pos.cash.movement',    label: 'Record POS Cash Movement' },
             { id: 'pos.return.create',    label: 'Process POS Returns' },
             { id: 'pos.receipt.reprint',  label: 'Reprint POS Receipts' },

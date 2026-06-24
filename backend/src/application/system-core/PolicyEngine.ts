@@ -2,11 +2,13 @@ import { AccountingPolicyRegistry } from '../accounting/policies/AccountingPolic
 import { IPosPolicyRepository } from '../../repository/interfaces/pos/IPosPolicyRepository';
 import { DocumentPolicyResolver } from '../common/services/DocumentPolicyResolver';
 import { IPolicyEngine, PolicyResolveRequest, PolicyResolveResult } from './contracts/IPolicyEngine';
+import { ICommercialCore } from './contracts/ICommercialCore';
 
 export class PolicyEngine implements IPolicyEngine {
   constructor(
     private readonly posPolicyRepo: IPosPolicyRepository,
-    private readonly accountingPolicyRegistry?: AccountingPolicyRegistry
+    private readonly accountingPolicyRegistry?: AccountingPolicyRegistry,
+    private readonly commercialCore?: ICommercialCore
   ) {}
 
   async resolve(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
@@ -18,6 +20,14 @@ export class PolicyEngine implements IPolicyEngine {
     }
     if (request.scope === 'pos' && request.action === 'saleLineControls') {
       return this.resolvePosSaleLineControls(request);
+    }
+
+    // Shared commercial selling policy (below-cost / minimum-margin), consumed by
+    // both POS and Sales. The Commercial Core does the margin math and resolves
+    // the company-wide SellingPolicy (BLOCK / REQUIRE_APPROVAL / ALLOW); this
+    // branch is the cross-module façade so any module can ask the same question.
+    if (request.scope === 'commercial' && request.action === 'belowCostSale') {
+      return this.resolveCommercialBelowCost(request);
     }
 
     if (request.scope === 'accounting' && request.action === 'postingApprovalRequired' && request.companyId) {
@@ -87,6 +97,11 @@ export class PolicyEngine implements IPolicyEngine {
     return { allowed, requiresApproval: requiresApproval && !approvedOverride, resolvedBy };
   }
 
+  // Seam (Task 257): the Policy Engine decides *whether* an override needs approval
+  // (CashierRolePolicy.managerOverrideActions). *Who* may approve and the outcome are
+  // owned by the Approval Engine (PosManagerOverrideApprovalPlugin), which mints the
+  // approvedOverrideId only after a real, authorised, non-self approval. Here we then
+  // confirm such a token is present for the actions that require approval.
   private async resolvePosManagerOverride(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
     if (!request.companyId) {
       return { allowed: false, requiresApproval: false, resolvedBy: ['POSPolicy.missingCompany'] };
@@ -114,6 +129,29 @@ export class PolicyEngine implements IPolicyEngine {
     }
 
     return { allowed: true, requiresApproval: false, resolvedBy };
+  }
+
+  private async resolveCommercialBelowCost(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
+    if (!this.commercialCore) {
+      return { allowed: true, requiresApproval: false, resolvedBy: ['CommercialCore.notConfigured'] };
+    }
+    const ctx = request.context || {};
+    const result = await this.commercialCore.validateCostMargin({
+      companyId: request.companyId || '',
+      itemId: String(ctx.itemId || ''),
+      unitPriceBase: Number(ctx.unitPriceBase) || 0,
+      unitCostBase: ctx.unitCostBase !== undefined ? Number(ctx.unitCostBase) : undefined,
+      quantity: ctx.quantity !== undefined ? Number(ctx.quantity) : undefined,
+      minimumMarginPct: ctx.minimumMarginPct !== undefined ? Number(ctx.minimumMarginPct) : undefined,
+      actorUserId: ctx.actorUserId as string | undefined,
+      approvedOverride: ctx.approvedOverride === true,
+      source: (ctx.source as string) || 'commercial',
+    });
+    return {
+      allowed: result.allowed,
+      requiresApproval: result.requiresApproval,
+      resolvedBy: [`CommercialCore.belowCost.${result.reason}`],
+    };
   }
 
   private async resolvePosSaleLineControls(request: PolicyResolveRequest): Promise<PolicyResolveResult> {

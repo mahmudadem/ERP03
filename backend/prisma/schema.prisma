@@ -173,6 +173,7 @@ model UserPreferences {
   appearanceSettings              Json?
   disabledNotificationCategories  String[] @default([])
   notificationCategoryOverrides   Json?
+  posShortcuts                    Json?
   createdAt                       DateTime @default(now())
   updatedAt                       DateTime @updatedAt
 
@@ -1674,6 +1675,7 @@ model PosRegister {
   warehouseId         String
   cashDrawerAccountId String
   settlementAccountIds Json?
+  keyboardShortcuts   Json?
   status              String   @default("ACTIVE")
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt

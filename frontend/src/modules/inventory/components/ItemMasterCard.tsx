@@ -34,6 +34,7 @@ import { clsx } from 'clsx';
 import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../components/layout/MasterCardLayout';
 import { generateNextCode, CODE_PATTERNS } from '../../../utils/codeGenerator';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useTranslation } from 'react-i18next';
 
 interface ItemMasterCardProps {
   itemId?: string;
@@ -42,13 +43,7 @@ interface ItemMasterCardProps {
   onSaved?: (item: InventoryItemDTO) => void;
 }
 
-const ITEM_TABS: MasterCardTab[] = [
-  { id: 'GENERAL', label: 'General Info', icon: FileText },
-  { id: 'PRICING', label: 'Pricing & Costs', icon: DollarSign },
-  { id: 'DIMENSIONS', label: 'Size & Weight', icon: Maximize2 },
-  { id: 'INVENTORY', label: 'Stock Control', icon: Warehouse },
-  { id: 'ACCOUNTING', label: 'Accounting GL', icon: ShieldCheck },
-];
+// ITEM_TABS will be defined inside the component to use the translation hook.
 
 const ItemMasterCard: React.FC<ItemMasterCardProps> = ({ 
   itemId, 
@@ -56,6 +51,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   onClose, 
   onSaved 
 }) => {
+  const { t } = useTranslation();
   const { hasPermission } = useRBAC();
   const { confirm, confirmDialog } = useConfirm();
   const [activeTab, setActiveTab] = useState('GENERAL');
@@ -89,6 +85,14 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
   const isNew = !itemId || itemId === 'new';
   const canEdit = hasPermission('inventory.items.manage');
+
+  const ITEM_TABS: MasterCardTab[] = [
+    { id: 'GENERAL', label: t('General Info', 'General Info'), icon: FileText },
+    { id: 'PRICING', label: t('Pricing & Costs', 'Pricing & Costs'), icon: DollarSign },
+    { id: 'DIMENSIONS', label: t('Size & Weight', 'Size & Weight'), icon: Maximize2 },
+    { id: 'INVENTORY', label: t('Stock Control', 'Stock Control'), icon: Warehouse },
+    { id: 'ACCOUNTING', label: t('Accounting GL', 'Accounting GL'), icon: ShieldCheck },
+  ];
 
   useEffect(() => {
     loadCategories();
@@ -380,20 +384,20 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
         {point ? formatMoney(point.ccy, point.currency) : '—'}
       </div>
       <div className="mt-1 text-xs text-slate-500">
-        Base: {point ? formatMoney(point.base, currencies[0] || item.costCurrency || point.currency) : '—'}
+        {t('Base', 'Base')}: {point ? formatMoney(point.base, currencies[0] || item.costCurrency || point.currency) : '—'}
       </div>
       <div className="mt-1 text-[11px] text-slate-400">
-        {point ? `${point.asOf} • FX ${point.fxRateToBase}` : 'No posted value yet'}
+        {point ? `${point.asOf} • FX ${point.fxRateToBase}` : t('No posted value yet', 'No posted value yet')}
       </div>
     </div>
   );
 
-  if (loading) return <div className="p-20 text-center opacity-50">Loading Item Master...</div>;
+  if (loading) return <div className="p-20 text-center opacity-50">{t('Loading Item Master...', 'Loading Item Master...')}</div>;
 
   return (
     <MasterCardLayout
-      title={item.name || 'Item'}
-      subtitle={isNew ? 'New Inventory Record' : `Inventory Item • ${item.type}`}
+      title={item.name || t('Item', 'Item')}
+      subtitle={isNew ? t('New Inventory Record', 'New Inventory Record') : `${t('Inventory Item', 'Inventory Item')} • ${t(item.type || 'PRODUCT', item.type || 'PRODUCT')}`}
       identifier={item.code}
       icon={Package}
       tabs={ITEM_TABS}
@@ -407,35 +411,35 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       onClose={onClose}
       updatedAt={item.updatedAt}
       error={error}
-      saveNewLabel="Save New Item"
-      updateLabel="Update Item"
+      saveNewLabel={t('Save New Item', 'Save New Item')}
+      updateLabel={t('Update Item', 'Update Item')}
     >
       {activeTab === 'GENERAL' && (
         <div className="space-y-6">
-          <FormSection title="Identity">
+          <FormSection title={t('Identity', 'Identity')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Code" required>
+              <Field label={t('Code', 'Code')} required>
                  <div className="relative flex items-center gap-1 group">
                     <input 
                         disabled={!isNew}
                         className="form-control font-bold pr-10" 
                         value={item.code} 
                         onChange={e => setItem(p => ({ ...p, code: e.target.value.toUpperCase() }))} 
-                        placeholder="e.g. ITM-0001"
+                        placeholder={t('e.g. ITM-0001', 'e.g. ITM-0001')}
                     />
                     {isNew && (
                         <button 
                             type="button" 
                             onClick={handleAutoGenerateCode}
                             className="absolute right-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
-                            title="Auto-sequence Item Code"
+                            title={t('Auto-sequence Item Code', 'Auto-sequence Item Code')}
                         >
                             <Sparkles size={14} />
                         </button>
                     )}
                  </div>
               </Field>
-              <Field label="Barcode">
+              <Field label={t('Barcode', 'Barcode')}>
                 <div className="flex items-center gap-2">
                    <div className="w-9 h-9 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0">
                       <Barcode size={16} />
@@ -443,16 +447,16 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                    <input className="form-control" value={item.barcode || ''} onChange={e => setItem(p => ({ ...p, barcode: e.target.value }))} />
                 </div>
               </Field>
-              <div className="col-span-2"><Field label="Name" required><input className="form-control font-medium" value={item.name} onChange={e => setItem(p => ({ ...p, name: e.target.value }))} /></Field></div>
+              <div className="col-span-2"><Field label={t('Name', 'Name')} required><input className="form-control font-medium" value={item.name} onChange={e => setItem(p => ({ ...p, name: e.target.value }))} /></Field></div>
             </div>
           </FormSection>
-          <FormSection title="Details">
+          <FormSection title={t('Details', 'Details')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Category"><select className="form-control" value={item.categoryId} onChange={e => setItem(p => ({ ...p, categoryId: e.target.value }))}><option value="">None</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
-              <Field label="Type"><select className="form-control" value={item.type} onChange={e => {
+              <Field label={t('Category', 'Category')}><select className="form-control" value={item.categoryId} onChange={e => setItem(p => ({ ...p, categoryId: e.target.value }))}><option value="">{t('None', 'None')}</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></Field>
+              <Field label={t('Type', 'Type')}><select className="form-control" value={item.type} onChange={e => {
                 const type = e.target.value as InventoryItemDTO['type'];
                 setItem(p => ({ ...p, type, trackInventory: type === 'SERVICE' ? false : p.trackInventory }));
-              }}><option value="PRODUCT">PRODUCT</option><option value="SERVICE">SERVICE</option></select></Field>
+              }}><option value="PRODUCT">{t('PRODUCT', 'PRODUCT')}</option><option value="SERVICE">{t('SERVICE', 'SERVICE')}</option></select></Field>
             </div>
           </FormSection>
         </div>
@@ -460,20 +464,20 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
       {activeTab === 'PRICING' && (
         <div className="space-y-6">
-          <FormSection title="Live Costing Snapshot">
+          <FormSection title={t('Live Costing Snapshot', 'Live Costing Snapshot')}>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-              {renderCostPoint('Average Cost', item.costingStats?.avgCost)}
-              {renderCostPoint('Last Purchase', item.costingStats?.lastPurchaseCost)}
-              {renderCostPoint('Last Sale', item.costingStats?.lastSalePrice)}
+              {renderCostPoint(t('Average Cost', 'Average Cost'), item.costingStats?.avgCost)}
+              {renderCostPoint(t('Last Purchase', 'Last Purchase'), item.costingStats?.lastPurchaseCost)}
+              {renderCostPoint(t('Last Sale', 'Last Sale'), item.costingStats?.lastSalePrice)}
             </div>
             <p className="mt-2 text-[10px] text-slate-400 italic uppercase tracking-tighter">
-              Live values update from posted stock receipts and sales. They do not replace per-warehouse stock-level costs.
+              {t('Live values update from posted stock receipts and sales. They do not replace per-warehouse stock-level costs.', 'Live values update from posted stock receipts and sales. They do not replace per-warehouse stock-level costs.')}
             </p>
           </FormSection>
 
-          <FormSection title="Default Prices">
+          <FormSection title={t('Default Prices', 'Default Prices')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Default Sale Price">
+              <Field label={t('Default Sale Price', 'Default Sale Price')}>
                 <input
                   type="number"
                   min={0}
@@ -484,7 +488,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                   placeholder="0.00"
                 />
               </Field>
-              <Field label="Default Purchase Price">
+              <Field label={t('Default Purchase Price', 'Default Purchase Price')}>
                 <input
                   type="number"
                   min={0}
@@ -497,15 +501,15 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
               </Field>
             </div>
             <p className="mt-2 text-[10px] text-slate-400 italic uppercase tracking-tighter">
-              Default unit prices in the pricing currency below. Sale price is used as a fallback when no customer price list applies.
+              {t('Default unit prices in the pricing currency below. Sale price is used as a fallback when no customer price list applies.', 'Default unit prices in the pricing currency below. Sale price is used as a fallback when no customer price list applies.')}
             </p>
           </FormSection>
 
-          <FormSection title="Price Groups">
+          <FormSection title={t('Price Groups', 'Price Groups')}>
             <div className="rounded border font-mono">
               <table className="w-full text-xs text-left">
                 <thead className="bg-slate-50 border-b">
-                  <tr><th className="px-4 py-2">Group</th><th className="px-4 py-2 text-right">Price</th><th className="w-8"></th></tr>
+                  <tr><th className="px-4 py-2">{t('Group', 'Group')}</th><th className="px-4 py-2 text-right">{t('Price', 'Price')}</th><th className="w-8"></th></tr>
                 </thead>
                 <tbody>
                   {(item.metadata?.prices?.groups || []).map((g: any, i: number) => (
@@ -529,13 +533,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                   ))}
                 </tbody>
               </table>
-              <button onClick={() => updateMetadata('prices.groups', [...(item.metadata?.prices?.groups || []), { name: '', price: 0 }])} className="w-full py-2 text-[10px] font-bold text-blue-600 border-t flex justify-center items-center gap-1"><Plus size={10} /> ADD GROUP</button>
+              <button onClick={() => updateMetadata('prices.groups', [...(item.metadata?.prices?.groups || []), { name: '', price: 0 }])} className="w-full py-2 text-[10px] font-bold text-blue-600 border-t flex justify-center items-center gap-1"><Plus size={10} /> {t('ADD GROUP', 'ADD GROUP')}</button>
             </div>
           </FormSection>
 
-          <FormSection title="Currency & Valuation">
+          <FormSection title={t('Currency & Valuation', 'Currency & Valuation')}>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Pricing Currency">
+                <Field label={t('Pricing Currency', 'Pricing Currency')}>
                    <div className="flex items-center gap-2">
                       <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex-shrink-0">
                          <Coins size={16} />
@@ -545,13 +549,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                         value={item.costCurrency || ''} 
                         onChange={e => setItem(p => ({ ...p, costCurrency: e.target.value }))}
                       >
-                        <option value="">(Select Currency)</option>
+                        <option value="">({t('Select Currency', 'Select Currency')})</option>
                         {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                    </div>
                 </Field>
                 <div className="flex items-center text-[10px] text-slate-400 italic pt-6 px-1 uppercase tracking-tighter">
-                   This currency acts as the base for all price groups defined above.
+                   {t('This currency acts as the base for all price groups defined above.', 'This currency acts as the base for all price groups defined above.')}
                 </div>
              </div>
           </FormSection>
@@ -560,10 +564,10 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
       {activeTab === 'DIMENSIONS' && (
         <div className="space-y-6">
-           <FormSection title="Physical Data">
+           <FormSection title={t('Physical Data', 'Physical Data')}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Net Weight"><input type="number" className="form-control" value={item.metadata?.dimensions?.netWeight} onChange={e => updateMetadata('dimensions.netWeight', parseFloat(e.target.value))} /></Field>
-                <Field label="Length"><input type="number" className="form-control" value={item.metadata?.dimensions?.length} onChange={e => updateMetadata('dimensions.length', parseFloat(e.target.value))} /></Field>
+                <Field label={t('Net Weight', 'Net Weight')}><input type="number" className="form-control" value={item.metadata?.dimensions?.netWeight} onChange={e => updateMetadata('dimensions.netWeight', parseFloat(e.target.value))} /></Field>
+                <Field label={t('Length', 'Length')}><input type="number" className="form-control" value={item.metadata?.dimensions?.length} onChange={e => updateMetadata('dimensions.length', parseFloat(e.target.value))} /></Field>
               </div>
            </FormSection>
         </div>
@@ -574,9 +578,9 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-lg border">
               <Layers size={18} className="text-blue-500" />
               <div className="flex-1">
-                <div className="text-sm font-bold">Inventory Tracking</div>
+                <div className="text-sm font-bold">{t('Inventory Tracking', 'Inventory Tracking')}</div>
                 {item.type === 'SERVICE' && (
-                  <div className="text-[11px] text-slate-500">Service items are non-stock by default.</div>
+                  <div className="text-[11px] text-slate-500">{t('Service items are non-stock by default.', 'Service items are non-stock by default.')}</div>
                 )}
               </div>
               <button
@@ -588,13 +592,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                   item.trackInventory && item.type !== 'SERVICE' ? "bg-blue-600 text-white" : "bg-slate-200"
                 )}
               >
-                {item.trackInventory && item.type !== 'SERVICE' ? 'ON' : 'OFF'}
+                {item.trackInventory && item.type !== 'SERVICE' ? t('ON', 'ON') : t('OFF', 'OFF')}
               </button>
            </div>
 
-           <FormSection title="Managed UOM Defaults">
+           <FormSection title={t('Managed UOM Defaults', 'Managed UOM Defaults')}>
              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-               <Field label="Base UOM" required>
+               <Field label={t('Base UOM', 'Base UOM')} required>
                  <select
                    className="form-control"
                    value={item.baseUomId || ''}
@@ -607,13 +611,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      }));
                    }}
                  >
-                   <option value="">Select base UOM</option>
+                   <option value="">{t('Select base UOM', 'Select base UOM')}</option>
                    {uoms.map((uom) => (
                      <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
                    ))}
                  </select>
                </Field>
-               <Field label="Purchase UOM">
+               <Field label={t('Purchase UOM', 'Purchase UOM')}>
                  <select
                    className="form-control"
                    value={item.purchaseUomId || ''}
@@ -626,13 +630,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      }));
                    }}
                  >
-                   <option value="">Use base UOM</option>
+                   <option value="">{t('Use base UOM', 'Use base UOM')}</option>
                    {uoms.map((uom) => (
                      <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
                    ))}
                  </select>
                </Field>
-               <Field label="Sales UOM">
+               <Field label={t('Sales UOM', 'Sales UOM')}>
                  <select
                    className="form-control"
                    value={item.salesUomId || ''}
@@ -645,7 +649,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      }));
                    }}
                  >
-                   <option value="">Use base UOM</option>
+                   <option value="">{t('Use base UOM', 'Use base UOM')}</option>
                    {uoms.map((uom) => (
                      <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
                    ))}
@@ -653,20 +657,14 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                </Field>
              </div>
              <div className="mt-3 rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-700">
-               Need a new unit? Open{' '}
-               <Link className="font-semibold underline" to="/inventory/uoms">
-                 UOM Master
-               </Link>
-               . Base/Purchase/Sales UOM selection is here; conversion factor setup is in the section below.
+               {t('Need a new unit? Open', 'Need a new unit? Open')} <Link className="font-semibold underline" to="/inventory/uoms">{t('UOM Master', 'UOM Master')}</Link>. {t('Base/Purchase/Sales UOM selection is here; conversion factor setup is in the section below.', 'Base/Purchase/Sales UOM selection is here; conversion factor setup is in the section below.')}
              </div>
            </FormSection>
 
-           <FormSection title="Item UOM Conversions">
+           <FormSection title={t('Item UOM Conversions', 'Item UOM Conversions')}>
              {isNew ? (
                <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                 Save this item first, then return to <span className="font-semibold">Stock Control</span> to define
-                 <span className="font-semibold"> From UOM</span>, <span className="font-semibold">To UOM</span>, and
-                 <span className="font-semibold"> conversion factor</span>.
+                 {t('Save this item first, then return to Stock Control to define From UOM, To UOM, and conversion factor.', 'Save this item first, then return to Stock Control to define From UOM, To UOM, and conversion factor.')}
                </div>
              ) : (
                <div className="space-y-4">
@@ -676,7 +674,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      value={conversionDraft.fromUomId || ''}
                      onChange={(e) => setConversionDraft((current) => ({ ...current, fromUomId: e.target.value || undefined }))}
                    >
-                     <option value="">From UOM</option>
+                     <option value="">{t('From UOM', 'From UOM')}</option>
                      {uoms.map((uom) => (
                        <option key={uom.id} value={uom.id}>{uom.code}</option>
                      ))}
@@ -686,7 +684,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      value={conversionDraft.toUomId || item.baseUomId || ''}
                      onChange={(e) => setConversionDraft((current) => ({ ...current, toUomId: e.target.value || undefined }))}
                    >
-                     <option value="">To UOM</option>
+                     <option value="">{t('To UOM', 'To UOM')}</option>
                      {uoms.map((uom) => (
                        <option key={uom.id} value={uom.id}>{uom.code}</option>
                      ))}
@@ -700,12 +698,12 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                      onChange={(e) => setConversionDraft((current) => ({ ...current, factor: Number(e.target.value || 0) }))}
                    />
                    <button type="button" onClick={handleAddConversion} className="rounded bg-blue-600 px-4 py-2 text-xs font-bold text-white">
-                     Add Conversion
+                     {t('Add Conversion', 'Add Conversion')}
                    </button>
                  </div>
                  {duplicateDraftConversion && (
                    <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                     This From UOM and To UOM conversion already exists. Update the existing row factor instead.
+                     {t('This From UOM and To UOM conversion already exists. Update the existing row factor instead.', 'This From UOM and To UOM conversion already exists. Update the existing row factor instead.')}
                    </div>
                  )}
 
@@ -713,11 +711,11 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                   <table className="w-full text-xs text-left">
                     <thead className="bg-slate-50 border-b">
                       <tr>
-                        <th className="px-4 py-2">From</th>
-                        <th className="px-4 py-2">To</th>
-                        <th className="px-4 py-2 text-right">Current Factor</th>
-                        <th className="px-4 py-2 text-right">New Factor</th>
-                        <th className="px-4 py-2">Impact</th>
+                        <th className="px-4 py-2">{t('From', 'From')}</th>
+                        <th className="px-4 py-2">{t('To', 'To')}</th>
+                        <th className="px-4 py-2 text-right">{t('Current Factor', 'Current Factor')}</th>
+                        <th className="px-4 py-2 text-right">{t('New Factor', 'New Factor')}</th>
+                        <th className="px-4 py-2">{t('Impact', 'Impact')}</th>
                         <th className="w-40" />
                       </tr>
                     </thead>
@@ -750,7 +748,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                     <div>P: {impact.purchaseUsageCount} / S: {impact.salesUsageCount}</div>
                                   </div>
                                 ) : (
-                                  <span className="text-[11px] text-slate-400">Not analyzed</span>
+                                  <span className="text-[11px] text-slate-400">{t('Not analyzed', 'Not analyzed')}</span>
                                 )}
                               </td>
                               <td className="px-2 py-2">
@@ -761,7 +759,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                     disabled={analyzingConversionId === conversion.id}
                                     onClick={() => handleAnalyzeConversion(conversion)}
                                   >
-                                    {analyzingConversionId === conversion.id ? 'Analyzing...' : 'Analyze'}
+                                    {analyzingConversionId === conversion.id ? t('Analyzing...', 'Analyzing...') : t('Analyze', 'Analyze')}
                                   </button>
                                   <button
                                     type="button"
@@ -769,7 +767,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                     disabled={!hasDraftChange || applyingConversionId === conversion.id}
                                     onClick={() => handleApplyConversionCorrection(conversion)}
                                   >
-                                    {applyingConversionId === conversion.id ? 'Applying...' : 'Apply'}
+                                    {applyingConversionId === conversion.id ? t('Applying...', 'Applying...') : t('Apply', 'Apply')}
                                   </button>
                                   <button
                                     type="button"
@@ -787,12 +785,12 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                   <div className="space-y-2 text-[11px]">
                                     {!impact.used && (
                                       <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
-                                        No posted movement uses this conversion yet. Applying new factor is direct.
+                                        {t('No posted movement uses this conversion yet. Applying new factor is direct.', 'No posted movement uses this conversion yet. Applying new factor is direct.')}
                                       </div>
                                     )}
                                     {impact.used && (
                                       <div className="rounded border border-blue-200 bg-blue-50 px-2 py-1 text-blue-700">
-                                        Correction will be applied as stock delta adjustments. Invoice/payment values stay unchanged.
+                                        {t('Correction will be applied as stock delta adjustments. Invoice/payment values stay unchanged.', 'Correction will be applied as stock delta adjustments. Invoice/payment values stay unchanged.')}
                                       </div>
                                     )}
                                     {impact.impactedReferences.length > 0 && (
@@ -800,10 +798,10 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                         <table className="w-full text-[11px] text-left">
                                           <thead className="bg-slate-100">
                                             <tr>
-                                              <th className="px-2 py-1">Reference</th>
-                                              <th className="px-2 py-1">Status</th>
-                                              <th className="px-2 py-1">Movements</th>
-                                              <th className="px-2 py-1">Module</th>
+                                              <th className="px-2 py-1">{t('Reference', 'Reference')}</th>
+                                              <th className="px-2 py-1">{t('Status', 'Status')}</th>
+                                              <th className="px-2 py-1">{t('Movements', 'Movements')}</th>
+                                              <th className="px-2 py-1">{t('Module', 'Module')}</th>
                                             </tr>
                                           </thead>
                                           <tbody>
@@ -828,7 +826,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                       })}
                       {conversions.length === 0 && (
                         <tr>
-                          <td className="px-4 py-3 text-slate-400" colSpan={6}>No alternate UOM conversions defined.</td>
+                          <td className="px-4 py-3 text-slate-400" colSpan={6}>{t('No alternate UOM conversions defined', 'No alternate UOM conversions defined')}</td>
                         </tr>
                       )}
                     </tbody>
@@ -842,10 +840,10 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
       {activeTab === 'ACCOUNTING' && (
         <div className="space-y-6">
-           <FormSection title="GL Mapping">
+           <FormSection title={t('GL Mapping', 'GL Mapping')}>
               <div className="space-y-4 pt-2">
-                <Field label="Revenue Account"><AccountSelector value={item.revenueAccountId} onChange={(a: any) => setItem(p => ({ ...p, revenueAccountId: a?.id }))} /></Field>
-                <Field label="COGS Account"><AccountSelector value={item.cogsAccountId} onChange={(a: any) => setItem(p => ({ ...p, cogsAccountId: a?.id }))} /></Field>
+                <Field label={t('Revenue Account', 'Revenue Account')}><AccountSelector value={item.revenueAccountId} onChange={(a: any) => setItem(p => ({ ...p, revenueAccountId: a?.id }))} /></Field>
+                <Field label={t('COGS Account', 'COGS Account')}><AccountSelector value={item.cogsAccountId} onChange={(a: any) => setItem(p => ({ ...p, cogsAccountId: a?.id }))} /></Field>
               </div>
            </FormSection>
         </div>

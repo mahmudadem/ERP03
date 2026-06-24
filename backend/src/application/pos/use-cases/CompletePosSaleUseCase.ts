@@ -28,6 +28,7 @@ export interface PosCartLine {
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
   taxCodeId?: string;
+  manualTaxAmount?: number;
   approvedCostMarginOverride?: boolean;
   priceOverride?: boolean;
   taxOverride?: boolean;
@@ -223,11 +224,13 @@ export class CompletePosSaleUseCase {
         discountType: l.discountType,
         discountValue: l.discountValue,
         taxCodeId: l.taxCodeId,
+        manualTaxAmount: l.manualTaxAmount,
         approvedCostMarginOverride: l.approvedCostMarginOverride,
         warehouseId: register.warehouseId,
       })),
       payments: [],
       paymentMethods: registerPaymentMethods,
+      negativeStockPolicy: settings.negativeStockPolicy,
       createdBy: input.actor.userId,
       dryRun: true,
     });
@@ -283,11 +286,13 @@ export class CompletePosSaleUseCase {
           discountType: l.discountType,
           discountValue: l.discountValue,
           taxCodeId: l.taxCodeId,
+          manualTaxAmount: l.manualTaxAmount,
           approvedCostMarginOverride: l.approvedCostMarginOverride,
           warehouseId: register.warehouseId,
         })),
         payments: appliedPayments,
         paymentMethods: registerPaymentMethods,
+        negativeStockPolicy: settings.negativeStockPolicy,
         cashRoundingAdjustmentBase: cashRoundingAdjustment,
         cashRoundingAccountId: cashRoundingAdjustment > 0 ? settings.cashOverAccountId : settings.cashShortAccountId,
         createdBy: input.actor.userId,

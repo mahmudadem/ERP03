@@ -118,6 +118,10 @@ export const useSidebarConfig = () => {
     Payroll: 'sidebar.payroll',
     Leads: 'sidebar.leads',
     Terminal: 'sidebar.terminal',
+    Shortcuts: 'sidebar.shortcuts',
+    Shift: 'sidebar.shift',
+    Returns: 'sidebar.returns',
+    Registers: 'sidebar.registers',
     Sessions: 'sidebar.sessions',
     'Work Orders': 'sidebar.workOrders',
     BOM: 'sidebar.bom',
@@ -141,6 +145,7 @@ export const useSidebarConfig = () => {
     'UI Lab 🎨': 'sidebar.uiLab',
     'Demo': 'sidebar.demo',
     'New': 'sidebar.new',
+    'Home': 'sidebar.home',
     // Sales items
     'Products & Services': 'sidebar.productsAndServices',
     'Sales Orders': 'sidebar.salesOrders',
@@ -177,6 +182,16 @@ export const useSidebarConfig = () => {
     // Accounting tools
     Budgets: 'sidebar.budgets',
     'Consolidated TB': 'sidebar.consolidatedTB',
+    'Z Report (by shift)': 'sidebar.posZReport',
+    'Daily Summary': 'sidebar.posDailySummary',
+    'Payment Methods': 'sidebar.posPaymentMethods',
+    'Cashier Sales': 'sidebar.posCashierSales',
+    'Cash Over/Short': 'sidebar.posCashOverShort',
+    'Receipt History': 'sidebar.posReceiptHistory',
+    'Cancelled Receipts': 'sidebar.posCancelledReceipts',
+    'Top Selling Items': 'sidebar.posTopSellingItems',
+    'Override Audit': 'sidebar.posOverrideAudit',
+    'Reprint Audit': 'sidebar.posReprintAudit',
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });

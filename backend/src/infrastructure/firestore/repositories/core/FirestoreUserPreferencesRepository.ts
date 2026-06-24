@@ -21,7 +21,8 @@ export class FirestoreUserPreferencesRepository
       data.notificationCategoryOverrides || {},
       data.createdAt ? data.createdAt.toDate?.() || data.createdAt : new Date(),
       data.updatedAt ? data.updatedAt.toDate?.() || data.updatedAt : new Date(),
-      data.layoutMode || 'legacy'
+      data.layoutMode || 'legacy',
+      data.posShortcuts || {}
     );
   }
 
@@ -38,7 +39,8 @@ export class FirestoreUserPreferencesRepository
       notificationCategoryOverrides: entity.notificationCategoryOverrides,
       createdAt: entity.createdAt,
       updatedAt: entity.updatedAt,
-      layoutMode: entity.layoutMode
+      layoutMode: entity.layoutMode,
+      posShortcuts: entity.posShortcuts
     };
   }
 
@@ -69,6 +71,7 @@ export class FirestoreUserPreferencesRepository
         'notificationCategoryOverrides',
         'createdAt',
         'layoutMode',
+        'posShortcuts',
       ];
 
 

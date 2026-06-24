@@ -28,12 +28,12 @@ const PosReceiptHistoryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindo
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="py-2 px-2">Receipt</th>
-              <th className="py-2 px-2">SI</th>
-              <th className="py-2 px-2">Register</th>
-              <th className="py-2 px-2">Customer</th>
-              <th className="py-2 px-2 text-right">Total</th>
-              <th className="py-2 px-2">Date</th>
+              <th className="py-2 px-2">{t('pos:report.col.receipt')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.si')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.register')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.customer')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.total')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.date')}</th>
             </tr>
           </thead>
           <tbody>
@@ -55,8 +55,8 @@ const PosReceiptHistoryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindo
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.receipts.title', { defaultValue: 'Receipt History' })}
-      subtitle={t('pos.report.receipts.subtitle', { defaultValue: 'All POS receipts in the period, with the linked SI number.' })}
+      title={t('pos:report.receipts.title', { defaultValue: 'Receipt History' })}
+      subtitle={t('pos:report.receipts.subtitle', { defaultValue: 'All POS receipts in the period, with the linked SI number.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

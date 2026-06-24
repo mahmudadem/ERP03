@@ -342,12 +342,15 @@ import { PrismaPosHeldCartRepository } from '../prisma/repositories/pos/PrismaPo
 import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
 import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
 import { FirestorePosPolicyRepository } from '../firestore/repositories/pos/FirestorePosPolicyRepository';
+import { FirestoreSellingPolicyRepository } from '../firestore/repositories/system-core/FirestoreSellingPolicyRepository';
+import { ISellingPolicyRepository } from '../../repository/interfaces/system-core/ISellingPolicyRepository';
 import { FirestorePosShiftRepository } from '../firestore/repositories/pos/FirestorePosShiftRepository';
 import { FirestorePosCashMovementRepository } from '../firestore/repositories/pos/FirestorePosCashMovementRepository';
 import { FirestorePosReceiptRepository } from '../firestore/repositories/pos/FirestorePosReceiptRepository';
 import { FirestorePosPaymentRepository } from '../firestore/repositories/pos/FirestorePosPaymentRepository';
 import { FirestorePosReturnRepository } from '../firestore/repositories/pos/FirestorePosReturnRepository';
 import { FirestorePosHeldCartRepository } from '../firestore/repositories/pos/FirestorePosHeldCartRepository';
+import { FirestorePosLayoutRepository } from '../firestore/repositories/pos/FirestorePosLayoutRepository';
 
 import { PrismaGoodsReceiptRepository } from '../prisma/repositories/purchases/PrismaGoodsReceiptRepository';
 import { PrismaPurchaseInvoiceRepository } from '../prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
@@ -832,6 +835,12 @@ export const diContainer = {
       ? new PrismaPosHeldCartRepository(getPrismaClient())
       : new FirestorePosHeldCartRepository(getDb());
   },
+  get posLayoutRepository(): PosRepo.IPosLayoutRepository {
+    if (DB_TYPE === 'SQL') {
+      throw new Error('PosLayoutRepository: SQL implementation not yet available');
+    }
+    return new FirestorePosLayoutRepository(getDb());
+  },
 
 
   // DESIGNER
@@ -1033,6 +1042,10 @@ export const diContainer = {
   get taxEngine(): ITaxEngine {
     return new LegacyTaxEngineAdapter();
   },
+  get sellingPolicyRepository(): ISellingPolicyRepository {
+    // Firestore-only for now (no Prisma/SQL path yet — pre-alpha, no production data).
+    return new FirestoreSellingPolicyRepository(getDb());
+  },
   get commercialCore(): ICommercialCore {
     return new LegacyCommercialCoreAdapter(
       async (context) => {
@@ -1043,14 +1056,35 @@ export const diContainer = {
         const item = await this.itemRepository.getItem(context.itemId);
         return item?.costingStats?.avgCost?.base ?? item?.purchasePrice ?? null;
       },
-      this.approvalEngine
+      this.approvalEngine,
+      async (companyId) => {
+        const policy = await this.sellingPolicyRepository.getPolicy(companyId);
+        return policy
+          ? {
+              belowCostMode: policy.belowCostMode,
+              minMarginPercent: policy.minMarginPercent,
+              allowManagerOverride: policy.allowManagerOverride,
+            }
+          : null;
+      }
     );
   },
   get policyEngine(): IPolicyEngine {
-    return new PolicyEngine(this.posPolicyRepository, this.policyRegistry);
+    return new PolicyEngine(this.posPolicyRepository, this.policyRegistry, this.commercialCore);
   },
   get approvalEngine(): IApprovalEngine {
-    return new ApprovalEngine(new ApprovalSubjectRegistry());
+    const { PosManagerOverrideApprovalPlugin } = require('../../application/system-core/approval/plugins/PosManagerOverrideApprovalPlugin');
+    const registry = new ApprovalSubjectRegistry();
+    // Task 257: POS manager overrides get a real approver-identity/authority gate
+    // (self-approval rejected; approver must hold pos.override.approve). below_cost_sale
+    // has no plugin and keeps the generic requiresApproval→PENDING fallback unchanged.
+    registry.register(
+      new PosManagerOverrideApprovalPlugin(
+        (companyId: string, userId: string) =>
+          this.permissionChecker.hasPermission(userId, companyId, 'pos.override.approve')
+      )
+    );
+    return new ApprovalEngine(registry);
   },
   get accountingBridge(): IAccountingBridge {
     return new LegacyAccountingBridgeAdapter(

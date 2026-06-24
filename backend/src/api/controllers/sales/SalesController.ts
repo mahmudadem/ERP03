@@ -85,7 +85,9 @@ import {
   validateUpdateSalesOrderInput,
   validateUpdateSalesSettingsInput,
 } from '../../validators/sales.validators';
+import { validateUpdateSellingPolicyInput } from '../../validators/sellingPolicy.validators';
 import { ApiError } from '../../errors/ApiError';
+import { SellingPolicy } from '../../../domain/system-core/entities/SellingPolicy';
 
 /**
  * Governance gate for credit-limit overrides.
@@ -285,7 +287,8 @@ export class SalesController {
       diContainer.partyItemPriceRepository,
       diContainer.recordSalesProfitLineFactsUseCase,
       diContainer.numberingEngine,
-      SalesController.buildAccountingBridge(true)
+      SalesController.buildAccountingBridge(true),
+      diContainer.commercialCore
     );
   }
 
@@ -394,6 +397,43 @@ export class SalesController {
         success: true,
         data: SalesDTOMapper.toSettingsDTO(settings),
       });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Shared selling policy (below-cost / minimum-margin). Lives under the Sales
+   * route for UI hosting, but the policy is company-wide and equally consumed by
+   * POS — see docs/architecture/system-core.md (Selling Policy).
+   */
+  static async getSellingPolicy(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const policy = (await diContainer.sellingPolicyRepository.getPolicy(companyId))
+        || SellingPolicy.createDefault(companyId);
+      (res as any).json({ success: true, data: policy.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updateSellingPolicy(req: Request, res: Response, next: NextFunction) {
+    try {
+      validateUpdateSellingPolicyInput((req as any).body);
+      const companyId = SalesController.getCompanyId(req);
+      const body = (req as any).body || {};
+      const current = (await diContainer.sellingPolicyRepository.getPolicy(companyId))
+        || SellingPolicy.createDefault(companyId);
+      const next_ = new SellingPolicy({
+        companyId,
+        belowCostMode: body.belowCostMode !== undefined ? body.belowCostMode : current.belowCostMode,
+        minMarginPercent: body.minMarginPercent !== undefined ? body.minMarginPercent : current.minMarginPercent,
+        allowManagerOverride: body.allowManagerOverride !== undefined ? body.allowManagerOverride : current.allowManagerOverride,
+        createdAt: current.createdAt,
+      });
+      await diContainer.sellingPolicyRepository.savePolicy(next_);
+      (res as any).json({ success: true, data: next_.toJSON() });
     } catch (error) {
       next(error);
     }
@@ -1143,7 +1183,8 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase,
         diContainer.numberingEngine,
-        SalesController.buildAccountingBridge(true)
+        SalesController.buildAccountingBridge(true),
+        diContainer.commercialCore
       );
 
       const settlementInput = (req as any).body?.settlementInput;

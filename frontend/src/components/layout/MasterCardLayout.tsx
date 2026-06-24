@@ -8,6 +8,7 @@ import {
   History, 
   LucideIcon 
 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 export interface MasterCardTab {
   id: string;
@@ -61,6 +62,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
   updateLabel,
   children
 }) => {
+  const { t } = useTranslation();
   return (
     <div className={clsx(
         "flex flex-col bg-slate-50 dark:bg-slate-950 overflow-hidden",
@@ -76,7 +78,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
              <div>
                 <div className="flex items-center gap-2 mb-0.5">
                    <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                     {isNew ? `New ${title}` : title}
+                     {isNew ? `${t('New', 'New')} ${title}` : title}
                    </h1>
                    {identifier && (
                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-mono font-bold text-slate-500 rounded border dark:border-slate-700 uppercase tracking-tighter">
@@ -85,7 +87,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                    )}
                 </div>
                 <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.1em]">
-                  {subtitle || (isNew ? 'Drafting New Record' : 'Master Record Details')}
+                  {subtitle || (isNew ? t('Drafting New Record', 'Drafting New Record') : t('Master Record Details', 'Master Record Details'))}
                 </p>
              </div>
           </div>
@@ -94,7 +96,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                 onClick={onClose} 
                 className="px-4 py-2 text-xs font-bold text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors uppercase tracking-widest border border-slate-200 dark:border-slate-800 rounded-lg"
             >
-              CLOSE
+              {t('CLOSE', 'CLOSE')}
             </button>
           )}
         </div>
@@ -145,7 +147,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
           {/* 3. STICKY FOOTER (Always Visible) */}
           <div className="flex-none border-t bg-white dark:bg-slate-900 px-4 md:px-8 py-3 dark:border-slate-800 z-30 flex flex-row justify-between items-center">
              <div className="hidden sm:flex items-center gap-3 text-[10px] text-slate-400 font-mono font-medium uppercase tracking-tighter">
-                <History size={12} /> {isNew ? 'Master Entry' : `Sync: ${updatedAt ? new Date(updatedAt).toLocaleDateString() : 'Active'}`}
+                <History size={12} /> {isNew ? t('Master Entry', 'Master Entry') : `${t('Sync', 'Sync')}: ${updatedAt ? new Date(updatedAt).toLocaleDateString() : t('Active', 'Active')}`}
              </div>
              <div className="flex items-center gap-2 w-full sm:w-auto">
                 {onClose && (
@@ -153,7 +155,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                         onClick={onClose} 
                         className="flex-1 sm:flex-none px-4 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 uppercase tracking-tight transition-colors"
                     >
-                        BACK
+                        {t('BACK', 'BACK')}
                     </button>
                 )}
                 <button
@@ -163,8 +165,8 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                 >
                     {saving ? <Spinner size="xs" variant="white" /> : <Save size={14} />}
                     {isNew
-                      ? (saveNewLabel || 'Save')
-                      : (updateLabel || 'Update')}
+                      ? (saveNewLabel || t('Save', 'Save'))
+                      : (updateLabel || t('Update', 'Update'))}
                 </button>
              </div>
           </div>

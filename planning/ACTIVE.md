@@ -1,5 +1,119 @@
 # 🎯 Current Focus
 
+## Task 265 — POS Keyboard Shortcuts (2026-06-23)
+
+**Status:** ✅ Built on `main` (uncommitted).
+
+- **Why:** Faster actions at the POS terminal using keyboard shortcuts (F12, Delete, etc.). The owner requested shortcuts with default bindings, register-level overrides, and user-level preferences so cashiers can personalize their terminal flow.
+- **What:** Added `keyboardShortcuts` JSON to `PosRegister` schema and `posShortcuts` JSON to `UserPreferences`. Built `usePosKeyboardShortcuts` hook to intercept keystrokes with priority (User > Register > Default). Built `PosKeyboardShortcutsDialog.tsx` for capturing keys. Added configuration to `PosRegistersPage` for managers and `PosTerminalPage` context bar for cashiers.
+- **Verification:** Frontend built successfully (`npm run build`). No typescript or syntax errors.
+- **Docs:** [done/265](./done/265-pos-keyboard-shortcuts.md); `docs/architecture/pos.md` (Frontend Data Contract); user guide `docs/user-guide/pos/keyboard-shortcuts.md`.
+
+### Next action
+
+Commit Task 265 on `main`. Owner: Review the shortcuts dialog in the POS terminal and test keybindings like `F12` to trigger the Payment dialog.
+
+---## Task 264 — Shared below-cost Selling Policy for POS + Sales (2026-06-23)
+
+**Status:** ✅ Built on `main` (uncommitted). 261 + 262 + 263 are now **committed** (`b917f3c4`, `039b0594`).
+
+- **Why:** Owner QA hit "below allowed cost/margin and requires approval" (INFRA_999) at POS. This is a *business rule*, not a bug — but it was hardcoded into POS only, unconfigurable, and absent from Sales. Owner asked for one shared, configurable policy consumed by both apps via the engine architecture.
+- **What:** New company-wide **SellingPolicy** (`belowCostMode` = BLOCK / REQUIRE_APPROVAL / ALLOW, `minMarginPercent?`, `allowManagerOverride`). `CommercialCore.validateCostMargin` is policy-aware (self-resolves via DI delegate → **POS unchanged**). `PolicyEngine` gained `scope:'commercial', action:'belowCostSale'`. **Sales attached** in `PostSalesInvoiceUseCase` (line revenue vs line cost, blocks before vouchers). API `GET/PUT /tenant/sales/selling-policy`; UI card in **Sales → Settings → Sales Policy** (governs POS too). Default `REQUIRE_APPROVAL` preserves prior POS behaviour; now also guards Sales (pre-alpha, no migration).
+- **Verification:** 20 new tests; sweep system-core + sales + pos = 72 suites / 618 tests green; backend+frontend typecheck + `npm run build` clean.
+- **Docs:** [done/264](./done/264-shared-below-cost-selling-policy.md); `docs/architecture/system-core.md` (Selling Policy) + `sales.md` + `pos.md`; user guide `docs/user-guide/sales/below-cost-selling-policy.md`.
+
+**Follow-up (2026-06-24):** Owner flagged that the policy was only editable from Sales — breaks POS independence. Fixed: POS now has its own doorway (**POS → Settings → Below-cost selling policy**, `GET/PUT /tenant/pos/selling-policy`) to the same shared store; neutral validator so POS doesn't import Sales. Documented the rule in `AGENTS.md` (🚩 shared-config doorway) + auto-memory.
+
+### Next action
+
+Commit Task 264 (incl. the POS doorway + AGENTS.md rule) on `main`. Owner: set the policy to **Allow** from **POS → Settings → Below-cost selling policy** (or Sales Settings) to clear the below-cost block during QA, then re-run a full POS sale + a below-cost Sales invoice to confirm both honour it. Pre-existing POS-settings WIP + unrelated frontend WIP remain uncommitted by design.
+
+---
+
+## Task 263 — Fix `Receipt requires depositToAccountId` (INFRA_999) on POS settlement/refund (2026-06-23)
+
+**Status:** ✅ Fixed on `main` (uncommitted, with 261 + 262 and the pre-existing POS-settings WIP).
+
+- **Why:** Owner QA — POS sale failed at the settlement leg with "Receipt requires depositToAccountId" (INFRA_999); third blocker in the posting chain.
+- **Root cause:** `ReceiptVoucherStrategy` only treats pre-built lines as canonical when each has `amount > 0`. POS settlement (`RECEIPT`) and refund (`PAYMENT`) lines carried `baseAmount`/`docAmount` but no `amount`, so the strategy fell into its `depositToAccountId`/`payFromAccountId` builder and threw.
+- **Fix:** Added `amount` to the POS settlement + refund canonical lines (documented canonical contract). No shared accounting-strategy change.
+- **Verification:** new `PosCanonicalVoucherLines.test.ts` (real strategies) + pos/accounting sweep = 52 suites / 348 tests green; `npm run build` clean.
+- **Docs:** [done/263](./done/263-pos-settlement-refund-canonical-voucher-lines.md); `docs/architecture/pos.md` §3.
+
+### Next action
+
+Commit 261 + 262 + 263 (+ the staged POS-settings WIP if intended) on `main`. Re-run a full POS sale end-to-end in the terminal to confirm the whole chain now posts. Discard the superseded `PostPosReturn.test.ts` worktree.
+
+---
+
+## Task 262 — Fix Firestore `all reads before writes` (INFRA_005) on POS posting (2026-06-23)
+
+**Status:** ✅ Fixed on `main` (uncommitted, with the 261 fix and the pre-existing POS-settings WIP).
+
+- **Why:** Owner QA hit a blocking INFRA_005 ("Firestore transactions require all reads to be executed before all writes") when completing a POS sale.
+- **Root cause:** POS posted inventory via the stateful `processOUT`, which reads the stock level *through* the transaction then writes; a multi-line cart therefore read after a write — forbidden by Firestore.
+- **Fix:** POS sale + return now follow the Sales pattern — bare-read prefetch, pure `computeStockOutMovement` / `computeStockReturnInMovement`, write-only transaction phase. Negative-stock enforcement (POS BLOCK + company flag) moved up front. No costing/accounting math change.
+- **Verification:** pos+sales+inventory+architecture = 62 suites / 517 tests green; `npm run build` clean → `lib/` updated.
+- **Docs:** [done/262](./done/262-pos-posting-firestore-read-before-write.md); `docs/architecture/pos.md` §3.
+
+### Next action
+
+Commit 261 + 262 (+ the staged POS-settings WIP if intended) on `main`. Discard the superseded `PostPosReturn.test.ts` worktree.
+
+---
+
+## Task 261 — Fix `Invalid referenceType: POS_DIRECT_SALE` at POS posting (2026-06-23)
+
+**Status:** ✅ Fixed on `main` (uncommitted with the other dirty POS-settings changes).
+
+- **Why:** Owner QA hit a blocking "Critical Error — Invalid referenceType: POS_DIRECT_SALE" (INFRA_999) when completing a POS sale.
+- **Root cause:** Validation drift in `backend/src/domain/inventory/entities/StockMovement.ts` — the `ReferenceType` type had `POS_DIRECT_SALE` / `POS_RETURN`, but the runtime `REFERENCE_TYPES` guard array (checked by the entity constructor) did not. Added both values.
+- **Verification:** `PostPosSale.test.ts` + `RecordStockMovementUseCase.test.ts` green (38); backend `npm run build` clean → recompiled to `lib/`.
+- **Docs:** [done/261](./done/261-pos-direct-sale-referencetype-validation.md); `docs/modules/inventory/SCHEMAS.md` enum aligned.
+
+### Next action
+
+Commit this fix (plus the staged POS-settings WIP if intended) on `main`. Separately: repair the stale `PostPosReturn.test.ts` constructor (needs the 8th `posSettingsRepo` arg) — test-only, production wiring already correct.
+
+---
+
+## Task 259 — POS shortcuts and control buttons (2026-06-23)
+
+**Status:** ✅ Implemented on branch `codex/pos-shortcuts-control-buttons`.
+
+- **Why:** The owner requested the full POS shortcuts/control-buttons package one slice at a time: backend layout models/resolver/API, safe command registry/execution, terminal runtime wiring, admin/settings UI, receipt print/reprint integration, docs, and verification.
+- **What changed:** Added configurable POS product shortcut layouts/nodes and control button layouts/buttons; Firestore repository + DI; runtime resolver with USER → REGISTER → BRANCH → COMPANY priority; allowlisted command registry with permission/prerequisite checks; POS terminal shortcut/control rendering; dedicated `POS -> Shortcuts` page with group editing and bulk item assignment; receipt print/reprint payload integration with the shared print-layout engine.
+- **Docs:** [planning/tasks/259-pos-shortcuts-control-buttons.md](./tasks/259-pos-shortcuts-control-buttons.md), [planning/done/259-pos-shortcuts-control-buttons.md](./done/259-pos-shortcuts-control-buttons.md), [docs/architecture/pos-shortcuts-control-buttons.md](../docs/architecture/pos-shortcuts-control-buttons.md), [docs/user-guide/pos/shortcuts-and-control-buttons.md](../docs/user-guide/pos/shortcuts-and-control-buttons.md).
+- **Verification:** Focused POS layout tests green (`PosLayoutUseCases.test.ts`: 4 tests); backend typecheck/build green; frontend typecheck/build green. Frontend build has only existing browser-data/chunk-size warnings.
+- **Accounting impact:** Terminal configuration/control only. No posting, tax, COGS, inventory valuation, settlement routing, period-lock, voucher, or approval-engine semantics changed. Reprint approval/audit remains enforced.
+- **Follow-ups:** Physical printer/cash-drawer device execution remains a hardware runtime integration.
+- **Actual time:** ~5.6h.
+
+## Next action
+
+Commit `codex/pos-shortcuts-control-buttons`, then merge as requested.
+
+## Task 257 — POS manager overrides via the Approval Engine (2026-06-22)
+
+**Status:** ✅ Implemented on branch `feat/pos-readiness-and-negative-stock` (on top of the 251/256/258 bundle).
+
+- **Why:** Closed the gate-#8 deviation — POS manager overrides only checked that an approval *token* was present (trust-the-screen). No real approver-identity, authority, or self-approval check; couldn't hold PENDING.
+- **What changed:** Overrides route through `IApprovalEngine.evaluate(...)`. New `PosManagerOverrideApprovalPlugin` → PENDING (no approver) / REJECTED (self-approval or approver lacking `pos.override.approve`) / APPROVED (distinct authorised manager). `CreatePosManagerOverrideUseCase` mints `approvedOverrideId` **only on APPROVED**. New `pos.override.approve` permission; plugin wired in DI with authority via `PermissionChecker`. Policy Engine still decides *whether*; Approval Engine decides *who* + outcome. `below_cost_sale` unchanged.
+- **Docs:** [planning/tasks/257-...](./tasks/257-pos-manager-override-via-approval-engine.md), [planning/done/257-...](./done/257-pos-manager-override-via-approval-engine.md), `docs/architecture/pos.md` §6a.
+- **Verification:** 23 suites / 144 tests green (pos + system-core + permission-catalog); backend typecheck + build clean.
+- **Accounting impact:** Control hardening only.
+
+## Task 258 — POS-specific negative-stock policy (2026-06-22)
+
+**Status:** ✅ Implemented on the POS readiness working tree.
+
+- **Why:** "The remaining backend safety gap" from the POS commercial-rules audit — POS inherited the company-wide `InventorySettings.allowNegativeStock` flag, so a company allowing negative stock for back-office invoicing would let the physical till oversell.
+- **What changed:** New `PosSettings.negativeStockPolicy` (`BLOCK` default | `ALLOW`). `PostPosSaleUseCase` pre-checks the selling-warehouse level (`IInventoryCore.preFetchStockLevel`, aggregated per item/warehouse) and throws `NegativeStockError` before any write and on the dry-run preview when `BLOCK`; `ALLOW`/absent defers to the company flag. POS can only be stricter than the company flag, never looser. Threaded through `CompletePosSaleUseCase`, update use-case, validator, DTO, settings UI, en/ar/tr i18n.
+- **Docs:** [planning/tasks/258-pos-negative-stock-policy.md](./tasks/258-pos-negative-stock-policy.md), [planning/done/258-pos-negative-stock-policy.md](./done/258-pos-negative-stock-policy.md), `docs/architecture/pos.md` §4a, `docs/user-guide/pos/setup.md`.
+- **Verification:** `PostPosSale.test.ts` 18/18 (+5 new); full POS suite 14 suites / 97 tests green; backend typecheck/build clean; POS frontend files typecheck clean (pre-existing unrelated `UserPreferencesContext.tsx` errors remain in the dirty tree); en/ar/tr `pos.json` valid.
+- **Accounting impact:** Control hardening only. No posting/tax/COGS/valuation/settlement/period-lock/approval-semantics change.
+- **Deferred:** `ALLOW_WITH_APPROVAL` → Task 257 (Approval Engine).
+
 ## Task 251 — POS QA readiness and settlement routing (2026-06-22)
 
 **Status:** ✅ Slices 1-16 updated locally on branch/worktree `codex/pos-qa-readiness` / `D:\DEV2026\ERP03-pos-readiness`; `origin/main` merged locally on 2026-06-22 and validation is in progress.
@@ -17,7 +131,7 @@
 **Status:** ✅ V1 implemented locally on branch/worktree `feat/engines-always-on` / `D:\DEV2026\ERP03`.
 
 - **Why:** Owner clarified the print designer must be a company-level always-on engine consumed by POS, Sales, and other modules, not a static POS receipt template.
-- **What changed:** Added `IPrintLayoutCore`, `PrintLayoutCore`, company print-layout template persistence, `/tenant/print-layouts` API routes, and `/tools/print-layout-designer`. The designer supports paper presets, visible safe area, dynamic field binding, bill-table component editing, drag/resize, styling, save/load, and JSON import/export.
+- **What changed:** Added `IPrintLayoutCore`, `PrintLayoutCore`, company print-layout template persistence, `/tenant/print-layouts` API routes, and `/tools/print-layout-designer`. The designer supports paper presets, visible safe area, dynamic field binding, bill-table component editing, long-bill overflow behavior, table header colors, drag/resize, styling, save/load, and JSON import/export.
 - **Docs:** [docs/architecture/print-layout-engine.md](../docs/architecture/print-layout-engine.md), [docs/user-guide/settings/print-layout-designer.md](../docs/user-guide/settings/print-layout-designer.md), [planning/tasks/256-shared-print-layout-engine.md](./tasks/256-shared-print-layout-engine.md), [planning/done/256-shared-print-layout-engine.md](./done/256-shared-print-layout-engine.md).
 - **Verification:** Focused backend tests passed (2 suites / 4 tests), backend build passed, frontend typecheck passed, and frontend production build passed. Existing bundle/browser-data warnings remain.
 - **Accounting impact:** UI/template engine only. No posting, tax, COGS, AR/AP, inventory valuation, payment, period-lock, or approval behavior changed. Layout scripts are intentionally blocked; layouts can bind only to approved schemas.

@@ -28,14 +28,14 @@ const PosCashOverShortReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
         <table className="w-full text-sm">
           <thead>
             <tr className="text-left text-xs text-slate-500 border-b">
-              <th className="py-2 px-2">Shift</th>
-              <th className="py-2 px-2">Register</th>
-              <th className="py-2 px-2">Cashier</th>
-              <th className="py-2 px-2">Closed</th>
-              <th className="py-2 px-2 text-right">Expected</th>
-              <th className="py-2 px-2 text-right">Counted</th>
-              <th className="py-2 px-2 text-right">Variance</th>
-              <th className="py-2 px-2">Voucher</th>
+              <th className="py-2 px-2">{t('pos:report.col.shift')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.register')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.cashier')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.closed')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.expected')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.counted')}</th>
+              <th className="py-2 px-2 text-right">{t('pos:report.col.variance')}</th>
+              <th className="py-2 px-2">{t('pos:report.col.voucher')}</th>
             </tr>
           </thead>
           <tbody>
@@ -61,8 +61,8 @@ const PosCashOverShortReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
 
   return (
     <ReportContainer<PosDateRangeParams>
-      title={t('pos.report.overShort.title', { defaultValue: 'Cash Over/Short' })}
-      subtitle={t('pos.report.overShort.subtitle', { defaultValue: 'Per-shift variance and voucher link.' })}
+      title={t('pos:report.overShort.title', { defaultValue: 'Cash Over/Short' })}
+      subtitle={t('pos:report.overShort.subtitle', { defaultValue: 'Per-shift variance and voucher link.' })}
       isWindow={isWindow}
       initiator={PosDateRangeInitiator}
       ReportContent={Content}

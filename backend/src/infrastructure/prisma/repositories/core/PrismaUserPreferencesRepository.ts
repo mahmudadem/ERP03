@@ -18,7 +18,8 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
       (data.notificationCategoryOverrides as Record<string, boolean>) || {},
       data.createdAt,
       data.updatedAt,
-      (data.appearanceSettings as any)?.layoutMode || 'legacy'
+      (data.appearanceSettings as any)?.layoutMode || 'legacy',
+      (data.posShortcuts as Record<string, string>) || {}
     );
   }
 
@@ -58,6 +59,7 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
     }
     if (prefs.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = prefs.disabledNotificationCategories as any;
     if (prefs.notificationCategoryOverrides !== undefined) updateData.notificationCategoryOverrides = prefs.notificationCategoryOverrides as any;
+    if (prefs.posShortcuts !== undefined) updateData.posShortcuts = prefs.posShortcuts as any;
 
     const data = await this.prisma.userPreferences.upsert({
       where: { userId },

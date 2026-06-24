@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { inventoryApi } from '../../../api/inventoryApi';
-import { SalesMessagingAccountDTO, SalesSettingsDTO, salesApi, GovernanceRuleDTO } from '../../../api/salesApi';
+import { SalesMessagingAccountDTO, SalesSettingsDTO, salesApi, GovernanceRuleDTO, SellingPolicyDTO } from '../../../api/salesApi';
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
@@ -44,6 +44,8 @@ const SalesSettingsPage: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<SalesSettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<SalesSettingsDTO | null>(null);
+  const [sellingPolicy, setSellingPolicy] = useState<SellingPolicyDTO | null>(null);
+  const [originalSellingPolicy, setOriginalSellingPolicy] = useState<SellingPolicyDTO | null>(null);
   const [arFormatCustom, setArFormatCustom] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -65,6 +67,7 @@ const SalesSettingsPage: React.FC = () => {
         setLoading(true);
         const settingsResult = await salesApi.getSettings();
         const inventorySettings = await inventoryApi.getSettings().catch(() => null);
+        const sellingPolicyResult = await salesApi.getSellingPolicy().catch(() => null);
 
         const currentSettings = unwrap<any>(settingsResult)?.data ?? unwrap<any>(settingsResult) ?? {};
         const invSettingsData = unwrap<any>(inventorySettings)?.data ?? unwrap<any>(inventorySettings);
@@ -75,6 +78,10 @@ const SalesSettingsPage: React.FC = () => {
         setSettings(currentSettings);
         setOriginalSettings(currentSettings);
         setInvSettings(invSettingsData);
+        if (sellingPolicyResult) {
+          setSellingPolicy(sellingPolicyResult);
+          setOriginalSellingPolicy(sellingPolicyResult);
+        }
       } catch (err: any) {
         console.error('Failed to load sales settings', err);
         errorHandler.showError('Failed to load sales settings.');
@@ -102,7 +109,8 @@ const SalesSettingsPage: React.FC = () => {
   };
 
   const hasCredentialChanges = Object.values(credentialDraftByAccountId).some((value) => value.trim().length > 0);
-  const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings) || hasCredentialChanges;
+  const hasSellingPolicyChanges = JSON.stringify(sellingPolicy) !== JSON.stringify(originalSellingPolicy);
+  const hasChanges = JSON.stringify(settings) !== JSON.stringify(originalSettings) || hasCredentialChanges || hasSellingPolicyChanges;
   const accountingMode = resolveInventoryAccountingMode(invSettings);
   const isPerpetual = accountingMode === 'PERPETUAL';
 
@@ -259,6 +267,17 @@ const SalesSettingsPage: React.FC = () => {
       setSettings(saved);
       setOriginalSettings(saved);
       setCredentialDraftByAccountId({});
+
+      if (sellingPolicy && hasSellingPolicyChanges) {
+        const savedPolicy = await salesApi.updateSellingPolicy({
+          belowCostMode: sellingPolicy.belowCostMode,
+          minMarginPercent: sellingPolicy.minMarginPercent,
+          allowManagerOverride: sellingPolicy.allowManagerOverride,
+        });
+        setSellingPolicy(savedPolicy);
+        setOriginalSellingPolicy(savedPolicy);
+      }
+
       errorHandler.showSuccess('Sales settings updated successfully.');
       if (companyId) {
         notifySettingsChanged(companyId);
@@ -300,6 +319,7 @@ const SalesSettingsPage: React.FC = () => {
         onSave={handleSave}
         onDiscard={() => {
           setSettings(originalSettings);
+          setSellingPolicy(originalSellingPolicy);
           setCredentialDraftByAccountId({});
           toast('Changes discarded', { icon: 'ℹ️' });
         }}
@@ -518,6 +538,81 @@ const SalesSettingsPage: React.FC = () => {
               </div>
             </div>
           </Card>
+
+          {sellingPolicy && (
+            <Card className="p-6">
+              <div className="flex items-center gap-2 mb-1">
+                <ShieldCheck className="h-5 w-5 text-indigo-600" />
+                <h3 className="text-sm font-bold text-gray-900">Below-cost selling policy</h3>
+              </div>
+              <p className="mb-4 text-xs text-gray-500">
+                A company-wide commercial rule applied to both <strong>Sales invoices</strong> and the{' '}
+                <strong>POS till</strong>. Controls what happens when a line sells at or below its cost.
+              </p>
+              <div className="grid md:grid-cols-2 gap-8">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">When a line is below cost</label>
+                  <select
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={sellingPolicy.belowCostMode}
+                    onChange={(e) =>
+                      setSellingPolicy((prev) =>
+                        prev ? { ...prev, belowCostMode: e.target.value as SellingPolicyDTO['belowCostMode'] } : prev
+                      )
+                    }
+                  >
+                    <option value="BLOCK">Block — never allow below-cost sales</option>
+                    <option value="REQUIRE_APPROVAL">Require approval — block until a manager approves</option>
+                    <option value="ALLOW">Allow — sell below cost freely</option>
+                  </select>
+                  <p className="mt-1.5 text-xs text-gray-500 italic">
+                    "Require approval" matches how the POS till behaved before this setting existed.
+                  </p>
+
+                  <label className="mt-4 flex items-start gap-3 rounded-lg border border-gray-200 bg-white px-3 py-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      className="mt-0.5 h-4 w-4 rounded border-gray-300"
+                      checked={sellingPolicy.allowManagerOverride !== false}
+                      disabled={sellingPolicy.belowCostMode === 'ALLOW'}
+                      onChange={(e) =>
+                        setSellingPolicy((prev) => (prev ? { ...prev, allowManagerOverride: e.target.checked } : prev))
+                      }
+                    />
+                    <span className="text-xs">
+                      <span className="font-semibold text-gray-900">Allow manager override</span>
+                      <span className="ml-1 text-gray-500">
+                        When off, even an approved override cannot push a below-cost line through (absolute block).
+                      </span>
+                    </span>
+                  </label>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Minimum gross margin (%)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    step={0.01}
+                    placeholder="No minimum"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    value={sellingPolicy.minMarginPercent ?? ''}
+                    onChange={(e) =>
+                      setSellingPolicy((prev) =>
+                        prev
+                          ? { ...prev, minMarginPercent: e.target.value === '' ? undefined : Number(e.target.value) }
+                          : prev
+                      )
+                    }
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500 italic">
+                    Optional. A line whose margin is below this percentage is treated the same as a below-cost line.
+                    Leave blank to only guard against selling below cost.
+                  </p>
+                </div>
+              </div>
+            </Card>
+          )}
         </SettingsSection>
       )}
 

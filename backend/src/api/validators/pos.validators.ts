@@ -5,7 +5,9 @@
 
 const VALID_METHOD_CODES = ['CASH', 'CARD', 'BANK_TRANSFER', 'CUSTOM'] as const;
 const VALID_ROUNDING = ['none', 'nearest_05', 'nearest_1'] as const;
+const VALID_NEGATIVE_STOCK_POLICIES = ['BLOCK', 'ALLOW'] as const;
 const VALID_REGISTER_STATUS = ['ACTIVE', 'INACTIVE'] as const;
+const VALID_MANAGER_OVERRIDE_ACTIONS = ['VOID_LINE', 'PRICE_OVERRIDE', 'DISCOUNT_OVERRIDE', 'TAX_OVERRIDE', 'RETURN', 'REPRINT'] as const;
 
 function requireString(value: any, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -70,12 +72,25 @@ export function validateUpsertPosRegisterInput(body: any): void {
       }
     }
   }
+  if (body.keyboardShortcuts !== undefined) {
+    if (!body.keyboardShortcuts || typeof body.keyboardShortcuts !== 'object' || Array.isArray(body.keyboardShortcuts)) {
+      throw new Error('keyboardShortcuts must be an object');
+    }
+    for (const [action, shortcut] of Object.entries(body.keyboardShortcuts)) {
+      if (typeof shortcut !== 'string') {
+        throw new Error(`keyboardShortcuts.${action} must be a string`);
+      }
+    }
+  }
 }
 
 export function validateUpdatePosSettingsInput(body: any): void {
   if (!body || typeof body !== 'object') throw new Error('Request body is required');
   if (body.cashRounding !== undefined && !VALID_ROUNDING.includes(body.cashRounding)) {
     throw new Error(`cashRounding must be one of: ${VALID_ROUNDING.join(', ')}`);
+  }
+  if (body.negativeStockPolicy !== undefined && !VALID_NEGATIVE_STOCK_POLICIES.includes(body.negativeStockPolicy)) {
+    throw new Error(`negativeStockPolicy must be one of: ${VALID_NEGATIVE_STOCK_POLICIES.join(', ')}`);
   }
   if (body.paymentMethods !== undefined) {
     if (!Array.isArray(body.paymentMethods)) throw new Error('paymentMethods must be an array');
@@ -86,6 +101,33 @@ export function validateUpdatePosSettingsInput(body: any): void {
       // Account assignment is register-level. POS Settings only controls method behavior.
     }
   }
+  // Default revenue account for POS sales (fallback when item/category have none).
+  // Existence is validated in the use case; here we only enforce the shape.
+  optionalString(body.defaultRevenueAccountId, 'defaultRevenueAccountId');
   // Unused-but-typed access to keep the linter quiet about unused fields.
-  void optionalString; void optionalNumber; void optionalBoolean;
+  void optionalNumber; void optionalBoolean;
+}
+
+export function validateUpdatePosPolicyInput(body: any): void {
+  if (!body || typeof body !== 'object') throw new Error('Request body is required');
+  if (body.cashierRolePolicies === undefined) return;
+  if (!Array.isArray(body.cashierRolePolicies)) throw new Error('cashierRolePolicies must be an array');
+  for (const policy of body.cashierRolePolicies) {
+    requireString(policy?.roleId, 'cashierRolePolicies[].roleId');
+    optionalBoolean(policy.requireApprovalForDirectSales, 'cashierRolePolicies[].requireApprovalForDirectSales');
+    optionalBoolean(policy.allowPriceOverride, 'cashierRolePolicies[].allowPriceOverride');
+    optionalBoolean(policy.allowTaxOverride, 'cashierRolePolicies[].allowTaxOverride');
+    const maxPercent = optionalNumber(policy.maxLineDiscountPercent, 'cashierRolePolicies[].maxLineDiscountPercent');
+    const maxAmount = optionalNumber(policy.maxLineDiscountAmount, 'cashierRolePolicies[].maxLineDiscountAmount');
+    if (maxPercent !== undefined && maxPercent < 0) throw new Error('cashierRolePolicies[].maxLineDiscountPercent must be zero or greater');
+    if (maxAmount !== undefined && maxAmount < 0) throw new Error('cashierRolePolicies[].maxLineDiscountAmount must be zero or greater');
+    if (policy.managerOverrideActions !== undefined) {
+      if (!Array.isArray(policy.managerOverrideActions)) throw new Error('cashierRolePolicies[].managerOverrideActions must be an array');
+      for (const action of policy.managerOverrideActions) {
+        if (!VALID_MANAGER_OVERRIDE_ACTIONS.includes(action)) {
+          throw new Error(`cashierRolePolicies[].managerOverrideActions must contain only: ${VALID_MANAGER_OVERRIDE_ACTIONS.join(', ')}`);
+        }
+      }
+    }
+  }
 }
