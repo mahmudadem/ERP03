@@ -333,6 +333,18 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - An architecture guard (`267-F (Purchases PaymentSync)` in `SystemCoreBoundaries.test.ts`) pins this: `PaymentSyncUseCases.ts` must not import `PostingGateway`, and must use `recordPreBuiltVoucher` + `IAccountingBridge`.
 - Golden voucher-output tests (`PurchasePaymentSyncGoldenVoucher.test.ts`, 3 tests) capture the exact prebuilt payment voucher handed to the bridge, minimal-mode null GL link behavior, and DEFERRED no-voucher behavior.
 
+### Opening Stock document voucher migration (267-F Inventory Opening Stock slice)
+
+`PostOpeningStockDocumentUseCase` previously held a direct `SubledgerVoucherPostingService` field and passed `{ bridge, postingService }` into `postFinancialEvent(...)` for the optional opening-stock accounting effect. As of this slice:
+
+- The `SubledgerVoucherPostingService` import and posting-service constructor param were removed from `PostOpeningStockDocumentUseCase`.
+- `accountingBridge` is now a required constructor dependency for posting.
+- The `postFinancialEvent` call passes `{ bridge }` only; no legacy posting fallback remains.
+- `InventoryController.postOpeningStockDocument` no longer constructs a posting service for the Opening Stock post path and passes `InventoryController.buildAccountingBridge()` directly.
+- The inventory-only branch (`createAccountingEffect === false`) is unchanged: stock is posted without a bridge event and without a GL voucher link.
+- An architecture guard (`267-F (Inventory Opening Stock)` in `SystemCoreBoundaries.test.ts`) pins this: `OpeningStockDocumentUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
+- Golden voucher-output tests (`OpeningStockGoldenVoucher.test.ts`, 5 tests) capture exact Inventory/Opening Equity bridge output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC asset-account selection, inventory-only no-event behavior, and output stability.
+
 ## What Is NOT Implemented
 
 | Feature | Why deferred |

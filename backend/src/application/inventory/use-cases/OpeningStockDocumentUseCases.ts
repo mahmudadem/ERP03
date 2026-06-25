@@ -15,7 +15,6 @@ import { IItemRepository } from '../../../repository/interfaces/inventory/IItemR
 import { IOpeningStockDocumentRepository } from '../../../repository/interfaces/inventory/IOpeningStockDocumentRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
@@ -130,7 +129,7 @@ const prepareDraftDocumentState = async (
   if (createAccountingEffect) {
     if (!accountingModule?.initialized) {
       throw new Error(
-        'Accounting module is not enabled. Opening Stock Documents can only be posted as inventory-only until Accounting is initialized.'
+        'Accounting Engine is not initialized. Opening Stock Documents can only be posted as inventory-only until Accounting is initialized.'
       );
     }
 
@@ -341,9 +340,8 @@ export class PostOpeningStockDocumentUseCase {
     private readonly companyModuleRepo: ICompanyModuleRepository,
     private readonly accountRepo: IAccountRepository,
     private readonly movementUseCase: RecordStockMovementUseCase,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly transactionManager: ITransactionManager,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly accountingBridge: IAccountingBridge
   ) {}
 
   async execute(companyId: string, documentId: string, userId: string): Promise<OpeningStockDocument> {
@@ -389,7 +387,7 @@ export class PostOpeningStockDocumentUseCase {
     if (document.createAccountingEffect) {
       if (!accountingModule?.initialized) {
         throw new Error(
-          'Accounting module is not enabled. This Opening Stock Document can only be posted as inventory-only.'
+          'Accounting Engine is not initialized. This Opening Stock Document can only be posted as inventory-only.'
         );
       }
 
@@ -520,7 +518,7 @@ export class PostOpeningStockDocumentUseCase {
         });
 
         const voucher = await postFinancialEvent(
-          { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+          { bridge: this.accountingBridge },
           {
             kind: 'OPENING_STOCK',
             transaction,

@@ -157,7 +157,7 @@ The distinction is intentional: the Accounting App/UI toggle (`isEnabled`) contr
 
 POS sale, return, and shift over/short flows now route through `IAccountingBridge`. `SystemCoreBoundaries.test.ts` blocks POS application/controllers from importing `SubledgerVoucherPostingService` or calling `postInTransaction(...)` directly.
 
-Scope note: Task 267-F is migrating source-module posters behind `IAccountingBridge` in small golden-test slices. Sales DeliveryNote, SalesInvoice, SalesReturn, Sales PaymentSync, Goods Receipt, Purchase Invoice, Purchase Return, and Purchases PaymentSync paths are now bridge-only. Inventory posting paths remain follow-up slices and must keep using golden voucher-output checks before migration.
+Scope note: Task 267-F is migrating source-module posters behind `IAccountingBridge` in small golden-test slices. Sales DeliveryNote, SalesInvoice, SalesReturn, Sales PaymentSync, Goods Receipt, Purchase Invoice, Purchase Return, Purchases PaymentSync, and Inventory Opening Stock paths are now bridge-only. The remaining Inventory Stock Adjustment, Stock Transfer, and Inventory Revaluation posting paths remain follow-up slices and must keep using golden voucher-output checks before migration.
 
 ## Commercial Core
 

@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F Inventory Opening Stock slice — Accounting bridge migration: Opening Stock document voucher)
+
+- **Context:** After Sales/Purchases slices, Inventory still held direct `SubledgerVoucherPostingService` fallbacks. Opening Stock was selected first because it is the smallest inventory posting path: stock movement plus one optional Inventory/Opening Equity voucher when accounting effect is enabled.
+- **What changed:** Added `OpeningStockGoldenVoucher.test.ts` (5 tests) pinning exact Inventory/Opening Equity bridge output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC asset-account selection, inventory-only no-event behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PostOpeningStockDocumentUseCase`; `accountingBridge` is required and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.postOpeningStockDocument` passes `buildAccountingBridge()` directly. Existing Opening Stock tests now inject a full-mode bridge. Added the `267-F (Inventory Opening Stock)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Full mode sends the same opening-stock voucher payload to the bridge. Inventory-only mode still creates no GL event. Minimal mode remains bridge-owned and links no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `OpeningStockGoldenVoucher.test.ts` 5/5 PASS; `OpeningStockDocumentUseCases.test.ts` 5/5 PASS; `SystemCoreBoundaries.test.ts` 25/25 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.0h.
+- **Next:** Commit, then continue with Stock Adjustment.
+
 ### Session: 2026-06-25 (Task 267-F Purchases PaymentSync slice — Accounting bridge migration: record-payment vouchers)
 
 - **Context:** Purchases `PaymentSyncUseCases.ts` already called `accountingBridge.recordPreBuiltVoucher(...)`, but retained an optional no-bridge fallback that constructed `PostingGateway` directly. Goal: make the bridge compile-time required and remove the direct source-module gateway dependency while preserving payment voucher output.

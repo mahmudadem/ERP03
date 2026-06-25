@@ -1341,7 +1341,6 @@ export class InventoryController {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
       const movementUseCase = InventoryController.buildMovementUseCase();
-      const accountingPostingService = InventoryController.buildAccountingPostingService();
 
       const useCase = new PostOpeningStockDocumentUseCase(
         diContainer.openingStockDocumentRepository,
@@ -1353,7 +1352,6 @@ export class InventoryController {
         diContainer.companyModuleRepository,
         diContainer.accountRepository,
         movementUseCase,
-        accountingPostingService,
         diContainer.transactionManager,
         InventoryController.buildAccountingBridge()
       );

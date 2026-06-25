@@ -1,8 +1,33 @@
 # 🎯 Current Focus
 
-## Task 267-F (Purchases PaymentSync slice) — Accounting bridge migration: record-payment vouchers (2026-06-25) [not committed]
+## Task 267-F (Inventory Opening Stock slice) — Accounting bridge migration: Opening Stock document voucher (2026-06-25) [not committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** `PostOpeningStockDocumentUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent(...)`. Opening Stock is the smallest remaining Inventory document voucher path: one optional Inventory/Opening Equity accounting effect, plus an inventory-only branch.
+- **What:**
+  - **Golden tests first:** New `OpeningStockGoldenVoucher.test.ts` (5 tests) captures exact Inventory/Opening Equity voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC asset-account selection, inventory-only no-event behavior, and output stability.
+  - **Migration:** `PostOpeningStockDocumentUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/field/constructor param and `postingService` fallback were removed.
+  - **Controller + tests:** `InventoryController.postOpeningStockDocument` passes `buildAccountingBridge()` directly. Existing Opening Stock tests now inject a full-mode bridge and assert bridge events instead of direct `postInTransaction(...)`.
+  - **Architecture guard:** New `267-F (Inventory Opening Stock)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `OpeningStockDocumentUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-opening-stock-bridge-migration.md`.
+- **Verification (all green):**
+  - `OpeningStockGoldenVoucher.test.ts` — 5/5 PASS
+  - `OpeningStockDocumentUseCases.test.ts` — 5/5 PASS
+  - `SystemCoreBoundaries.test.ts` — 25/25 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Full mode sends the same opening-stock voucher payload to the bridge; inventory-only mode still emits no GL event; minimal mode remains bridge-owned and links no GL voucher id.
+
+### Next action
+
+Commit the Opening Stock slice, then continue with **Stock Adjustment**.
+
+---
+
+## Task 267-F (Purchases PaymentSync slice) — Accounting bridge migration: record-payment vouchers (2026-06-25) [committed 98ce89de]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
 
 - **Why:** Purchases `PaymentSyncUseCases.ts` already used `accountingBridge.recordPreBuiltVoucher(...)`, but still imported and constructed `PostingGateway` inside an optional no-bridge fallback. That left a source-module direct ledger-door dependency.
 - **What:**
@@ -21,7 +46,7 @@
 
 ### Next action
 
-Commit the Purchases PaymentSync slice. Next bridge-migration area: **Inventory posting paths**.
+Committed as `98ce89de`. Next bridge-migration area: **Inventory posting paths**.
 
 ---
 
