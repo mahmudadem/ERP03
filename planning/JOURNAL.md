@@ -5,7 +5,7 @@
 ### Session: 2026-06-25 (Task 267 — commit)
 
 - **What happened:** Task 267-D (engine management API doorways) and Task 267-E (engine management frontend) were committed as one bundle, together with the pre-existing 267-C (policy resolution engine).
-- **Commit hash:** `a3fde36e` — 46 files, +3343/−10.
+- **Commit hash:** `7119d26c` — 46 files, +3343/−10.
 - **Not pushed.**
 - **Next recommended slice:** 267-F — Accounting bridge migration with golden voucher-output tests. Every document poster (SI, PI, SR, PR, DN, GRN, stock adjustments, opening stock, revaluation) should be verified to route through `IAccountingBridge` with golden voucher-output parity tests.
 

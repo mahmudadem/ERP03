@@ -1,8 +1,8 @@
 # 🎯 Current Focus
 
-## Task 267-E — Engine Management Frontend (2026-06-25) [committed a3fde36e]
+## Task 267-E — Engine Management Frontend (2026-06-25) [committed 7119d26c]
 
-**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`a3fde36e`). `opencode.json` not touched.
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`). `opencode.json` not touched.
 
 - **Why:** The typed `PolicyConfig` store (267-C) and its four API doorways (267-D) had no user-facing surface. Each consuming module needs its own permission-gated Controls screen so a POS-only / Sales-only / Purchases-only tenant can each manage the rules it consumes, while company-wide rules live in a single matrix page. The 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") now passes at the UI layer.
 - **What:** Four UI doorways, all using business wording (the word "engine" never appears in user copy):
@@ -24,15 +24,15 @@ Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-out
 
 ---
 
-## Task 267-D — Engine Management API Doorways (2026-06-25) [CTO corrections applied 2026-06-25, committed a3fde36e]
+## Task 267-D — Engine Management API Doorways (2026-06-25) [CTO corrections applied 2026-06-25, committed 7119d26c]
 
-**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`a3fde36e`).
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`).
 
 ---
 
-## Task 267-C — Policy Resolution Engine foundation (2026-06-25) [committed a3fde36e]
+## Task 267-C — Policy Resolution Engine foundation (2026-06-25) [committed 7119d26c]
 
-**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`a3fde36e`).
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`).
 
 - **Why:** The policy-resolution concern was the largest hybrid on the engine boundary map. A typed, data-driven precedence engine is the smallest change that makes the owner-flagged POS-vs-Sales-vs-Purchases approval example (POS terminal direct sale can post without approval; Sales / Purchases invoice posting requires approval over a threshold) expressible as one rule per module — and the smallest change that stops modules from growing the old `switch` over `(scope, action)` tuples.
 - **What:** New `PolicyConfig` entity, neutral `IPolicyConfigRepository` interface, pure `PolicyResolver` precedence engine (hard → tenant → module → role → user → context → approved override), `IPolicyEngine.resolveTyped(...)` extension, and 21 new tests. The legacy `IPolicyEngine.resolve({ scope, action, ... })` facade is preserved byte-for-byte. No posting, inventory movement/costing, frontend, or catalog is touched.
@@ -47,7 +47,7 @@ Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-out
 
 ## Task 267 — System Core engine management execution plan (2026-06-24)
 
-**Status:** ✅ 267-A audit completed. ✅ 267-C (foundation), 267-D (API doorways), 267-E (UI doorways) all committed in `a3fde36e` on `codex/267-system-core-boundary-audit`.
+**Status:** ✅ 267-A audit completed. ✅ 267-C (foundation), 267-D (API doorways), 267-E (UI doorways) all committed in `7119d26c` on `codex/267-system-core-boundary-audit`.
 
 - **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
 - **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md), completed the engine-boundary audit at [audits/267](./audits/267-system-core-boundary-inventory.md), wrote the first implementation brief at [briefs/20260624-policy-resolution-engine-builder-brief](./briefs/20260624-policy-resolution-engine-builder-brief.md), and implemented the typed Policy Resolution Engine foundation (267-C) per that brief.
@@ -55,7 +55,7 @@ Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-out
 
 ### Next action
 
-Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**. All of 267-C/D/E are committed in `a3fde36e`.
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**. All of 267-C/D/E are committed in `7119d26c`.
 
 ---
 
