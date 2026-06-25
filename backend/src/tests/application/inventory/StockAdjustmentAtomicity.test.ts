@@ -4,6 +4,12 @@ import { PostStockAdjustmentUseCase } from '../../../application/inventory/use-c
 describe('PostStockAdjustmentUseCase atomicity', () => {
   const COMPANY_ID = 'cmp-1';
   const USER_ID = 'u-1';
+  const makeFullBridge = () => ({
+    recordFinancialEvent: jest.fn(async () => ({ mode: 'full', voucher: { id: 'vch-1' } })),
+    recordPreBuiltVoucher: jest.fn(async () => {
+      throw new Error('Stock Adjustment should not send prebuilt voucher events');
+    }),
+  });
 
   const makeAdjustment = () =>
     new StockAdjustment({
@@ -79,9 +85,7 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
       ),
     };
 
-    const accountingPostingService = {
-      postInTransaction: jest.fn(async () => ({ id: 'vch-1' })),
-    };
+    const accountingBridge = makeFullBridge();
 
     const companyModuleRepo = {
       get: jest.fn(async () => ({ initialized: true })),
@@ -93,7 +97,7 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
       movementUseCase as any,
       transactionManager as any,
       companyModuleRepo as any,
-      accountingPostingService as any
+      accountingBridge as any
     );
 
     const result = await useCase.execute(COMPANY_ID, adjustment.id, USER_ID);
@@ -107,7 +111,9 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
         transaction: txn,
       })
     );
-    expect(accountingPostingService.postInTransaction).toHaveBeenCalledWith(expect.any(Object), txn);
+    expect(accountingBridge.recordFinancialEvent).toHaveBeenCalledWith(
+      expect.objectContaining({ kind: 'STOCK_ADJUSTMENT', transaction: txn })
+    );
     expect(adjustmentRepo.updateAdjustment).toHaveBeenCalledWith(
       COMPANY_ID,
       adjustment.id,
@@ -157,9 +163,12 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
       ),
     };
 
-    const accountingPostingService = {
-      postInTransaction: jest.fn(async () => {
+    const accountingBridge = {
+      recordFinancialEvent: jest.fn(async () => {
         throw new Error('Accounting failed');
+      }),
+      recordPreBuiltVoucher: jest.fn(async () => {
+        throw new Error('Stock Adjustment should not send prebuilt voucher events');
       }),
     };
 
@@ -173,7 +182,7 @@ describe('PostStockAdjustmentUseCase atomicity', () => {
       movementUseCase as any,
       transactionManager as any,
       companyModuleRepo as any,
-      accountingPostingService as any
+      accountingBridge as any
     );
 
     await expect(useCase.execute(COMPANY_ID, adjustment.id, USER_ID)).rejects.toThrow('Accounting failed');

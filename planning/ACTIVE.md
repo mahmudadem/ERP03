@@ -1,8 +1,34 @@
 # 🎯 Current Focus
 
-## Task 267-F (Inventory Opening Stock slice) — Accounting bridge migration: Opening Stock document voucher (2026-06-25) [not committed]
+## Task 267-F (Inventory Stock Adjustment slice) — Accounting bridge migration: gain/loss adjustment voucher (2026-06-25) [not committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** `PostStockAdjustmentUseCase` still held an optional direct `SubledgerVoucherPostingService` field, gated voucher creation on that field, and passed it as a fallback into `postFinancialEvent(...)`.
+- **What:**
+  - **Golden tests first:** New `StockAdjustmentGoldenVoucher.test.ts` (4 tests) captures exact gain/loss + inventory voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
+  - **Migration:** `PostStockAdjustmentUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/constructor param, `postingService` fallback, and old posting-service gate were removed.
+  - **Controller + tests:** `InventoryController.postStockAdjustment` passes `buildAccountingBridge()` directly. Existing Stock Adjustment valuation/atomicity tests now inject a full-mode bridge and assert bridge events.
+  - **Architecture guard:** New `267-F (Inventory Stock Adjustment)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `StockAdjustmentUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-stock-adjustment-bridge-migration.md`.
+- **Verification (all green):**
+  - `StockAdjustmentGoldenVoucher.test.ts` — 4/4 PASS
+  - `StockAdjustmentGLValuation.test.ts` — 4/4 PASS
+  - `StockAdjustmentAtomicity.test.ts` — 2/2 PASS
+  - `SystemCoreBoundaries.test.ts` — 26/26 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Voucher amounts still come from actual stock movement cost, gain/loss account routing is unchanged, PERIODIC still creates no GL voucher, and minimal mode remains bridge-owned.
+
+### Next action
+
+Commit the Stock Adjustment slice, then continue with **Stock Transfer**.
+
+---
+
+## Task 267-F (Inventory Opening Stock slice) — Accounting bridge migration: Opening Stock document voucher (2026-06-25) [committed c6d7f787]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
 
 - **Why:** `PostOpeningStockDocumentUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent(...)`. Opening Stock is the smallest remaining Inventory document voucher path: one optional Inventory/Opening Equity accounting effect, plus an inventory-only branch.
 - **What:**
@@ -21,7 +47,7 @@
 
 ### Next action
 
-Commit the Opening Stock slice, then continue with **Stock Adjustment**.
+Committed as `c6d7f787`. Next bridge-migration slice: **Inventory Stock Adjustment**.
 
 ---
 

@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F Inventory Stock Adjustment slice — Accounting bridge migration: gain/loss adjustment voucher)
+
+- **Context:** After Opening Stock, `PostStockAdjustmentUseCase` still held an optional direct `SubledgerVoucherPostingService` field and only entered voucher creation when that field was present. Goal: make Stock Adjustment voucher posting bridge-only while preserving real-cost valuation and gain/loss routing.
+- **What changed:** Added `StockAdjustmentGoldenVoucher.test.ts` (4 tests) pinning exact Inventory Gain/Loss + Inventory Asset voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PostStockAdjustmentUseCase`; `accountingBridge` is required, the old service gate was removed, and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.postStockAdjustment` passes `buildAccountingBridge()` directly. Existing valuation/atomicity tests now assert bridge events. Added the `267-F (Inventory Stock Adjustment)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Voucher amounts still come from actual stock movement cost, not typed cost. Dedicated Inventory Gain/Loss routing remains unchanged. PERIODIC mode still posts stock only and links no GL voucher.
+- **Verification:** `StockAdjustmentGoldenVoucher.test.ts` 4/4 PASS; `StockAdjustmentGLValuation.test.ts` 4/4 PASS; `StockAdjustmentAtomicity.test.ts` 2/2 PASS; `SystemCoreBoundaries.test.ts` 26/26 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.0h.
+- **Next:** Commit, then continue with Stock Transfer.
+
 ### Session: 2026-06-25 (Task 267-F Inventory Opening Stock slice — Accounting bridge migration: Opening Stock document voucher)
 
 - **Context:** After Sales/Purchases slices, Inventory still held direct `SubledgerVoucherPostingService` fallbacks. Opening Stock was selected first because it is the smallest inventory posting path: stock movement plus one optional Inventory/Opening Equity voucher when accounting effect is enabled.

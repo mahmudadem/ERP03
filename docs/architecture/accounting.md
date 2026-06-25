@@ -345,6 +345,18 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - An architecture guard (`267-F (Inventory Opening Stock)` in `SystemCoreBoundaries.test.ts`) pins this: `OpeningStockDocumentUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
 - Golden voucher-output tests (`OpeningStockGoldenVoucher.test.ts`, 5 tests) capture exact Inventory/Opening Equity bridge output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC asset-account selection, inventory-only no-event behavior, and output stability.
 
+### Stock Adjustment voucher migration (267-F Inventory Stock Adjustment slice)
+
+`PostStockAdjustmentUseCase` previously held an optional direct `SubledgerVoucherPostingService` field, gated voucher creation on that field, and passed `{ bridge, postingService }` into `postFinancialEvent(...)`. As of this slice:
+
+- The `SubledgerVoucherPostingService` import and posting-service constructor param were removed from `PostStockAdjustmentUseCase`.
+- `accountingBridge` is now a required constructor dependency for posting.
+- The voucher creation gate is based on accounting-effect + accounting mode only; when a voucher is needed, `postFinancialEvent` receives `{ bridge }` only.
+- `InventoryController.postStockAdjustment` no longer constructs a posting service for the Stock Adjustment path and passes `InventoryController.buildAccountingBridge()` directly.
+- PERIODIC mode remains a no-GL path; stock movements still post and the document links no GL voucher.
+- An architecture guard (`267-F (Inventory Stock Adjustment)` in `SystemCoreBoundaries.test.ts`) pins this: `StockAdjustmentUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
+- Golden voucher-output tests (`StockAdjustmentGoldenVoucher.test.ts`, 4 tests) capture exact gain/loss and inventory voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
+
 ## What Is NOT Implemented
 
 | Feature | Why deferred |
