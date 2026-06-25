@@ -830,7 +830,6 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
-      const accountingPostingService = SalesController.buildAccountingPostingService();
 
       const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
       const periodLockOverride = periodLockOverrideReason
@@ -850,11 +849,10 @@ export class SalesController {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
-        IAuditEngine,
-        SalesController.buildAccountingBridge()
+        SalesController.buildAccountingBridge(),
+        IAuditEngine
       );
 
       if (periodLockOverride) {

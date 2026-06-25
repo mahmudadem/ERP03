@@ -235,6 +235,24 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   /**
+   * Task 267-F — the Sales DeliveryNote COGS posting path was migrated from a
+   * direct `SubledgerVoucherPostingService` field to `IAccountingBridge`-only.
+   * This guard pins that migration: the use case must not import or reference
+   * the legacy posting service / gateway, and must route through the bridge
+   * helper. If a future change re-introduces the legacy dependency, this guard
+   * fails — preventing silent regression of the engine boundary.
+   */
+  it('267-F: Sales DeliveryNote COGS posting must route through IAccountingBridge, not legacy posting services', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/DeliveryNoteUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
    * Task 267-C — non-failing export/structure guard. The Policy Resolution
    * Engine foundation introduces a typed policy config model and resolver.
    * This guard verifies the foundation files exist where the architecture

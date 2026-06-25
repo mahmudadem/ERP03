@@ -1,5 +1,31 @@
 # 🎯 Current Focus
 
+## Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS (2026-06-25) [not committed]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — review fixes applied, ready to commit.
+
+- **Why:** The engine-boundary audit (267-A) found that Sales/Purchases/Inventory use cases still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. The task prompt required migrating one module path to bridge-only with golden voucher-output tests first. Sales / DeliveryNote COGS was chosen as the safest first target — it's the simplest, most isolated posting path (single `postFinancialEvent` call, no settlement/`PostingGateway` complexity, no existing golden tests).
+- **What:**
+  - **Golden tests first:** New `SalesDeliveryNoteGoldenVoucher.test.ts` (7 tests) captures the exact voucher output that flows into the bridge — account ids, debit/credit sides, base/doc amounts, currency metadata, source reference metadata, period-lock override, minimal-mode null-voucher, PERIODIC no-post, and output stability. Written and run green against pre-migration code, then remained green after migration → zero accounting output drift.
+  - **Migration:** `DeliveryNoteUseCases.ts` — removed `SubledgerVoucherPostingService` import + the `accountingPostingService` constructor param; changed `postFinancialEvent({ bridge, postingService })` → `postFinancialEvent({ bridge })` (bridge-only). `accountingBridge` is now a **required** constructor param (reordered before `auditEngine?` for TypeScript compliance). `SalesController.postDN` — removed the posting-service local + 12th constructor arg, swapped bridge/auditEngine arg order. 8 existing DN test constructions updated to wire a `LegacyAccountingBridgeAdapter`.
+  - **Architecture guard:** New `267-F` guard in `SystemCoreBoundaries.test.ts` — `DeliveryNoteUseCases.ts` must not import `SubledgerVoucherPostingService` or `PostingGateway`, and must use `postFinancialEvent` + `IAccountingBridge`. No existing guard weakened.
+  - **Review fixes (P1+P2):** P1 — fixed "Accounting App is enabled/disabled" wording → "Accounting Engine is initialized/not initialized" in `accounting.md`, `system-core.md`, `IAccountingBridge.ts`, and the completion report. P2 — made `accountingBridge` required (was optional despite no fallback), reordered constructor + updated all 11 call sites.
+  - **Docs:** `docs/architecture/accounting.md` (cross-module touchpoints + 267-F section + wording fix), `docs/architecture/system-core.md` (wording fix), `docs/architecture/module-boundaries.md` (FUP-3 update), `docs/architecture/posting-log.md` (DN row → bridge-routed), `IAccountingBridge.ts` (wording fix), completion report `planning/done/267-f-accounting-bridge-migration-delivery-note.md`.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales/SalesDeliveryNoteGoldenVoucher.test.ts` — 7/7 PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 17/17 PASS (16 existing + 1 new 267-F guard).
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales/SalesPostingUseCases.test.ts` — 29/29 PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales` — 27 suites / 287 tests PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core` — 12 suites / 73 tests PASS.
+  - `npm --prefix backend run build` — tsc clean.
+- **Accounting impact:** None. Golden tests prove identical voucher output. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight fallback dependency from the use case.
+
+### Next action
+
+Commit Task 267-F after review. Then choose the next bridge-migration slice: **SalesInvoiceUseCases** (SI revenue + COGS via `SubledgerDocumentPoster` → make poster's `postingService` optional, remove the field from SI use case) or move to **267-G** (Inventory core ownership completion) or **267-H** (Catalog/Item engine plan).
+
+---
+
 ## Task 267-E — Engine Management Frontend (2026-06-25) [committed 7119d26c]
 
 **Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`). `opencode.json` not touched.

@@ -400,13 +400,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, dn.id);
@@ -442,13 +445,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, dn.id);
@@ -492,13 +498,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, dn.id);
@@ -528,13 +537,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, dn.id);
@@ -559,13 +571,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, dn.id);
@@ -1638,13 +1653,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await expect(useCase.execute(COMPANY_ID, dn.id)).rejects.toThrow('Accounting failed');
@@ -1805,13 +1823,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await expect(useCase.execute(COMPANY_ID, dn.id)).rejects.toThrow('Missing positive inventory cost');
@@ -1859,13 +1880,16 @@ describe('Sales posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, dn.id);

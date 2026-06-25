@@ -97,7 +97,7 @@ Both require the `accounting.vouchers.view` permission.
 |---|---|---|
 | `PostSalesInvoiceUseCase` | ✅ Written after voucher posting, inside the transaction | PR2 |
 | `PostPurchaseInvoiceUseCase` | ⏳ Pending — same pattern | follow-up |
-| `PostDeliveryNoteUseCase` | ⏳ Pending — same pattern | follow-up |
+| `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
 | `PostSalesReturnUseCase` | ⏳ Pending | follow-up |
 | `PostPurchaseReturnUseCase` | ⏳ Pending | follow-up |
 | `PostGoodsReceiptUseCase` | ⏳ Pending | follow-up |

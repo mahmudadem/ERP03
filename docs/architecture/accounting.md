@@ -27,13 +27,13 @@ These are two independent concepts. **Never conflate them.**
 
 - **Accounting Engine** = backend infrastructure for full voucher and ledger posting. Chart of accounts, voucher posting service (`PostVoucherUseCase` / `SubledgerVoucherPostingService`), ledger repository, voucher types/forms, fiscal year, base currency seed. Must be initialized for source modules to produce full GL entries. State: `companyModule.accounting.initialized === true`.
 - **Accounting App/UI** = optional user-facing module. The navigation entry, journal screens, voucher list, reports. A tenant may run POS or operational modules without exposing these screens. State: `companyModule.accounting.isEnabled` (admin toggle).
-- **Accounting Bridge** = System Core recording seam for source-module financial events. When the Accounting App is enabled, it uses the full posting engine and produces vouchers/ledger entries. When the Accounting App is disabled, it records a minimal `PostingLog` journal event so the operational financial event is still durable, but no GL voucher is created.
+- **Accounting Bridge** = System Core recording seam for source-module financial events. When the Accounting Engine is initialized (`companyModule.accounting.initialized === true`), it uses the full posting engine and produces vouchers/ledger entries. When the Accounting Engine is not initialized (the company is not linked to accounting), it records a minimal `PostingLog` journal event so the operational financial event is still durable, but no GL voucher is created. The Accounting App/UI visibility toggle (`isEnabled`) never gates this decision — only engine readiness does.
 
 **Implications:**
 - Sales/Purchases initialization auto-invokes `EnsureAccountingEngineInitialized` (which calls `InitializeAccountingUseCase` with safe defaults: `coaTemplate=standard`, calendar fiscal year, base currency from the company record). If the Engine cannot be initialized (no base currency on the company, no default COA template), it throws `AccountingEngineUnavailableError`.
 - Existing Sales/Purchases/Inventory full-posting use cases still check `companyModule.accounting.initialized` or module readiness before writing GL.
-- POS financial events use `IAccountingBridge`: enabled Accounting App means full voucher posting; disabled Accounting App means minimal-journal event capture.
-- Minimal-journal records are not financial statements. They preserve the audit trail of operational events while Accounting UI is hidden. A future replay/migration policy is required before those minimal records become ledger vouchers.
+- POS financial events use `IAccountingBridge`: an initialized Accounting Engine means full voucher posting; an uninitialized Accounting Engine means minimal-journal event capture.
+- Minimal-journal records are not financial statements. They preserve the audit trail of operational events while the Accounting Engine is not initialized (company not linked to accounting). A future replay/migration policy is required before those minimal records become ledger vouchers.
 
 ## COA Template Baseline (Perpetual-Ready Defaults)
 
@@ -228,11 +228,27 @@ If the company wants an actual posted period-close voucher, that remains a separ
 
 ## Cross-Module Touchpoints
 
-- **Sales** → posts AR + Revenue + (conditionally) COGS through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write.
-- **Purchases** → posts Inventory/Expense + AP through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write.
-- **Inventory** → Opening Stock can post an inventory-valuation voucher through `SubledgerVoucherPostingService`, which now runs the shared accounting policy registry before ledger write. COGS auto-posting from sales delivery is **not yet implemented** — Sales posts COGS directly today.
+- **Sales** → posts AR + Revenue + (conditionally) COGS. The DeliveryNote COGS path now routes through `IAccountingBridge` (Task 267-F); SI/SR document vouchers route through `SubledgerDocumentPoster` + the bridge; settlement receipts route through `bridge.recordPreBuiltVoucher` (FUP-5). All paths apply the full-vs-minimal decision: full GL voucher when the Accounting Engine is initialized, minimal `PostingLog` event when not.
+- **Purchases** → posts Inventory/Expense + AP through `postFinancialEvent` / `SubledgerDocumentPoster` + the bridge; settlement through `bridge.recordPreBuiltVoucher` (FUP-5). Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
+- **Inventory** → Opening Stock, Stock Adjustment, Stock Transfer, and Inventory Revaluation route through `postFinancialEvent` + the bridge. Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → `InventoryValuationService` now also feeds the periodic reporting bridge: Balance Sheet inventory override, Trading Account, Profit & Loss periodic cost-of-sales, and the Inventory Valuation report's pricing-policy view.
 - **Multi-company** → consolidated reports reach across companies via `GetConsolidatedTrialBalanceUseCase`.
+
+## Accounting Bridge Migration — Task 267-F (DeliveryNote COGS)
+
+**Date:** 2026-06-25
+**Slice:** Sales / DeliveryNote COGS posting path (first module migrated to bridge-only).
+
+The `PostDeliveryNoteUseCase` previously held a direct `SubledgerVoucherPostingService` field and passed `{ bridge, postingService }` to the `postFinancialEvent` helper — the posting service was the fallback when no bridge was wired. As of 267-F, the use case depends **only** on `IAccountingBridge`:
+
+- The `SubledgerVoucherPostingService` constructor param and import were removed entirely.
+- The `postFinancialEvent` call passes `{ bridge }` only — the bridge owns the full-vs-minimal decision.
+- The `SalesController.postDN` handler no longer constructs a `SubledgerVoucherPostingService` for the DN path; it passes `SalesController.buildAccountingBridge()` directly.
+- An architecture guard (`267-F` in `SystemCoreBoundaries.test.ts`) pins this: `DeliveryNoteUseCases.ts` must not import `SubledgerVoucherPostingService` or `PostingGateway`, and must use `postFinancialEvent` + `IAccountingBridge`.
+
+**Golden voucher-output tests** (`SalesDeliveryNoteGoldenVoucher.test.ts`, 7 tests) capture the exact voucher output that flows into the bridge — account ids, debit/credit sides, base/doc amounts, currency metadata, source reference metadata, period-lock override forwarding, and minimal-mode null-voucher behavior. These tests were written **before** the migration, run green against the pre-migration code (where the bridge was already wired), and remain green after — proving no accounting output drift.
+
+**What was NOT changed in this slice:** `SalesInvoiceUseCases`, `SalesReturnUseCases`, `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still hold a `SubledgerVoucherPostingService` field. They already route through the bridge via `SubledgerDocumentPoster` / `postFinancialEvent` / `recordPreBuiltVoucher`, but the field remains as a fallback. Migrating each to bridge-only is a follow-up slice (one module at a time, with golden tests first).
 
 ## What Is NOT Implemented
 

@@ -148,12 +148,12 @@ Accounting boundary: 250j is intended as a pure ownership move. Golden COGS post
 
 ## Accounting Bridge
 
-250k hardens `IAccountingBridge` from a POS posting seam into the strategy point for financial-event recording. The bridge now selects a recording mode from the tenant's `accounting` company-module activation:
+250k hardens `IAccountingBridge` from a POS posting seam into the strategy point for financial-event recording. The bridge now selects a recording mode from the tenant's Accounting Engine readiness (`companyModule.accounting.initialized`), **not** from the Accounting App/UI visibility toggle (`isEnabled`):
 
-- `full` when the Accounting App is enabled: delegates to the existing `SubledgerVoucherPostingService.postInTransaction(...)`. Voucher and ledger output are unchanged.
-- `minimal` when the Accounting App is disabled or absent: writes a `PostingLog` minimal-journal record in the same transaction context when available, and does not post a ledger voucher.
+- `full` when the Accounting Engine is initialized: delegates to the existing `SubledgerVoucherPostingService.postInTransaction(...)`. Voucher and ledger output are unchanged.
+- `minimal` when the Accounting Engine is not initialized (company not linked to accounting): writes a `PostingLog` minimal-journal record in the same transaction context when available, and does not post a ledger voucher.
 
-The distinction is intentional: module activation controls Accounting UI/management exposure, while the bridge still records the operational financial event. Minimal records are audit-grade event captures, not full ledger postings; enabling Accounting later still requires an explicit migration/replay policy before those events become ledger vouchers.
+The distinction is intentional: the Accounting App/UI toggle (`isEnabled`) controls UI/management exposure only and must never gate posting correctness; the bridge still records the operational financial event regardless. Minimal records are audit-grade event captures, not full ledger postings; initializing the Accounting Engine later still requires an explicit migration/replay policy before those events become ledger vouchers.
 
 POS sale, return, and shift over/short flows now route through `IAccountingBridge`. `SystemCoreBoundaries.test.ts` blocks POS application/controllers from importing `SubledgerVoucherPostingService` or calling `postInTransaction(...)` directly.
 

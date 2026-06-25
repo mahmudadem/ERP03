@@ -2,6 +2,33 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS)
+
+- **Context:** Task 267-F required migrating one source-module financial posting path to `IAccountingBridge`-only, with golden voucher-output tests written BEFORE any code change. The audit (267-A) found that Sales/Purchases/Inventory use cases still held a direct `SubledgerVoucherPostingService` field as a fallback alongside the bridge. Sales / DeliveryNote COGS was chosen as the safest first target: single `postFinancialEvent` call, no settlement/`PostingGateway` complexity, no existing golden tests, isolated to one use case.
+- **What changed:**
+  - **Golden tests first:** New `backend/src/tests/application/sales/SalesDeliveryNoteGoldenVoucher.test.ts` (7 tests) — a `CapturingBridge` records the exact `FinancialEvent` the use case sends to the bridge. Tests pin: G1 (exact account ids, sides, base/doc amounts, currency, exchange rate, voucher type, posting lock policy, reference, base-currency override, source metadata), G2 (minimal mode → null voucher), G3 (PERIODIC → no COGS event), G4 (COGS account fallback to inventory settings), G5 (period-lock override metadata forwarded), G6 (foreign-currency DN), G7 (output stability across runs). Run green against pre-migration code, then green after migration → zero drift.
+  - **Migration:** `backend/src/application/sales/use-cases/DeliveryNoteUseCases.ts` — removed `import { SubledgerVoucherPostingService }`, removed the `accountingPostingService` constructor param (was 12th positional arg), changed `postFinancialEvent({ bridge, postingService })` → `postFinancialEvent({ bridge })` (bridge-only). The use case now depends only on `IAccountingBridge`.
+  - **Controller:** `backend/src/api/controllers/sales/SalesController.ts` — removed the `accountingPostingService` local in `postDN`, removed the 12th constructor arg.
+  - **Tests:** `backend/src/tests/application/sales/SalesPostingUseCases.test.ts` — updated 8 `PostDeliveryNoteUseCase` constructions: removed the 12th arg, shifted subsequent args, wired `LegacyAccountingBridgeAdapter(postingService, companyModuleRepo)` as the bridge (last arg). Full mode → same `postInTransaction` → same `voucherRepo.save` behavior.
+  - **Architecture guard:** `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` — new `267-F` guard: `DeliveryNoteUseCases.ts` must not import `SubledgerVoucherPostingService` or `PostingGateway`, must use `postFinancialEvent` + `IAccountingBridge`. 16 existing guards untouched.
+  - **Docs:** `docs/architecture/accounting.md` (cross-module touchpoints + 267-F section), `docs/architecture/module-boundaries.md` (FUP-3 update), `docs/architecture/posting-log.md` (DN row → bridge-routed), completion report `planning/done/267-f-accounting-bridge-migration-delivery-note.md`.
+- **Accounting / control impact:** None. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight `SubledgerVoucherPostingService` fallback dependency from the DN use case. Golden tests prove identical voucher output. No posting math, tax, COGS, inventory valuation, settlement, period-lock, or approval behavior changed.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 17/17 PASS (16 existing + 1 new).
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales` — 27 suites / 287 tests PASS (26 existing + 1 new golden suite / 7 tests).
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core` — 12 suites / 73 tests PASS.
+  - `npm --prefix backend run build` — tsc clean.
+- **Reviewer-blocker check:**
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.** Golden tests prove identical voucher output.
+  - direct new `SubledgerVoucherPostingService` or `PostingGateway` source-module usage introduced? — **no.** The DN path no longer imports either.
+  - new `StockMovement` / `StockLevel` construction outside inventory core? — **no.**
+  - tests or boundary guards weakened? — **no.** 16 existing guards still pass; 1 new guard added.
+  - `opencode.json` modified? — **no.** (verified via `git status`).
+  - golden tests fail if voucher lines/metadata drift? — **yes.** G1/G4/G5/G6/G7 pin exact fields; G2 pins minimal-mode null; G3 pins PERIODIC no-post.
+- **Actual time:** ~2.5h (audit + golden tests + migration + 8 test-construction updates + guard + verification + docs) + ~0.5h review fixes.
+- **Review fixes (pre-commit):** P1 — fixed "Accounting App is enabled/disabled" → "Accounting Engine is initialized/not initialized" wording in `accounting.md`, `system-core.md`, `IAccountingBridge.ts`, and the completion report. P2 — made `accountingBridge` a required constructor param (was optional despite no fallback); reordered before `auditEngine?` for TypeScript compliance; updated all 11 call sites. Re-verified: golden 7/7, boundaries 17/17, sales posting 29/29, build clean.
+- **Next:** Commit Task 267-F. Next bridge-migration slice: SalesInvoiceUseCases (make `SubledgerDocumentPoster.postingService` optional, remove the field from SI use case, golden tests first) — or move to 267-G (Inventory core ownership) or 267-H (Catalog/Item engine plan).
+
 ### Session: 2026-06-25 (Task 267 — commit)
 
 - **What happened:** Task 267-D (engine management API doorways) and Task 267-E (engine management frontend) were committed as one bundle, together with the pre-existing 267-C (policy resolution engine).
