@@ -229,7 +229,7 @@ If the company wants an actual posted period-close voucher, that remains a separ
 ## Cross-Module Touchpoints
 
 - **Sales** → posts AR + Revenue + (conditionally) COGS. The DeliveryNote COGS path, SalesInvoice document voucher path (revenue + COGS), SalesReturn document voucher path (revenue reversal + COGS reversal), and Sales PaymentSync record-payment receipt path now route through `IAccountingBridge`-only (Task 267-F). All paths apply the full-vs-minimal decision: full GL voucher when the Accounting Engine is initialized, minimal `PostingLog` event when not.
-- **Purchases** → posts Inventory/Expense + AP through `postFinancialEvent` / `SubledgerDocumentPoster` + the bridge; settlement through `bridge.recordPreBuiltVoucher` (FUP-5). Goods Receipt and Purchase Invoice document vouchers now route through `IAccountingBridge`-only (Task 267-F GRN + PI slices). PR/PaymentSync still hold direct posting fallbacks — migration to bridge-only is a follow-up slice.
+- **Purchases** → posts Inventory/Expense + AP through `postFinancialEvent` / `SubledgerDocumentPoster` + the bridge; settlement through `bridge.recordPreBuiltVoucher` (FUP-5). Goods Receipt, Purchase Invoice, and Purchase Return document vouchers now route through `IAccountingBridge`-only (Task 267-F GRN + PI + PR slices). Purchases PaymentSync still holds a direct posting fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → Opening Stock, Stock Adjustment, Stock Transfer, and Inventory Revaluation route through `postFinancialEvent` + the bridge. Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → `InventoryValuationService` now also feeds the periodic reporting bridge: Balance Sheet inventory override, Trading Account, Profit & Loss periodic cost-of-sales, and the Inventory Valuation report's pricing-policy view.
 - **Multi-company** → consolidated reports reach across companies via `GetConsolidatedTrialBalanceUseCase`.
@@ -248,7 +248,7 @@ The `PostDeliveryNoteUseCase` previously held a direct `SubledgerVoucherPostingS
 
 **Golden voucher-output tests** (`SalesDeliveryNoteGoldenVoucher.test.ts`, 7 tests) capture the exact voucher output that flows into the bridge — account ids, debit/credit sides, base/doc amounts, currency metadata, source reference metadata, period-lock override forwarding, and minimal-mode null-voucher behavior. These tests were written **before** the migration, run green against the pre-migration code (where the bridge was already wired), and remain green after — proving no accounting output drift.
 
-**What was NOT changed in the DeliveryNote slice:** `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still held direct posting fallbacks. Later 267-F slices migrated SI, SR, Sales PaymentSync, GRN, and PI as documented below. Purchase Return, Purchases PaymentSync, and Inventory remain follow-up slices.
+**What was NOT changed in the DeliveryNote slice:** `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still held direct posting fallbacks. Later 267-F slices migrated SI, SR, Sales PaymentSync, GRN, PI, and PR as documented below. Purchases PaymentSync and Inventory remain follow-up slices.
 
 ### SalesInvoice document voucher migration (267-F SI slice)
 
@@ -309,6 +309,18 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - `UnpostPurchaseInvoiceUseCase` keeps only a narrow local voucher-deletion interface for reversing an already-posted PI; the post path is bridge-only.
 - An architecture guard (`267-F (PI)` in `SystemCoreBoundaries.test.ts`) pins this: `PurchaseInvoiceUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`, and must route prebuilt settlement vouchers through `recordPreBuiltVoucher`.
 - Golden voucher-output tests (`PurchaseInvoiceGoldenVoucher.test.ts`, 3 tests) capture the exact Expense/Tax/AP voucher output sent to the bridge, no-accounting-effect behavior, and output stability.
+
+### Purchase Return document voucher migration (267-F PR slice)
+
+`PostPurchaseReturnUseCase` previously held a direct `SubledgerVoucherPostingService` field and passed `{ bridge, postingService }` into `postFinancialEvent(...)`. As of this slice:
+
+- The `SubledgerVoucherPostingService` import and posting-service constructor param were removed from `PostPurchaseReturnUseCase`.
+- `accountingBridge` is now a required constructor dependency.
+- Both Purchase Return voucher branches call `postFinancialEvent({ bridge })` only: AFTER_INVOICE/DIRECT AP reversal and BEFORE_INVOICE GRNI reversal.
+- `PurchaseController.postReturn` no longer constructs a posting service for the PR post path and passes `PurchaseController.buildAccountingBridge()` directly.
+- `UnpostPurchaseReturnUseCase` keeps only a narrow local voucher-deletion interface for reversing an already-posted PR; the post path is bridge-only.
+- An architecture guard (`267-F (PR)` in `SystemCoreBoundaries.test.ts`) pins this: `PurchaseReturnUseCases.ts` must not import `SubledgerVoucherPostingService` or pass a `postingService` fallback.
+- Golden voucher-output tests (`PurchaseReturnGoldenVoucher.test.ts`, 5 tests) capture exact AP/return/tax reversal output, GRNI/Inventory reversal output, no-accounting-effect behavior, minimal-mode null voucher id, and output stability.
 
 ## What Is NOT Implemented
 

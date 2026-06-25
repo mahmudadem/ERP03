@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F PR slice — Accounting bridge migration: Purchase Return document vouchers)
+
+- **Context:** After GRN and PI, `PostPurchaseReturnUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. Goal: migrate PR document vouchers to `IAccountingBridge`-only with golden tests first.
+- **What changed:** Added `PurchaseReturnGoldenVoucher.test.ts` (5 tests) pinning AFTER_INVOICE AP/return/tax reversal output, BEFORE_INVOICE GRNI/Inventory reversal output, no-accounting-effect behavior, minimal-mode null voucher id, and output stability. Removed `SubledgerVoucherPostingService` from `PostPurchaseReturnUseCase`; `accountingBridge` is required and both `postFinancialEvent` calls receive `{ bridge }` only. `PurchaseController.postReturn` now passes `buildAccountingBridge()` directly. Existing PR tests use `LegacyAccountingBridgeAdapter` for full-mode parity. Added the `267-F (PR)` architecture guard.
+- **Accounting / control impact:** None intended. Golden tests prove both PR voucher branches sent to the bridge are unchanged.
+- **Verification:** `PurchaseReturnGoldenVoucher.test.ts` 5/5 PASS; `PurchaseReturnUseCases.test.ts` 8/8 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SystemCoreBoundaries.test.ts` 23/23 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.5h.
+- **Next:** Commit. Next slice: Purchases PaymentSync / record-payment path.
+
 ### Session: 2026-06-25 (Task 267-F PI slice — Accounting bridge migration: Purchase Invoice document vouchers)
 
 - **Context:** After the GRN slice, `PostPurchaseInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field and used it as a fallback for Purchase Invoice document voucher posting. Goal: migrate the PI document voucher path to `IAccountingBridge`-only with golden voucher-output tests first, preserving Expense/Tax/AP output exactly.

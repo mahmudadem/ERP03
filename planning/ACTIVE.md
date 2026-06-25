@@ -1,8 +1,33 @@
 # 🎯 Current Focus
 
-## Task 267-F (PI slice) — Accounting bridge migration: Purchase Invoice document vouchers (2026-06-25) [not committed]
+## Task 267-F (PR slice) — Accounting bridge migration: Purchase Return document vouchers (2026-06-25) [not committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** `PostPurchaseReturnUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. PR is the remaining Purchases document voucher path after GRN and PI.
+- **What:**
+  - **Golden tests first:** New `PurchaseReturnGoldenVoucher.test.ts` (5 tests) captures exact AFTER_INVOICE AP/return/tax reversal output, BEFORE_INVOICE GRNI/Inventory reversal output, no-accounting-effect behavior, minimal-mode null voucher id, and output stability.
+  - **Migration:** `PurchaseReturnUseCases.ts` removed the posting-service import/field from `PostPurchaseReturnUseCase`; `accountingBridge` is required; both `postFinancialEvent` calls now receive `{ bridge }` only.
+  - **Controller + tests:** `PurchaseController.postReturn` passes `buildAccountingBridge()` directly. Existing PR constructions in `PurchaseReturnUseCases.test.ts` use `LegacyAccountingBridgeAdapter` to preserve full-mode behavior.
+  - **Architecture guard:** New `267-F (PR)` guard blocks `SubledgerVoucherPostingService` and `postingService:` fallback in `PurchaseReturnUseCases.ts`.
+- **Verification (all green):**
+  - `PurchaseReturnGoldenVoucher.test.ts` — 5/5 PASS
+  - `PurchaseReturnUseCases.test.ts` — 8/8 PASS
+  - `PurchasePostingUseCases.test.ts` — 22/22 PASS
+  - `SystemCoreBoundaries.test.ts` — 23/23 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Golden tests pin both PR voucher branches and minimal/no-accounting behavior.
+
+### Next action
+
+Commit the PR slice. Next bridge-migration slice: **Purchases PaymentSync / record-payment path**.
+
+---
+
+## Task 267-F (PI slice) — Accounting bridge migration: Purchase Invoice document vouchers (2026-06-25) [committed 212df4e1]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
 
 - **Why:** `PostPurchaseInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field and used it as the fallback for document vouchers. Purchase Invoice is the next Purchases document path after GRN: Expense/Inventory/Tax/AP document voucher plus existing settlement payment prebuilt-voucher flow.
 - **What:**
@@ -22,7 +47,7 @@
 
 ### Next action
 
-Commit the PI slice. Next bridge-migration slice: **PurchaseReturnUseCases document voucher path**.
+Committed as `212df4e1`. Next bridge-migration slice: **PurchaseReturnUseCases document voucher path**.
 
 ---
 

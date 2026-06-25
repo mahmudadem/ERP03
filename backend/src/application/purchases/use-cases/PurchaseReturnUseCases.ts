@@ -42,7 +42,6 @@ import {
   IPartyItemPriceRepository,
   PartyItemPriceUpsertInput,
 } from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
@@ -113,6 +112,10 @@ interface VoucherAccumulatedLine {
   notes: string;
   effectiveRate?: number; 
   metadata?: Record<string, any>;
+}
+
+interface VoucherDeletionService {
+  deleteVoucherInTransaction(companyId: string, voucherId: string, transaction?: unknown): Promise<void>;
 }
 
 const determineReturnContext = (input: CreatePurchaseReturnInput): ReturnContext => {
@@ -493,12 +496,11 @@ export class PostPurchaseReturnUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {}
 
 async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<PurchaseReturn> {
@@ -1094,7 +1096,7 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
 
         if (shouldPostAccounting) {
           const voucher = await postFinancialEvent(
-            { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+            { bridge: this.accountingBridge },
             {
               kind: 'PURCHASE_RETURN',
               transaction,
@@ -1151,7 +1153,7 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
 
         if (shouldPostAccounting) {
           const voucher = await postFinancialEvent(
-            { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+            { bridge: this.accountingBridge },
             {
               kind: 'PURCHASE_RETURN',
               transaction,
@@ -1421,7 +1423,7 @@ export class UnpostPurchaseReturnUseCase {
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountingPostingService: VoucherDeletionService,
     private readonly transactionManager: ITransactionManager
   ) {}
 

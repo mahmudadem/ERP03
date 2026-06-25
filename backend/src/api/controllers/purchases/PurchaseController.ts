@@ -1253,7 +1253,6 @@ export class PurchaseController {
       const userId = PurchaseController.getUserId(req);
 
       const inventoryService = PurchaseController.buildPurchasesInventoryService();
-      const accountingPostingService = PurchaseController.buildAccountingPostingService();
 
       const useCase = new PostPurchaseReturnUseCase(
         diContainer.purchaseSettingsRepository,
@@ -1271,12 +1270,11 @@ export class PurchaseController {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        PurchaseController.buildAccountingPostingService(),
         diContainer.accountRepository,
         diContainer.transactionManager,
+        PurchaseController.buildAccountingBridge(),
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase,
-        PurchaseController.buildAccountingBridge()
+        diContainer.recordSalesProfitLineFactsUseCase
       );
 
       const pr = await useCase.execute(companyId, id);

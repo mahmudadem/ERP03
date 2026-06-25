@@ -100,7 +100,7 @@ Both require the `accounting.vouchers.view` permission.
 | `PostSalesInvoiceUseCase` | ✅ Document vouchers (revenue + COGS) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SI slice); record-payment receipts route through `recordPreBuiltVoucher` without a direct gateway fallback (Task 267-F Sales PaymentSync slice) | 267-F |
 | `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
 | `PostSalesReturnUseCase` | ✅ Document vouchers (revenue reversal + COGS reversal) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SR slice); refund settlement still posts through the same poster/bridge | 267-F |
-| `PostPurchaseReturnUseCase` | ⏳ Pending | follow-up |
+| `PostPurchaseReturnUseCase` | ✅ Document vouchers (AP reversal, purchase-return/tax reversal, GRNI/Inventory reversal) route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` | 267-F |
 | `PostGoodsReceiptUseCase` | ✅ Goods Receipt Inventory/GRNI voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` (Task 267-F GRN slice) | 267-F |
 | Sales record-payment voucher writes | ✅ Full mode returns receipt voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 
