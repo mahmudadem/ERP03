@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F Purchases PaymentSync slice — Accounting bridge migration: record-payment vouchers)
+
+- **Context:** Purchases `PaymentSyncUseCases.ts` already called `accountingBridge.recordPreBuiltVoucher(...)`, but retained an optional no-bridge fallback that constructed `PostingGateway` directly. Goal: make the bridge compile-time required and remove the direct source-module gateway dependency while preserving payment voucher output.
+- **What changed:** Added `PurchasePaymentSyncGoldenVoucher.test.ts` (3 tests) pinning exact prebuilt payment voucher output, minimal-mode null GL link behavior, and DEFERRED no-voucher behavior. `PostPurchaseInvoiceWithSettlementUseCase` and `RecordPurchaseInvoicePaymentUseCase` now require `IAccountingBridge`; fallback direct posting was removed. Full-mode persistence uses `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` through the bridge `postFull` callback. `PurchaseController.recordPayment` and existing tests pass the required bridge. Added the `267-F (Purchases PaymentSync)` architecture guard.
+- **Accounting / control impact:** None intended. Full mode still runs the same ledger-door persistence and voucher save. Minimal mode links no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `PurchasePaymentSyncGoldenVoucher.test.ts` 3/3 PASS; `PurchasePaymentSyncUseCases.test.ts` 9/9 PASS; `SystemCoreBoundaries.test.ts` 24/24 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.25h.
+- **Next:** Commit. Next bridge-migration area: Inventory posting paths.
+
 ### Session: 2026-06-25 (Task 267-F PR slice — Accounting bridge migration: Purchase Return document vouchers)
 
 - **Context:** After GRN and PI, `PostPurchaseReturnUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. Goal: migrate PR document vouchers to `IAccountingBridge`-only with golden tests first.

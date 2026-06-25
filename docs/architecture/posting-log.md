@@ -103,6 +103,7 @@ Both require the `accounting.vouchers.view` permission.
 | `PostPurchaseReturnUseCase` | ✅ Document vouchers (AP reversal, purchase-return/tax reversal, GRNI/Inventory reversal) route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` | 267-F |
 | `PostGoodsReceiptUseCase` | ✅ Goods Receipt Inventory/GRNI voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` (Task 267-F GRN slice) | 267-F |
 | Sales record-payment voucher writes | ✅ Full mode returns receipt voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
+| Purchases record-payment voucher writes | ✅ Full mode returns payment voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 
 Wiring the remaining use cases is mechanical (copy-paste of the SI pattern, adjust strategy name + skip-reason taxonomy). The entity and repository support all cases without further change. Tracked as a P1 cleanup.
 

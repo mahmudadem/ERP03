@@ -1,8 +1,33 @@
 # 🎯 Current Focus
 
-## Task 267-F (PR slice) — Accounting bridge migration: Purchase Return document vouchers (2026-06-25) [not committed]
+## Task 267-F (Purchases PaymentSync slice) — Accounting bridge migration: record-payment vouchers (2026-06-25) [not committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** Purchases `PaymentSyncUseCases.ts` already used `accountingBridge.recordPreBuiltVoucher(...)`, but still imported and constructed `PostingGateway` inside an optional no-bridge fallback. That left a source-module direct ledger-door dependency.
+- **What:**
+  - **Golden tests first:** New `PurchasePaymentSyncGoldenVoucher.test.ts` (3 tests) captures exact prebuilt payment voucher output, minimal-mode null GL link behavior, and DEFERRED no-voucher behavior.
+  - **Migration:** `PostPurchaseInvoiceWithSettlementUseCase` and `RecordPurchaseInvoicePaymentUseCase` now require `IAccountingBridge`; fallback direct posting was removed.
+  - **Accounting helper:** Reuses `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` so full-mode persistence of prebuilt vouchers is invoked only through the bridge's `postFull` callback.
+  - **Controller + tests:** `PurchaseController.recordPayment` and existing `PurchasePaymentSyncUseCases.test.ts` constructions pass the required bridge.
+  - **Architecture guard:** New `267-F (Purchases PaymentSync)` guard blocks `PostingGateway` in `PaymentSyncUseCases.ts` and requires `recordPreBuiltVoucher` + `IAccountingBridge`.
+- **Verification (all green):**
+  - `PurchasePaymentSyncGoldenVoucher.test.ts` — 3/3 PASS
+  - `PurchasePaymentSyncUseCases.test.ts` — 9/9 PASS
+  - `SystemCoreBoundaries.test.ts` — 24/24 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Full mode runs the same voucher persistence through the ledger door; minimal mode remains bridge-owned and links no GL voucher id.
+
+### Next action
+
+Commit the Purchases PaymentSync slice. Next bridge-migration area: **Inventory posting paths**.
+
+---
+
+## Task 267-F (PR slice) — Accounting bridge migration: Purchase Return document vouchers (2026-06-25) [committed 85064a09]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
 
 - **Why:** `PostPurchaseReturnUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. PR is the remaining Purchases document voucher path after GRN and PI.
 - **What:**
@@ -21,7 +46,7 @@
 
 ### Next action
 
-Commit the PR slice. Next bridge-migration slice: **Purchases PaymentSync / record-payment path**.
+Committed as `85064a09`. Next bridge-migration slice: **Purchases PaymentSync / record-payment path**.
 
 ---
 

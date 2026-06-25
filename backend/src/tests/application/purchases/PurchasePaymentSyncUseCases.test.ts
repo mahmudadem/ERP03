@@ -89,6 +89,16 @@ const makeSettlementInput = (amountBase: number, mode: 'CASH_FULL' | 'MULTI' = '
   }],
 });
 
+const makeFullBridge = () => ({
+  recordFinancialEvent: jest.fn(async () => {
+    throw new Error('Purchase PaymentSync should not record subledger financial events');
+  }),
+  recordPreBuiltVoucher: jest.fn(async (event: any) => {
+    await event.postFull();
+    return { mode: 'full', voucher: event.voucher };
+  }),
+});
+
 describe('RecordPurchaseInvoicePaymentUseCase', () => {
   it('records full payment via CASH_FULL and marks invoice PAID', async () => {
     const invoice = buildPostedInvoice(100, 0);
@@ -101,7 +111,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(100));
@@ -124,7 +135,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'pi-1', {
@@ -147,7 +159,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(50, 'MULTI'));
@@ -168,7 +181,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(150))).rejects.toThrow(
@@ -187,7 +201,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'pi-1', {
@@ -212,7 +227,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(150, 'MULTI'))).rejects.toThrow(
@@ -247,6 +263,7 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
       deps.transactionManager as any,
+      makeFullBridge() as any,
       accountRepo as any,
       partyRepo as any
     );
@@ -285,6 +302,7 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
       deps.transactionManager as any,
+      makeFullBridge() as any,
       undefined,
       partyRepo as any
     );
@@ -308,7 +326,8 @@ describe('RecordPurchaseInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      makeFullBridge() as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'pi-1', makeSettlementInput(150, 'MULTI'));
