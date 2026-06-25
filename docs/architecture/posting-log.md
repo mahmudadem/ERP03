@@ -96,7 +96,7 @@ Both require the `accounting.vouchers.view` permission.
 | Use case | PostingLog write | Status |
 |---|---|---|
 | `PostSalesInvoiceUseCase` | ✅ Written after voucher posting, inside the transaction | PR2 |
-| `PostPurchaseInvoiceUseCase` | ⏳ Pending — same pattern | follow-up |
+| `PostPurchaseInvoiceUseCase` | ✅ Document vouchers (Expense/Inventory/Tax/AP) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`; settlement payments route through `recordPreBuiltVoucher` with the existing full-mode gateway closure | 267-F |
 | `PostSalesInvoiceUseCase` | ✅ Document vouchers (revenue + COGS) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SI slice); record-payment receipts route through `recordPreBuiltVoucher` without a direct gateway fallback (Task 267-F Sales PaymentSync slice) | 267-F |
 | `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
 | `PostSalesReturnUseCase` | ✅ Document vouchers (revenue reversal + COGS reversal) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SR slice); refund settlement still posts through the same poster/bridge | 267-F |

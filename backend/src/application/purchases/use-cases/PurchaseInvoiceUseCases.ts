@@ -46,7 +46,6 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
   ItemQtyToBaseUomResult,
@@ -82,6 +81,10 @@ export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
 export const SETTLEMENT_MODES: SettlementMode[] = ['DEFERRED', 'CASH_FULL', 'MULTI'];
 export const VALID_PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
+
+interface VoucherDeletionService {
+  deleteVoucherInTransaction(companyId: string, voucherId: string, transaction?: unknown): Promise<void>;
+}
 
 export interface SettlementRow {
   settlementAccountId: string;
@@ -537,17 +540,16 @@ export class PostPurchaseInvoiceUseCase {
     private readonly exchangeRateRepo: IExchangeRateRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly paymentHistoryRepo?: IPaymentHistoryRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
-    private readonly numberingEngine?: INumberingEngine,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly numberingEngine?: INumberingEngine
   ) {
     this.accountRepo = accountRepo;
   }
@@ -1021,7 +1023,7 @@ export class PostPurchaseInvoiceUseCase {
         });
 
         if (shouldPostAccounting) {
-          const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
+          const poster = new SubledgerDocumentPoster(undefined, this.accountingBridge);
           const voucher = await poster.post(
             {
               companyId,
@@ -1374,21 +1376,16 @@ export class PostPurchaseInvoiceUseCase {
       };
 
       // FUP-5: route the payment through the accounting bridge (full-vs-minimal). Full mode posts the
-      // identical voucher via the gateway; minimal mode (Accounting App disabled) records a minimal
-      // journal and posts no GL voucher. Without a bridge, post directly (legacy behavior preserved).
-      let settlementPosted = true;
-      if (this.accountingBridge) {
-        const result = await this.accountingBridge.recordPreBuiltVoucher({
-          companyId,
-          kind: 'PURCHASE_PAYMENT',
-          voucher: postedVoucher,
-          postFull,
-          transaction,
-        });
-        settlementPosted = result.mode === 'full';
-      } else {
-        await postFull();
-      }
+      // identical voucher via the gateway; minimal mode (Accounting Engine not initialized) records a
+      // minimal journal and posts no GL voucher.
+      const result = await this.accountingBridge.recordPreBuiltVoucher({
+        companyId,
+        kind: 'PURCHASE_PAYMENT',
+        voucher: postedVoucher,
+        postFull,
+        transaction,
+      });
+      const settlementPosted = result.mode === 'full';
 
       const paymentId = `pay_${randomUUID()}`;
       const payment = new PaymentHistory({
@@ -1661,7 +1658,7 @@ export class UnpostPurchaseInvoiceUseCase {
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountingPostingService: VoucherDeletionService,
     private readonly transactionManager: ITransactionManager
   ) {}
 

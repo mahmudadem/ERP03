@@ -740,7 +740,6 @@ export class PurchaseController {
       const companyId = PurchaseController.getCompanyId(req);
       const id = String((req as any).params.id);
       const inventoryService = PurchaseController.buildPurchasesInventoryService();
-      const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
 
       const useCase = new PostPurchaseInvoiceUseCase(
         diContainer.purchaseSettingsRepository,
@@ -757,17 +756,16 @@ export class PurchaseController {
         diContainer.exchangeRateRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
+        PurchaseController.buildAccountingBridge(true),
         diContainer.paymentHistoryRepository,
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
         diContainer.ledgerRepository,
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase,
-        diContainer.numberingEngine,
-        PurchaseController.buildAccountingBridge(true)
+        diContainer.numberingEngine
       );
 
       const settlementInput = (req as any).body?.settlementInput;
@@ -880,7 +878,6 @@ export class PurchaseController {
 
   private static buildPostPurchaseInvoiceUseCase(): PostPurchaseInvoiceUseCase {
     const inventoryService = PurchaseController.buildPurchasesInventoryService();
-    const accountingPostingService = PurchaseController.buildAccountingPostingService(true);
 
     return new PostPurchaseInvoiceUseCase(
       diContainer.purchaseSettingsRepository,
@@ -897,17 +894,16 @@ export class PurchaseController {
       diContainer.exchangeRateRepository,
       inventoryService,
       diContainer.companyModuleRepository,
-      accountingPostingService,
       diContainer.accountRepository,
       diContainer.transactionManager,
+      PurchaseController.buildAccountingBridge(true),
       diContainer.paymentHistoryRepository,
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
       diContainer.ledgerRepository,
       diContainer.partyItemPriceRepository,
       undefined,
-      diContainer.numberingEngine,
-      PurchaseController.buildAccountingBridge(true)
+      diContainer.numberingEngine
     );
   }
 

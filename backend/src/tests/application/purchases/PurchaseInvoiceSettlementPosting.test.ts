@@ -1,5 +1,6 @@
 import { PostPurchaseInvoiceUseCase, ApprovePurchaseInvoiceUseCase, SettlementInput } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
 import { PurchaseInvoice } from '../../../domain/purchases/entities/PurchaseInvoice';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 
 const buildPostedInvoice = (grandTotalBase = 100) =>
   new PurchaseInvoice({
@@ -111,6 +112,10 @@ const makeSettlementInput = (amountBase: number, mode: 'CASH_FULL' | 'MULTI' | '
   }],
 });
 
+const makeCompanyModuleRepo = () => ({
+  get: jest.fn().mockResolvedValue({ companyId: 'cmp-1', moduleKey: 'accounting', initialized: true }),
+});
+
 const buildUseCase = (deps: ReturnType<typeof makeDeps>) =>
   new PostPurchaseInvoiceUseCase(
     deps.settingsRepo as any,
@@ -127,9 +132,9 @@ const buildUseCase = (deps: ReturnType<typeof makeDeps>) =>
     deps.exchangeRateRepo as any,
     deps.inventoryService as any,
     deps.companyModuleRepo as any,
-    deps.accountingPostingService as any,
     deps.accountRepo,
     deps.transactionManager as any,
+    new LegacyAccountingBridgeAdapter(deps.accountingPostingService as any, makeCompanyModuleRepo() as any),
     deps.paymentHistoryRepo as any,
     deps.voucherRepo as any,
     deps.voucherSequenceRepo as any,

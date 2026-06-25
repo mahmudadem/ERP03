@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F PI slice — Accounting bridge migration: Purchase Invoice document vouchers)
+
+- **Context:** After the GRN slice, `PostPurchaseInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field and used it as a fallback for Purchase Invoice document voucher posting. Goal: migrate the PI document voucher path to `IAccountingBridge`-only with golden voucher-output tests first, preserving Expense/Tax/AP output exactly.
+- **What changed:** Added `PurchaseInvoiceGoldenVoucher.test.ts` (3 tests) pinning exact service-PI Expense/Tax/AP bridge output, no-accounting-effect behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PurchaseInvoiceUseCases.ts`; `accountingBridge` is required and document vouchers use `SubledgerDocumentPoster(undefined, bridge)`. Purchase settlement payments now call `recordPreBuiltVoucher` directly; the existing full-mode `PostingGateway` remains only inside the `postFull` closure. `PurchaseController.postPI` and the shared PI builder now pass `buildAccountingBridge(true)` explicitly. Existing purchase posting and PI settlement tests were rewired with `LegacyAccountingBridgeAdapter`. Added the `267-F (PI)` architecture guard.
+- **Accounting / control impact:** None intended. Golden tests prove the document voucher output sent to the bridge is unchanged. Settlement math and voucher construction are unchanged; only the full-vs-minimal decision is forced through the bridge.
+- **Verification:** `PurchaseInvoiceGoldenVoucher.test.ts` 3/3 PASS; `PurchaseInvoiceSettlementPosting.test.ts` 5/5 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SystemCoreBoundaries.test.ts` 22/22 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.75h.
+- **Next:** Commit. Next slice: PurchaseReturnUseCases document voucher path.
+
 ### Session: 2026-06-25 (Task 267-F GRN slice — Accounting bridge migration: Goods Receipt voucher)
 
 - **Context:** `PostGoodsReceiptUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. GRN was selected as the smallest Purchases document path: one Inventory/GRNI voucher, no settlement.

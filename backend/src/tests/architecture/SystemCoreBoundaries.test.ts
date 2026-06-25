@@ -318,6 +318,23 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   /**
+   * Task 267-F (PI slice) — Purchase Invoice document vouchers were migrated
+   * from a direct `SubledgerVoucherPostingService` field to
+   * `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`.
+   * Note: `PostingGateway` remains inside the settlement payment closure; the
+   * closure itself is handed to the bridge as a prebuilt voucher event.
+   */
+  it('267-F (PI): PurchaseInvoice document vouchers must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/purchases/use-cases/PurchaseInvoiceUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).toContain('SubledgerDocumentPoster');
+    expect(content).toContain('IAccountingBridge');
+    expect(content).toContain('recordPreBuiltVoucher');
+  });
+
+  /**
    * Task 267-C — non-failing export/structure guard. The Policy Resolution
    * Engine foundation introduces a typed policy config model and resolver.
    * This guard verifies the foundation files exist where the architecture
