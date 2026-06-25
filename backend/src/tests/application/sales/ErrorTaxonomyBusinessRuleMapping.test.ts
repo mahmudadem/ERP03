@@ -3,6 +3,7 @@ import { Request, Response } from 'express';
 import { errorHandler } from '../../../errors/errorHandler';
 import { ErrorCode } from '../../../errors/ErrorCodes';
 import { PostSalesInvoiceUseCase, SettlementInput } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 import { SubmitVoucherUseCase } from '../../../application/accounting/use-cases/SubmitVoucherUseCase';
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
@@ -103,8 +104,10 @@ const buildPostUseCase = (deps: ReturnType<typeof makeDeps>) =>
     deps.itemCategoryRepo as any, deps.warehouseRepo as any,
     deps.uomConversionRepo as any, deps.companyCurrencyRepo as any,
     deps.inventoryService as any, deps.companyModuleRepo as any,
-    deps.accountingPostingService as any, deps.accountRepo,
-    deps.transactionManager as any, deps.paymentHistoryRepo as any,
+    deps.accountRepo,
+    deps.transactionManager as any,
+    new LegacyAccountingBridgeAdapter(deps.accountingPostingService as any, deps.companyModuleRepo as any),
+    deps.paymentHistoryRepo as any,
     deps.voucherRepo as any, deps.voucherSequenceRepo as any, deps.ledgerRepo as any
   );
 

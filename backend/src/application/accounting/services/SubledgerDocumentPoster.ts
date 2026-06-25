@@ -107,13 +107,14 @@ const BALANCE_EPSILON = 0.001;
 
 export class SubledgerDocumentPoster {
   /**
-   * FUP-3: when `bridge` is provided, document vouchers route through the accounting bridge
-   * (full-vs-minimal decision — no GL voucher when the Accounting App is disabled) and `post`
-   * returns `null` in minimal mode. Without a bridge it falls back to the direct posting service,
-   * preserving legacy behavior for existing unit tests.
+   * FUP-3 / 267-F: when `bridge` is provided, document vouchers route through the accounting bridge
+   * (full-vs-minimal decision — no GL voucher when the Accounting Engine is not initialized) and
+   * `post` returns `null` in minimal mode. Without a bridge it falls back to the direct posting
+   * service, preserving legacy behavior for existing unit tests and source modules not yet migrated.
+   * 267-F: `postingService` is now optional — migrated callers (SalesInvoice) pass only a bridge.
    */
   constructor(
-    private readonly postingService: ISubledgerPostingService,
+    private readonly postingService?: ISubledgerPostingService,
     private readonly bridge?: IAccountingBridge
   ) {}
 
@@ -149,7 +150,11 @@ export class SubledgerDocumentPoster {
       return result.voucher ? { id: result.voucher.id } : null;
     }
 
-    return this.postingService.postInTransaction(input, transaction);
+    if (this.postingService) {
+      return this.postingService.postInTransaction(input, transaction);
+    }
+
+    throw new Error('SubledgerDocumentPoster: no accounting bridge or posting service configured');
   }
 
   /**

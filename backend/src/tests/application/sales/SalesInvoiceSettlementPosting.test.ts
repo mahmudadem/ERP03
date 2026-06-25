@@ -1,4 +1,5 @@
 import { PostSalesInvoiceUseCase, ApproveSalesInvoiceUseCase, SettlementInput } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 
 const buildPostedInvoice = (grandTotalBase = 100) =>
@@ -148,9 +149,9 @@ const buildUseCase = (deps: ReturnType<typeof makeDeps>) =>
     deps.companyCurrencyRepo as any,
     deps.inventoryService as any,
     deps.companyModuleRepo as any,
-    deps.accountingPostingService as any,
     deps.accountRepo,
     deps.transactionManager as any,
+    new LegacyAccountingBridgeAdapter(deps.accountingPostingService as any, deps.companyModuleRepo as any),
     deps.paymentHistoryRepo as any,
     deps.voucherRepo as any,
     deps.voucherSequenceRepo as any,

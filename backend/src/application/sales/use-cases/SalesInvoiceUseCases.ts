@@ -69,7 +69,6 @@ import { UnsettledCostError } from '../../../domain/inventory/errors/UnsettledCo
 import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
 import { randomUUID as nodeRandomUUID } from 'crypto';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
@@ -953,7 +952,6 @@ export class CreateSalesInvoiceUseCase {
 }
 
 export class PostSalesInvoiceUseCase {
-  private readonly accountingPostingService: SubledgerVoucherPostingService;
   private readonly accountRepo?: IAccountRepository;
   private readonly voucherValidationService = new VoucherValidationService();
 
@@ -972,9 +970,11 @@ export class PostSalesInvoiceUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
+    // 267-F: GL postings route exclusively through the accounting bridge (full/minimal decision).
+    // Required: the posting-service fallback was removed — every caller must wire a bridge.
+    private readonly accountingBridge: IAccountingBridge,
     private readonly paymentHistoryRepo?: IPaymentHistoryRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
@@ -984,11 +984,9 @@ export class PostSalesInvoiceUseCase {
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
     private readonly numberingEngine?: INumberingEngine,
-    private readonly accountingBridge?: IAccountingBridge,
     private readonly commercialCore?: ICommercialCore
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
-    this.accountingPostingService = accountingPostingService;
     this.accountRepo = accountRepo;
   }
 
@@ -1535,7 +1533,7 @@ export class PostSalesInvoiceUseCase {
       this.recalcInvoiceTotals(si);
 
       if (shouldPostAccounting) {
-        const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
+        const poster = new SubledgerDocumentPoster(undefined, this.accountingBridge);
 
         // Main invoice voucher (AR vs Revenue + Tax). The buckets are already
         // accumulated upstream, so each entry maps 1:1 to a voucher line — the
@@ -2054,7 +2052,7 @@ export class PostSalesInvoiceUseCase {
       };
 
       // FUP-5: route the receipt through the accounting bridge (full-vs-minimal). Full mode posts the
-      // identical voucher via the gateway; minimal mode (Accounting App disabled) records a minimal
+      // identical voucher via the gateway; minimal mode (Accounting Engine not initialized) records a
       // journal and posts no GL voucher. Without a bridge, post directly (legacy behavior preserved).
       let settlementPosted = true;
       if (this.accountingBridge) {

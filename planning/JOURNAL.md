@@ -2,6 +2,28 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F SI slice — Accounting bridge migration: SalesInvoice document vouchers)
+
+- **Context:** Follow-up to the DN COGS migration (267-F). The `PostSalesInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue + COGS) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback. Goal: migrate to bridge-only with golden tests first, preserving accounting output exactly.
+- **What changed:**
+  - **Golden tests first:** New `SalesInvoiceGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact revenue + COGS voucher output (account ids, sides, base/doc amounts, currency, exchange rate, source metadata, period-lock override, minimal mode, PERIODIC mode, output stability). Written before migration, green after → zero drift.
+  - **SubledgerDocumentPoster:** `postingService` made optional (`postingService?: ISubledgerPostingService`) — backward-compatible, PI/SR still pass both args unchanged. `post()` now throws if neither bridge nor postingService is configured.
+  - **SalesInvoiceUseCases:** Removed `SubledgerVoucherPostingService` import + field + constructor param. `accountingBridge` moved from optional position 27 to **required** position 17 (right after `transactionManager`, before all optional params) — compile-time enforced. Poster: `new SubledgerDocumentPoster(undefined, this.accountingBridge)` (bridge-only). `PostingGateway` retained for settlement (FUP-5, out of scope).
+  - **Controller:** 2 SI construction sites in `SalesController.ts` updated — removed `accountingPostingService` local + arg, moved `buildAccountingBridge(true)` to required bridge position.
+  - **Tests:** 4 test files updated — `SalesPostingUseCases.test.ts` (19 SI constructions + `buildUseCase` helper), `ErrorTaxonomyBusinessRuleMapping.test.ts`, `SalesInvoiceSettlementPosting.test.ts`, `SalesRuleErrorMapping.test.ts`. All SI constructions rewired to pass `LegacyAccountingBridgeAdapter` as the required bridge arg.
+  - **Architecture guard:** New `267-F (SI)` guard — `SalesInvoiceUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 17 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SI section), `module-boundaries.md` (FUP-3 update), `posting-log.md` (SI row → bridge-routed), completion report `planning/done/267-f-sales-invoice-bridge-migration.md`.
+- **Accounting / control impact:** None. Golden tests prove identical voucher output. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight fallback dependency.
+- **Verification (all green):**
+  - `SalesInvoiceGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 18/18 PASS (17 existing + 1 new)
+  - `npm run build` — tsc clean
+  - ErrorTaxonomy + Settlement + RuleError = 14/14 PASS
+- **Reviewer-blocker check:** posting output changed? **no.** SubledgerDocumentPoster change forced PI/SR? **no** (backward-compatible optional). `accountingBridge` compile-time required? **yes.** Guards weakened? **no.** `opencode.json` touched? **no.**
+- **Actual time:** ~3.0h (golden tests + SubledgerDocumentPoster change + SI migration + 4 test files + guard + verification + docs).
+- **Next:** Commit. Next slice: SalesReturnUseCases (same SubledgerDocumentPoster pattern) or PaymentSyncUseCases (settlement PostingGateway → bridge).
+
 ### Session: 2026-06-25 (Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS)
 
 - **Context:** Task 267-F required migrating one source-module financial posting path to `IAccountingBridge`-only, with golden voucher-output tests written BEFORE any code change. The audit (267-A) found that Sales/Purchases/Inventory use cases still held a direct `SubledgerVoucherPostingService` field as a fallback alongside the bridge. Sales / DeliveryNote COGS was chosen as the safest first target: single `postFinancialEvent` call, no settlement/`PostingGateway` complexity, no existing golden tests, isolated to one use case.

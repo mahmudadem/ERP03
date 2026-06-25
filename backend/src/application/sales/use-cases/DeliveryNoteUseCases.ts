@@ -541,7 +541,7 @@ export class PostDeliveryNoteUseCase {
             },
           }
         );
-        // FUP-3: voucher is null in minimal mode (Accounting App disabled) → no GL link.
+        // FUP-3: voucher is null in minimal mode (Accounting Engine not initialized) → no GL link.
         dn.cogsVoucherId = voucher ? voucher.id : null;
       } else {
         dn.cogsVoucherId = null;

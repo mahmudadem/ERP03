@@ -1,6 +1,32 @@
 # 🎯 Current Focus
 
-## Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS (2026-06-25) [not committed]
+## Task 267-F (SI slice) — Accounting bridge migration: SalesInvoice document vouchers (2026-06-25) [not committed]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** Follow-up to the DN COGS migration. The `PostSalesInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue + COGS) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback.
+- **What:**
+  - **Golden tests first:** New `SalesInvoiceGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact revenue + COGS voucher output (account ids, sides, base/doc amounts, currency, source metadata, period-lock override, minimal mode, PERIODIC mode, output stability). Green before AND after migration → zero drift.
+  - **SubledgerDocumentPoster:** `postingService` made optional (backward-compatible — PI/SR still pass both args unchanged).
+  - **Migration:** `SalesInvoiceUseCases.ts` — removed `SubledgerVoucherPostingService` import + field + constructor param; `accountingBridge` now **required** (moved before optional params, compile-time enforced); poster constructed as `SubledgerDocumentPoster(undefined, bridge)`. `PostingGateway` retained for settlement (FUP-5, out of scope).
+  - **Controller + tests:** 2 controller sites + 4 test files (19+ SI constructions) updated to new constructor signature with `LegacyAccountingBridgeAdapter` as the required bridge.
+  - **Architecture guard:** New `267-F (SI)` guard — `SalesInvoiceUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 17 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SI section), `module-boundaries.md` (FUP-3), `posting-log.md` (SI row), completion report `planning/done/267-f-sales-invoice-bridge-migration.md`.
+- **Verification (all green):**
+  - `SalesInvoiceGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 18/18 PASS (17 existing + 1 new)
+  - `npm run build` — tsc clean
+  - Additional: ErrorTaxonomy + Settlement + RuleError = 14/14 PASS
+- **Accounting impact:** None. Golden tests prove identical voucher output.
+
+### Next action
+
+Commit Task 267-F (SI slice). Next bridge-migration slice: **SalesReturnUseCases** (same `SubledgerDocumentPoster` pattern) or **PaymentSyncUseCases** (settlement `PostingGateway` → bridge).
+
+---
+
+## Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS (2026-06-25) [committed a645cc86]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — review fixes applied, ready to commit.
 

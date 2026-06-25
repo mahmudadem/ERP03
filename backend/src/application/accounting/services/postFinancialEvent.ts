@@ -7,8 +7,9 @@ import { PostSubledgerVoucherInput, SubledgerVoucherPostingService } from './Sub
  *
  * Sales / Purchases / Inventory use-cases post their financial events through this helper. When an
  * `IAccountingBridge` is wired (production), the event flows through the bridge — which applies the
- * full-vs-minimal decision (no GL voucher when the Accounting App/module is disabled, mirroring POS
- * since 250k) — and returns the posted voucher or `null` in minimal mode. When no bridge is wired
+ * full-vs-minimal decision (full GL only when the Accounting Engine is initialized; minimal journal
+ * when the engine is not initialized, mirroring POS since 250k) — and returns the posted voucher or
+ * `null` in minimal mode. When no bridge is wired
  * (e.g. existing unit tests that inject only the posting service), it falls back to the direct
  * posting service so legacy behavior is preserved.
  *

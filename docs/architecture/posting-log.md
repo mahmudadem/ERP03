@@ -97,6 +97,7 @@ Both require the `accounting.vouchers.view` permission.
 |---|---|---|
 | `PostSalesInvoiceUseCase` | ✅ Written after voucher posting, inside the transaction | PR2 |
 | `PostPurchaseInvoiceUseCase` | ⏳ Pending — same pattern | follow-up |
+| `PostSalesInvoiceUseCase` | ✅ Document vouchers (revenue + COGS) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SI slice); settlement receipts still use `PostingGateway` + `recordPreBuiltVoucher` (FUP-5) | 267-F |
 | `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
 | `PostSalesReturnUseCase` | ⏳ Pending | follow-up |
 | `PostPurchaseReturnUseCase` | ⏳ Pending | follow-up |

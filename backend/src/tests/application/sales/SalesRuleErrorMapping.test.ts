@@ -9,6 +9,7 @@ import {
 } from '../../../application/sales/use-cases/QuoteUseCases';
 import { CreateSalesOrderUseCase } from '../../../application/sales/use-cases/SalesOrderUseCases';
 import { PostSalesInvoiceUseCase, SettlementInput } from '../../../application/sales/use-cases/SalesInvoiceUseCases';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 import { SalesInvoice } from '../../../domain/sales/entities/SalesInvoice';
 
 // ---------------------------------------------------------------------------
@@ -273,9 +274,9 @@ const buildPostUseCase = (deps: ReturnType<typeof makeSettlementDeps>) =>
     deps.companyCurrencyRepo as any,
     deps.inventoryService as any,
     deps.companyModuleRepo as any,
-    deps.accountingPostingService as any,
     deps.accountRepo,
     deps.transactionManager as any,
+    new LegacyAccountingBridgeAdapter(deps.accountingPostingService as any, deps.companyModuleRepo as any),
     deps.paymentHistoryRepo as any,
     deps.voucherRepo as any,
     deps.voucherSequenceRepo as any,

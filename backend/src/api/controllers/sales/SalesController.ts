@@ -260,7 +260,6 @@ export class SalesController {
 
   private static buildPostSalesInvoiceUseCase(IAuditEngine?: IAuditEngine): PostSalesInvoiceUseCase {
     const inventoryService = SalesController.buildSalesInventoryService();
-    const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
     return new PostSalesInvoiceUseCase(
       diContainer.salesSettingsRepository,
@@ -277,9 +276,9 @@ export class SalesController {
       diContainer.companyCurrencyRepository,
       inventoryService,
       diContainer.companyModuleRepository,
-      accountingPostingService,
       diContainer.accountRepository,
       diContainer.transactionManager,
+      SalesController.buildAccountingBridge(true),
       diContainer.paymentHistoryRepository,
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
@@ -289,7 +288,6 @@ export class SalesController {
       diContainer.partyItemPriceRepository,
       diContainer.recordSalesProfitLineFactsUseCase,
       diContainer.numberingEngine,
-      SalesController.buildAccountingBridge(true),
       diContainer.commercialCore
     );
   }
@@ -1210,7 +1208,6 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
-      const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
       const IAuditEngine = diContainer.auditEngine;
       const useCase = new PostSalesInvoiceUseCase(
@@ -1228,9 +1225,9 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
+        SalesController.buildAccountingBridge(true),
         diContainer.paymentHistoryRepository,
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
@@ -1240,7 +1237,6 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase,
         diContainer.numberingEngine,
-        SalesController.buildAccountingBridge(true),
         diContainer.commercialCore
       );
 

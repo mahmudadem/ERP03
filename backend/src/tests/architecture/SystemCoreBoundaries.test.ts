@@ -253,6 +253,24 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   /**
+   * Task 267-F (SI slice) — the Sales Invoice document voucher path (revenue +
+   * COGS) was migrated from a direct `SubledgerVoucherPostingService` field to
+   * `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`.
+   * This guard pins that migration: the use case must not import or reference
+   * the legacy posting service for document voucher posting.
+   * Note: `PostingGateway` remains for the settlement receipt path (FUP-5
+   * sanctioned pattern) and will be migrated in a follow-up slice.
+   */
+  it('267-F (SI): SalesInvoiceUseCases must not import SubledgerVoucherPostingService for document vouchers', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/SalesInvoiceUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).toContain('SubledgerDocumentPoster');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
    * Task 267-C — non-failing export/structure guard. The Policy Resolution
    * Engine foundation introduces a typed policy config model and resolver.
    * This guard verifies the foundation files exist where the architecture

@@ -228,16 +228,16 @@ If the company wants an actual posted period-close voucher, that remains a separ
 
 ## Cross-Module Touchpoints
 
-- **Sales** → posts AR + Revenue + (conditionally) COGS. The DeliveryNote COGS path now routes through `IAccountingBridge` (Task 267-F); SI/SR document vouchers route through `SubledgerDocumentPoster` + the bridge; settlement receipts route through `bridge.recordPreBuiltVoucher` (FUP-5). All paths apply the full-vs-minimal decision: full GL voucher when the Accounting Engine is initialized, minimal `PostingLog` event when not.
+- **Sales** → posts AR + Revenue + (conditionally) COGS. The DeliveryNote COGS path and the SalesInvoice document voucher path (revenue + COGS) now route through `IAccountingBridge`-only (Task 267-F); SalesReturn document vouchers route through `SubledgerDocumentPoster` + the bridge (still holds a posting-service fallback); settlement receipts route through `bridge.recordPreBuiltVoucher` (FUP-5). All paths apply the full-vs-minimal decision: full GL voucher when the Accounting Engine is initialized, minimal `PostingLog` event when not.
 - **Purchases** → posts Inventory/Expense + AP through `postFinancialEvent` / `SubledgerDocumentPoster` + the bridge; settlement through `bridge.recordPreBuiltVoucher` (FUP-5). Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → Opening Stock, Stock Adjustment, Stock Transfer, and Inventory Revaluation route through `postFinancialEvent` + the bridge. Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → `InventoryValuationService` now also feeds the periodic reporting bridge: Balance Sheet inventory override, Trading Account, Profit & Loss periodic cost-of-sales, and the Inventory Valuation report's pricing-policy view.
 - **Multi-company** → consolidated reports reach across companies via `GetConsolidatedTrialBalanceUseCase`.
 
-## Accounting Bridge Migration — Task 267-F (DeliveryNote COGS)
+## Accounting Bridge Migration — Task 267-F (DeliveryNote COGS + SalesInvoice document vouchers)
 
 **Date:** 2026-06-25
-**Slice:** Sales / DeliveryNote COGS posting path (first module migrated to bridge-only).
+**Slice:** Sales / DeliveryNote COGS and SalesInvoice document voucher paths migrated to bridge-only.
 
 The `PostDeliveryNoteUseCase` previously held a direct `SubledgerVoucherPostingService` field and passed `{ bridge, postingService }` to the `postFinancialEvent` helper — the posting service was the fallback when no bridge was wired. As of 267-F, the use case depends **only** on `IAccountingBridge`:
 
@@ -248,7 +248,19 @@ The `PostDeliveryNoteUseCase` previously held a direct `SubledgerVoucherPostingS
 
 **Golden voucher-output tests** (`SalesDeliveryNoteGoldenVoucher.test.ts`, 7 tests) capture the exact voucher output that flows into the bridge — account ids, debit/credit sides, base/doc amounts, currency metadata, source reference metadata, period-lock override forwarding, and minimal-mode null-voucher behavior. These tests were written **before** the migration, run green against the pre-migration code (where the bridge was already wired), and remain green after — proving no accounting output drift.
 
-**What was NOT changed in this slice:** `SalesInvoiceUseCases`, `SalesReturnUseCases`, `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still hold a `SubledgerVoucherPostingService` field. They already route through the bridge via `SubledgerDocumentPoster` / `postFinancialEvent` / `recordPreBuiltVoucher`, but the field remains as a fallback. Migrating each to bridge-only is a follow-up slice (one module at a time, with golden tests first).
+**What was NOT changed in this slice:** `SalesReturnUseCases`, `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still hold a `SubledgerVoucherPostingService` field. They already route through the bridge via `SubledgerDocumentPoster` / `postFinancialEvent` / `recordPreBuiltVoucher`, but the field remains as a fallback. Migrating each to bridge-only is a follow-up slice (one module at a time, with golden tests first).
+
+### SalesInvoice document voucher migration (267-F SI slice)
+
+The `PostSalesInvoiceUseCase` previously held a direct `SubledgerVoucherPostingService` field and constructed `new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge)` — the posting service was the fallback when no bridge was wired. As of the 267-F SI slice, the use case depends **only** on `IAccountingBridge` for document voucher posting:
+
+- The `SubledgerVoucherPostingService` import and `accountingPostingService` constructor param were removed entirely.
+- The `accountingBridge` constructor param is now **required** (moved before the optional params, compile-time enforced).
+- The poster is constructed as `new SubledgerDocumentPoster(undefined, this.accountingBridge)` — bridge-only, no legacy fallback.
+- `SubledgerDocumentPoster.postingService` was made optional (backward-compatible) — PI/SR still pass both args unchanged.
+- An architecture guard (`267-F (SI)` in `SystemCoreBoundaries.test.ts`) pins this: `SalesInvoiceUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`.
+- Golden voucher-output tests (`SalesInvoiceGoldenVoucher.test.ts`, 7 tests) capture the exact revenue + COGS voucher output — account ids, sides, base/doc amounts, currency, source metadata, period-lock override, minimal mode, PERIODIC mode, and output stability. Written before migration, green after → zero accounting output drift.
+- Note: `PostingGateway` remains for the settlement receipt path (FUP-5 sanctioned pattern) — out of scope for this slice.
 
 ## What Is NOT Implemented
 
