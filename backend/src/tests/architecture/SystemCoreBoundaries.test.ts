@@ -302,6 +302,22 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   /**
+   * Task 267-F (GRN slice) — Goods Receipt posting must not keep a
+   * SubledgerVoucherPostingService fallback for the document voucher path.
+   * Unpost may still receive a narrow deletion adapter, but posting must route
+   * financial events through the bridge.
+   */
+  it('267-F (GRN): GoodsReceipt posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/purchases/use-cases/GoodsReceiptUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
    * Task 267-C — non-failing export/structure guard. The Policy Resolution
    * Engine foundation introduces a typed policy config model and resolver.
    * This guard verifies the foundation files exist where the architecture

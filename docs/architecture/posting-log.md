@@ -101,7 +101,7 @@ Both require the `accounting.vouchers.view` permission.
 | `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
 | `PostSalesReturnUseCase` | ✅ Document vouchers (revenue reversal + COGS reversal) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SR slice); refund settlement still posts through the same poster/bridge | 267-F |
 | `PostPurchaseReturnUseCase` | ⏳ Pending | follow-up |
-| `PostGoodsReceiptUseCase` | ⏳ Pending | follow-up |
+| `PostGoodsReceiptUseCase` | ✅ Goods Receipt Inventory/GRNI voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` (Task 267-F GRN slice) | 267-F |
 | Sales record-payment voucher writes | ✅ Full mode returns receipt voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 
 Wiring the remaining use cases is mechanical (copy-paste of the SI pattern, adjust strategy name + skip-reason taxonomy). The entity and repository support all cases without further change. Tracked as a P1 cleanup.

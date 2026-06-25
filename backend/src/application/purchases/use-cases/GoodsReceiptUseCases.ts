@@ -18,7 +18,6 @@ import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purc
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
@@ -74,6 +73,10 @@ export interface UpdateGoodsReceiptInput {
   warehouseId?: string;
   lines?: GoodsReceiptLineInput[];
   notes?: string;
+}
+
+interface VoucherDeletionService {
+  deleteVoucherInTransaction(companyId: string, voucherId: string, transaction?: unknown): Promise<void>;
 }
 
 const validatePOLinkedForReceipt = (po: PurchaseOrder): void => {
@@ -236,10 +239,9 @@ export class PostGoodsReceiptUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly accountingBridge: IAccountingBridge
   ) {}
 
   async execute(companyId: string, id: string, createAccountingEffect: boolean = true): Promise<GoodsReceipt> {
@@ -555,7 +557,7 @@ export class PostGoodsReceiptUseCase {
 
         if (shouldPostAccounting) {
           const voucher = await postFinancialEvent(
-            { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+            { bridge: this.accountingBridge },
             {
               kind: 'GOODS_RECEIPT',
               transaction,
@@ -702,7 +704,7 @@ export class UnpostGoodsReceiptUseCase {
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountingPostingService: VoucherDeletionService,
     private readonly transactionManager: ITransactionManager
   ) {}
 

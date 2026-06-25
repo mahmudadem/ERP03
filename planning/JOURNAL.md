@@ -2,6 +2,14 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F GRN slice — Accounting bridge migration: Goods Receipt voucher)
+
+- **Context:** `PostGoodsReceiptUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. GRN was selected as the smallest Purchases document path: one Inventory/GRNI voucher, no settlement.
+- **What changed:** Added `GoodsReceiptGoldenVoucher.test.ts` (3 tests) for exact Inventory/GRNI bridge output, minimal mode, and PERIODIC no-post. Removed the posting-service fallback from `PostGoodsReceiptUseCase`; `accountingBridge` is required and `postFinancialEvent` receives `{ bridge }` only. `PurchaseController.postGRN` now passes `buildAccountingBridge()` directly. Existing GRN tests use `LegacyAccountingBridgeAdapter` for full-mode parity. Added a `267-F (GRN)` architecture guard.
+- **Accounting / control impact:** None intended. PERPETUAL remains Dr Inventory / Cr GRNI; PERIODIC no-post unchanged; minimal mode links no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `GoodsReceiptGoldenVoucher.test.ts` 3/3 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SystemCoreBoundaries.test.ts` 21/21 PASS; `npm run build` clean.
+- **Next:** Commit. Next slice: PurchaseInvoiceUseCases document voucher path.
+
 ### Session: 2026-06-25 (Task 267-F Sales PaymentSync slice — Accounting bridge migration: record-payment receipts)
 
 - **Context:** Sales `PaymentSyncUseCases.ts` already used `accountingBridge.recordPreBuiltVoucher(...)`, but still imported and constructed `PostingGateway` inside an optional no-bridge fallback. Goal: make the bridge compile-time required and remove the direct source-module gateway dependency while preserving receipt voucher output.

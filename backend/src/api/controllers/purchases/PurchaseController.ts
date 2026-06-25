@@ -202,7 +202,7 @@ export class PurchaseController {
 
   /**
    * FUP-3: wrap the same-config posting service in the accounting bridge so purchase GL postings get
-   * the full-vs-minimal decision (no GL voucher when the Accounting App is disabled).
+   * the full-vs-minimal decision (no GL voucher when the Accounting Engine is not initialized).
    */
   private static buildAccountingBridge(validateAccounts: boolean = false): IAccountingBridge {
     return new LegacyAccountingBridgeAdapter(
@@ -593,7 +593,6 @@ export class PurchaseController {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        PurchaseController.buildAccountingPostingService(),
         diContainer.accountRepository,
         diContainer.transactionManager,
         PurchaseController.buildAccountingBridge()

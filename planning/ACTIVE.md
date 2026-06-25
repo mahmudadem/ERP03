@@ -1,8 +1,31 @@
 # 🎯 Current Focus
 
-## Task 267-F (Sales PaymentSync slice) — Accounting bridge migration: record-payment receipts (2026-06-25) [not committed]
+## Task 267-F (GRN slice) — Accounting bridge migration: Goods Receipt Inventory-GRNI voucher (2026-06-25) [not committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** `PostGoodsReceiptUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. GRN is the smallest Purchases document path: one Inventory/GRNI voucher, no settlement.
+- **What:**
+  - **Golden tests first:** New `GoodsReceiptGoldenVoucher.test.ts` (3 tests) captures exact Inventory/GRNI voucher output, minimal-mode null voucher id, and PERIODIC no-post behavior.
+  - **Migration:** `GoodsReceiptUseCases.ts` removed the posting-service import/field from `PostGoodsReceiptUseCase`; `accountingBridge` is required; `postFinancialEvent` now receives `{ bridge }` only.
+  - **Controller + tests:** `PurchaseController.postGRN` passes `buildAccountingBridge()` directly. Existing GRN constructions in `PurchasePostingUseCases.test.ts` use `LegacyAccountingBridgeAdapter` to preserve full-mode behavior.
+  - **Architecture guard:** New `267-F (GRN)` guard blocks `SubledgerVoucherPostingService` and `postingService:` fallback in `GoodsReceiptUseCases.ts`.
+- **Verification (all green):**
+  - `GoodsReceiptGoldenVoucher.test.ts` — 3/3 PASS
+  - `PurchasePostingUseCases.test.ts` — 22/22 PASS
+  - `SystemCoreBoundaries.test.ts` — 21/21 PASS
+  - `npm run build` — tsc clean
+- **Accounting impact:** None intended. PERPETUAL remains Dr Inventory / Cr GRNI; PERIODIC still creates no GRNI voucher; minimal mode links no GL voucher id.
+
+### Next action
+
+Commit Task 267-F (GRN slice). Next bridge-migration slice: **PurchaseInvoiceUseCases document voucher path**.
+
+---
+
+## Task 267-F (Sales PaymentSync slice) — Accounting bridge migration: record-payment receipts (2026-06-25) [committed b0d6a504]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
 
 - **Why:** Sales record-payment receipts already used `accountingBridge.recordPreBuiltVoucher(...)`, but `PaymentSyncUseCases.ts` still imported and constructed `PostingGateway` inside an optional no-bridge fallback. That left a source-module direct ledger-door dependency.
 - **What:**
