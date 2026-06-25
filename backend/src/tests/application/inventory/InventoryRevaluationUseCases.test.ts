@@ -5,7 +5,6 @@ import {
   PostInventoryRevaluationUseCase,
 } from '../../../application/inventory/use-cases/InventoryRevaluationUseCases';
 import { ReconcileStockUseCase } from '../../../application/inventory/use-cases/ReconcileStockUseCase';
-import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 
 const COMPANY_ID = 'cmp-223';
 const USER_ID = 'u-223';
@@ -118,8 +117,11 @@ const buildHarness = (opts: {
     ),
   };
 
-  const accountingPostingService = {
-    postInTransaction: jest.fn(async () => ({ id: 'vch-1' })),
+  const accountingBridge = {
+    recordFinancialEvent: jest.fn(async () => ({ mode: 'full', voucher: { id: 'vch-1' } })),
+    recordPreBuiltVoucher: jest.fn(async () => {
+      throw new Error('Inventory Revaluation should not send prebuilt voucher events');
+    }),
   };
 
   return {
@@ -129,7 +131,7 @@ const buildHarness = (opts: {
     inventorySettingsRepo,
     transactionManager,
     companyModuleRepo,
-    accountingPostingService,
+    accountingBridge,
   };
 };
 
@@ -268,14 +270,14 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     const posted = await useCase.execute(COMPANY_ID, 'rev-1', USER_ID);
 
     expect(posted.status).toBe('POSTED');
     expect(posted.voucherId).toBe('vch-1');
-    const payload = (h.accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    const payload = ((h.accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const debits = (payload.lines as any[]).filter((l) => l.side === 'Debit');
     const credits = (payload.lines as any[]).filter((l) => l.side === 'Credit');
     expect(debits.length).toBe(1);
@@ -328,12 +330,12 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await useCase.execute(COMPANY_ID, 'rev-1', USER_ID);
 
-    const payload = (h.accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    const payload = ((h.accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const debits = (payload.lines as any[]).filter((l) => l.side === 'Debit');
     const credits = (payload.lines as any[]).filter((l) => l.side === 'Credit');
     expect(debits[0].accountId).toBe('ACC-REV-100'); // variance on write-down
@@ -370,7 +372,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await useCase.execute(COMPANY_ID, 'rev-1', USER_ID);
@@ -382,7 +384,7 @@ describe('PostInventoryRevaluationUseCase', () => {
     expect(upserts.length).toBe(2);
     expect(upserts.every((lvl) => lvl.avgCostBase === 6)).toBe(true);
     // Total voucher should value the full 30 units.
-    const payload = (h.accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    const payload = ((h.accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const debits = (payload.lines as any[]).filter((l) => l.side === 'Debit');
     expect(debits[0].baseAmount).toBe(30);
   });
@@ -417,7 +419,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await useCase.execute(COMPANY_ID, 'rev-1', USER_ID);
@@ -460,7 +462,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await useCase.execute(COMPANY_ID, 'rev-1', USER_ID);
@@ -512,12 +514,12 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await useCase.execute(COMPANY_ID, 'rev-1', USER_ID);
 
-    expect(h.accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+    expect(h.accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
     const upserts = (h.stockLevelRepo.upsertLevelInTransaction as jest.Mock).mock.calls.map(
       ([, level]) => level
     );
@@ -552,13 +554,13 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await expect(useCase.execute(COMPANY_ID, 'rev-1', USER_ID)).rejects.toThrow(
       /Inventory Revaluation .* account is configured/
     );
-    expect(h.accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+    expect(h.accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
   });
 
   it('refuses to post a revaluation line whose item has zero on-hand quantity', async () => {
@@ -588,7 +590,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await expect(useCase.execute(COMPANY_ID, 'rev-1', USER_ID)).rejects.toThrow(/zero on-hand/);
@@ -634,7 +636,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await expect(useCase.execute(COMPANY_ID, 'rev-1', USER_ID)).rejects.toThrow(/Only DRAFT/);
@@ -645,7 +647,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       settings: buildSettings(),
       levels: [{ itemId: 'item-1', warehouseId: 'wh-1', qtyOnHand: 10, avgCostBase: 5, avgCostCCY: 5 }],
     });
-    h.accountingPostingService.postInTransaction.mockRejectedValueOnce(new Error('voucher failed'));
+    h.accountingBridge.recordFinancialEvent.mockRejectedValueOnce(new Error('voucher failed'));
     const draft = draftRevaluation([
       {
         itemId: 'item-1',
@@ -668,7 +670,7 @@ describe('PostInventoryRevaluationUseCase', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      h.accountingPostingService as any
+      h.accountingBridge as any
     );
 
     await expect(useCase.execute(COMPANY_ID, 'rev-1', USER_ID)).rejects.toThrow(/voucher failed/);
@@ -755,8 +757,8 @@ describe('Inventory revaluation tenant scope and replay integration', () => {
   });
 });
 
-describe('SubledgerVoucherPostingService integration (smoke guard)', () => {
-  it('PostInventoryRevaluationUseCase only depends on the optional posting service via constructor injection', () => {
+describe('Inventory Revaluation accounting bridge integration (smoke guard)', () => {
+  it('PostInventoryRevaluationUseCase accepts the required accounting bridge dependency', () => {
     const h = buildHarness({
       settings: buildSettings(),
       levels: [{ itemId: 'item-1', warehouseId: 'wh-1', qtyOnHand: 10, avgCostBase: 5, avgCostCCY: 5 }],
@@ -768,11 +770,9 @@ describe('SubledgerVoucherPostingService integration (smoke guard)', () => {
       h.inventorySettingsRepo as any,
       h.transactionManager as any,
       h.companyModuleRepo as any,
-      undefined
+      h.accountingBridge as any
     );
     expect(useCase).toBeInstanceOf(PostInventoryRevaluationUseCase);
-    // The SubledgerVoucherPostingService must be the class the use case is designed
-    // to consume — this guards against accidentally swapping the contract.
-    expect(typeof SubledgerVoucherPostingService.prototype.postInTransaction).toBe('function');
+    expect(typeof h.accountingBridge.recordFinancialEvent).toBe('function');
   });
 });

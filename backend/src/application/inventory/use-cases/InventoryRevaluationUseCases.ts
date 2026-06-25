@@ -12,7 +12,6 @@ import { IInventoryRevaluationRepository } from '../../../repository/interfaces/
 import { IInventorySettingsRepository } from '../../../repository/interfaces/inventory/IInventorySettingsRepository';
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
@@ -195,11 +194,10 @@ export class CreateInventoryRevaluationUseCase {
  *   - INVOICE_DRIVEN / PERPETUAL: open one Firestore transaction that
  *     (a) re-snapshots each level, (b) writes the new avg cost to the
  *     target stock level(s) and the item's costing stats, and
- *     (c) posts a balanced JOURNAL_ENTRY voucher through
- *     SubledgerVoucherPostingService — Dr/Cr Inventory Asset vs the
- *     dedicated Inventory Revaluation account. Period lock + approval
- *     are honored via the same PostingGateway used by every other
- *     inventory-origin ledger write.
+ *     (c) records a balanced JOURNAL_ENTRY financial event through
+ *     IAccountingBridge — Dr/Cr Inventory Asset vs the
+     *     dedicated Inventory Revaluation account. Period lock + approval
+     *     remain enforced by the Accounting Engine behind the bridge.
  *
  *   - PERIODIC: same in-transaction revaluation of the sub-ledger
  *     average cost (so the report-time Inventory Valuation reflects
@@ -214,8 +212,7 @@ export class PostInventoryRevaluationUseCase {
     private readonly inventorySettingsRepo: IInventorySettingsRepository,
     private readonly transactionManager: ITransactionManager,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService?: SubledgerVoucherPostingService,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly accountingBridge: IAccountingBridge
   ) {}
 
   async execute(companyId: string, revaluationId: string, userId: string): Promise<InventoryRevaluation> {
@@ -238,7 +235,6 @@ export class PostInventoryRevaluationUseCase {
 
     if (
       shouldPostAccounting
-      && this.accountingPostingService
       && !settings?.defaultInventoryRevaluationAccountId
     ) {
       throw new Error(
@@ -312,7 +308,7 @@ export class PostInventoryRevaluationUseCase {
         recomputedLines.reduce((sum, line) => sum + line.valueDeltaCCY, 0)
       );
 
-      if (shouldPostAccounting && this.accountingPostingService && settings) {
+      if (shouldPostAccounting && settings) {
         voucherId = await this.createVoucherForRevaluation(
           companyId,
           userId,
@@ -353,11 +349,6 @@ export class PostInventoryRevaluationUseCase {
     settings: InventorySettings,
     transaction: unknown
   ): Promise<string> {
-    if (!this.accountingPostingService) {
-      throw new Error(
-        'Inventory revaluation cannot be posted because accounting posting is not configured.'
-      );
-    }
     const revaluationAccountId = settings.defaultInventoryRevaluationAccountId;
     if (!revaluationAccountId) {
       throw new Error(
@@ -443,7 +434,7 @@ export class PostInventoryRevaluationUseCase {
 
     try {
       const voucher = await postFinancialEvent(
-        { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+        { bridge: this.accountingBridge },
         {
           kind: 'INVENTORY_REVALUATION',
           transaction,

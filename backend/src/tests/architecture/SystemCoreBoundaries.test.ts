@@ -418,6 +418,21 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   /**
+   * Task 267-F (Inventory Revaluation slice) — inventory value-only
+   * revaluation vouchers must route through `IAccountingBridge` only.
+   */
+  it('267-F (Inventory Revaluation): posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/inventory/use-cases/InventoryRevaluationUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
    * Task 267-C — non-failing export/structure guard. The Policy Resolution
    * Engine foundation introduces a typed policy config model and resolver.
    * This guard verifies the foundation files exist where the architecture

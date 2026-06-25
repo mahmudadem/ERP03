@@ -105,6 +105,7 @@ Both require the `accounting.vouchers.view` permission.
 | `PostOpeningStockDocumentUseCase` | ✅ Opening Stock Inventory/Opening Equity voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; inventory-only opening stock still creates no bridge event or GL link | 267-F |
 | `PostStockAdjustmentUseCase` | ✅ Stock Adjustment gain/loss and inventory voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; PERIODIC mode still posts no GL voucher | 267-F |
 | `CompleteStockTransferUseCase` | ✅ Explicit VALUED transfer uplift vouchers (added cost / revaluation) route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; FLAT and no-uplift transfers still post no GL voucher | 267-F |
+| `PostInventoryRevaluationUseCase` | ✅ Inventory Revaluation write-up/write-down vouchers route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; PERIODIC mode still updates sub-ledger cost without a GL voucher | 267-F |
 | Sales record-payment voucher writes | ✅ Full mode returns receipt voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 | Purchases record-payment voucher writes | ✅ Full mode returns payment voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 

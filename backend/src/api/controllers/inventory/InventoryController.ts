@@ -1539,7 +1539,6 @@ export class InventoryController {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
-      const accountingPostingService = InventoryController.buildAccountingPostingService();
 
       const useCase = new PostInventoryRevaluationUseCase(
         diContainer.inventoryRevaluationRepository,
@@ -1548,7 +1547,6 @@ export class InventoryController {
         diContainer.inventorySettingsRepository,
         diContainer.transactionManager,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         InventoryController.buildAccountingBridge()
       );
 

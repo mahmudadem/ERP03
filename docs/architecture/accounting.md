@@ -369,6 +369,18 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - An architecture guard (`267-F (Inventory Stock Transfer)` in `SystemCoreBoundaries.test.ts`) pins this: `StockTransferUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
 - Golden voucher-output tests (`StockTransferGoldenVoucher.test.ts`, 5 tests) capture exact added-cost Inventory/Clearing output, revaluation Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, no-uplift no-post behavior, and output stability.
 
+### Inventory Revaluation voucher migration (267-F Inventory Revaluation slice)
+
+`PostInventoryRevaluationUseCase` previously held an optional direct `SubledgerVoucherPostingService` field, gated voucher creation on that field, and passed `{ bridge, postingService }` into `postFinancialEvent(...)`. As of this slice:
+
+- The `SubledgerVoucherPostingService` import and posting-service constructor param were removed from `PostInventoryRevaluationUseCase`.
+- `accountingBridge` is now a required constructor dependency for posting.
+- Revaluation vouchers call `postFinancialEvent({ bridge })` only.
+- `InventoryController.postInventoryRevaluation` no longer constructs a posting service for the revaluation path and passes `InventoryController.buildAccountingBridge()` directly.
+- PERIODIC mode remains a no-GL path; the sub-ledger average cost is still updated and the revaluation document links no GL voucher.
+- An architecture guard (`267-F (Inventory Revaluation)` in `SystemCoreBoundaries.test.ts`) pins this: `InventoryRevaluationUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
+- Golden voucher-output tests (`InventoryRevaluationGoldenVoucher.test.ts`, 5 tests) capture exact write-up/write-down Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
+
 ## What Is NOT Implemented
 
 | Feature | Why deferred |
