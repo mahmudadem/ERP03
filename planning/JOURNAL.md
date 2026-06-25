@@ -2,6 +2,19 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F Sales PaymentSync slice — Accounting bridge migration: record-payment receipts)
+
+- **Context:** Sales `PaymentSyncUseCases.ts` already used `accountingBridge.recordPreBuiltVoucher(...)`, but still imported and constructed `PostingGateway` inside an optional no-bridge fallback. Goal: make the bridge compile-time required and remove the direct source-module gateway dependency while preserving receipt voucher output.
+- **What changed:**
+  - **Golden tests:** Added `SalesPaymentSyncGoldenVoucher.test.ts` (3 tests) pinning the exact prebuilt receipt voucher sent to the bridge, minimal-mode null GL voucher link behavior, and realized FX gain line output.
+  - **Migration:** `PostSalesInvoiceWithSettlementUseCase` and `RecordSalesInvoicePaymentUseCase` now require `IAccountingBridge`; fallback direct posting was removed.
+  - **Accounting helper:** Added `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` so full-mode persistence of prebuilt vouchers lives in the accounting layer and is invoked only through the bridge's `postFull` callback.
+  - **Controller/tests:** `SalesController.recordPayment`, `SalesPaymentSyncUseCases.test.ts`, and `FxGainLossSettlement.test.ts` now pass the required bridge.
+  - **Architecture guard:** Added `267-F (Sales PaymentSync)` guard: `PaymentSyncUseCases.ts` must not import `PostingGateway`, must use `recordPreBuiltVoucher` and `IAccountingBridge`.
+- **Accounting / control impact:** None intended. Full mode runs the same ledger-door persistence and voucher save. Minimal mode still records no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `SalesPaymentSyncGoldenVoucher.test.ts` 3/3 PASS; `SalesPaymentSyncUseCases.test.ts` 10/10 PASS; `FxGainLossSettlement.test.ts` 4/4 PASS; `SystemCoreBoundaries.test.ts` 20/20 PASS; `npm run build` clean.
+- **Next:** Commit. Next slice: Purchases document vouchers (PI/GRN/PR) or Purchases PaymentSync.
+
 ### Session: 2026-06-25 (Task 267-F SR slice — Accounting bridge migration: SalesReturn document vouchers)
 
 - **Context:** Follow-up to the SI slice (267-F). The `PostSalesReturnUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue reversal + COGS reversal + optional refund) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback. Goal: migrate to bridge-only with golden tests first, preserving accounting output exactly.

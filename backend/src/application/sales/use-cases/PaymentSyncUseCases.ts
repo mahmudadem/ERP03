@@ -17,7 +17,7 @@ import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRe
 import { VoucherEntity } from '../../../domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity, roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
-import { PostingGateway } from '../../accounting/services/PostingGateway';
+import { postPreBuiltVoucherFullMode } from '../../accounting/services/PreBuiltVoucherFullPoster';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { VoucherType, VoucherStatus, PostingLockPolicy } from '../../../domain/accounting/types/VoucherTypes';
 import { roundMoney as roundSalesMoney } from './SalesPostingHelpers';
@@ -112,10 +112,10 @@ export class PostSalesInvoiceWithSettlementUseCase {
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly accountRepo?: IAccountRepository,
     private readonly partyRepo?: IPartyRepository,
-    private readonly numberingEngine?: INumberingEngine,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   private nextVoucherNo(companyId: string, prefix: string): Promise<string> {
@@ -377,37 +377,26 @@ export class PostSalesInvoiceWithSettlementUseCase {
           await this.voucherValidationService.validateAccounts(postedVoucher, this.accountRepo);
         }
 
-        // Single sanctioned ledger door. System-generated settlement receipt is policy-exempt
-        // (Stage 4b will fold settlement postings into the policy set).
         const postFull = async () => {
-          const gateway = new PostingGateway(this.ledgerRepo, this.voucherValidationService);
-          await gateway.record(
-            postedVoucher,
-            {
-              userId,
-              enforcePolicies: false,
-              exemptionReason: 'system-generated settlement receipt during payment sync (Stage 4b)',
-            },
-            transaction
-          );
-          await this.voucherRepo.save(postedVoucher, transaction);
-        };
-
-        // FUP-5: route through the accounting bridge (full-vs-minimal). Full mode posts the identical
-        // voucher; minimal mode (Accounting App disabled) records a minimal journal, no GL voucher.
-        let settlementPosted = true;
-        if (this.accountingBridge) {
-          const result = await this.accountingBridge.recordPreBuiltVoucher({
-            companyId,
-            kind: 'SALES_RECEIPT',
+          await postPreBuiltVoucherFullMode({
             voucher: postedVoucher,
-            postFull,
+            ledgerRepo: this.ledgerRepo,
+            voucherRepo: this.voucherRepo,
+            voucherValidationService: this.voucherValidationService,
+            userId,
+            exemptionReason: 'system-generated settlement receipt during payment sync (Stage 4b)',
             transaction,
           });
-          settlementPosted = result.mode === 'full';
-        } else {
-          await postFull();
-        }
+        };
+
+        const result = await this.accountingBridge.recordPreBuiltVoucher({
+          companyId,
+          kind: 'SALES_RECEIPT',
+          voucher: postedVoucher,
+          postFull,
+          transaction,
+        });
+        const settlementPosted = result.mode === 'full';
         if (settlementPosted) createdVoucherIds.push(voucherId);
 
         const paymentId = `pay_${randomUUID()}`;
@@ -461,10 +450,10 @@ export class RecordSalesInvoicePaymentUseCase {
     private readonly ledgerRepo: ILedgerRepository,
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly accountRepo?: IAccountRepository,
     private readonly partyRepo?: IPartyRepository,
-    private readonly numberingEngine?: INumberingEngine,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly numberingEngine?: INumberingEngine
   ) {}
 
   async execute(
@@ -482,10 +471,10 @@ export class RecordSalesInvoicePaymentUseCase {
       this.ledgerRepo,
       this.companyCurrencyRepo,
       this.transactionManager,
+      this.accountingBridge,
       this.accountRepo,
       this.partyRepo,
-      this.numberingEngine,
-      this.accountingBridge
+      this.numberingEngine
     );
     return useCase.execute(companyId, userId, siId, input);
   }

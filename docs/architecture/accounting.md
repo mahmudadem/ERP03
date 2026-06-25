@@ -228,13 +228,13 @@ If the company wants an actual posted period-close voucher, that remains a separ
 
 ## Cross-Module Touchpoints
 
-- **Sales** → posts AR + Revenue + (conditionally) COGS. The DeliveryNote COGS path, the SalesInvoice document voucher path (revenue + COGS), and the SalesReturn document voucher path (revenue reversal + COGS reversal) now route through `IAccountingBridge`-only (Task 267-F); settlement receipts route through `bridge.recordPreBuiltVoucher` (FUP-5). All paths apply the full-vs-minimal decision: full GL voucher when the Accounting Engine is initialized, minimal `PostingLog` event when not.
+- **Sales** → posts AR + Revenue + (conditionally) COGS. The DeliveryNote COGS path, SalesInvoice document voucher path (revenue + COGS), SalesReturn document voucher path (revenue reversal + COGS reversal), and Sales PaymentSync record-payment receipt path now route through `IAccountingBridge`-only (Task 267-F). All paths apply the full-vs-minimal decision: full GL voucher when the Accounting Engine is initialized, minimal `PostingLog` event when not.
 - **Purchases** → posts Inventory/Expense + AP through `postFinancialEvent` / `SubledgerDocumentPoster` + the bridge; settlement through `bridge.recordPreBuiltVoucher` (FUP-5). Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → Opening Stock, Stock Adjustment, Stock Transfer, and Inventory Revaluation route through `postFinancialEvent` + the bridge. Still holds a `SubledgerVoucherPostingService` field as fallback — migration to bridge-only is a follow-up slice.
 - **Inventory** → `InventoryValuationService` now also feeds the periodic reporting bridge: Balance Sheet inventory override, Trading Account, Profit & Loss periodic cost-of-sales, and the Inventory Valuation report's pricing-policy view.
 - **Multi-company** → consolidated reports reach across companies via `GetConsolidatedTrialBalanceUseCase`.
 
-## Accounting Bridge Migration — Task 267-F (DeliveryNote COGS + SalesInvoice + SalesReturn document vouchers)
+## Accounting Bridge Migration — Task 267-F (DeliveryNote COGS + SalesInvoice + SalesReturn + Sales PaymentSync)
 
 **Date:** 2026-06-25
 **Slice:** Sales / DeliveryNote COGS and SalesInvoice document voucher paths migrated to bridge-only.
@@ -248,7 +248,7 @@ The `PostDeliveryNoteUseCase` previously held a direct `SubledgerVoucherPostingS
 
 **Golden voucher-output tests** (`SalesDeliveryNoteGoldenVoucher.test.ts`, 7 tests) capture the exact voucher output that flows into the bridge — account ids, debit/credit sides, base/doc amounts, currency metadata, source reference metadata, period-lock override forwarding, and minimal-mode null-voucher behavior. These tests were written **before** the migration, run green against the pre-migration code (where the bridge was already wired), and remain green after — proving no accounting output drift.
 
-**What was NOT changed in this slice:** `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still hold a `SubledgerVoucherPostingService` field. They already route through the bridge via `SubledgerDocumentPoster` / `postFinancialEvent` / `recordPreBuiltVoucher`, but the field remains as a fallback. Migrating each to bridge-only is a follow-up slice (one module at a time, with golden tests first).
+**What was NOT changed in the DeliveryNote slice:** `PaymentSyncUseCases` (Sales), and all Purchases/Inventory posting paths still held direct posting fallbacks. Later 267-F Sales slices migrated SI, SR, and Sales PaymentSync as documented below. Purchases/Inventory remain follow-up slices.
 
 ### SalesInvoice document voucher migration (267-F SI slice)
 
@@ -273,6 +273,17 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - The `SalesController.postReturn` handler no longer constructs a `SubledgerVoucherPostingService` for the SR path; it passes `SalesController.buildAccountingBridge()` directly (required position before the optional audit/log repos).
 - An architecture guard (`267-F (SR)` in `SystemCoreBoundaries.test.ts`) pins this: `SalesReturnUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`.
 - Golden voucher-output tests (`SalesReturnGoldenVoucher.test.ts`, 7 tests) capture the exact COGS-reversal + revenue-reversal voucher output — account ids, sides, base/doc amounts, currency, source metadata, period-lock override forwarding, BEFORE_INVOICE (COGS-only) behavior, minimal mode (null voucher ids), foreign-currency REVENUE/COGS split, PERIODIC mode (no COGS), and output stability. Written before migration, run green against the pre-migration code (where the poster already preferred the bridge), and remain green after → zero accounting output drift.
+
+### Sales PaymentSync receipt migration (267-F Sales PaymentSync slice)
+
+`PostSalesInvoiceWithSettlementUseCase` / `RecordSalesInvoicePaymentUseCase` already assembled receipt vouchers and called `accountingBridge.recordPreBuiltVoucher(...)`, but still held an optional bridge fallback: if no bridge was supplied, the use case constructed the ledger gateway directly and saved the voucher itself. As of this slice:
+
+- `accountingBridge` is now a required constructor dependency for both Sales PaymentSync use cases.
+- `PaymentSyncUseCases.ts` no longer imports or constructs `PostingGateway` directly.
+- Full-mode receipt persistence is encapsulated in `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` and is only invoked by the `postFull` callback passed into `recordPreBuiltVoucher`.
+- `SalesController.recordPayment` passes `SalesController.buildAccountingBridge()` in the required bridge position.
+- An architecture guard (`267-F (Sales PaymentSync)` in `SystemCoreBoundaries.test.ts`) pins this: `PaymentSyncUseCases.ts` must not import `PostingGateway`, and must use `recordPreBuiltVoucher` + `IAccountingBridge`.
+- Golden voucher-output tests (`SalesPaymentSyncGoldenVoucher.test.ts`, 3 tests) capture the exact prebuilt receipt voucher handed to the bridge, minimal-mode null GL link behavior, and realized FX gain line output.
 
 ## What Is NOT Implemented
 

@@ -82,6 +82,13 @@ const makeDeps = (invoice: SalesInvoice) => ({
   transactionManager: {
     runTransaction: jest.fn(async (fn) => fn()),
   },
+  accountingBridge: {
+    recordFinancialEvent: jest.fn(),
+    recordPreBuiltVoucher: jest.fn(async (event: any) => {
+      await event.postFull();
+      return { mode: 'full', voucher: event.voucher };
+    }),
+  },
 });
 
 const makeSettlementInput = (amountBase: number, mode: 'CASH_FULL' | 'MULTI' = 'CASH_FULL'): PostSalesInvoiceWithSettlementInput => ({
@@ -124,7 +131,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'si-1', {
@@ -150,7 +158,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(120))).rejects.toThrow(
@@ -170,7 +179,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(50, 'MULTI'));
@@ -200,6 +210,7 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
       deps.transactionManager as any,
+      deps.accountingBridge as any,
       accountRepo as any
     );
 
@@ -231,7 +242,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'si-1', {
@@ -254,7 +266,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'si-1', {
@@ -280,7 +293,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(10))).rejects.toThrow(
@@ -299,7 +313,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'si-1', {
@@ -326,7 +341,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     await expect(useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(150, 'MULTI'))).rejects.toThrow(
@@ -351,7 +367,8 @@ describe('RecordSalesInvoicePaymentUseCase', () => {
       deps.voucherSequenceRepo as any,
       deps.ledgerRepo as any,
       deps.companyCurrencyRepo as any,
-      deps.transactionManager as any
+      deps.transactionManager as any,
+      deps.accountingBridge as any
     );
 
     const result = await useCase.execute('cmp-1', 'u-1', 'si-1', makeSettlementInput(150, 'MULTI'));

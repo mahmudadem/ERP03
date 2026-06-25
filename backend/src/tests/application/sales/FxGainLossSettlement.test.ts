@@ -121,6 +121,13 @@ const buildUseCase = (invoiceOverrides: Partial<any> = {}, withFxAccount = true)
   const transactionManager: any = {
     runTransaction: <T,>(fn: (txn: any) => Promise<T>) => fn({}),
   };
+  const accountingBridge: any = {
+    recordFinancialEvent: jest.fn(),
+    recordPreBuiltVoucher: jest.fn(async (event: any) => {
+      await event.postFull();
+      return { mode: 'full', voucher: event.voucher };
+    }),
+  };
   // Validation requires accounts to be POSTING + ACTIVE; provide a shape that passes.
   const accountRepo: any = {
     getById: jest.fn(async (_cid: string, id: string) => ({
@@ -142,6 +149,7 @@ const buildUseCase = (invoiceOverrides: Partial<any> = {}, withFxAccount = true)
     ledgerRepo,
     companyCurrencyRepo,
     transactionManager,
+    accountingBridge,
     accountRepo
   );
 

@@ -97,12 +97,12 @@ Both require the `accounting.vouchers.view` permission.
 |---|---|---|
 | `PostSalesInvoiceUseCase` | ✅ Written after voucher posting, inside the transaction | PR2 |
 | `PostPurchaseInvoiceUseCase` | ⏳ Pending — same pattern | follow-up |
-| `PostSalesInvoiceUseCase` | ✅ Document vouchers (revenue + COGS) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SI slice); settlement receipts still use `PostingGateway` + `recordPreBuiltVoucher` (FUP-5) | 267-F |
+| `PostSalesInvoiceUseCase` | ✅ Document vouchers (revenue + COGS) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SI slice); record-payment receipts route through `recordPreBuiltVoucher` without a direct gateway fallback (Task 267-F Sales PaymentSync slice) | 267-F |
 | `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
 | `PostSalesReturnUseCase` | ✅ Document vouchers (revenue reversal + COGS reversal) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SR slice); refund settlement still posts through the same poster/bridge | 267-F |
 | `PostPurchaseReturnUseCase` | ⏳ Pending | follow-up |
 | `PostGoodsReceiptUseCase` | ⏳ Pending | follow-up |
-| Settlement voucher writes | ⏳ Pending — `voucherIds[]` will include settlement IDs | follow-up |
+| Sales record-payment voucher writes | ✅ Full mode returns receipt voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 
 Wiring the remaining use cases is mechanical (copy-paste of the SI pattern, adjust strategy name + skip-reason taxonomy). The entity and repository support all cases without further change. Tracked as a P1 cleanup.
 

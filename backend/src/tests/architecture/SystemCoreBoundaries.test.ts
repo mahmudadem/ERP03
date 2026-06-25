@@ -287,6 +287,21 @@ describe('Architecture guard: system core boundaries', () => {
   });
 
   /**
+   * Task 267-F (Sales PaymentSync slice) — record-payment receipts are
+   * prebuilt vouchers, but the Sales use case must not construct the ledger
+   * gateway directly. It must hand the voucher to `IAccountingBridge` and let
+   * the bridge choose full vs minimal mode.
+   */
+  it('267-F (Sales PaymentSync): record-payment receipts must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/PaymentSyncUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).toContain('recordPreBuiltVoucher');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
    * Task 267-C — non-failing export/structure guard. The Policy Resolution
    * Engine foundation introduces a typed policy config model and resolver.
    * This guard verifies the foundation files exist where the architecture
