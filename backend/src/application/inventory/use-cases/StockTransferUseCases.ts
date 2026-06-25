@@ -10,7 +10,6 @@ import { IStockTransferRepository } from '../../../repository/interfaces/invento
 import { IWarehouseRepository } from '../../../repository/interfaces/inventory/IWarehouseRepository';
 import { ICompanyModuleRepository } from '../../../repository/interfaces/company/ICompanyModuleRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { RecordStockMovementUseCase } from './RecordStockMovementUseCase';
@@ -227,10 +226,9 @@ export class CompleteStockTransferUseCase {
     private readonly stockLevelRepo: IStockLevelRepository,
     private readonly movementUseCase: RecordStockMovementUseCase,
     private readonly transactionManager: ITransactionManager,
-    private readonly companyModuleRepo?: ICompanyModuleRepository,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
-    private readonly accountingPostingService?: SubledgerVoucherPostingService,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly companyModuleRepo: ICompanyModuleRepository | undefined,
+    private readonly inventorySettingsRepo: IInventorySettingsRepository | undefined,
+    private readonly accountingBridge: IAccountingBridge
   ) {}
 
   async execute(companyId: string, transferId: string, userId: string): Promise<StockTransfer> {
@@ -337,7 +335,7 @@ export class CompleteStockTransferUseCase {
       }
 
       let voucherId: string | undefined;
-      if (shouldPostAccounting && this.accountingPostingService) {
+      if (shouldPostAccounting) {
         voucherId = await this.postUpliftVoucher(
           companyId,
           userId,
@@ -389,8 +387,6 @@ export class CompleteStockTransferUseCase {
     baseCurrency: string | undefined,
     transaction: unknown
   ): Promise<string | undefined> {
-    if (!this.accountingPostingService) return undefined;
-
     const addedEntries = Array.from(addedCostByInvAccount.entries()).filter(([, amount]) => Math.abs(amount) > 0.0001);
     const revaluationEntries = Array.from(revaluationByInvAccount.entries()).filter(([, amount]) => Math.abs(amount) > 0.0001);
     if (addedEntries.length === 0 && revaluationEntries.length === 0) return undefined;
@@ -486,7 +482,7 @@ export class CompleteStockTransferUseCase {
     }
 
     const voucher = await postFinancialEvent(
-      { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+      { bridge: this.accountingBridge },
       {
         kind: 'STOCK_TRANSFER',
         transaction,

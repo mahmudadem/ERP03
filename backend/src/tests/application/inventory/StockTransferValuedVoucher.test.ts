@@ -11,6 +11,12 @@ import { StockTransfer } from '../../../domain/inventory/entities/StockTransfer'
 describe('CompleteStockTransferUseCase — journaled stock transfer valuation voucher', () => {
   const COMPANY_ID = 'cmp-1';
   const USER_ID = 'u-1';
+  const makeFullBridge = () => ({
+    recordFinancialEvent: jest.fn(async () => ({ mode: 'full', voucher: { id: 'vch-trf' } })),
+    recordPreBuiltVoucher: jest.fn(async () => {
+      throw new Error('Stock Transfer should not send prebuilt voucher events');
+    }),
+  });
 
   const makeTransfer = (
     mode: 'FLAT' | 'VALUED',
@@ -74,7 +80,7 @@ describe('CompleteStockTransferUseCase — journaled stock transfer valuation vo
         ...settingsOverrides,
       })),
     };
-    const accountingPostingService = { postInTransaction: jest.fn(async () => ({ id: 'vch-trf' })) };
+    const accountingBridge = makeFullBridge();
 
     const useCase = new CompleteStockTransferUseCase(
       transferRepo as any,
@@ -84,21 +90,21 @@ describe('CompleteStockTransferUseCase — journaled stock transfer valuation vo
       transactionManager as any,
       companyModuleRepo as any,
       inventorySettingsRepo as any,
-      accountingPostingService as any
+      accountingBridge as any
     );
-    return { useCase, accountingPostingService, transferRepo };
+    return { useCase, accountingBridge, transferRepo };
   };
 
   it('capitalizes explicit added cost: Dr Inventory / Cr Transfer Clearing', async () => {
-    const { useCase, accountingPostingService } = buildDeps(
+    const { useCase, accountingBridge } = buildDeps(
       'VALUED',
       { addedCostBaseAtTransfer: 400, addedCostCCYAtTransfer: 400 },
       { out: 320, in: 400 }
     );
     await useCase.execute(COMPANY_ID, 'trf-1', USER_ID);
 
-    expect(accountingPostingService.postInTransaction).toHaveBeenCalledTimes(1);
-    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    expect(accountingBridge.recordFinancialEvent).toHaveBeenCalledTimes(1);
+    const payload = ((accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const lines = payload.lines as Array<any>;
 
     const debit = lines.find((l) => l.side === 'Debit');
@@ -116,15 +122,15 @@ describe('CompleteStockTransferUseCase — journaled stock transfer valuation vo
   });
 
   it('posts explicit revaluation to the dedicated revaluation account', async () => {
-    const { useCase, accountingPostingService } = buildDeps(
+    const { useCase, accountingBridge } = buildDeps(
       'VALUED',
       { revaluationUnitCostBaseAtTransfer: 400, revaluationUnitCostCCYAtTransfer: 400 },
       { out: 320, in: 400 }
     );
     await useCase.execute(COMPANY_ID, 'trf-1', USER_ID);
 
-    expect(accountingPostingService.postInTransaction).toHaveBeenCalledTimes(1);
-    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    expect(accountingBridge.recordFinancialEvent).toHaveBeenCalledTimes(1);
+    const payload = ((accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const lines = payload.lines as Array<any>;
 
     const debit = lines.find((l) => l.metadata.role === 'inventory-revaluation');
@@ -164,15 +170,15 @@ describe('CompleteStockTransferUseCase — journaled stock transfer valuation vo
   });
 
   it('posts no voucher for a VALUED transfer without explicit added cost or revaluation', async () => {
-    const { useCase, accountingPostingService } = buildDeps('VALUED');
+    const { useCase, accountingBridge } = buildDeps('VALUED');
     await useCase.execute(COMPANY_ID, 'trf-1', USER_ID);
-    expect(accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
   });
 
   it('posts no voucher for a FLAT transfer', async () => {
-    const { useCase, accountingPostingService } = buildDeps('FLAT');
+    const { useCase, accountingBridge } = buildDeps('FLAT');
     await useCase.execute(COMPANY_ID, 'trf-1', USER_ID);
-    expect(accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
   });
 
   describe('CreateStockTransferUseCase explicit costing input', () => {

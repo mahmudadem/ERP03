@@ -1,8 +1,33 @@
 # 🎯 Current Focus
 
-## Task 267-F (Inventory Stock Adjustment slice) — Accounting bridge migration: gain/loss adjustment voucher (2026-06-25) [not committed]
+## Task 267-F (Inventory Stock Transfer slice) — Accounting bridge migration: valued-transfer uplift voucher (2026-06-25) [not committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** `CompleteStockTransferUseCase` still held an optional direct `SubledgerVoucherPostingService` field, gated valued-transfer uplift voucher creation on that field, and passed it as a fallback into `postFinancialEvent(...)`.
+- **What:**
+  - **Golden tests first:** New `StockTransferGoldenVoucher.test.ts` (5 tests) captures exact added-cost Inventory/Clearing output, revaluation Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, no-uplift no-post behavior, and output stability.
+  - **Migration:** `CompleteStockTransferUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/constructor param, `postingService` fallback, and old posting-service gate were removed.
+  - **Controller + tests:** `InventoryController.buildCompleteStockTransferUseCase()` passes `buildAccountingBridge()` directly. Existing Stock Transfer valuation tests now inject a full-mode bridge and assert bridge events.
+  - **Architecture guard:** New `267-F (Inventory Stock Transfer)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `StockTransferUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-stock-transfer-bridge-migration.md`.
+- **Verification (all green):**
+  - `StockTransferGoldenVoucher.test.ts` — 5/5 PASS
+  - `StockTransferValuedVoucher.test.ts` — 8/8 PASS
+  - `SystemCoreBoundaries.test.ts` — 27/27 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Explicit valued-transfer uplift math and account routing are unchanged; FLAT and no-uplift transfers still create no GL voucher; minimal mode remains bridge-owned.
+
+### Next action
+
+Commit the Stock Transfer slice, then continue with **Inventory Revaluation**.
+
+---
+
+## Task 267-F (Inventory Stock Adjustment slice) — Accounting bridge migration: gain/loss adjustment voucher (2026-06-25) [committed 177332ec]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
 
 - **Why:** `PostStockAdjustmentUseCase` still held an optional direct `SubledgerVoucherPostingService` field, gated voucher creation on that field, and passed it as a fallback into `postFinancialEvent(...)`.
 - **What:**
@@ -22,7 +47,7 @@
 
 ### Next action
 
-Commit the Stock Adjustment slice, then continue with **Stock Transfer**.
+Committed as `177332ec`. Next bridge-migration slice: **Inventory Stock Transfer**.
 
 ---
 

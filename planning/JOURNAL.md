@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F Inventory Stock Transfer slice — Accounting bridge migration: valued-transfer uplift voucher)
+
+- **Context:** After Stock Adjustment, `CompleteStockTransferUseCase` still held an optional direct `SubledgerVoucherPostingService` field and only entered valued-transfer uplift voucher creation when that field was present. Goal: make explicit added-cost/revaluation transfer vouchers bridge-only while preserving no-GL behavior for FLAT and no-uplift transfers.
+- **What changed:** Added `StockTransferGoldenVoucher.test.ts` (5 tests) pinning exact added-cost Inventory/Clearing output, explicit revaluation Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, no-uplift no-post behavior, and output stability. Removed `SubledgerVoucherPostingService` from `CompleteStockTransferUseCase`; `accountingBridge` is required, the old service gate was removed, and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.buildCompleteStockTransferUseCase()` passes `buildAccountingBridge()` directly. Existing valuation tests now assert bridge events. Added the `267-F (Inventory Stock Transfer)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Added-cost and revaluation account routing are unchanged. FLAT transfers and VALUED transfers with no explicit uplift still create no GL voucher.
+- **Verification:** `StockTransferGoldenVoucher.test.ts` 5/5 PASS; `StockTransferValuedVoucher.test.ts` 8/8 PASS; `SystemCoreBoundaries.test.ts` 27/27 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.0h.
+- **Next:** Commit, then continue with Inventory Revaluation.
+
 ### Session: 2026-06-25 (Task 267-F Inventory Stock Adjustment slice — Accounting bridge migration: gain/loss adjustment voucher)
 
 - **Context:** After Opening Stock, `PostStockAdjustmentUseCase` still held an optional direct `SubledgerVoucherPostingService` field and only entered voucher creation when that field was present. Goal: make Stock Adjustment voucher posting bridge-only while preserving real-cost valuation and gain/loss routing.

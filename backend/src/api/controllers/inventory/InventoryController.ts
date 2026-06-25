@@ -1609,7 +1609,6 @@ export class InventoryController {
       diContainer.transactionManager,
       diContainer.companyModuleRepository,
       diContainer.inventorySettingsRepository,
-      InventoryController.buildAccountingPostingService(),
       InventoryController.buildAccountingBridge()
     );
   }

@@ -357,6 +357,18 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - An architecture guard (`267-F (Inventory Stock Adjustment)` in `SystemCoreBoundaries.test.ts`) pins this: `StockAdjustmentUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
 - Golden voucher-output tests (`StockAdjustmentGoldenVoucher.test.ts`, 4 tests) capture exact gain/loss and inventory voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
 
+### Stock Transfer voucher migration (267-F Inventory Stock Transfer slice)
+
+`CompleteStockTransferUseCase` previously held an optional direct `SubledgerVoucherPostingService` field, gated valued-transfer voucher creation on that field, and passed `{ bridge, postingService }` into `postFinancialEvent(...)`. As of this slice:
+
+- The `SubledgerVoucherPostingService` import and posting-service constructor param were removed from `CompleteStockTransferUseCase`.
+- `accountingBridge` is now a required constructor dependency for completion.
+- Explicit VALUED transfer uplift vouchers call `postFinancialEvent({ bridge })` only.
+- `InventoryController.buildCompleteStockTransferUseCase()` no longer constructs a posting service for the Stock Transfer path and passes `InventoryController.buildAccountingBridge()` directly.
+- FLAT transfers and VALUED transfers without explicit added cost or revaluation remain no-GL paths.
+- An architecture guard (`267-F (Inventory Stock Transfer)` in `SystemCoreBoundaries.test.ts`) pins this: `StockTransferUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
+- Golden voucher-output tests (`StockTransferGoldenVoucher.test.ts`, 5 tests) capture exact added-cost Inventory/Clearing output, revaluation Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, no-uplift no-post behavior, and output stability.
+
 ## What Is NOT Implemented
 
 | Feature | Why deferred |
