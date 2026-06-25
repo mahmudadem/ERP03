@@ -247,7 +247,7 @@ export class SalesController {
 
   /**
    * FUP-3: wrap the same-config posting service in the accounting bridge so source-module GL
-   * postings get the full-vs-minimal decision (no GL voucher when the Accounting App is disabled).
+   * postings get the full-vs-minimal decision (no GL voucher when the Accounting Engine is not initialized).
    * `validateAccounts` mirrors buildAccountingPostingService so full-mode behavior is unchanged.
    */
   private static buildAccountingBridge(validateAccounts: boolean = false): IAccountingBridge {
@@ -1454,7 +1454,6 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
-      const accountingPostingService = SalesController.buildAccountingPostingService();
 
       const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
       const periodLockOverride = periodLockOverrideReason
@@ -1477,14 +1476,13 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
+        SalesController.buildAccountingBridge(),
         IAuditEngine,
         diContainer.postingLogRepository,
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase,
-        SalesController.buildAccountingBridge()
+        diContainer.recordSalesProfitLineFactsUseCase
       );
 
       if (periodLockOverride) {

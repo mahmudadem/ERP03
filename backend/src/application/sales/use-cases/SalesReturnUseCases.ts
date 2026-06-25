@@ -49,7 +49,6 @@ import {
 } from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { PostingLog, LineDecision } from '../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../repository/interfaces/accounting/IPostingLogRepository';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
 import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { recordAuditCreate, recordAuditPeriodLockOverride, recordAuditPost, recordAuditUpdate } from '../../system-core/audit/auditEngineLegacyHelpers';
@@ -495,14 +494,16 @@ export class PostSalesReturnUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
+    // 267-F: GL postings route exclusively through the accounting bridge
+    // (full-vs-minimal decision). Required: the posting-service fallback was
+    // removed; every caller must wire a bridge.
+    private readonly accountingBridge: IAccountingBridge,
     private readonly auditEngine?: IAuditEngine,
     private readonly postingLogRepo?: IPostingLogRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
-    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
   }
@@ -976,7 +977,7 @@ export class PostSalesReturnUseCase {
         }
       }
 
-      const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
+      const poster = new SubledgerDocumentPoster(undefined, this.accountingBridge);
 
       if (shouldPostAccounting && cogsBucket.size > 0) {
         // Return reverses the sale's cost: inventory comes back (Debit),
@@ -1149,7 +1150,7 @@ export class PostSalesReturnUseCase {
       // Task 246: record gross-profit facts inside the posting transaction.
       // Known limitation v1: SR's `SalesReturnLine` entity does not persist
       // the post-discount, post-tax net line totals. We use the gross amounts
-      // here (returnQty × unitPrice for revenue, returnQty × unitCost for cost).
+      // here (returnQty x unitPrice for revenue, returnQty x unitCost for cost).
       // A follow-up can add the net line totals to the entity for accuracy.
       if (this.profitFactRecorder) {
         const rate = salesReturn.exchangeRate || 1;

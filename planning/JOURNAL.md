@@ -2,6 +2,30 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-25 (Task 267-F SR slice — Accounting bridge migration: SalesReturn document vouchers)
+
+- **Context:** Follow-up to the SI slice (267-F). The `PostSalesReturnUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue reversal + COGS reversal + optional refund) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback. Goal: migrate to bridge-only with golden tests first, preserving accounting output exactly.
+- **What changed:**
+  - **Golden tests first:** New `SalesReturnGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact COGS-reversal + revenue-reversal voucher output: G1 (AFTER_INVOICE: COGS Dr INV-200/Cr COGS-200 = 8; REVENUE Dr REV-200=20 + Dr TAX-200=2 / Cr AR-200=22; voucher numbers, currency, metadata, settlement mode), G2 (BEFORE_INVOICE: COGS-only, no revenue), G3 (minimal mode → null voucher ids but events still flow), G4 (period-lock override forwarded on both vouchers), G5 (foreign-currency EUR/1.5: REVENUE keeps EUR+rate, COGS keeps base USD, amounts 20 EUR/30 USD, 2 EUR/3 USD, 22 EUR/33 USD), G6 (PERIODIC: revenue only, no COGS), G7 (stability — identical subledgerVoucher across runs). Written before migration, run green against pre-migration code (poster already preferred the bridge when wired), remained green after → zero drift.
+  - **SalesReturnUseCases:** Removed `SubledgerVoucherPostingService` import + field + constructor param (was position 15). `accountingBridge` moved from optional last position to **required** position 17 (right after `transactionManager`, before the optional `auditEngine?` / `postingLogRepo?` / `partyItemPriceRepo?` / `profitFactRecorder?`) — compile-time enforced. Poster: `new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge)` → `new SubledgerDocumentPoster(undefined, this.accountingBridge)`.
+  - **Controller:** `SalesController.postReturn` — removed `accountingPostingService` local + 15th arg; `buildAccountingBridge()` moved to the required bridge position (before optional audit/log repos).
+  - **Tests:** `SalesReturnUseCases.test.ts` — added `LegacyAccountingBridgeAdapter` import; wrapped each of the 14 inline `new SubledgerVoucherPostingService(...)` constructions in `new LegacyAccountingBridgeAdapter(new SubledgerVoucherPostingService(...), makeCompanyModuleRepo() as any)` and reordered to the required bridge position (after `transactionManager`). Full mode → same `postInTransaction` → same `voucherRepo.save` behavior; existing assertions unchanged. The 1 stub-only construction (test 22, DIRECT standalone blocked in PERPETUAL — throws before posting) was rewired to new arg order: `undefined, {} as any, {} as any` (accountRepo, transactionManager, bridge stub).
+  - **SubledgerDocumentPoster:** NOT changed — `postingService` was already optional from the SI slice. PI/PR still pass both args unchanged → backward-compatible.
+  - **Architecture guard:** New `267-F (SR)` guard — `SalesReturnUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 18 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SR subsection + cross-module touchpoints + "What was NOT changed" line updated to drop SR), `module-boundaries.md` (FUP-3 update), `posting-log.md` (SR row → bridge-routed), completion report `planning/done/267-f-sales-return-bridge-migration.md`.
+- **CTO review fixes before commit:** Corrected one adapted legacy test so the uninitialized-engine fixture also passes an uninitialized repo into `LegacyAccountingBridgeAdapter`; replaced stale App/UI-toggle wording in `SalesController.buildAccountingBridge()` and `module-boundaries.md` with Engine initialized/not-initialized wording; cleaned the golden-test fixture type typo.
+- **Accounting / control impact:** None. Golden tests prove identical voucher output. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight fallback dependency.
+- **Verification (all green):**
+  - `SalesReturnGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesReturnUseCases.test.ts` — 15/15 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 19/19 PASS (18 existing + 1 new)
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Reviewer-blocker check:** posting output changed? **no.** SubledgerDocumentPoster changed? **no** (already had optional postingService from SI slice). `accountingBridge` compile-time required? **yes.** Guards weakened? **no.** `opencode.json` touched? **no.**
+- **Actual time:** ~2.0h (golden tests + migration + 14 test rewrites via script + 1 stub rewire + guard + verification + docs).
+- **Next:** Commit. Next slice: PaymentSyncUseCases (settlement `PostingGateway` → bridge) or Purchases (PI/PR/GRN, same SubledgerDocumentPoster pattern).
+
 ### Session: 2026-06-25 (Task 267-F SI slice — Accounting bridge migration: SalesInvoice document vouchers)
 
 - **Context:** Follow-up to the DN COGS migration (267-F). The `PostSalesInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue + COGS) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback. Goal: migrate to bridge-only with golden tests first, preserving accounting output exactly.
