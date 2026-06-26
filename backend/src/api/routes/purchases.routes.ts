@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PurchaseController } from '../controllers/purchases/PurchaseController';
+import { CatalogController } from '../controllers/system-core/CatalogController';
 import { PurchaseMasterDataController } from '../controllers/purchases/PurchaseMasterDataController';
 import { PurchaseInvoiceAttachmentController } from '../controllers/purchases/PurchaseInvoiceAttachmentController';
 import { RecordAuditController } from '../controllers/RecordAuditController';
@@ -28,6 +29,14 @@ router.post('/settings/backfill-party-accounts', PurchaseController.backfillPart
 // point and the module permission are Purchases-local.
 router.get('/policies', permissionGuard('purchase.settings.manage'), PurchaseController.getPolicies);
 router.put('/policies', permissionGuard('purchase.settings.manage'), PurchaseController.updatePolicies);
+
+// Items (Catalog Doorway)
+router.get('/items/search', permissionGuard('purchase.items.view'), CatalogController.searchItems);
+router.post('/items', permissionGuard('purchase.items.manage'), CatalogController.createItem);
+router.get('/items', permissionGuard('purchase.items.view'), CatalogController.listItems);
+router.get('/items/:id', permissionGuard('purchase.items.view'), CatalogController.getItem);
+router.put('/items/:id', permissionGuard('purchase.items.manage'), CatalogController.updateItem);
+router.delete('/items/:id', permissionGuard('purchase.items.manage'), CatalogController.deleteItem);
 
 // Manage Voucher Types — used by the per-module settings page to install
 // additional types after the init wizard. Route param `module` is injected.

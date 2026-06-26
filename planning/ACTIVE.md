@@ -1,5 +1,45 @@
 # 🎯 Current Focus
 
+## Task 267-H — Catalog/Item engine plan & Execution (2026-06-26)
+
+**Status:** ✅ Complete locally on `main`.
+
+- **Why:** Item/catalog management needs to be an always-on shared engine with module doorways, rather than locked behind Inventory UI.
+- **What changed:** 
+  - Extracted `ICatalogCore` contract and moved item management out of `InventoryModule` to `system-core`.
+  - Created `CatalogController` exposing module-agnostic item CRUD operations.
+  - Added module doorways in `/pos/items`, `/sales/items`, and `/purchases/items`.
+  - Updated `ItemsListPage` and `ItemMasterCard` frontend components to dynamically determine `itemsBasePath` from React Router context (`window.location.pathname`). This allows POS/Sales users to manage items via their dedicated module menus bypassing `inventoryApi`.
+  - Re-mapped permission dependencies on `inventoryApi.categories` and `inventoryApi.uoms` safely since `moduleInitializedGuard` still passes if the module is disabled.
+- **Estimated/actual time:** ~1h.
+
+### Next action
+
+This concludes the 267 System Core Engine Management epic. Next action is to continue with **Task 271 — Sales/Purchase Return layout parity and direct Purchase Return** (or wait for the owner to review the PR).
+
+---
+
+## Task 267-G — Inventory core ownership completion (Purchases) (2026-06-26)
+
+**Status:** ✅ Complete locally on `feat/267g-inventory-core-purchases` (uncommitted).
+
+- **Why:** To prevent source modules from bypassing inventory core logic and to centralize stock movement creation, `new StockMovement` and `StockLevel.createNew` calls in the Purchases module needed to be routed through `IInventoryCore` (similar to FUP-4 for Sales).
+- **What changed:**
+  - Added `computeStockReceiptInMovement` to `InventoryIntegrationContracts.ts` to handle inbound purchases behavior-preservingly.
+  - Added `reversesMovementId` to `ComputeStockOutMovementInput`.
+  - Replaced inline `new StockMovement` and `StockLevel.createNew`/`StockLevel.fromJSON` with core delegates (`computeStockReceiptInMovement`, `computeStockOutMovement`, `createStockLevel`, `cloneStockLevel`) in:
+    - `GoodsReceiptUseCases.ts`
+    - `PurchaseInvoiceUseCases.ts`
+    - `PurchaseReturnUseCases.ts`
+  - Added an architecture guard in `SystemCoreBoundaries.test.ts` to prevent direct `StockMovement`/`StockLevel` instantiation in the `application/purchases` directory.
+- **Verification:** All tests passed (74/74) including GoodsReceipt, PurchaseInvoice, PurchaseReturn, and SystemCoreBoundaries tests.
+- **Estimated/actual time:** ~1h.
+
+### Next action
+
+Commit and review Task 267-G. The next task in the system core engine management plan is **267-H (Catalog/Item engine plan)**.
+
+
 ## Task 271 — Sales/Purchase Return layout parity and direct Purchase Return (2026-06-26)
 
 **Status:** ✅ Complete locally on `codex/271-returns-parity` (pending PR/merge).

@@ -5,6 +5,7 @@ import { PageHeader } from '../../../components/ui/PageHeader';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { inventoryApi, InventoryItemDTO } from '../../../api/inventoryApi';
+import client from '../../../api/client';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { useConfirm } from '../../../hooks/useConfirm';
@@ -37,7 +38,9 @@ const ItemsListPage: React.FC = () => {
     ? '/sales/items'
     : pathname.startsWith('/purchases/')
       ? '/purchases/items'
-      : '/inventory/items';
+      : pathname.startsWith('/pos/')
+        ? '/pos/items'
+        : '/inventory/items';
 
   const loadItems = async (targetPage = 0) => {
     try {
@@ -51,8 +54,8 @@ const ItemsListPage: React.FC = () => {
       if (activeFilter === 'ACTIVE') params.active = true;
       if (activeFilter === 'INACTIVE') params.active = false;
       const result = search
-        ? await inventoryApi.searchItems(search, pageSize, targetPage * pageSize)
-        : await inventoryApi.listItems(params);
+        ? await client.get(`/tenant${itemsBasePath}/search`, { params: { q: search, ...params } })
+        : await client.get(`/tenant${itemsBasePath}`, { params });
       const rows = unwrap<InventoryItemDTO[]>(result) || [];
       setItems(rows);
       setHasNext(rows.length === pageSize);
@@ -100,7 +103,12 @@ const ItemsListPage: React.FC = () => {
   };
 
   const handleToggleActive = async (item: InventoryItemDTO) => {
-    if (!hasPermission('inventory.items.manage')) {
+    const requiredPermission = pathname.startsWith('/sales/') ? 'sales.items.manage'
+      : pathname.startsWith('/purchases/') ? 'purchase.items.manage'
+      : pathname.startsWith('/pos/') ? 'pos.items.manage'
+      : 'inventory.items.manage';
+
+    if (!hasPermission(requiredPermission)) {
       toast.error(t('inventory.itemsList.messages.permissionDenied', 'You do not have permission to change item status.'));
       return;
     }
@@ -128,7 +136,7 @@ const ItemsListPage: React.FC = () => {
     if (!ok) return;
     try {
       setPendingToggleId(item.id);
-      await inventoryApi.updateItem(item.id, { active: nextActive });
+      await client.put(`/tenant${itemsBasePath}/${item.id}`, { active: nextActive });
       toast.success(
         nextActive
           ? t('inventory.itemsList.activated', 'Item activated')

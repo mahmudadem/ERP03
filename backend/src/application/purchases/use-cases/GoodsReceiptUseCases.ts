@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
-import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, computeStockReceiptInMovement, createStockLevel, cloneStockLevel } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { GoodsReceipt, GoodsReceiptLine } from '../../../domain/purchases/entities/GoodsReceipt';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
@@ -304,7 +304,7 @@ export class PostGoodsReceiptUseCase {
     const levelsByItemMap = new Map<string, StockLevel[]>();
     for (const itemId of distinctItemIds) {
       const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
-      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+      levelsByItemMap.set(itemId, existingLevels.map((level) => cloneStockLevel(level)));
     }
     for (const line of grn.lines) {
       const levels = levelsByItemMap.get(line.itemId) || [];
@@ -312,10 +312,10 @@ export class PostGoodsReceiptUseCase {
       if (!stockLevelMap.has(key)) {
         let existing = levels.find((level) => level.warehouseId === grn.warehouseId);
         if (!existing) {
-          existing = StockLevel.createNew(companyId, line.itemId, grn.warehouseId);
+          existing = createStockLevel(companyId, line.itemId, grn.warehouseId);
           levels.push(existing);
         }
-        stockLevelMap.set(key, existing);
+        stockLevelMap.set(key, existing ?? createStockLevel(companyId, line.itemId, grn.warehouseId));
       }
     }
 
@@ -383,8 +383,6 @@ export class PostGoodsReceiptUseCase {
       const level = stockLevelMap.get(stockLevelKey);
       if (!level) throw new Error(`Stock level not pre-fetched for item ${item.code}`);
 
-      const qtyBefore = level.qtyOnHand;
-      const oldMaxBusinessDate = level.maxBusinessDate;
       const moveCurrency = (line.moveCurrency || item.costCurrency || 'USD').toUpperCase();
       const fxRateMovToBase = line.fxRateMovToBase || 1;
       const fxRateCCYToBase = line.fxRateCCYToBase || fxRateMovToBase;
@@ -393,54 +391,25 @@ export class PostGoodsReceiptUseCase {
       const totalCostBase = roundMoney(unitCostBase * qtyInBaseUom);
       const totalCostCCY = roundByCurrency(unitCostCCY * qtyInBaseUom, item.costCurrency);
 
-      // AVG cost recalculation
-      let newAvgBase = unitCostBase;
-      let newAvgCCY = unitCostCCY;
-      if (qtyBefore > 0) {
-        const newQty = qtyBefore + qtyInBaseUom;
-        newAvgBase = roundMoney(((level.avgCostBase * qtyBefore) + (unitCostBase * qtyInBaseUom)) / newQty);
-        newAvgCCY = roundMoney(((level.avgCostCCY * qtyBefore) + (unitCostCCY * qtyInBaseUom)) / newQty);
-      }
-
-      const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
-      const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
-      const qtyAfter = qtyBefore + qtyInBaseUom;
-
-      const movement = new StockMovement({
-        id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+      const { movement } = computeStockReceiptInMovement({
         companyId,
-        date: grn.receiptDate,
-        postingSeq: level.postingSeq + 1,
-        createdAt: new Date(),
-        createdBy: grn.createdBy,
-        postedAt: new Date(),
-        itemId: item.id,
+        item,
+        level,
         warehouseId: grn.warehouseId,
-        direction: 'IN',
-        movementType: 'PURCHASE_RECEIPT',
-        qty: qtyInBaseUom,
-        uom: item.baseUom,
-        referenceType: 'GOODS_RECEIPT',
-        referenceId: grn.id,
-        referenceLineId: line.lineId,
+        qtyInBaseUom,
+        date: grn.receiptDate,
+        createdBy: grn.createdBy,
         unitCostBase,
-        totalCostBase,
         unitCostCCY,
+        totalCostBase,
         totalCostCCY,
         movementCurrency: moveCurrency,
         fxRateMovToBase,
         fxRateCCYToBase,
-        fxRateKind: 'DOCUMENT',
-        avgCostBaseAfter: newAvgBase,
-        avgCostCCYAfter: newAvgCCY,
-        qtyBefore,
-        qtyAfter,
-        settlesNegativeQty,
-        newPositiveQty,
-        negativeQtyAtPosting: qtyAfter < 0,
-        costSettled: true,
-        isBackdated: grn.receiptDate < oldMaxBusinessDate,
-        costSource: 'PURCHASE',
+        referenceType: 'GOODS_RECEIPT',
+        referenceId: grn.id,
+        referenceLineId: line.lineId,
+        movementType: 'PURCHASE_RECEIPT',
         metadata: {
           uomConversion: {
             conversionId: conversionResult.trace.conversionId,
@@ -454,19 +423,6 @@ export class PostGoodsReceiptUseCase {
           },
         },
       });
-
-      // Update stock level in memory
-      level.qtyOnHand += qtyInBaseUom;
-      level.avgCostBase = newAvgBase;
-      level.avgCostCCY = newAvgCCY;
-      level.lastCostBase = unitCostBase;
-      level.lastCostCCY = unitCostCCY;
-      level.postingSeq += 1;
-      level.version += 1;
-      level.totalMovements += 1;
-      level.maxBusinessDate = grn.receiptDate > oldMaxBusinessDate ? grn.receiptDate : oldMaxBusinessDate;
-      level.updatedAt = new Date();
-      level.lastMovementId = movement.id;
 
       line.stockMovementId = movement.id;
       line.unitCostBase = roundMoney(movement.unitCostBase || line.unitCostBase);

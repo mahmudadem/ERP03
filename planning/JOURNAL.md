@@ -5208,3 +5208,37 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused StockLevelUseCases tests passed (4/4). InventoryValuationService focused tests passed (3/3). Backend build passed. Frontend `check:reports`, typecheck, and production build passed; existing browser-data/chunk-size warnings remain. `git diff --check` reported CRLF normalization warnings only. `graphify update .` was not run because `graphify` is not installed in this shell.
 - **Time spent:** ~3.1h.
 - **Next:** Commit/push Task 270, then continue Task 271 — Sales/Purchase Return layout parity and direct Purchase Return.
+
+### Session: 2026-06-26 (Task 267-G Inventory Core Purchases Migration)
+
+- **Context:** To prevent source modules from bypassing inventory core logic, `new StockMovement` and `StockLevel.createNew` calls in the Purchases module needed to be routed through `IInventoryCore` (similar to FUP-4 for Sales).
+- **What changed:** 
+  - Added `computeStockReceiptInMovement` to `InventoryIntegrationContracts.ts` to handle inbound purchases behavior-preservingly.
+  - Added `reversesMovementId` to `ComputeStockOutMovementInput`.
+  - Replaced inline `new StockMovement` and `StockLevel.createNew`/`StockLevel.fromJSON` with core delegates in `GoodsReceiptUseCases.ts`, `PurchaseInvoiceUseCases.ts`, and `PurchaseReturnUseCases.ts`.
+  - Added an architecture guard in `SystemCoreBoundaries.test.ts` to prevent direct `StockMovement`/`StockLevel` instantiation in the `application/purchases` directory.
+- **Verification:** All tests passed (74/74) including GoodsReceipt, PurchaseInvoice, PurchaseReturn, and SystemCoreBoundaries tests.
+- **Accounting/ERP impact:** None intended. Centralized inventory movement creation without altering any data logic.
+- **Time spent:** ~1.0h.
+- **Next:** Create completion report. The next task in the system core engine management plan is **267-H (Catalog/Item engine plan)**.
+
+### Session: 2026-06-26 (Task 267-H Catalog/Item Engine Plan)
+
+- **Context:** To decouple item/catalog management from the Inventory module so that POS, Sales, and Purchases can manage items independently.
+- **What changed:** Created the execution plan document `planning/tasks/267-h-catalog-item-engine-plan.md` defining the `ICatalogCore` contract extraction, module-specific API doorways, neutral permission model, frontend UI refactor, and architecture guards.
+- **Accounting/ERP impact:** None. Purely planning.
+- **Time spent:** ~0.5h.
+- **Next:** The 267 epic is now fully complete (or planned out). Next is to tackle Task 271 or wait for owner feedback.
+
+
+### Session: 2026-06-26 (Task 267-H Catalog/Item Engine Execution)
+
+- **Context:** To execute the decoupling of item/catalog management from the Inventory module so that POS, Sales, and Purchases can manage items independently.
+- **What changed:**
+  - Extracted ICatalogCore contract and moved item management out of InventoryModule to system-core.
+  - Created CatalogController exposing module-agnostic item CRUD operations.
+  - Added module doorways in /pos/items, /sales/items, and /purchases/items.
+  - Updated ItemsListPage and ItemMasterCard frontend components to dynamically determine itemsBasePath from React Router context.
+- **Accounting/ERP impact:** None. Centralized item logic.
+- **Time spent:** ~1h.
+- **Next:** Waiting for user instruction.

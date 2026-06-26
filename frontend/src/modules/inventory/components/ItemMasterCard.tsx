@@ -26,6 +26,7 @@ import {
   UomConversionDTO,
   UomConversionImpactReportDTO,
 } from '../../../api/inventoryApi';
+import client from '../../../api/client';
 import { sharedApi, TaxCodeDTO } from '../../../api/sharedApi';
 import { accountingApi } from '../../../api/accountingApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
@@ -149,7 +150,11 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   const loadItem = async (id: string) => {
     try {
       setLoading(true);
-      const result = await inventoryApi.getItem(id);
+      const itemsBasePath = window.location.pathname.startsWith('/sales/') ? '/sales/items' :
+                            window.location.pathname.startsWith('/purchases/') ? '/purchases/items' :
+                            window.location.pathname.startsWith('/pos/') ? '/pos/items' :
+                            '/inventory/items';
+      const result = await client.get(`/tenant${itemsBasePath}/${id}`);
       const data = (result as any).data || result;
       setItem({
         ...data,
@@ -169,9 +174,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     try {
       setSaving(true);
       setError(null);
+      const itemsBasePath = window.location.pathname.startsWith('/sales/') ? '/sales/items' :
+                            window.location.pathname.startsWith('/purchases/') ? '/purchases/items' :
+                            window.location.pathname.startsWith('/pos/') ? '/pos/items' :
+                            '/inventory/items';
       const result = isNew 
-        ? await inventoryApi.createItem(item as any)
-        : await inventoryApi.updateItem(itemId!, item as any);
+        ? await client.post(`/tenant${itemsBasePath}`, item)
+        : await client.put(`/tenant${itemsBasePath}/${itemId}`, item);
       const normalized = (result as any).data || result;
       setItem({
         ...normalized,

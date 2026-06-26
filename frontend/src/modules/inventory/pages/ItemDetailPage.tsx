@@ -13,7 +13,9 @@ const ItemDetailPage: React.FC = () => {
     ? '/sales/items'
     : pathname.startsWith('/purchases/')
       ? '/purchases/items'
-      : '/inventory/items';
+      : pathname.startsWith('/pos/')
+        ? '/pos/items'
+        : '/inventory/items';
 
   const handleClose = () => {
     navigate(itemsBasePath);

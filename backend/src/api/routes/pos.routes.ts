@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { PosController } from '../controllers/pos/PosController';
+import { CatalogController } from '../controllers/system-core/CatalogController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { permissionGuard } from '../middlewares/guards/permissionGuard';
 import { idempotencyMiddleware } from '../middlewares/idempotencyMiddleware';
@@ -26,6 +27,14 @@ router.put('/selling-policy', permissionGuard('pos.settings.manage'), PosControl
 // module permission are POS-local.
 router.get('/policies', permissionGuard('pos.settings.manage'), PosController.getPolicies);
 router.put('/policies', permissionGuard('pos.settings.manage'), PosController.updatePolicies);
+
+// Items (Catalog Doorway)
+router.get('/items/search', permissionGuard('pos.items.view'), CatalogController.searchItems);
+router.post('/items', permissionGuard('pos.items.manage'), CatalogController.createItem);
+router.get('/items', permissionGuard('pos.items.view'), CatalogController.listItems);
+router.get('/items/:id', permissionGuard('pos.items.view'), CatalogController.getItem);
+router.put('/items/:id', permissionGuard('pos.items.manage'), CatalogController.updateItem);
+router.delete('/items/:id', permissionGuard('pos.items.manage'), CatalogController.deleteItem);
 
 // Registers
 router.get('/registers', permissionGuard('pos.registers.manage'), PosController.listRegisters);

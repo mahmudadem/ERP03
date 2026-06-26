@@ -21,7 +21,7 @@ import {
 import { PurchaseOrder } from '../../../domain/purchases/entities/PurchaseOrder';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
-import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, computeStockOutMovement, createStockLevel } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -671,7 +671,7 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         const key = `${line.itemId}|${warehouseId}`;
         if (!stockLevelMap.has(key)) {
           const existing = await this.inventoryService.preFetchStockLevel(companyId, line.itemId, warehouseId);
-          stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, warehouseId));
+          stockLevelMap.set(key, existing ?? createStockLevel(companyId, line.itemId, warehouseId));
         }
       }
     }
@@ -832,61 +832,19 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         const level = stockLevelMap.get(stockLevelKey);
         if (!level) throw new Error(`Stock level not pre-fetched for item ${item.code}`);
 
-        const qtyBefore = level.qtyOnHand;
-        const oldMaxBusinessDate = level.maxBusinessDate;
-        let issueCostBase = 0;
-        let issueCostCCY = 0;
-        let costBasis: 'AVG' | 'LAST_KNOWN' | 'MISSING' = 'MISSING';
-        if (qtyBefore > 0) {
-          issueCostBase = level.avgCostBase;
-          issueCostCCY = level.avgCostCCY;
-          costBasis = 'AVG';
-        } else if (level.lastCostBase > 0) {
-          issueCostBase = level.lastCostBase;
-          issueCostCCY = level.lastCostCCY;
-          costBasis = 'LAST_KNOWN';
-        }
-
-        const settledQty = Math.min(qtyInBaseUom, Math.max(qtyBefore, 0));
-        const unsettledQty = qtyInBaseUom - settledQty;
-        const effectiveFxCCYToBase = issueCostCCY > 0 ? issueCostBase / issueCostCCY : 1.0;
-
-        const movement = new StockMovement({
-          id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+        const { movement } = computeStockOutMovement({
           companyId,
-          date: purchaseReturn.returnDate,
-          postingSeq: level.postingSeq + 1,
-          createdAt: new Date(),
-          createdBy: purchaseReturn.createdBy,
-          postedAt: new Date(),
-          itemId: item.id,
+          item,
+          level,
           warehouseId,
-          direction: 'OUT',
+          qtyInBaseUom,
+          date: purchaseReturn.returnDate,
+          createdBy: purchaseReturn.createdBy,
           movementType: 'RETURN_OUT',
-          qty: qtyInBaseUom,
-          uom: item.baseUom,
           referenceType: 'PURCHASE_RETURN',
           referenceId: purchaseReturn.id,
           referenceLineId: line.lineId,
           reversesMovementId,
-          unitCostBase: issueCostBase,
-          totalCostBase: roundMoney(issueCostBase * qtyInBaseUom),
-          unitCostCCY: issueCostCCY,
-          totalCostCCY: roundMoney(issueCostCCY * qtyInBaseUom),
-          movementCurrency: item.costCurrency,
-          fxRateMovToBase: effectiveFxCCYToBase,
-          fxRateCCYToBase: effectiveFxCCYToBase,
-          fxRateKind: 'EFFECTIVE',
-          avgCostBaseAfter: level.avgCostBase,
-          avgCostCCYAfter: level.avgCostCCY,
-          qtyBefore,
-          qtyAfter: qtyBefore - qtyInBaseUom,
-          settledQty,
-          unsettledQty,
-          unsettledCostBasis: unsettledQty > 0 ? costBasis : undefined,
-          negativeQtyAtPosting: (qtyBefore - qtyInBaseUom) < 0,
-          costSettled: unsettledQty === 0,
-          isBackdated: purchaseReturn.returnDate < oldMaxBusinessDate,
           costSource: 'RETURN',
           metadata: {
             uomConversion: {
@@ -901,14 +859,6 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
             },
           },
         });
-
-        level.qtyOnHand -= qtyInBaseUom;
-        level.postingSeq += 1;
-        level.version += 1;
-        level.totalMovements += 1;
-        level.maxBusinessDate = purchaseReturn.returnDate > oldMaxBusinessDate ? purchaseReturn.returnDate : oldMaxBusinessDate;
-        level.updatedAt = new Date();
-        level.lastMovementId = movement.id;
 
         line.stockMovementId = movement.id;
         // Store for writing in transaction

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { SalesController } from '../controllers/sales/SalesController';
+import { CatalogController } from '../controllers/system-core/CatalogController';
 import { SalesMasterDataController } from '../controllers/sales/SalesMasterDataController';
 import { SalesOperationalController } from '../controllers/sales/SalesOperationalController';
 import { SalesReportingController } from '../controllers/sales/SalesReportingController';
@@ -35,6 +36,14 @@ router.put('/selling-policy', SalesController.updateSellingPolicy);
 // point and the module permission are Sales-local.
 router.get('/policies', permissionGuard('sales.settings.manage'), SalesController.getPolicies);
 router.put('/policies', permissionGuard('sales.settings.manage'), SalesController.updatePolicies);
+
+// Items (Catalog Doorway)
+router.get('/items/search', permissionGuard('sales.items.view'), CatalogController.searchItems);
+router.post('/items', permissionGuard('sales.items.manage'), CatalogController.createItem);
+router.get('/items', permissionGuard('sales.items.view'), CatalogController.listItems);
+router.get('/items/:id', permissionGuard('sales.items.view'), CatalogController.getItem);
+router.put('/items/:id', permissionGuard('sales.items.manage'), CatalogController.updateItem);
+router.delete('/items/:id', permissionGuard('sales.items.manage'), CatalogController.deleteItem);
 
 // Manage Voucher Types — used by the per-module settings page to install
 // additional types after the init wizard. Route param `module` is injected.

@@ -17,7 +17,7 @@ import {
 import { Party } from '../../../domain/shared/entities/Party';
 import { PurchaseTaxTreatment, TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PaymentHistory, PaymentMethod } from '../../../domain/shared/entities/PaymentHistory';
-import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
+import { IInventoryCore, computeStockReceiptInMovement, createStockLevel, cloneStockLevel } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
 import { IExchangeRateRepository } from '../../../repository/interfaces/accounting/IExchangeRateRepository';
 import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
@@ -630,7 +630,7 @@ export class PostPurchaseInvoiceUseCase {
     const levelsByItemMap = new Map<string, StockLevel[]>();
     for (const itemId of distinctItemIds) {
       const existingLevels = await this.inventoryService.preFetchLevelsByItem(companyId, itemId);
-      levelsByItemMap.set(itemId, existingLevels.map((level) => StockLevel.fromJSON(level.toJSON())));
+      levelsByItemMap.set(itemId, existingLevels.map((level) => cloneStockLevel(level)));
     }
     for (const line of pi.lines) {
       if (settings.allowDirectInvoicing && line.trackInventory && !goodsAlreadyReceived(line, po)) {
@@ -641,10 +641,10 @@ export class PostPurchaseInvoiceUseCase {
             const levels = levelsByItemMap.get(line.itemId) || [];
             let existing = levels.find((level) => level.warehouseId === warehouseId);
             if (!existing) {
-              existing = StockLevel.createNew(companyId, line.itemId, warehouseId);
+              existing = createStockLevel(companyId, line.itemId, warehouseId);
               levels.push(existing);
             }
-            stockLevelMap.set(key, existing ?? StockLevel.createNew(companyId, line.itemId, warehouseId));
+            stockLevelMap.set(key, existing ?? createStockLevel(companyId, line.itemId, warehouseId));
           }
         }
       }
@@ -743,25 +743,6 @@ export class PostPurchaseInvoiceUseCase {
         const level = stockLevelMap.get(stockLevelKey);
         if (!level) throw new Error(`Stock level not found for ${item.name} in warehouse ${warehouseId}`);
 
-        const qtyBefore = level.qtyOnHand;
-        const oldMaxBusinessDate = level.maxBusinessDate;
-        let receiptCostBase = 0;
-        let receiptCostCCY = 0;
-        let costBasis: 'AVG' | 'LAST_KNOWN' | 'MISSING' = 'MISSING';
-        if (qtyBefore > 0) {
-          receiptCostBase = level.avgCostBase;
-          receiptCostCCY = level.avgCostCCY;
-          costBasis = 'AVG';
-        } else if (level.lastCostBase > 0) {
-          receiptCostBase = level.lastCostBase;
-          receiptCostCCY = level.lastCostCCY;
-          costBasis = 'LAST_KNOWN';
-        }
-
-        const movementId = `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-        const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
-        const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
-        const qtyAfter = qtyBefore + qtyInBaseUom;
         const netUnitCostBase = qtyInBaseUom > 0
           ? roundMoney(line.lineTotalBase / qtyInBaseUom)
           : 0;
@@ -769,50 +750,26 @@ export class PostPurchaseInvoiceUseCase {
           ? roundByCurrency(netUnitCostBase / fxRateCCYToBase, item.costCurrency)
           : 0;
         const netTotalCostCCY = roundByCurrency(netUnitCostCCY * qtyInBaseUom, item.costCurrency);
-        const nextAvgCostBase = roundMoney(
-          (level.avgCostBase * Math.max(qtyBefore, 0) + netUnitCostBase * newPositiveQty) / Math.max(qtyAfter, 1)
-        );
-        const nextAvgCostCCY = roundMoney(
-          (level.avgCostCCY * Math.max(qtyBefore, 0) + netUnitCostCCY * newPositiveQty) / Math.max(qtyAfter, 1)
-        );
-        const movement = new StockMovement({
-          id: movementId,
+
+        const { movement } = computeStockReceiptInMovement({
           companyId,
-          date: pi.invoiceDate,
-          postingSeq: level.postingSeq + 1,
-          createdAt: new Date(),
-          createdBy: pi.createdBy,
-          postedAt: new Date(),
-          itemId: item.id,
+          item,
+          level,
           warehouseId,
-          direction: 'IN',
-          movementType: 'PURCHASE_RECEIPT',
-          qty: qtyInBaseUom,
-          uom: item.baseUom,
-          referenceType: 'PURCHASE_INVOICE',
-          referenceId: pi.id,
-          referenceLineId: line.lineId,
-          reversesMovementId: undefined,
-          transferPairId: undefined,
+          qtyInBaseUom,
+          date: pi.invoiceDate,
+          createdBy: pi.createdBy,
           unitCostBase: netUnitCostBase,
-          totalCostBase: line.lineTotalBase,
           unitCostCCY: netUnitCostCCY,
+          totalCostBase: line.lineTotalBase,
           totalCostCCY: netTotalCostCCY,
           movementCurrency: pi.currency,
           fxRateMovToBase: pi.exchangeRate,
           fxRateCCYToBase,
-          fxRateKind: 'EFFECTIVE',
-          avgCostBaseAfter: nextAvgCostBase,
-          avgCostCCYAfter: nextAvgCostCCY,
-          qtyBefore,
-          qtyAfter,
-          settlesNegativeQty,
-          newPositiveQty,
-          negativeQtyAtPosting: qtyAfter < 0,
-          costSettled: true,
-          isBackdated: pi.invoiceDate < oldMaxBusinessDate,
-          costSource: 'PURCHASE',
-          notes: undefined,
+          referenceType: 'PURCHASE_INVOICE',
+          referenceId: pi.id,
+          referenceLineId: line.lineId,
+          movementType: 'PURCHASE_RECEIPT',
           metadata: {
             uomConversion: {
               conversionId: conversionResult.trace.conversionId,
@@ -826,18 +783,6 @@ export class PostPurchaseInvoiceUseCase {
             },
           },
         });
-
-        level.qtyOnHand += qtyInBaseUom;
-        level.avgCostBase = nextAvgCostBase;
-        level.avgCostCCY = nextAvgCostCCY;
-        level.lastCostBase = netUnitCostBase;
-        level.lastCostCCY = netUnitCostCCY;
-        level.postingSeq += 1;
-        level.version += 1;
-        level.totalMovements += 1;
-        level.maxBusinessDate = pi.invoiceDate > oldMaxBusinessDate ? pi.invoiceDate : oldMaxBusinessDate;
-        level.updatedAt = new Date();
-        level.lastMovementId = movement.id;
 
         line.stockMovementId = movement.id;
         line.warehouseId = warehouseId;
