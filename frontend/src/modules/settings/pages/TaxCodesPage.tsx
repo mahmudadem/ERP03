@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import toast from 'react-hot-toast';
 import { Edit2, Lock, Plus, RefreshCw, X } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
-import { TaxCodeDTO, TaxScope, TaxType, sharedApi } from '../../../api/sharedApi';
+import { PurchaseTaxTreatment, TaxCodeDTO, TaxScope, TaxType, sharedApi } from '../../../api/sharedApi';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
 
 type TaxPriceBasis = '' | 'EXCLUSIVE' | 'INCLUSIVE';
@@ -15,6 +15,7 @@ interface TaxCodeFormState {
   scope: TaxScope;
   purchaseTaxAccountId: string;
   salesTaxAccountId: string;
+  purchaseTaxTreatment: PurchaseTaxTreatment;
   priceBasis: TaxPriceBasis;
   active: boolean;
 }
@@ -27,6 +28,7 @@ const emptyForm: TaxCodeFormState = {
   scope: 'BOTH',
   purchaseTaxAccountId: '',
   salesTaxAccountId: '',
+  purchaseTaxTreatment: 'RECOVERABLE',
   priceBasis: '',
   active: true,
 };
@@ -38,6 +40,7 @@ const accountingLockedFields = new Set([
   'scope',
   'purchaseTaxAccountId',
   'salesTaxAccountId',
+  'purchaseTaxTreatment',
   'priceIsInclusive',
 ]);
 
@@ -48,6 +51,9 @@ const toPercentText = (rate: number | undefined): string => {
 
 const priceBasisLabel = (taxCode: Pick<TaxCodeDTO, 'priceIsInclusive'>): string =>
   taxCode.priceIsInclusive ? 'Inclusive' : 'Exclusive';
+
+const purchaseTaxTreatmentLabel = (treatment: TaxCodeDTO['purchaseTaxTreatment']): string =>
+  treatment === 'NON_RECOVERABLE' ? 'Non-recoverable' : 'Recoverable';
 
 const errorMessage = (error: unknown): string => {
   const anyError = error as any;
@@ -107,6 +113,7 @@ const TaxCodesPage: React.FC = () => {
       scope: taxCode.scope,
       purchaseTaxAccountId: taxCode.purchaseTaxAccountId || '',
       salesTaxAccountId: taxCode.salesTaxAccountId || '',
+      purchaseTaxTreatment: taxCode.purchaseTaxTreatment || 'RECOVERABLE',
       priceBasis: taxCode.priceIsInclusive === true ? 'INCLUSIVE' : 'EXCLUSIVE',
       active: taxCode.active,
     });
@@ -147,6 +154,7 @@ const TaxCodesPage: React.FC = () => {
         scope: form.scope,
         purchaseTaxAccountId: form.purchaseTaxAccountId || undefined,
         salesTaxAccountId: form.salesTaxAccountId || undefined,
+        purchaseTaxTreatment: form.purchaseTaxTreatment,
         priceIsInclusive: form.priceBasis === 'INCLUSIVE',
         active: form.active,
       };
@@ -180,7 +188,7 @@ const TaxCodesPage: React.FC = () => {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Tax Codes</h1>
-          <p className="text-sm text-slate-500">Manage tax rates, account routing, and price basis for sales and purchases.</p>
+          <p className="text-sm text-slate-500">Manage tax rates, account routing, price basis, and purchase tax cost treatment.</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -217,6 +225,7 @@ const TaxCodesPage: React.FC = () => {
                   <th className="px-4 py-3 text-left">Type</th>
                   <th className="px-4 py-3 text-left">Scope</th>
                   <th className="px-4 py-3 text-left">Price Basis</th>
+                  <th className="px-4 py-3 text-left">Purchase Treatment</th>
                   <th className="px-4 py-3 text-left">Status</th>
                   <th className="px-4 py-3 text-left">Usage</th>
                   <th className="px-4 py-3 text-right">Actions</th>
@@ -239,6 +248,17 @@ const TaxCodesPage: React.FC = () => {
                         }`}
                       >
                         {priceBasisLabel(taxCode)}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`rounded px-2 py-0.5 text-xs font-semibold ${
+                          taxCode.purchaseTaxTreatment === 'NON_RECOVERABLE'
+                            ? 'bg-amber-50 text-amber-700'
+                            : 'bg-blue-50 text-blue-700'
+                        }`}
+                      >
+                        {purchaseTaxTreatmentLabel(taxCode.purchaseTaxTreatment)}
                       </span>
                     </td>
                     <td className="px-4 py-3">{taxCode.active ? 'Active' : 'Inactive'}</td>
@@ -266,7 +286,7 @@ const TaxCodesPage: React.FC = () => {
                 ))}
                 {taxCodes.length === 0 && (
                   <tr>
-                    <td className="px-4 py-10 text-center text-slate-500" colSpan={9}>
+                    <td className="px-4 py-10 text-center text-slate-500" colSpan={10}>
                       No tax codes found.
                     </td>
                   </tr>
@@ -405,6 +425,27 @@ const TaxCodesPage: React.FC = () => {
                 </select>
                 <div className="mt-1 text-xs text-slate-500">
                   With 10% tax and price 100, Exclusive totals 110; Inclusive splits 100 into net 90.91 and tax 9.09.
+                </div>
+              </label>
+              <label className="text-sm md:col-span-2">
+                <div className="mb-1 font-medium">
+                  Purchase Tax Treatment <span className="text-red-600">*</span>
+                </div>
+                <select
+                  className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
+                  disabled={isLocked('purchaseTaxTreatment')}
+                  value={form.purchaseTaxTreatment}
+                  onChange={(e) => {
+                    setSaveError('');
+                    setForm((prev) => ({ ...prev, purchaseTaxTreatment: e.target.value as PurchaseTaxTreatment }));
+                  }}
+                  required
+                >
+                  <option value="RECOVERABLE">Recoverable - post purchase tax separately</option>
+                  <option value="NON_RECOVERABLE">Non-recoverable - include purchase tax in item/expense cost</option>
+                </select>
+                <div className="mt-1 text-xs text-slate-500">
+                  Recoverable tax debits the purchase tax account. Non-recoverable tax is capitalized into inventory or expense cost.
                 </div>
               </label>
               {saveError && (

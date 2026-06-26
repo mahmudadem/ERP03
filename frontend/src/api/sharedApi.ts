@@ -4,6 +4,7 @@ export type PartyRole = 'VENDOR' | 'CUSTOMER';
 export type PartyAccountStrategy = 'AUTO_CREATE' | 'PICK_EXISTING';
 export type TaxType = 'VAT' | 'GST' | 'EXEMPT' | 'ZERO_RATED';
 export type TaxScope = 'PURCHASE' | 'SALES' | 'BOTH';
+export type PurchaseTaxTreatment = 'RECOVERABLE' | 'NON_RECOVERABLE';
 
 export interface PartyDTO {
   id: string;
@@ -49,6 +50,7 @@ export interface TaxCodeDTO {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   priceIsInclusive?: boolean;
   usedInPostedDocuments?: boolean;
   lockedFields?: string[];

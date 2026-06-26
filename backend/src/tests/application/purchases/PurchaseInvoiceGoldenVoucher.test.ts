@@ -89,7 +89,28 @@ const makeServiceItem = (): Item =>
     updatedAt: nowDate(),
   });
 
-const makeTaxCode = (): TaxCode =>
+const makeStockItem = (): Item =>
+  new Item({
+    id: 'stock-1',
+    companyId: COMPANY_ID,
+    code: 'STK-1',
+    name: 'Stock Item',
+    type: 'PRODUCT',
+    baseUom: 'EA',
+    purchaseUom: 'EA',
+    salesUom: 'EA',
+    costCurrency: 'USD',
+    costingMethod: 'MOVING_AVG',
+    trackInventory: true,
+    inventoryAssetAccountId: 'INV-100',
+    cogsAccountId: 'COGS-100',
+    active: true,
+    createdBy: USER_ID,
+    createdAt: nowDate(),
+    updatedAt: nowDate(),
+  });
+
+const makeTaxCode = (overrides: Partial<ConstructorParameters<typeof TaxCode>[0]> = {}): TaxCode =>
   new TaxCode({
     id: 'tax-1',
     companyId: COMPANY_ID,
@@ -103,9 +124,13 @@ const makeTaxCode = (): TaxCode =>
     createdBy: USER_ID,
     createdAt: nowDate(),
     updatedAt: nowDate(),
+    ...overrides,
   });
 
-const makePI = (item = makeServiceItem()): PurchaseInvoice =>
+const makePI = (
+  item = makeServiceItem(),
+  lineOverrides: Partial<PurchaseInvoice['lines'][number]> = {}
+): PurchaseInvoice =>
   new PurchaseInvoice({
     id: 'pi-1',
     companyId: COMPANY_ID,
@@ -126,19 +151,22 @@ const makePI = (item = makeServiceItem()): PurchaseInvoice =>
         itemId: item.id,
         itemCode: item.code,
         itemName: item.name,
-        trackInventory: false,
-        invoicedQty: 2,
+        trackInventory: item.trackInventory,
+        invoicedQty: lineOverrides.invoicedQty ?? 2,
         uom: 'EA',
-        unitPriceDoc: 50,
-        lineTotalDoc: 100,
-        unitPriceBase: 50,
-        lineTotalBase: 100,
+        unitPriceDoc: lineOverrides.unitPriceDoc ?? 50,
+        lineTotalDoc: lineOverrides.lineTotalDoc ?? 100,
+        unitPriceBase: lineOverrides.unitPriceBase ?? 50,
+        lineTotalBase: lineOverrides.lineTotalBase ?? 100,
         taxCodeId: 'tax-1',
         taxCode: 'VAT10',
         taxRate: 0.1,
-        taxAmountDoc: 10,
-        taxAmountBase: 10,
-        accountId: 'EXP-500',
+        purchaseTaxTreatment: lineOverrides.purchaseTaxTreatment,
+        priceIsInclusive: lineOverrides.priceIsInclusive,
+        taxAmountDoc: lineOverrides.taxAmountDoc ?? 10,
+        taxAmountBase: lineOverrides.taxAmountBase ?? 10,
+        warehouseId: lineOverrides.warehouseId,
+        accountId: item.trackInventory ? 'INV-100' : 'EXP-500',
       },
     ],
     subtotalDoc: 100,
@@ -171,9 +199,15 @@ const makeCompanyModuleRepo = () => ({
   get: jest.fn(async () => ({ companyId: COMPANY_ID, moduleKey: 'accounting', initialized: true })),
 });
 
-function buildUseCase(bridge: IAccountingBridge, pi = makePI()) {
-  const item = makeServiceItem();
+function buildUseCase(
+  bridge: IAccountingBridge,
+  pi = makePI(),
+  item = makeServiceItem(),
+  taxCode = makeTaxCode()
+) {
   const piStore = new Map([[pi.id, pi]]);
+  const movements: any[] = [];
+  const levels: any[] = [];
 
   const useCase = new PostPurchaseInvoiceUseCase(
     { getSettings: jest.fn(async () => makeSettings()) } as any,
@@ -184,7 +218,7 @@ function buildUseCase(bridge: IAccountingBridge, pi = makePI()) {
     } as any,
     { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
     { getById: jest.fn(async () => makeVendor()) } as any,
-    { getById: jest.fn(async () => makeTaxCode()) } as any,
+    { getById: jest.fn(async () => taxCode) } as any,
     {
       getItem: jest.fn(async () => item),
       updateItemInTransaction: jest.fn(async () => undefined),
@@ -196,8 +230,8 @@ function buildUseCase(bridge: IAccountingBridge, pi = makePI()) {
     { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
     {
       preFetchLevelsByItem: jest.fn(async () => []),
-      writeStockMovement: jest.fn(async () => undefined),
-      writeStockLevel: jest.fn(async () => undefined),
+      writeStockMovement: jest.fn(async (movement: any) => { movements.push(movement); }),
+      writeStockLevel: jest.fn(async (level: any) => { levels.push(level); }),
     } as any,
     makeCompanyModuleRepo() as any,
     undefined,
@@ -212,7 +246,7 @@ function buildUseCase(bridge: IAccountingBridge, pi = makePI()) {
     undefined
   );
 
-  return { useCase, pi };
+  return { useCase, pi, movements, levels };
 }
 
 describe('Purchase Invoice document vouchers — golden bridge output (Task 267-F PI slice)', () => {
@@ -277,5 +311,72 @@ describe('Purchase Invoice document vouchers — golden bridge output (Task 267-
     await useCase2.execute(COMPANY_ID, pi.id);
 
     expect(bridge2.events[0].subledgerVoucher).toEqual(bridge1.events[0].subledgerVoucher);
+  });
+
+  it('G4: non-recoverable exclusive purchase tax capitalizes into stock cost with no tax line', async () => {
+    const bridge = new CapturingBridge();
+    const item = makeStockItem();
+    const taxCode = makeTaxCode({ purchaseTaxTreatment: 'NON_RECOVERABLE' });
+    const pi = makePI(item, {
+      invoicedQty: 1,
+      unitPriceDoc: 1200,
+      lineTotalDoc: 1200,
+      unitPriceBase: 1200,
+      lineTotalBase: 1200,
+      taxAmountDoc: 120,
+      taxAmountBase: 120,
+      warehouseId: 'wh-1',
+    });
+    const { useCase, movements, levels } = buildUseCase(bridge, pi, item, taxCode);
+
+    await useCase.execute(COMPANY_ID, pi.id);
+
+    const voucher = bridge.events[0].subledgerVoucher!;
+    expect(voucher.lines).toHaveLength(2);
+    expect(voucher.lines.find((line: any) => line.accountId === 'TAX-500')).toBeUndefined();
+    const inventoryLine = voucher.lines.find((line: any) => line.accountId === 'INV-100')!;
+    const apLine = voucher.lines.find((line: any) => line.accountId === 'AP-200')!;
+    expect(inventoryLine.side).toBe('Debit');
+    expect(inventoryLine.baseAmount).toBe(1320);
+    expect(inventoryLine.docAmount).toBe(1320);
+    expect(apLine.side).toBe('Credit');
+    expect(apLine.baseAmount).toBe(1320);
+    expect(apLine.docAmount).toBe(1320);
+    expect(pi.lines[0].lineTotalBase).toBe(1320);
+    expect(pi.lines[0].taxAmountBase).toBe(0);
+    expect(movements).toHaveLength(1);
+    expect(movements[0].unitCostBase).toBe(1320);
+    expect(movements[0].totalCostBase).toBe(1320);
+    expect(levels[0].avgCostBase).toBe(1320);
+  });
+
+  it('G5: non-recoverable inclusive purchase tax keeps gross as cost with no tax line', async () => {
+    const bridge = new CapturingBridge();
+    const taxCode = makeTaxCode({ priceIsInclusive: true, purchaseTaxTreatment: 'NON_RECOVERABLE' });
+    const pi = makePI(makeServiceItem(), {
+      invoicedQty: 1,
+      unitPriceDoc: 1200,
+      lineTotalDoc: 1090.91,
+      unitPriceBase: 1090.91,
+      lineTotalBase: 1090.91,
+      taxAmountDoc: 109.09,
+      taxAmountBase: 109.09,
+      priceIsInclusive: true,
+    });
+    const { useCase } = buildUseCase(bridge, pi, makeServiceItem(), taxCode);
+
+    await useCase.execute(COMPANY_ID, pi.id);
+
+    const voucher = bridge.events[0].subledgerVoucher!;
+    expect(voucher.lines).toHaveLength(2);
+    expect(voucher.lines.find((line: any) => line.accountId === 'TAX-500')).toBeUndefined();
+    const expenseLine = voucher.lines.find((line: any) => line.accountId === 'EXP-500')!;
+    const apLine = voucher.lines.find((line: any) => line.accountId === 'AP-200')!;
+    expect(expenseLine.baseAmount).toBe(1200);
+    expect(expenseLine.docAmount).toBe(1200);
+    expect(apLine.baseAmount).toBe(1200);
+    expect(apLine.docAmount).toBe(1200);
+    expect(pi.lines[0].lineTotalBase).toBe(1200);
+    expect(pi.lines[0].taxAmountBase).toBe(0);
   });
 });

@@ -1,5 +1,26 @@
 # 🎯 Current Focus
 
+## Task 269 — Purchase tax recoverability and cost capitalization (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Owner QA clarified that purchase tax is not always recoverable. Recoverable tax should stay separate; non-recoverable tax should become part of inventory/expense cost.
+- **What changed:**
+  - Tax Code now has `purchaseTaxTreatment`: `RECOVERABLE` or `NON_RECOVERABLE`.
+  - Existing/missing tax codes default to `RECOVERABLE`, preserving current output.
+  - Tax Codes UI shows and edits Purchase Tax Treatment separately from Price Basis.
+  - Used tax-code locks now include purchase tax treatment.
+  - Purchase Invoice line normalization capitalizes non-recoverable tax into line cost and suppresses the separate purchase tax line.
+  - Direct stock PI movements use the adjusted line cost, so non-recoverable tax affects movement cost and blended average cost.
+- **Verification:** PI golden voucher/cost tests green; Tax Code lock tests green; purchase posting regression green; sales invoice golden green; frontend typecheck green.
+- **Estimated/actual time:** 3-5h / ~2.6h.
+
+### Next action
+
+Continue Task 270: Stock Levels must use the report container pattern, carry negative-stock valuation correctly, and add the Item Movement report with source-document drill-down.
+
+---
+
 ## Task 268 — Tax Code master-data controls and page repolish (2026-06-26)
 
 **Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit`.

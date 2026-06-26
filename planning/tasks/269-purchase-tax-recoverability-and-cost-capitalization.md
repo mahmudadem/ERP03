@@ -1,9 +1,10 @@
 # Task 269 - Purchase Tax Recoverability and Cost Capitalization
 
-**Status:** Planned  
+**Status:** Complete
 **Branch/worktree:** `codex/267-system-core-boundary-audit` / `D:\DEV2026\ERP03-267-engine-audit`  
 **Created:** 2026-06-26  
 **Estimated time:** 3-5 hours  
+**Actual time:** ~2.6 hours
 **Priority:** P0 accounting correctness follow-up after Task 268
 
 ## Context

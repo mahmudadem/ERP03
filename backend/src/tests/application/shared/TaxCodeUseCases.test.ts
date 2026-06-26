@@ -19,6 +19,7 @@ const makeTaxCode = (overrides: Partial<ConstructorParameters<typeof TaxCode>[0]
     scope: 'BOTH',
     purchaseTaxAccountId: 'tax-purchase',
     salesTaxAccountId: 'tax-sales',
+    purchaseTaxTreatment: 'RECOVERABLE',
     priceIsInclusive: false,
     active: true,
     createdBy: 'user-1',
@@ -58,7 +59,7 @@ const postedDocumentRepo = (documents: any[]) => ({
 });
 
 describe('TaxCodeUseCases accounting locks', () => {
-  it('allows unused tax code rate and price-basis changes', async () => {
+  it('allows unused tax code rate, price-basis, and purchase treatment changes', async () => {
     const repo = new FakeTaxCodeRepository([makeTaxCode()]);
     const useCase = new UpdateTaxCodeUseCase(repo, {
       salesInvoiceRepo: postedDocumentRepo([]) as any,
@@ -70,10 +71,12 @@ describe('TaxCodeUseCases accounting locks', () => {
       id: 'tax-10',
       rate: 0.2,
       priceIsInclusive: true,
+      purchaseTaxTreatment: 'NON_RECOVERABLE',
     });
 
     expect(updated.rate).toBe(0.2);
     expect(updated.priceIsInclusive).toBe(true);
+    expect(updated.purchaseTaxTreatment).toBe('NON_RECOVERABLE');
   });
 
   it('rejects rate changes when a posted sales invoice references the tax code', async () => {
@@ -110,6 +113,23 @@ describe('TaxCodeUseCases accounting locks', () => {
     ).rejects.toThrow('This tax code is used in posted documents');
   });
 
+  it('rejects purchase tax treatment changes when a posted purchase invoice references the tax code', async () => {
+    const repo = new FakeTaxCodeRepository([makeTaxCode()]);
+    const useCase = new UpdateTaxCodeUseCase(repo, {
+      purchaseInvoiceRepo: postedDocumentRepo([
+        { status: 'POSTED', lines: [{ taxCodeId: 'tax-10' }] },
+      ]) as any,
+    });
+
+    await expect(
+      useCase.execute({
+        companyId: COMPANY_ID,
+        id: 'tax-10',
+        purchaseTaxTreatment: 'NON_RECOVERABLE',
+      })
+    ).rejects.toThrow('This tax code is used in posted documents');
+  });
+
   it('allows safe display/status changes when a posted document references the tax code', async () => {
     const repo = new FakeTaxCodeRepository([makeTaxCode()]);
     const useCase = new UpdateTaxCodeUseCase(repo, {
@@ -141,6 +161,6 @@ describe('TaxCodeUseCases accounting locks', () => {
     const [result] = await useCase.execute(COMPANY_ID);
 
     expect(result.usedInPostedDocuments).toBe(true);
-    expect(result.lockedFields).toEqual(expect.arrayContaining(['rate', 'priceIsInclusive']));
+    expect(result.lockedFields).toEqual(expect.arrayContaining(['rate', 'priceIsInclusive', 'purchaseTaxTreatment']));
   });
 });

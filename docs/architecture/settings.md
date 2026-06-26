@@ -46,6 +46,13 @@ Tax codes are accounting master data. The Settings -> Tax Codes page uses a list
 - Exclusive: tax is added on top of the entered price.
 - Inclusive: the entered price already includes tax.
 
+`purchaseTaxTreatment` is exposed as **Purchase Tax Treatment**:
+
+- Recoverable: purchase tax posts separately to the purchase tax account and is excluded from inventory/expense cost.
+- Non-recoverable: purchase tax is included in the purchase line's inventory/expense cost and no separate purchase tax line is posted.
+
+The default is `RECOVERABLE` for backward compatibility with existing tax codes and posted-output expectations.
+
 The backend enforces posted-document immutability for accounting-critical tax fields. `UpdateTaxCodeUseCase` checks posted Sales Invoices, Purchase Invoices, Sales Returns, and Purchase Returns through repository interfaces. Once a posted document references the tax code, these fields are locked:
 
 - code
@@ -54,6 +61,7 @@ The backend enforces posted-document immutability for accounting-critical tax fi
 - scope
 - purchase tax account
 - sales tax account
+- purchase tax treatment
 - price basis
 
 Name/display text and active/inactive status remain editable. The list/get APIs expose `usedInPostedDocuments` and `lockedFields` so the UI can display a lock icon and disable locked controls, but the API check is the control boundary.
@@ -61,7 +69,7 @@ Name/display text and active/inactive status remain editable. The list/get APIs 
 ## File Map
 
 - `frontend/src/modules/settings/pages/SettingsHomePage.tsx` - settings hub taxonomy.
-- `frontend/src/modules/settings/pages/TaxCodesPage.tsx` - tax-code list/modal UI and price-basis display.
+- `frontend/src/modules/settings/pages/TaxCodesPage.tsx` - tax-code list/modal UI, price-basis display, and purchase tax treatment display.
 - `frontend/src/components/shared/ModuleSettingsLayout.tsx` - shared settings page shell.
 - `backend/src/application/shared/use-cases/TaxCodeUseCases.ts` - tax-code creation, update, listing, usage metadata, and posted-document immutability.
 - `frontend/src/locales/*/common.json` - settings hub and shared layout strings.

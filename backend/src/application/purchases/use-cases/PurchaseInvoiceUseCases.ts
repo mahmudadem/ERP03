@@ -15,7 +15,7 @@ import {
   PurchaseInvoiceLine,
 } from '../../../domain/purchases/entities/PurchaseInvoice';
 import { Party } from '../../../domain/shared/entities/Party';
-import { TaxCode } from '../../../domain/shared/entities/TaxCode';
+import { PurchaseTaxTreatment, TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PaymentHistory, PaymentMethod } from '../../../domain/shared/entities/PaymentHistory';
 import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
@@ -176,6 +176,7 @@ export interface PurchaseInvoiceLineInput {
   /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
    *  net + tax during construction so totals match the user's input. */
   priceIsInclusive?: boolean;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -339,12 +340,14 @@ export class CreatePurchaseInvoiceUseCase {
       const taxCodeId = await this.resolveTaxCodeId(input.companyId, sourceLine.taxCodeId, item);
       let taxRate = 0;
       let taxCodeDefaultInclusive = false;
+      let purchaseTaxTreatment: 'RECOVERABLE' | 'NON_RECOVERABLE' = 'RECOVERABLE';
       if (taxCodeId) {
         const taxCode = await this.taxCodeRepo.getById(input.companyId, taxCodeId);
         if (!taxCode) throw new Error(`Tax code not found: ${taxCodeId}`);
         assertValidPurchaseTaxCode(taxCode, taxCodeId);
         taxRate = taxCode.rate;
         taxCodeDefaultInclusive = taxCode.priceIsInclusive === true;
+        purchaseTaxTreatment = taxCode.purchaseTaxTreatment;
       }
       // Effective inclusive: explicit line flag wins; otherwise inherit the tax
       // code's default. Without this fallback a form that doesn't set the flag
@@ -396,6 +399,7 @@ export class CreatePurchaseInvoiceUseCase {
         taxCodeId,
         taxCode: undefined,
         taxRate,
+        purchaseTaxTreatment,
         priceIsInclusive: effectiveInclusive,
         taxAmountDoc: lineAmounts.taxAmountDoc,
         taxAmountBase: lineAmounts.taxAmountBase,
@@ -1166,6 +1170,7 @@ export class PostPurchaseInvoiceUseCase {
   private freezeTaxSnapshotSync(line: PurchaseInvoiceLine, rate: number, tax?: TaxCode): void {
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
+    line.purchaseTaxTreatment = tax?.purchaseTaxTreatment || line.purchaseTaxTreatment || 'RECOVERABLE';
     const amounts = calculateCommercialLineAmounts({
       quantity: line.invoicedQty,
       unitPriceDoc: line.unitPriceDoc,
@@ -1176,15 +1181,20 @@ export class PostPurchaseInvoiceUseCase {
       discountValue: line.discountValue,
       discountAmountDoc: line.discountAmountDoc,
     });
+    const capitalizePurchaseTax = line.purchaseTaxTreatment === 'NON_RECOVERABLE';
     line.grossLineTotalDoc = amounts.grossLineTotalDoc;
     line.discountAmountDoc = amounts.discountAmountDoc;
-    line.lineTotalDoc = amounts.lineTotalDoc;
+    line.lineTotalDoc = capitalizePurchaseTax
+      ? roundMoney(amounts.lineTotalDoc + amounts.taxAmountDoc)
+      : amounts.lineTotalDoc;
     line.unitPriceBase = amounts.unitPriceBase;
     line.grossLineTotalBase = amounts.grossLineTotalBase;
     line.discountAmountBase = amounts.discountAmountBase;
-    line.lineTotalBase = amounts.lineTotalBase;
-    line.taxAmountDoc = amounts.taxAmountDoc;
-    line.taxAmountBase = amounts.taxAmountBase;
+    line.lineTotalBase = capitalizePurchaseTax
+      ? roundMoney(amounts.lineTotalBase + amounts.taxAmountBase)
+      : amounts.lineTotalBase;
+    line.taxAmountDoc = capitalizePurchaseTax ? 0 : amounts.taxAmountDoc;
+    line.taxAmountBase = capitalizePurchaseTax ? 0 : amounts.taxAmountBase;
   }
 
   private recalcInvoiceTotals(pi: PurchaseInvoice): void {
@@ -1574,6 +1584,7 @@ export class UpdatePurchaseInvoiceUseCase {
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxCode: existing?.taxCode,
           taxRate: existing?.taxRate ?? 0,
+          purchaseTaxTreatment: line.purchaseTaxTreatment ?? existing?.purchaseTaxTreatment ?? 'RECOVERABLE',
           priceIsInclusive:
             line.priceIsInclusive !== undefined
               ? line.priceIsInclusive === true

@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-26 (Task 269 - Purchase tax recoverability and cost capitalization)
+
+- **Goal:** Implement the owner-requested purchase tax treatment behavior so purchase tax can be recoverable or capitalized into item/expense cost.
+- **What changed:** Added `TaxCode.purchaseTaxTreatment` with backward-compatible `RECOVERABLE` default, persisted it in Prisma tax-code storage, exposed it in Tax Codes UI/API, and added it to posted-use tax-code locks. Purchase Invoice line normalization now capitalizes tax into line cost only when treatment is `NON_RECOVERABLE`; recoverable purchase tax output remains unchanged. Direct stock PI movements use the adjusted line cost, so non-recoverable tax flows into movement cost and average cost.
+- **Accounting impact:** Controlled behavior change for Purchase Invoices only. Recoverable PI vouchers are unchanged. Non-recoverable PI vouchers debit inventory/expense for gross cost, credit AP for gross payable, and create no separate purchase tax debit. Sales Invoice golden output remains unchanged.
+- **Verification:** `PurchaseInvoiceGoldenVoucher.test.ts` 5/5 PASS; `TaxCodeUseCases.test.ts` 6/6 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SalesInvoiceGoldenVoucher.test.ts` 7/7 PASS; frontend typecheck PASS. Final build/diff checks follow before commit.
+- **Actual time:** ~2.6h.
+- **Next:** Task 270 - Stock Levels ReportContainer migration, negative-stock valuation correctness, and Item Movement report.
+
 ### Session: 2026-06-26 (Task 271 planned - Purchase Return layout and direct return parity)
 
 - **Context:** Owner tested Purchase Return from PI successfully, then requested a task to make PR layout match SI/PI and add a direct return option instead of requiring source ids.

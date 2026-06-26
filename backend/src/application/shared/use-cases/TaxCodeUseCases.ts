@@ -7,7 +7,7 @@ import { IPurchaseReturnRepository } from '../../../repository/interfaces/purcha
 import { ISalesInvoiceRepository } from '../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { ISalesReturnRepository } from '../../../repository/interfaces/sales/ISalesReturnRepository';
 import { ITaxCodeRepository } from '../../../repository/interfaces/shared/ITaxCodeRepository';
-import { TaxCode, TaxScope, TaxType } from '../../../domain/shared/entities/TaxCode';
+import { PurchaseTaxTreatment, TaxCode, TaxScope, TaxType } from '../../../domain/shared/entities/TaxCode';
 
 export interface CreateTaxCodeInput {
   companyId: string;
@@ -18,6 +18,7 @@ export interface CreateTaxCodeInput {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   priceIsInclusive?: boolean;
   createdBy: string;
 }
@@ -32,6 +33,7 @@ export interface UpdateTaxCodeInput {
   scope?: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   priceIsInclusive?: boolean;
   active?: boolean;
 }
@@ -63,6 +65,7 @@ const TAX_CODE_LOCKED_FIELDS = [
   'scope',
   'purchaseTaxAccountId',
   'salesTaxAccountId',
+  'purchaseTaxTreatment',
   'priceIsInclusive',
 ];
 
@@ -166,6 +169,7 @@ export class CreateTaxCodeUseCase {
       scope: input.scope,
       purchaseTaxAccountId: input.purchaseTaxAccountId,
       salesTaxAccountId: input.salesTaxAccountId,
+      purchaseTaxTreatment: input.purchaseTaxTreatment || 'RECOVERABLE',
       priceIsInclusive: input.priceIsInclusive === true,
       active: true,
       createdBy: input.createdBy,
@@ -203,6 +207,7 @@ export class UpdateTaxCodeUseCase {
         fieldChanged(input.scope, existing.scope) ? 'scope' : undefined,
         fieldChanged(input.purchaseTaxAccountId, existing.purchaseTaxAccountId) ? 'purchaseTaxAccountId' : undefined,
         fieldChanged(input.salesTaxAccountId, existing.salesTaxAccountId) ? 'salesTaxAccountId' : undefined,
+        fieldChanged(input.purchaseTaxTreatment, existing.purchaseTaxTreatment) ? 'purchaseTaxTreatment' : undefined,
         fieldChanged(input.priceIsInclusive, existing.priceIsInclusive) ? 'priceIsInclusive' : undefined,
       ].filter(Boolean);
 
@@ -225,6 +230,7 @@ export class UpdateTaxCodeUseCase {
       scope: input.scope ?? existing.scope,
       purchaseTaxAccountId: input.purchaseTaxAccountId ?? existing.purchaseTaxAccountId,
       salesTaxAccountId: input.salesTaxAccountId ?? existing.salesTaxAccountId,
+      purchaseTaxTreatment: input.purchaseTaxTreatment ?? existing.purchaseTaxTreatment,
       priceIsInclusive:
         input.priceIsInclusive !== undefined ? input.priceIsInclusive === true : existing.priceIsInclusive,
       active: input.active ?? existing.active,
