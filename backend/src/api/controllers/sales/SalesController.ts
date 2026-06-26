@@ -86,6 +86,8 @@ import {
   validateUpdateSalesSettingsInput,
 } from '../../validators/sales.validators';
 import { validateUpdateSellingPolicyInput } from '../../validators/sellingPolicy.validators';
+import { validateAndFilterModuleRules } from '../../validators/policyConfig.validators';
+import { PolicyConfig } from '../../../domain/system-core/entities/PolicyConfig';
 import { ApiError } from '../../errors/ApiError';
 import { SellingPolicy } from '../../../domain/system-core/entities/SellingPolicy';
 
@@ -245,7 +247,7 @@ export class SalesController {
 
   /**
    * FUP-3: wrap the same-config posting service in the accounting bridge so source-module GL
-   * postings get the full-vs-minimal decision (no GL voucher when the Accounting App is disabled).
+   * postings get the full-vs-minimal decision (no GL voucher when the Accounting Engine is not initialized).
    * `validateAccounts` mirrors buildAccountingPostingService so full-mode behavior is unchanged.
    */
   private static buildAccountingBridge(validateAccounts: boolean = false): IAccountingBridge {
@@ -258,7 +260,6 @@ export class SalesController {
 
   private static buildPostSalesInvoiceUseCase(IAuditEngine?: IAuditEngine): PostSalesInvoiceUseCase {
     const inventoryService = SalesController.buildSalesInventoryService();
-    const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
     return new PostSalesInvoiceUseCase(
       diContainer.salesSettingsRepository,
@@ -275,9 +276,9 @@ export class SalesController {
       diContainer.companyCurrencyRepository,
       inventoryService,
       diContainer.companyModuleRepository,
-      accountingPostingService,
       diContainer.accountRepository,
       diContainer.transactionManager,
+      SalesController.buildAccountingBridge(true),
       diContainer.paymentHistoryRepository,
       diContainer.voucherRepository,
       diContainer.voucherSequenceRepository,
@@ -287,7 +288,6 @@ export class SalesController {
       diContainer.partyItemPriceRepository,
       diContainer.recordSalesProfitLineFactsUseCase,
       diContainer.numberingEngine,
-      SalesController.buildAccountingBridge(true),
       diContainer.commercialCore
     );
   }
@@ -434,6 +434,63 @@ export class SalesController {
       });
       await diContainer.sellingPolicyRepository.savePolicy(next_);
       (res as any).json({ success: true, data: next_.toJSON() });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Task 267-D: engine-owned typed PolicyConfig (Sales-scoped). The Sales
+   * module owns its own doorway to the same `PolicyConfig` document the
+   * company-wide settings matrix writes, so the module never depends on
+   * POS / Purchases / Accounting doorways being enabled. Rules are
+   * filtered to `module: 'sales'` by the neutral validator; cross-module
+   * rules are rejected with 400.
+   */
+  static async getPolicies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const config = await diContainer.policyConfigRepository.getConfig(companyId);
+      // Return ONLY the rules explicitly tagged with module: 'sales'. The
+      // company-wide matrix owns unscoped TENANT/company-wide rules; this
+      // doorway must NEVER rewrite or steal them. (CTO review feedback
+      // 267-D: a module GET must not include unscoped rules and must not
+      // mutate the module tag on rules that already exist in the store.)
+      const filtered = (config ?? PolicyConfig.createDefault(companyId)).rules
+        .filter((rule) => rule.module === 'sales');
+      (res as any).json({
+        success: true,
+        data: { companyId, rules: filtered },
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async updatePolicies(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const incoming = validateAndFilterModuleRules((req as any).body || {}, 'sales') as any[];
+
+      // Load the full company config and replace ONLY the Sales-tagged
+      // rules. EVERY OTHER RULE — unscoped TENANT rules, pos-tagged
+      // rules, purchases-tagged rules, accounting-tagged rules, hard
+      // rules — must be preserved untouched. (CTO review feedback
+      // 267-D: the previous `rule.module !== undefined && rule.module !== 'sales'`
+      // filter silently DELETED unscoped TENANT rules.)
+      const existing = await diContainer.policyConfigRepository.getConfig(companyId);
+      const preservedRules = (existing?.rules ?? []).filter(
+        (rule) => rule.module !== 'sales'
+      );
+      const createdAt = existing?.createdAt;
+
+      const nextConfig = new PolicyConfig({
+        companyId,
+        rules: [...preservedRules, ...incoming] as any,
+        ...(createdAt ? { createdAt } : {}),
+      });
+      await diContainer.policyConfigRepository.saveConfig(nextConfig);
+      (res as any).json({ success: true, data: nextConfig.toJSON() });
     } catch (error) {
       next(error);
     }
@@ -771,7 +828,6 @@ export class SalesController {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
-      const accountingPostingService = SalesController.buildAccountingPostingService();
 
       const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
       const periodLockOverride = periodLockOverrideReason
@@ -791,11 +847,10 @@ export class SalesController {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
-        IAuditEngine,
-        SalesController.buildAccountingBridge()
+        SalesController.buildAccountingBridge(),
+        IAuditEngine
       );
 
       if (periodLockOverride) {
@@ -1153,7 +1208,6 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
-      const accountingPostingService = SalesController.buildAccountingPostingService(true);
 
       const IAuditEngine = diContainer.auditEngine;
       const useCase = new PostSalesInvoiceUseCase(
@@ -1171,9 +1225,9 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
+        SalesController.buildAccountingBridge(true),
         diContainer.paymentHistoryRepository,
         diContainer.voucherRepository,
         diContainer.voucherSequenceRepository,
@@ -1183,7 +1237,6 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.partyItemPriceRepository,
         diContainer.recordSalesProfitLineFactsUseCase,
         diContainer.numberingEngine,
-        SalesController.buildAccountingBridge(true),
         diContainer.commercialCore
       );
 
@@ -1401,7 +1454,6 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
       const userId = SalesController.getUserId(req);
       const userEmail = SalesController.getUserEmail(req);
       const inventoryService = SalesController.buildSalesInventoryService();
-      const accountingPostingService = SalesController.buildAccountingPostingService();
 
       const periodLockOverrideReason = (req as any).body?.periodLockOverrideReason;
       const periodLockOverride = periodLockOverrideReason
@@ -1424,14 +1476,13 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.companyCurrencyRepository,
         inventoryService,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         diContainer.accountRepository,
         diContainer.transactionManager,
+        SalesController.buildAccountingBridge(),
         IAuditEngine,
         diContainer.postingLogRepository,
         diContainer.partyItemPriceRepository,
-        diContainer.recordSalesProfitLineFactsUseCase,
-        SalesController.buildAccountingBridge()
+        diContainer.recordSalesProfitLineFactsUseCase
       );
 
       if (periodLockOverride) {
@@ -1505,10 +1556,10 @@ static async createSI(req: Request, res: Response, next: NextFunction) {
         diContainer.ledgerRepository,
         diContainer.companyCurrencyRepository,
         diContainer.transactionManager,
+        SalesController.buildAccountingBridge(),
         diContainer.accountRepository,
         diContainer.partyRepository,
-        diContainer.numberingEngine,
-        SalesController.buildAccountingBridge()
+        diContainer.numberingEngine
       );
       const result = await useCase.execute(companyId, userId, id, {
         // Record-Payment is an inherently flexible receipt: MULTI handles partial

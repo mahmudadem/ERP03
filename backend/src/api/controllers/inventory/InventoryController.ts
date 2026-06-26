@@ -1054,9 +1054,11 @@ export class InventoryController {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const useCase = new GetStockLevelsUseCase(diContainer.stockLevelRepository);
-      const levels = await useCase.execute(companyId, {
+      const levels = await useCase.executeReport(companyId, {
         itemId: (req as any).query.itemId,
         warehouseId: (req as any).query.warehouseId,
+        includeZero: (req as any).query.includeZero === undefined ? undefined : (req as any).query.includeZero !== 'false',
+        includeNegative: (req as any).query.includeNegative === undefined ? undefined : (req as any).query.includeNegative !== 'false',
         limit: (req as any).query.limit ? Number((req as any).query.limit) : undefined,
         offset: (req as any).query.offset ? Number((req as any).query.offset) : undefined,
       });
@@ -1341,7 +1343,6 @@ export class InventoryController {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
       const movementUseCase = InventoryController.buildMovementUseCase();
-      const accountingPostingService = InventoryController.buildAccountingPostingService();
 
       const useCase = new PostOpeningStockDocumentUseCase(
         diContainer.openingStockDocumentRepository,
@@ -1353,7 +1354,6 @@ export class InventoryController {
         diContainer.companyModuleRepository,
         diContainer.accountRepository,
         movementUseCase,
-        accountingPostingService,
         diContainer.transactionManager,
         InventoryController.buildAccountingBridge()
       );
@@ -1452,7 +1452,6 @@ export class InventoryController {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
       const movementUseCase = InventoryController.buildMovementUseCase();
-      const accountingPostingService = InventoryController.buildAccountingPostingService();
 
       const useCase = new PostStockAdjustmentUseCase(
         diContainer.stockAdjustmentRepository,
@@ -1460,9 +1459,8 @@ export class InventoryController {
         movementUseCase,
         diContainer.transactionManager,
         diContainer.companyModuleRepository,
-        accountingPostingService,
-        diContainer.inventorySettingsRepository,
-        InventoryController.buildAccountingBridge()
+        InventoryController.buildAccountingBridge(),
+        diContainer.inventorySettingsRepository
       );
 
       const adjustment = await useCase.execute(companyId, (req as any).params.id, userId);
@@ -1543,7 +1541,6 @@ export class InventoryController {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
-      const accountingPostingService = InventoryController.buildAccountingPostingService();
 
       const useCase = new PostInventoryRevaluationUseCase(
         diContainer.inventoryRevaluationRepository,
@@ -1552,7 +1549,6 @@ export class InventoryController {
         diContainer.inventorySettingsRepository,
         diContainer.transactionManager,
         diContainer.companyModuleRepository,
-        accountingPostingService,
         InventoryController.buildAccountingBridge()
       );
 
@@ -1613,7 +1609,6 @@ export class InventoryController {
       diContainer.transactionManager,
       diContainer.companyModuleRepository,
       diContainer.inventorySettingsRepository,
-      InventoryController.buildAccountingPostingService(),
       InventoryController.buildAccountingBridge()
     );
   }

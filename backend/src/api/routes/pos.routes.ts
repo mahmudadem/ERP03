@@ -20,6 +20,12 @@ router.put('/policy', permissionGuard('pos.settings.manage'), PosController.upda
 // to the same store Sales edits, so a POS-only tenant can configure it.
 router.get('/selling-policy', permissionGuard('pos.settings.manage'), PosController.getSellingPolicy);
 router.put('/selling-policy', permissionGuard('pos.settings.manage'), PosController.updateSellingPolicy);
+// Task 267-D: engine-owned typed PolicyConfig (POS-scoped). Writes the
+// same shared store the company-wide settings matrix and the
+// Sales/Purchases doorways write to; only the entry point and the
+// module permission are POS-local.
+router.get('/policies', permissionGuard('pos.settings.manage'), PosController.getPolicies);
+router.put('/policies', permissionGuard('pos.settings.manage'), PosController.updatePolicies);
 
 // Registers
 router.get('/registers', permissionGuard('pos.registers.manage'), PosController.listRegisters);

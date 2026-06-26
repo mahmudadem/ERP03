@@ -211,6 +211,28 @@ Dr  Expense              (account on the line)
     Dr  Tax Receivable
 ```
 
+### Purchase tax recoverability and cost capitalization (2026-06-26)
+
+Purchase tax treatment is tax-code master data, independent from inclusive/exclusive price basis:
+
+- `priceIsInclusive` controls how the entered price is split between net and tax.
+- `purchaseTaxTreatment` controls whether purchase tax is recoverable or part of acquisition cost.
+
+`RECOVERABLE` is the backward-compatible default. Purchase Invoice posting debits the inventory/expense account for the net line amount, debits the purchase tax account for the tax, and credits AP for the gross bill.
+
+`NON_RECOVERABLE` capitalizes purchase tax into the line cost. Purchase Invoice posting debits inventory/expense for the gross cost and credits AP for the gross bill; it does not create a separate purchase tax debit. For direct stock invoices, the stock movement uses the same `PurchaseInvoiceLine.lineTotalBase`, so non-recoverable purchase tax flows into movement cost, blended average cost, and inventory valuation.
+
+Examples with 10% tax:
+
+| Price Basis | Treatment | Entered price | Inventory/Expense debit | Purchase tax debit | AP credit |
+|---|---|---:|---:|---:|---:|
+| Exclusive | Recoverable | 1200 | 1200 | 120 | 1320 |
+| Exclusive | Non-recoverable | 1200 | 1320 | 0 | 1320 |
+| Inclusive | Recoverable | 1200 | 1090.91 | 109.09 | 1200 |
+| Inclusive | Non-recoverable | 1200 | 1200 | 0 | 1200 |
+
+Sales tax behavior is unchanged. Sales tax remains output tax collected from customers and does not affect inventory cost.
+
 **Purchase Return posting** (AFTER_INVOICE) reverses the above. (BEFORE_INVOICE reverses inventory only, no AP impact since none was created.)
 
 **Payment posting** happens via Accounting's Payment Voucher (the user clicks "Create Payment" from the PI):

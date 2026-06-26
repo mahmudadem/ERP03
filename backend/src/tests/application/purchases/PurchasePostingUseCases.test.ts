@@ -12,6 +12,7 @@ import {
 } from '../../../application/purchases/use-cases/GoodsReceiptUseCases';
 import { PostPurchaseInvoiceUseCase, ApprovePurchaseInvoiceUseCase } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 
 const COMPANY_ID = 'cmp-1';
 const USER_ID = 'u-1';
@@ -371,6 +372,12 @@ const makeAccountingPostingService = (voucherRepo?: any, ledgerRepo?: any) =>
     { getBaseCurrency: jest.fn(async () => 'USD') } as any
   );
 
+const makeAccountingBridge = (voucherRepo?: any, ledgerRepo?: any, initialized = true) =>
+  new LegacyAccountingBridgeAdapter(
+    makeAccountingPostingService(voucherRepo, ledgerRepo),
+    makeCompanyModuleRepo(initialized) as any
+  );
+
 describe('Purchase posting use-cases (Phase 2)', () => {
   it('1) PostGRN creates PURCHASE_RECEIPT inventory movement per line', async () => {
     const settings = makeSettings('CONTROLLED');
@@ -408,9 +415,9 @@ describe('Purchase posting use-cases (Phase 2)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-makeAccountingPostingService(voucherRepo, ledgerRepo),
       undefined,
-      transactionManager as any
+      transactionManager as any,
+      makeAccountingBridge(voucherRepo, ledgerRepo)
     );
 
     await useCase.execute(COMPANY_ID, grn.id);
@@ -470,12 +477,12 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getBaseCurrency: jest.fn(async () => 'SYP') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      makeAccountingPostingService(
+      undefined,
+      transactionManager as any,
+      makeAccountingBridge(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) },
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) }
-      ),
-      undefined,
-      transactionManager as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, grn.id);
@@ -536,9 +543,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-makeAccountingPostingService(voucherRepo, ledgerRepo),
       undefined,
-      transactionManager as any
+      transactionManager as any,
+      makeAccountingBridge(voucherRepo, ledgerRepo)
     );
 
     await useCase.execute(COMPANY_ID, grn.id);
@@ -573,9 +580,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-makeAccountingPostingService(voucherRepo, ledgerRepo),
       undefined,
-      transactionManager as any
+      transactionManager as any,
+      makeAccountingBridge(voucherRepo, ledgerRepo)
     );
 
     await useCase.execute(COMPANY_ID, grn.id);
@@ -610,9 +617,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-makeAccountingPostingService(voucherRepo, ledgerRepo),
       undefined,
-      transactionManager as any
+      transactionManager as any,
+      makeAccountingBridge(voucherRepo, ledgerRepo)
     );
 
     const posted = await useCase.execute(COMPANY_ID, grn.id);
@@ -659,13 +666,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await expect(useCase.execute(COMPANY_ID, pi.id)).rejects.toThrow(/received qty/i);
@@ -712,13 +722,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -782,13 +795,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -854,13 +870,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -927,13 +946,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1000,13 +1022,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1061,13 +1086,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1131,13 +1159,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => { savedVouchers.push(voucher); return voucher; }) } as any,
         { recordForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1217,17 +1248,20 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
-        undefined,
-        undefined,
-        undefined,
-        mockPolicyRegistry as any
-      ),
       undefined,
-      mockTxManager as any
+      mockTxManager as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+          undefined,
+          undefined,
+          undefined,
+          mockPolicyRegistry as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const result = await useCase.execute(COMPANY_ID, pi.id);
@@ -1283,17 +1317,20 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any,
-        undefined,
-        undefined,
-        undefined,
-        mockPolicyRegistry as any
-      ),
       undefined,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+          undefined,
+          undefined,
+          undefined,
+          mockPolicyRegistry as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const approveUseCase = new ApprovePurchaseInvoiceUseCase(invoiceRepo as any, postUseCase);
@@ -1334,13 +1371,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await expect(useCase.execute(COMPANY_ID, pi.id)).rejects.toThrow(/ordered qty/i);
@@ -1383,13 +1423,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1452,13 +1495,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1545,13 +1591,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       exchangeRateRepo as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'SYP') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id);
@@ -1624,13 +1673,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const first = await useCase.execute(COMPANY_ID, pi.id);
@@ -1643,7 +1695,7 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
     expect(voucherRepo.save).toHaveBeenCalledTimes(1);
   });
 
-  it('11) PostGRN skips GL voucher when accounting module is not initialized', async () => {
+  it('11) PostGRN skips GL voucher when the Accounting Engine is not initialized', async () => {
     const settings = makeSettings('CONTROLLED');
     const item = makeItem('stock-11', { trackInventory: true });
     const po = makePO({ id: 'po-11', item, orderedQty: 10, receivedQty: 0 });
@@ -1672,9 +1724,9 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo(false) as any,
-makeAccountingPostingService(voucherRepo, ledgerRepo),
       undefined,
-      transactionManager as any
+      transactionManager as any,
+      makeAccountingBridge(voucherRepo, ledgerRepo, false)
     );
 
     const posted = await useCase.execute(COMPANY_ID, grn.id);
@@ -1720,13 +1772,16 @@ makeAccountingPostingService(voucherRepo, ledgerRepo),
       { getMostRecentRateBeforeDate: jest.fn(async () => null) } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
+      undefined,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
         voucherRepo as any,
         ledgerRepo as any,
         { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
-      undefined,
-      makeTransactionManager() as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, pi.id, false);

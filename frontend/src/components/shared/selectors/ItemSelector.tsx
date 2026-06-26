@@ -186,6 +186,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   }, [createForm.costCurrency, currencyOptions, showCreateModal]);
 
   useEffect(() => {
+    if (!showCreateModal) return;
     let active = true;
 
     const loadUoms = async () => {
@@ -213,7 +214,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
     return () => {
       active = false;
     };
-  }, []);
+  }, [showCreateModal]);
 
   const performSearch = async (query: string) => {
     const lowerQuery = query.toLowerCase().trim();

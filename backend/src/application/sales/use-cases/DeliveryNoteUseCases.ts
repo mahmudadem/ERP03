@@ -20,7 +20,6 @@ import { ISalesOrderRepository } from '../../../repository/interfaces/sales/ISal
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
@@ -238,12 +237,12 @@ export class PostDeliveryNoteUseCase {
     private readonly companyCurrencyRepo: ICompanyCurrencyRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     private readonly accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
-    private readonly auditEngine?: IAuditEngine,
-    // FUP-3: when wired, GL postings route through the bridge (full/minimal decision).
-    private readonly accountingBridge?: IAccountingBridge
+    // 267-F: GL postings route exclusively through the accounting bridge (full/minimal decision).
+    // Required: the posting-service fallback was removed — every caller must wire a bridge.
+    private readonly accountingBridge: IAccountingBridge,
+    private readonly auditEngine?: IAuditEngine
   ) {
     this.inventoryService = ensureInventoryCore(this.inventoryService);
   }
@@ -514,7 +513,7 @@ export class PostDeliveryNoteUseCase {
         }
 
         const voucher = await postFinancialEvent(
-          { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+          { bridge: this.accountingBridge },
           {
             kind: 'DELIVERY_NOTE',
             transaction,
@@ -542,7 +541,7 @@ export class PostDeliveryNoteUseCase {
             },
           }
         );
-        // FUP-3: voucher is null in minimal mode (Accounting App disabled) → no GL link.
+        // FUP-3: voucher is null in minimal mode (Accounting Engine not initialized) → no GL link.
         dn.cogsVoucherId = voucher ? voucher.id : null;
       } else {
         dn.cogsVoucherId = null;

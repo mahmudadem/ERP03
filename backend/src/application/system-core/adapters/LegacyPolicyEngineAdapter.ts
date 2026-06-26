@@ -1,6 +1,11 @@
 import { AccountingPolicyRegistry } from '../../accounting/policies/AccountingPolicyRegistry';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
-import { IPolicyEngine, PolicyResolveRequest, PolicyResolveResult } from '../contracts/IPolicyEngine';
+import {
+  IPolicyEngine,
+  PolicyResolveRequest,
+  PolicyResolveResult,
+  TypedPolicyResolveRequest,
+} from '../contracts/IPolicyEngine';
 
 export class LegacyPolicyEngineAdapter implements IPolicyEngine {
   constructor(private readonly accountingPolicyRegistry?: AccountingPolicyRegistry) {}
@@ -33,6 +38,22 @@ export class LegacyPolicyEngineAdapter implements IPolicyEngine {
     }
 
     return { allowed: true, requiresApproval: false, resolvedBy: ['LegacyPolicyEngineAdapter.defaultAllow'] };
+  }
+
+  /**
+   * Task 267-C: legacy adapter has no `PolicyConfig` store and stays
+   * behavior-preserving — it returns the same default-allow fallback that
+   * the pre-typed facade returns for unknown scope/action. Modules that
+   * need typed resolution must consume the new `PolicyEngine` directly.
+   */
+  async resolveTyped(_request: TypedPolicyResolveRequest): Promise<PolicyResolveResult> {
+    return {
+      allowed: true,
+      requiresApproval: false,
+      decision: 'ALLOW',
+      reasonCode: 'LegacyPolicyEngineAdapter.typedNotConfigured',
+      resolvedBy: ['LegacyPolicyEngineAdapter.typedNotConfigured'],
+    };
   }
 }
 

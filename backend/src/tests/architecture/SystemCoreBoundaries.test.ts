@@ -233,6 +233,246 @@ describe('Architecture guard: system core boundaries', () => {
       expect(content).not.toContain('interface COGSBucketLine');
     }
   });
+
+  /**
+   * Task 267-F — the Sales DeliveryNote COGS posting path was migrated from a
+   * direct `SubledgerVoucherPostingService` field to `IAccountingBridge`-only.
+   * This guard pins that migration: the use case must not import or reference
+   * the legacy posting service / gateway, and must route through the bridge
+   * helper. If a future change re-introduces the legacy dependency, this guard
+   * fails — preventing silent regression of the engine boundary.
+   */
+  it('267-F: Sales DeliveryNote COGS posting must route through IAccountingBridge, not legacy posting services', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/DeliveryNoteUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (SI slice) — the Sales Invoice document voucher path (revenue +
+   * COGS) was migrated from a direct `SubledgerVoucherPostingService` field to
+   * `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`.
+   * This guard pins that migration: the use case must not import or reference
+   * the legacy posting service for document voucher posting.
+   * Note: `PostingGateway` remains for the settlement receipt path (FUP-5
+   * sanctioned pattern) and will be migrated in a follow-up slice.
+   */
+  it('267-F (SI): SalesInvoiceUseCases must not import SubledgerVoucherPostingService for document vouchers', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/SalesInvoiceUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).toContain('SubledgerDocumentPoster');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (SR slice) — the Sales Return document voucher path (revenue +
+   * COGS) was migrated from a direct `SubledgerVoucherPostingService` field to
+   * `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`.
+   * This guard pins that migration: the use case must not import or reference
+   * the legacy posting service for document voucher posting.
+   */
+  it('267-F (SR): SalesReturnUseCases must not import SubledgerVoucherPostingService for document vouchers', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/SalesReturnUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).toContain('SubledgerDocumentPoster');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (Sales PaymentSync slice) — record-payment receipts are
+   * prebuilt vouchers, but the Sales use case must not construct the ledger
+   * gateway directly. It must hand the voucher to `IAccountingBridge` and let
+   * the bridge choose full vs minimal mode.
+   */
+  it('267-F (Sales PaymentSync): record-payment receipts must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/sales/use-cases/PaymentSyncUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).toContain('recordPreBuiltVoucher');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (GRN slice) — Goods Receipt posting must not keep a
+   * SubledgerVoucherPostingService fallback for the document voucher path.
+   * Unpost may still receive a narrow deletion adapter, but posting must route
+   * financial events through the bridge.
+   */
+  it('267-F (GRN): GoodsReceipt posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/purchases/use-cases/GoodsReceiptUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (PI slice) — Purchase Invoice document vouchers were migrated
+   * from a direct `SubledgerVoucherPostingService` field to
+   * `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`.
+   * Note: `PostingGateway` remains inside the settlement payment closure; the
+   * closure itself is handed to the bridge as a prebuilt voucher event.
+   */
+  it('267-F (PI): PurchaseInvoice document vouchers must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/purchases/use-cases/PurchaseInvoiceUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).toContain('SubledgerDocumentPoster');
+    expect(content).toContain('IAccountingBridge');
+    expect(content).toContain('recordPreBuiltVoucher');
+  });
+
+  /**
+   * Task 267-F (PR slice) — Purchase Return document vouchers were migrated
+   * from a direct `SubledgerVoucherPostingService` fallback to
+   * `postFinancialEvent({ bridge })`. Unpost may still receive a narrow
+   * deletion adapter, but posting must route financial events through the
+   * bridge only.
+   */
+  it('267-F (PR): PurchaseReturn posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/purchases/use-cases/PurchaseReturnUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (Purchases PaymentSync slice) — purchase record-payment
+   * vouchers are prebuilt system vouchers, but the Purchases use case must not
+   * construct the ledger gateway directly. It must hand the voucher to
+   * `IAccountingBridge` and let the bridge choose full vs minimal mode.
+   */
+  it('267-F (Purchases PaymentSync): record-payment vouchers must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/purchases/use-cases/PaymentSyncUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).toContain('recordPreBuiltVoucher');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (Inventory Opening Stock slice) — Opening Stock accounting
+   * effect must route its document voucher through `IAccountingBridge` only.
+   * The use case may still decide inventory-only vs accounting-effect posting,
+   * but must not retain a legacy `SubledgerVoucherPostingService` fallback.
+   */
+  it('267-F (Inventory Opening Stock): posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/inventory/use-cases/OpeningStockDocumentUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (Inventory Stock Adjustment slice) — adjustment gain/loss
+   * vouchers must route through `IAccountingBridge` only. The use case still
+   * owns adjustment-specific voucher assembly, but no longer keeps a legacy
+   * posting-service fallback.
+   */
+  it('267-F (Inventory Stock Adjustment): posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/inventory/use-cases/StockAdjustmentUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (Inventory Stock Transfer slice) — explicit valued-transfer
+   * uplift vouchers must route through `IAccountingBridge` only. The use case
+   * may still assemble transfer-specific clearing/revaluation lines, but must
+   * not retain a legacy posting-service fallback.
+   */
+  it('267-F (Inventory Stock Transfer): posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/inventory/use-cases/StockTransferUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-F (Inventory Revaluation slice) — inventory value-only
+   * revaluation vouchers must route through `IAccountingBridge` only.
+   */
+  it('267-F (Inventory Revaluation): posting must route through IAccountingBridge only', () => {
+    const file = path.resolve(SRC, 'application/inventory/use-cases/InventoryRevaluationUseCases.ts');
+    expect(fs.existsSync(file)).toBe(true);
+    const content = fs.readFileSync(file, 'utf8');
+    expect(content).not.toContain('SubledgerVoucherPostingService');
+    expect(content).not.toContain('PostingGateway');
+    expect(content).not.toContain('postingService:');
+    expect(content).toContain('postFinancialEvent');
+    expect(content).toContain('IAccountingBridge');
+  });
+
+  /**
+   * Task 267-C — non-failing export/structure guard. The Policy Resolution
+   * Engine foundation introduces a typed policy config model and resolver.
+   * This guard verifies the foundation files exist where the architecture
+   * expects them, so a future refactor that drops one is caught immediately.
+   * It does not assert behavior (those are pinned in PolicyResolver.test.ts
+   * and PolicyEngineTypedResolution.test.ts).
+   */
+  it('267-C: Policy Resolution Engine foundation files are in place', () => {
+    const expected = [
+      'domain/system-core/entities/PolicyConfig.ts',
+      'repository/interfaces/system-core/IPolicyConfigRepository.ts',
+      'application/system-core/contracts/IPolicyEngine.ts',
+      'application/system-core/policy/PolicyResolver.ts',
+      'application/system-core/PolicyEngine.ts',
+    ];
+    for (const rel of expected) {
+      const abs = path.resolve(SRC, rel);
+      expect(fs.existsSync(abs)).toBe(true);
+    }
+  });
+
+  /**
+   * Task 267-D — non-failing export/structure guard. The engine management
+   * API doorways introduce a Firestore implementation of
+   * `IPolicyConfigRepository` and per-module doorways that write the same
+   * `PolicyConfig` document. This guard verifies the new repository file
+   * exists where the architecture expects it, so a future refactor that
+   * drops it is caught immediately. Behavior is pinned in
+   * FirestorePolicyConfigRepository.test.ts and the per-module controller
+   * tests.
+   */
+  it('267-D: Engine management PolicyConfigRepository (Firestore) file is in place', () => {
+    const expected = [
+      'infrastructure/firestore/repositories/system-core/FirestorePolicyConfigRepository.ts',
+    ];
+    for (const rel of expected) {
+      const abs = path.resolve(SRC, rel);
+      expect(fs.existsSync(abs)).toBe(true);
+    }
+  });
 });
 
 function importsSalesApplicationOrDomain(content: string): boolean {

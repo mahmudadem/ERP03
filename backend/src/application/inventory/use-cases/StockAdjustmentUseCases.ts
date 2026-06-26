@@ -6,7 +6,6 @@ import { ICompanyModuleRepository } from '../../../repository/interfaces/company
 import { IItemRepository } from '../../../repository/interfaces/inventory/IItemRepository';
 import { IStockAdjustmentRepository } from '../../../repository/interfaces/inventory/IStockAdjustmentRepository';
 import { ITransactionManager } from '../../../repository/interfaces/shared/ITransactionManager';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import { DocumentPolicyResolver } from '../../common/services/DocumentPolicyResolver';
@@ -78,9 +77,8 @@ export class PostStockAdjustmentUseCase {
     private readonly movementUseCase: RecordStockMovementUseCase,
     private readonly transactionManager: ITransactionManager,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService?: SubledgerVoucherPostingService,
-    private readonly inventorySettingsRepo?: IInventorySettingsRepository,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly accountingBridge: IAccountingBridge,
+    private readonly inventorySettingsRepo?: IInventorySettingsRepository
   ) {}
 
   async execute(companyId: string, adjustmentId: string, userId: string, createAccountingEffect: boolean = true): Promise<StockAdjustment> {
@@ -194,7 +192,7 @@ export class PostStockAdjustmentUseCase {
       );
 
       let voucherId: string | undefined;
-      if (shouldPostAccounting && this.accountingPostingService) {
+      if (shouldPostAccounting) {
         voucherId = await this.createVoucherForAdjustment(
           companyId,
           userId,
@@ -235,12 +233,6 @@ export class PostStockAdjustmentUseCase {
     baseCurrencyOverride?: string,
     transaction?: unknown
   ): Promise<string | undefined> {
-    if (!this.accountingPostingService) {
-      throw new Error(
-        'Inventory adjustment cannot be posted because accounting posting is not configured.'
-      );
-    }
-
     const voucherLines: Array<{
       accountId: string;
       side: 'Debit' | 'Credit';
@@ -349,7 +341,7 @@ export class PostStockAdjustmentUseCase {
 
     try {
       const voucher = await postFinancialEvent(
-        { bridge: this.accountingBridge, postingService: this.accountingPostingService },
+        { bridge: this.accountingBridge },
         {
           kind: 'STOCK_ADJUSTMENT',
           transaction,

@@ -96,12 +96,18 @@ Both require the `accounting.vouchers.view` permission.
 | Use case | PostingLog write | Status |
 |---|---|---|
 | `PostSalesInvoiceUseCase` | ✅ Written after voucher posting, inside the transaction | PR2 |
-| `PostPurchaseInvoiceUseCase` | ⏳ Pending — same pattern | follow-up |
-| `PostDeliveryNoteUseCase` | ⏳ Pending — same pattern | follow-up |
-| `PostSalesReturnUseCase` | ⏳ Pending | follow-up |
-| `PostPurchaseReturnUseCase` | ⏳ Pending | follow-up |
-| `PostGoodsReceiptUseCase` | ⏳ Pending | follow-up |
-| Settlement voucher writes | ⏳ Pending — `voucherIds[]` will include settlement IDs | follow-up |
+| `PostPurchaseInvoiceUseCase` | ✅ Document vouchers (Expense/Inventory/Tax/AP) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)`; settlement payments route through `recordPreBuiltVoucher` with the existing full-mode gateway closure | 267-F |
+| `PostSalesInvoiceUseCase` | ✅ Document vouchers (revenue + COGS) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SI slice); record-payment receipts route through `recordPreBuiltVoucher` without a direct gateway fallback (Task 267-F Sales PaymentSync slice) | 267-F |
+| `PostDeliveryNoteUseCase` | ✅ Routes through `IAccountingBridge` (bridge-only, Task 267-F); PostingLog write in minimal mode via the bridge | 267-F |
+| `PostSalesReturnUseCase` | ✅ Document vouchers (revenue reversal + COGS reversal) route through `IAccountingBridge`-only via `SubledgerDocumentPoster(undefined, bridge)` (Task 267-F SR slice); refund settlement still posts through the same poster/bridge | 267-F |
+| `PostPurchaseReturnUseCase` | ✅ Document vouchers (AP reversal, purchase-return/tax reversal, GRNI/Inventory reversal) route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` | 267-F |
+| `PostGoodsReceiptUseCase` | ✅ Goods Receipt Inventory/GRNI voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })` (Task 267-F GRN slice) | 267-F |
+| `PostOpeningStockDocumentUseCase` | ✅ Opening Stock Inventory/Opening Equity voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; inventory-only opening stock still creates no bridge event or GL link | 267-F |
+| `PostStockAdjustmentUseCase` | ✅ Stock Adjustment gain/loss and inventory voucher routes through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; PERIODIC mode still posts no GL voucher | 267-F |
+| `CompleteStockTransferUseCase` | ✅ Explicit VALUED transfer uplift vouchers (added cost / revaluation) route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; FLAT and no-uplift transfers still post no GL voucher | 267-F |
+| `PostInventoryRevaluationUseCase` | ✅ Inventory Revaluation write-up/write-down vouchers route through `IAccountingBridge`-only via `postFinancialEvent({ bridge })`; PERIODIC mode still updates sub-ledger cost without a GL voucher | 267-F |
+| Sales record-payment voucher writes | ✅ Full mode returns receipt voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
+| Purchases record-payment voucher writes | ✅ Full mode returns payment voucher ids; minimal mode records no GL voucher id and leaves payment history voucherId null | 267-F |
 
 Wiring the remaining use cases is mechanical (copy-paste of the SI pattern, adjust strategy name + skip-reason taxonomy). The entity and repository support all cases without further change. Tracked as a P1 cleanup.
 

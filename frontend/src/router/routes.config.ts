@@ -47,6 +47,7 @@ const CategoriesPage = lazy(() => import('../modules/inventory/pages/CategoriesP
 const WarehousesPage = lazy(() => import('../modules/inventory/pages/WarehousesPage'));
 const StockLevelsPage = lazy(() => import('../modules/inventory/pages/StockLevelsPage'));
 const StockMovementsPage = lazy(() => import('../modules/inventory/pages/StockMovementsPage'));
+const ItemMovementReportPage = lazy(() => import('../modules/inventory/pages/ItemMovementReportPage'));
 const StockAdjustmentPage = lazy(() => import('../modules/inventory/pages/StockAdjustmentPage'));
 const InventoryRevaluationPage = lazy(() => import('../modules/inventory/pages/InventoryRevaluationPage'));
 const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningStockPage'));
@@ -87,6 +88,7 @@ const CommunicationsSettingsPage = lazy(() => import('../modules/settings/pages/
 const AppearanceSettingsPage = lazy(() => import('../modules/settings/pages/AppearanceSettingsPage'));
 const SidebarSettingsPage = lazy(() => import('../modules/settings/pages/SidebarSettingsPage'));
 const ApprovalSettingsPage = lazy(() => import('../modules/settings/pages/ApprovalSettingsPage'));
+const ControlsAndPoliciesPage = lazy(() => import('../modules/settings/pages/ControlsAndPoliciesPage'));
 const NotificationSettingsPage = lazy(() => import('../modules/settings/pages/NotificationSettingsPage'));
 const TaxCodesPage = lazy(() => import('../modules/settings/pages/TaxCodesPage'));
 
@@ -270,6 +272,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/reports/item-movement', label: 'Item Movement', component: ItemMovementReportPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/valuation', label: 'Inventory Valuation', component: InventoryValuationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/gl-reconciliation', label: 'Inventory ↔ GL Reconciliation', component: InventoryGLReconciliationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock/new', label: 'New Opening Stock Document', component: OpeningStockPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },
@@ -310,6 +313,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/settings/notifications', label: 'Notifications', component: NotificationSettingsPage, section: 'SETTINGS', hideInMenu: true },
   { path: '/settings/communications', label: 'Communications', component: CommunicationsSettingsPage, section: 'SETTINGS' },
   { path: '/settings/approval', label: 'Approval Workflow', component: ApprovalSettingsPage, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
+  { path: '/settings/controls-and-policies', label: 'Controls and Policies', component: ControlsAndPoliciesPage, section: 'SETTINGS', requiredPermission: 'system.company.manage' },
   { path: '/settings/tax-codes', label: 'Tax Codes', component: TaxCodesPage, section: 'SETTINGS' },
   { path: '/system/currencies', label: 'Currencies', component: CompanyCurrencySettings, section: 'SETTINGS', requiredPermission: 'system.company.settings.manage' },
 

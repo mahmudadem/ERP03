@@ -1,5 +1,6 @@
 export type TaxType = 'VAT' | 'GST' | 'EXEMPT' | 'ZERO_RATED';
 export type TaxScope = 'PURCHASE' | 'SALES' | 'BOTH';
+export type PurchaseTaxTreatment = 'RECOVERABLE' | 'NON_RECOVERABLE';
 
 export interface TaxCodeProps {
   id: string;
@@ -11,6 +12,7 @@ export interface TaxCodeProps {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   /** When true, prices entered on documents using this tax code are treated as
    *  tax-inclusive by default. Individual lines may override this. */
   priceIsInclusive?: boolean;
@@ -22,6 +24,7 @@ export interface TaxCodeProps {
 
 const TAX_TYPES: TaxType[] = ['VAT', 'GST', 'EXEMPT', 'ZERO_RATED'];
 const TAX_SCOPES: TaxScope[] = ['PURCHASE', 'SALES', 'BOTH'];
+const PURCHASE_TAX_TREATMENTS: PurchaseTaxTreatment[] = ['RECOVERABLE', 'NON_RECOVERABLE'];
 
 const toDate = (value: any): Date => {
   if (value instanceof Date) return value;
@@ -39,6 +42,7 @@ export class TaxCode {
   scope: TaxScope;
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
+  purchaseTaxTreatment: PurchaseTaxTreatment;
   priceIsInclusive: boolean;
   active: boolean;
   readonly createdBy: string;
@@ -53,6 +57,10 @@ export class TaxCode {
     if (!props.createdBy?.trim()) throw new Error('TaxCode createdBy is required');
     if (!TAX_TYPES.includes(props.taxType)) throw new Error(`Invalid taxType: ${props.taxType}`);
     if (!TAX_SCOPES.includes(props.scope)) throw new Error(`Invalid scope: ${props.scope}`);
+    const purchaseTaxTreatment = props.purchaseTaxTreatment || 'RECOVERABLE';
+    if (!PURCHASE_TAX_TREATMENTS.includes(purchaseTaxTreatment)) {
+      throw new Error(`Invalid purchaseTaxTreatment: ${props.purchaseTaxTreatment}`);
+    }
     if (Number.isNaN(props.rate) || props.rate < 0) {
       throw new Error('TaxCode rate must be greater than or equal to 0');
     }
@@ -69,6 +77,7 @@ export class TaxCode {
     this.scope = props.scope;
     this.purchaseTaxAccountId = props.purchaseTaxAccountId;
     this.salesTaxAccountId = props.salesTaxAccountId;
+    this.purchaseTaxTreatment = purchaseTaxTreatment;
     this.priceIsInclusive = props.priceIsInclusive === true;
     this.active = props.active;
     this.createdBy = props.createdBy;
@@ -87,6 +96,7 @@ export class TaxCode {
       scope: this.scope,
       purchaseTaxAccountId: this.purchaseTaxAccountId,
       salesTaxAccountId: this.salesTaxAccountId,
+      purchaseTaxTreatment: this.purchaseTaxTreatment,
       priceIsInclusive: this.priceIsInclusive,
       active: this.active,
       createdBy: this.createdBy,
@@ -106,6 +116,7 @@ export class TaxCode {
       scope: data.scope,
       purchaseTaxAccountId: data.purchaseTaxAccountId,
       salesTaxAccountId: data.salesTaxAccountId,
+      purchaseTaxTreatment: data.purchaseTaxTreatment || 'RECOVERABLE',
       priceIsInclusive: data.priceIsInclusive === true,
       active: data.active ?? true,
       createdBy: data.createdBy || 'SYSTEM',

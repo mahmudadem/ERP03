@@ -1,14 +1,28 @@
 import { AccountingPolicyRegistry } from '../accounting/policies/AccountingPolicyRegistry';
 import { IPosPolicyRepository } from '../../repository/interfaces/pos/IPosPolicyRepository';
+import { IPolicyConfigRepository } from '../../repository/interfaces/system-core/IPolicyConfigRepository';
 import { DocumentPolicyResolver } from '../common/services/DocumentPolicyResolver';
-import { IPolicyEngine, PolicyResolveRequest, PolicyResolveResult } from './contracts/IPolicyEngine';
+import {
+  IPolicyEngine,
+  PolicyResolveRequest,
+  PolicyResolveResult,
+  TypedPolicyResolveRequest,
+} from './contracts/IPolicyEngine';
 import { ICommercialCore } from './contracts/ICommercialCore';
+import { PolicyConfig } from '../../domain/system-core/entities/PolicyConfig';
+import { PolicyResolver } from './policy/PolicyResolver';
 
 export class PolicyEngine implements IPolicyEngine {
   constructor(
     private readonly posPolicyRepo: IPosPolicyRepository,
     private readonly accountingPolicyRegistry?: AccountingPolicyRegistry,
-    private readonly commercialCore?: ICommercialCore
+    private readonly commercialCore?: ICommercialCore,
+    /**
+     * Task 267-C: optional engine-owned `PolicyConfig` repository. When wired,
+     * `resolveTyped` consults the typed precedence model. When omitted the
+     * legacy `resolve` facade still works exactly as before.
+     */
+    private readonly policyConfigRepo?: IPolicyConfigRepository
   ) {}
 
   async resolve(request: PolicyResolveRequest): Promise<PolicyResolveResult> {
@@ -57,6 +71,78 @@ export class PolicyEngine implements IPolicyEngine {
     }
 
     return { allowed: true, requiresApproval: false, resolvedBy: ['PolicyEngine.defaultAllow'] };
+  }
+
+  /**
+   * Task 267-C — typed policy resolution. Loads the engine-owned
+   * `PolicyConfig` (if a repository is wired) and asks the precedence
+   * engine for a fully populated decision.
+   *
+   * Fail-closed semantics (review feedback 267-C):
+   *   - When no repository is wired, returns the pre-267 default ALLOW
+   *     (preserves the unknown-scope fallback so legacy callers and
+   *     tests that don't wire a repository keep behaving exactly as
+   *     before).
+   *   - When a repository IS wired and `getConfig` throws, we MUST NOT
+   *     silently fall through to default-allow — that would let a
+   *     transient store failure (Firestore / SQL down, timeout, etc.)
+   *     grant permissions the tenant never configured. Instead we
+   *     return an explicit `BLOCK` with
+   *     `reasonCode: 'PolicyConfig.repositoryError'` so callers /
+   *     approval handoffs can detect the degraded mode and surface it
+   *     in the audit chain. We catch the error here so the engine does
+   *     not throw into the request thread — a graceful BLOCK is the
+   *     safer failure mode than an unhandled rejection in a posting
+   *     path.
+   */
+  async resolveTyped(request: TypedPolicyResolveRequest): Promise<PolicyResolveResult> {
+    if (!request.companyId) {
+      return {
+        allowed: false,
+        requiresApproval: false,
+        decision: 'BLOCK',
+        reasonCode: 'PolicyConfig.missingCompanyId',
+        resolvedBy: ['PolicyConfig.missingCompanyId'],
+      };
+    }
+
+    if (this.policyConfigRepo) {
+      // Wired repository: surface the result cleanly. A throwing
+      // repository is degraded mode and MUST NOT default-allow.
+      let config: PolicyConfig | null;
+      try {
+        config = await this.policyConfigRepo.getConfig(request.companyId);
+      } catch (err) {
+        return {
+          allowed: false,
+          requiresApproval: false,
+          decision: 'BLOCK',
+          reasonCode: 'PolicyConfig.repositoryError',
+          resolvedBy: [
+            'PolicyConfig.repositoryError',
+            `PolicyConfig.repositoryError.cause=${(err as Error)?.message || 'unknown'}`,
+          ],
+        };
+      }
+      if (!config) {
+        // Repository is wired but has no document yet for this company.
+        // No rules means default ALLOW (consistent with the unknown-scope
+        // fallback that the legacy facade uses for any action it does not
+        // recognise).
+        return PolicyResolver.resolve(
+          PolicyConfig.createDefault(request.companyId),
+          request
+        ).result;
+      }
+      return PolicyResolver.resolve(config, request).result;
+    }
+
+    // No repository wired. Fall back to the pre-267 default-allow so
+    // call sites that haven't opted into the typed path keep working.
+    return PolicyResolver.resolve(
+      PolicyConfig.createDefault(request.companyId),
+      request
+    ).result;
   }
 
   private async resolvePosDirectSale(request: PolicyResolveRequest): Promise<PolicyResolveResult> {

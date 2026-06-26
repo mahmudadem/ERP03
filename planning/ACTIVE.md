@@ -1,5 +1,481 @@
 # 🎯 Current Focus
 
+## Task 270 — Stock level reporting, negative valuation, and Item Movement (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit` (uncommitted).
+
+- **Why:** Owner QA found allowed negative stock displaying as zero value. That can hide a real inventory/accounting exposure.
+- **What changed:**
+  - Stock Levels API now returns report valuation fields: cost basis, report unit cost, report value, and unvalued-negative warning.
+  - Positive stock still uses moving average.
+  - Negative stock with missing moving average but known last cost uses last-known cost for report value.
+  - Negative stock with no cost basis is explicitly flagged as unvalued instead of showing a clean zero value.
+  - Stock Levels now uses `ReportContainer` and supports item, warehouse, zero-quantity, negative-stock, and by-item/by-warehouse filters.
+  - Added `Inventory -> Reports -> Item Movement`, with required shared item selector, optional warehouse/date/source/direction/movement filters, running quantity/value, and source drill-down where routes exist.
+  - Updated inventory architecture/user docs and created the completion report.
+- **Verification:** StockLevelUseCases focused tests green; InventoryValuationService focused tests green; backend build green; frontend report guard/typecheck/build green; `git diff --check` clean except CRLF normalization warnings.
+- **Estimated/actual time:** 5-8h / ~3.1h.
+
+### Next action
+
+Commit/push the Task 270 local work, then continue Task 271: Sales/Purchase Return layout parity and direct Purchase Return.
+
+---
+
+## Task 269 — Purchase tax recoverability and cost capitalization (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Owner QA clarified that purchase tax is not always recoverable. Recoverable tax should stay separate; non-recoverable tax should become part of inventory/expense cost.
+- **What changed:**
+  - Tax Code now has `purchaseTaxTreatment`: `RECOVERABLE` or `NON_RECOVERABLE`.
+  - Existing/missing tax codes default to `RECOVERABLE`, preserving current output.
+  - Tax Codes UI shows and edits Purchase Tax Treatment separately from Price Basis.
+  - Used tax-code locks now include purchase tax treatment.
+  - Purchase Invoice line normalization capitalizes non-recoverable tax into line cost and suppresses the separate purchase tax line.
+  - Direct stock PI movements use the adjusted line cost, so non-recoverable tax affects movement cost and blended average cost.
+- **Verification:** PI golden voucher/cost tests green; Tax Code lock tests green; purchase posting regression green; sales invoice golden green; frontend typecheck green.
+- **Estimated/actual time:** 3-5h / ~2.6h.
+
+### Next action
+
+Continue Task 270: Stock Levels must use the report container pattern, carry negative-stock valuation correctly, and add the Item Movement report with source-document drill-down.
+
+---
+
+## Task 268 — Tax Code master-data controls and page repolish (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Owner QA showed that a tax code's saved inclusive/exclusive flag was too easy to miss, and changing tax treatment after posted use would weaken accounting auditability.
+- **What changed:**
+  - Tax Codes is now list-first with `New Tax Code` / `Edit` modal workflow.
+  - Rate entry is now **Rate %**; users type `10`, while the backend still stores `0.10`.
+  - Price Basis is required and explicit: Exclusive vs Inclusive.
+  - List/get APIs expose posted usage lock metadata.
+  - Backend blocks accounting-critical tax-code changes after posted SI/PI/SR/PR usage, while allowing name/status edits.
+  - Focused backend tests cover unused edits, posted SI/PI locks, safe name/status edits, and lock metadata.
+- **Verification:** backend focused TaxCodeUseCases test green; backend build green; frontend typecheck/build green; `git diff --check` clean except CRLF normalization warnings.
+- **Estimated/actual time:** 1.5-2.5h / ~2.1h.
+
+### Next action
+
+Continue Task 269: purchase tax recoverability and cost capitalization. This is the next accounting-behavior task and must be implemented with focused golden tests because it affects PI voucher output and inventory average cost.
+
+---
+
+## Manual QA fixes — PI date, tax-code price basis, item selector noise (2026-06-26)
+
+**Status:** ✅ Fixed locally on `codex/267-system-core-boundary-audit` (uncommitted).
+
+- **Why:** Owner QA found three issues while testing SI/PI/inventory:
+  - New Purchase Invoice defaulted to the previous UTC date near local midnight, unlike Sales Invoice.
+  - Tax code inclusivity/exclusivity was too easy to miss; a code/name like `10%INC` could hide an exclusive saved flag.
+  - Item selector preloaded UOMs on mount and produced repeated DevTools errors on unrelated pages.
+- **What changed:**
+  - `PurchaseInvoiceDetailPage` now uses `todayLocalIso`.
+  - `TaxCodesPage` now requires a deliberate **Price Basis** dropdown selection: Exclusive or Inclusive. The list also displays the saved basis.
+  - `ItemSelector` loads UOMs only when creating an item inline.
+  - Accounting Dashboard recent voucher numbers now open the voucher view page.
+  - Posted Purchase Invoices now have a **GL Impact** action matching Sales Invoice, using a purchase-specific journal badge.
+- **Accounting note:** No posting math changed. Sales and Purchases already inherit `TaxCode.priceIsInclusive`; retest should first confirm the saved Tax Code **Price Basis** flag in Settings.
+- **Verification:** `npm --prefix frontend run typecheck` green; `npm --prefix frontend run build` green with existing bundle/browser-data warnings only.
+- **Estimated/actual time:** 0.5h / ~0.7h.
+
+### Next action
+
+Retest after frontend rebuild: open **Settings → Tax Codes**, set `10%INC` to **Inclusive**, then create fresh SI/PI documents and verify the date defaults to `2026-06-26` and inclusive tax splits the entered price instead of adding tax on top.
+
+Follow-up tasks created:
+
+- [Task 268 - Tax Code Master-Data Controls and Page Repolish](tasks/268-tax-code-master-data-controls-and-page-repolish.md). This should be the next accounting-control slice if manual QA continues to focus on tax-code setup.
+- [Task 269 - Purchase Tax Recoverability and Cost Capitalization](tasks/269-purchase-tax-recoverability-and-cost-capitalization.md). This is the later accounting-behavior slice for recoverable vs non-recoverable purchase tax and stock average cost.
+- [Task 270 - Stock Level Reporting, Negative Valuation, and Item Movement Drill-Down](tasks/270-negative-stock-valuation-policy-and-reporting.md). This is the inventory reporting/valuation correctness slice: Stock Levels must use `ReportContainer`, negative stock must keep/flag valuation, and a new Item Movement report must show historical movements with source-document drill-down.
+- [Task 271 - Sales/Purchase Return Layout Parity and Direct Purchase Return](tasks/271-purchase-return-layout-and-direct-return-parity.md). This is the return workflow parity slice: SR and PR should match SI/PI document layout/buttons/controls; PR should also support direct returns, not only source-driven returns.
+
+---
+
+## Task 267-F (Inventory Revaluation slice) — Accounting bridge migration: value-only revaluation voucher (2026-06-25) [committed]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `PostInventoryRevaluationUseCase` still held an optional direct `SubledgerVoucherPostingService` field, gated voucher creation on that field, and passed it as a fallback into `postFinancialEvent(...)`.
+- **What:**
+  - **Golden tests first:** New `InventoryRevaluationGoldenVoucher.test.ts` (5 tests) captures exact write-up/write-down Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
+  - **Migration:** `PostInventoryRevaluationUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/constructor param, `postingService` fallback, and old posting-service gate were removed.
+  - **Controller + tests:** `InventoryController.postInventoryRevaluation` passes `buildAccountingBridge()` directly. Existing Inventory Revaluation tests now inject a full-mode bridge and assert bridge events.
+  - **Architecture guard:** New `267-F (Inventory Revaluation)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `InventoryRevaluationUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-revaluation-bridge-migration.md`.
+- **Verification (all green):**
+  - `InventoryRevaluationGoldenVoucher.test.ts` — 5/5 PASS
+  - `InventoryRevaluationUseCases.test.ts` — 16/16 PASS
+  - `SystemCoreBoundaries.test.ts` — 28/28 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+  - Final direct-fallback audit: no `SubledgerVoucherPostingService` / `postingService:` fallbacks remain in audited Sales/Purchases/Inventory posting paths; only the known SalesInvoice/PurchaseInvoice settlement full-mode `PostingGateway` closures remain.
+- **Accounting impact:** None intended. Write-up/write-down sides, absolute delta amounts, periodic no-GL behavior, and sub-ledger average-cost updates are unchanged; minimal mode remains bridge-owned.
+
+### Next action
+
+Committed in the latest Inventory Revaluation slice. No known audited Task 267-F source-module posting fallback slices remain.
+
+---
+
+## Task 267-F (Inventory Stock Transfer slice) — Accounting bridge migration: valued-transfer uplift voucher (2026-06-25) [committed a4323933]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `CompleteStockTransferUseCase` still held an optional direct `SubledgerVoucherPostingService` field, gated valued-transfer uplift voucher creation on that field, and passed it as a fallback into `postFinancialEvent(...)`.
+- **What:**
+  - **Golden tests first:** New `StockTransferGoldenVoucher.test.ts` (5 tests) captures exact added-cost Inventory/Clearing output, revaluation Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, no-uplift no-post behavior, and output stability.
+  - **Migration:** `CompleteStockTransferUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/constructor param, `postingService` fallback, and old posting-service gate were removed.
+  - **Controller + tests:** `InventoryController.buildCompleteStockTransferUseCase()` passes `buildAccountingBridge()` directly. Existing Stock Transfer valuation tests now inject a full-mode bridge and assert bridge events.
+  - **Architecture guard:** New `267-F (Inventory Stock Transfer)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `StockTransferUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-stock-transfer-bridge-migration.md`.
+- **Verification (all green):**
+  - `StockTransferGoldenVoucher.test.ts` — 5/5 PASS
+  - `StockTransferValuedVoucher.test.ts` — 8/8 PASS
+  - `SystemCoreBoundaries.test.ts` — 27/27 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Explicit valued-transfer uplift math and account routing are unchanged; FLAT and no-uplift transfers still create no GL voucher; minimal mode remains bridge-owned.
+
+### Next action
+
+Committed as `a4323933`. Next bridge-migration slice: **Inventory Revaluation**.
+---
+
+## Task 267-F (Inventory Stock Adjustment slice) — Accounting bridge migration: gain/loss adjustment voucher (2026-06-25) [committed 177332ec]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `PostStockAdjustmentUseCase` still held an optional direct `SubledgerVoucherPostingService` field, gated voucher creation on that field, and passed it as a fallback into `postFinancialEvent(...)`.
+- **What:**
+  - **Golden tests first:** New `StockAdjustmentGoldenVoucher.test.ts` (4 tests) captures exact gain/loss + inventory voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
+  - **Migration:** `PostStockAdjustmentUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/constructor param, `postingService` fallback, and old posting-service gate were removed.
+  - **Controller + tests:** `InventoryController.postStockAdjustment` passes `buildAccountingBridge()` directly. Existing Stock Adjustment valuation/atomicity tests now inject a full-mode bridge and assert bridge events.
+  - **Architecture guard:** New `267-F (Inventory Stock Adjustment)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `StockAdjustmentUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-stock-adjustment-bridge-migration.md`.
+- **Verification (all green):**
+  - `StockAdjustmentGoldenVoucher.test.ts` — 4/4 PASS
+  - `StockAdjustmentGLValuation.test.ts` — 4/4 PASS
+  - `StockAdjustmentAtomicity.test.ts` — 2/2 PASS
+  - `SystemCoreBoundaries.test.ts` — 26/26 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Voucher amounts still come from actual stock movement cost, gain/loss account routing is unchanged, PERIODIC still creates no GL voucher, and minimal mode remains bridge-owned.
+
+### Next action
+
+Committed as `177332ec`. Next bridge-migration slice: **Inventory Stock Transfer**.
+
+---
+
+## Task 267-F (Inventory Opening Stock slice) — Accounting bridge migration: Opening Stock document voucher (2026-06-25) [committed c6d7f787]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `PostOpeningStockDocumentUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent(...)`. Opening Stock is the smallest remaining Inventory document voucher path: one optional Inventory/Opening Equity accounting effect, plus an inventory-only branch.
+- **What:**
+  - **Golden tests first:** New `OpeningStockGoldenVoucher.test.ts` (5 tests) captures exact Inventory/Opening Equity voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC asset-account selection, inventory-only no-event behavior, and output stability.
+  - **Migration:** `PostOpeningStockDocumentUseCase` now requires `IAccountingBridge`; the `SubledgerVoucherPostingService` import/field/constructor param and `postingService` fallback were removed.
+  - **Controller + tests:** `InventoryController.postOpeningStockDocument` passes `buildAccountingBridge()` directly. Existing Opening Stock tests now inject a full-mode bridge and assert bridge events instead of direct `postInTransaction(...)`.
+  - **Architecture guard:** New `267-F (Inventory Opening Stock)` guard blocks `SubledgerVoucherPostingService`, `PostingGateway`, and `postingService:` fallback in `OpeningStockDocumentUseCases.ts`.
+  - **Docs:** Updated accounting/system-core/module-boundary/posting-log docs and created `planning/done/267-f-inventory-opening-stock-bridge-migration.md`.
+- **Verification (all green):**
+  - `OpeningStockGoldenVoucher.test.ts` — 5/5 PASS
+  - `OpeningStockDocumentUseCases.test.ts` — 5/5 PASS
+  - `SystemCoreBoundaries.test.ts` — 25/25 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Full mode sends the same opening-stock voucher payload to the bridge; inventory-only mode still emits no GL event; minimal mode remains bridge-owned and links no GL voucher id.
+
+### Next action
+
+Committed as `c6d7f787`. Next bridge-migration slice: **Inventory Stock Adjustment**.
+
+---
+
+## Task 267-F (Purchases PaymentSync slice) — Accounting bridge migration: record-payment vouchers (2026-06-25) [committed 98ce89de]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Purchases `PaymentSyncUseCases.ts` already used `accountingBridge.recordPreBuiltVoucher(...)`, but still imported and constructed `PostingGateway` inside an optional no-bridge fallback. That left a source-module direct ledger-door dependency.
+- **What:**
+  - **Golden tests first:** New `PurchasePaymentSyncGoldenVoucher.test.ts` (3 tests) captures exact prebuilt payment voucher output, minimal-mode null GL link behavior, and DEFERRED no-voucher behavior.
+  - **Migration:** `PostPurchaseInvoiceWithSettlementUseCase` and `RecordPurchaseInvoicePaymentUseCase` now require `IAccountingBridge`; fallback direct posting was removed.
+  - **Accounting helper:** Reuses `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` so full-mode persistence of prebuilt vouchers is invoked only through the bridge's `postFull` callback.
+  - **Controller + tests:** `PurchaseController.recordPayment` and existing `PurchasePaymentSyncUseCases.test.ts` constructions pass the required bridge.
+  - **Architecture guard:** New `267-F (Purchases PaymentSync)` guard blocks `PostingGateway` in `PaymentSyncUseCases.ts` and requires `recordPreBuiltVoucher` + `IAccountingBridge`.
+- **Verification (all green):**
+  - `PurchasePaymentSyncGoldenVoucher.test.ts` — 3/3 PASS
+  - `PurchasePaymentSyncUseCases.test.ts` — 9/9 PASS
+  - `SystemCoreBoundaries.test.ts` — 24/24 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Full mode runs the same voucher persistence through the ledger door; minimal mode remains bridge-owned and links no GL voucher id.
+
+### Next action
+
+Committed as `98ce89de`. Next bridge-migration area: **Inventory posting paths**.
+
+---
+
+## Task 267-F (PR slice) — Accounting bridge migration: Purchase Return document vouchers (2026-06-25) [committed 85064a09]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `PostPurchaseReturnUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. PR is the remaining Purchases document voucher path after GRN and PI.
+- **What:**
+  - **Golden tests first:** New `PurchaseReturnGoldenVoucher.test.ts` (5 tests) captures exact AFTER_INVOICE AP/return/tax reversal output, BEFORE_INVOICE GRNI/Inventory reversal output, no-accounting-effect behavior, minimal-mode null voucher id, and output stability.
+  - **Migration:** `PurchaseReturnUseCases.ts` removed the posting-service import/field from `PostPurchaseReturnUseCase`; `accountingBridge` is required; both `postFinancialEvent` calls now receive `{ bridge }` only.
+  - **Controller + tests:** `PurchaseController.postReturn` passes `buildAccountingBridge()` directly. Existing PR constructions in `PurchaseReturnUseCases.test.ts` use `LegacyAccountingBridgeAdapter` to preserve full-mode behavior.
+  - **Architecture guard:** New `267-F (PR)` guard blocks `SubledgerVoucherPostingService` and `postingService:` fallback in `PurchaseReturnUseCases.ts`.
+- **Verification (all green):**
+  - `PurchaseReturnGoldenVoucher.test.ts` — 5/5 PASS
+  - `PurchaseReturnUseCases.test.ts` — 8/8 PASS
+  - `PurchasePostingUseCases.test.ts` — 22/22 PASS
+  - `SystemCoreBoundaries.test.ts` — 23/23 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Golden tests pin both PR voucher branches and minimal/no-accounting behavior.
+
+### Next action
+
+Committed as `85064a09`. Next bridge-migration slice: **Purchases PaymentSync / record-payment path**.
+
+---
+
+## Task 267-F (PI slice) — Accounting bridge migration: Purchase Invoice document vouchers (2026-06-25) [committed 212df4e1]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `PostPurchaseInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field and used it as the fallback for document vouchers. Purchase Invoice is the next Purchases document path after GRN: Expense/Inventory/Tax/AP document voucher plus existing settlement payment prebuilt-voucher flow.
+- **What:**
+  - **Golden tests first:** New `PurchaseInvoiceGoldenVoucher.test.ts` (3 tests) captures exact Expense/Tax/AP voucher output through a `CapturingBridge`, no-accounting-effect behavior, and output stability.
+  - **Migration:** `PurchaseInvoiceUseCases.ts` removed the `SubledgerVoucherPostingService` import/field/constructor param. `accountingBridge` is required. Document vouchers use `new SubledgerDocumentPoster(undefined, this.accountingBridge)`.
+  - **Settlement path:** Purchase settlement payments now call `accountingBridge.recordPreBuiltVoucher(...)` directly. The existing full-mode `PostingGateway` remains inside the `postFull` closure, so the bridge owns full vs minimal mode without changing settlement math.
+  - **Controller + tests:** `PurchaseController.postPI` and the shared PI builder pass `buildAccountingBridge(true)` explicitly. Existing purchase posting and settlement tests were rewired with `LegacyAccountingBridgeAdapter`.
+  - **Architecture guard:** New `267-F (PI)` guard blocks `SubledgerVoucherPostingService` in `PurchaseInvoiceUseCases.ts` and requires `SubledgerDocumentPoster`, `IAccountingBridge`, and `recordPreBuiltVoucher`.
+- **Verification (all green):**
+  - `PurchaseInvoiceGoldenVoucher.test.ts` — 3/3 PASS
+  - `PurchaseInvoiceSettlementPosting.test.ts` — 5/5 PASS
+  - `PurchasePostingUseCases.test.ts` — 22/22 PASS
+  - `SystemCoreBoundaries.test.ts` — 22/22 PASS
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None intended. Golden tests pin the exact Expense/Tax/AP voucher event; settlement voucher posting still uses the same full-mode gateway closure, now under the bridge decision.
+
+### Next action
+
+Committed as `212df4e1`. Next bridge-migration slice: **PurchaseReturnUseCases document voucher path**.
+
+---
+
+## Task 267-F (GRN slice) — Accounting bridge migration: Goods Receipt Inventory-GRNI voucher (2026-06-25) [committed b36fbd0b]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** `PostGoodsReceiptUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. GRN is the smallest Purchases document path: one Inventory/GRNI voucher, no settlement.
+- **What:**
+  - **Golden tests first:** New `GoodsReceiptGoldenVoucher.test.ts` (3 tests) captures exact Inventory/GRNI voucher output, minimal-mode null voucher id, and PERIODIC no-post behavior.
+  - **Migration:** `GoodsReceiptUseCases.ts` removed the posting-service import/field from `PostGoodsReceiptUseCase`; `accountingBridge` is required; `postFinancialEvent` now receives `{ bridge }` only.
+  - **Controller + tests:** `PurchaseController.postGRN` passes `buildAccountingBridge()` directly. Existing GRN constructions in `PurchasePostingUseCases.test.ts` use `LegacyAccountingBridgeAdapter` to preserve full-mode behavior.
+  - **Architecture guard:** New `267-F (GRN)` guard blocks `SubledgerVoucherPostingService` and `postingService:` fallback in `GoodsReceiptUseCases.ts`.
+- **Verification (all green):**
+  - `GoodsReceiptGoldenVoucher.test.ts` — 3/3 PASS
+  - `PurchasePostingUseCases.test.ts` — 22/22 PASS
+  - `SystemCoreBoundaries.test.ts` — 21/21 PASS
+  - `npm run build` — tsc clean
+- **Accounting impact:** None intended. PERPETUAL remains Dr Inventory / Cr GRNI; PERIODIC still creates no GRNI voucher; minimal mode links no GL voucher id.
+
+### Next action
+
+Committed as `b36fbd0b`. Next bridge-migration slice: **PurchaseInvoiceUseCases document voucher path**.
+
+---
+
+## Task 267-F (Sales PaymentSync slice) — Accounting bridge migration: record-payment receipts (2026-06-25) [committed b0d6a504]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Sales record-payment receipts already used `accountingBridge.recordPreBuiltVoucher(...)`, but `PaymentSyncUseCases.ts` still imported and constructed `PostingGateway` inside an optional no-bridge fallback. That left a source-module direct ledger-door dependency.
+- **What:**
+  - **Golden tests first:** New `SalesPaymentSyncGoldenVoucher.test.ts` (3 tests) captures the exact prebuilt receipt voucher sent to the bridge, minimal-mode null GL link behavior, and realized FX gain line output.
+  - **Migration:** `PaymentSyncUseCases.ts` no longer imports `PostingGateway`; `accountingBridge` is now required for `PostSalesInvoiceWithSettlementUseCase` and `RecordSalesInvoicePaymentUseCase`; no fallback direct posting path remains.
+  - **Accounting helper:** New `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` owns full-mode persistence of prebuilt vouchers and is only invoked through the bridge's `postFull` callback.
+  - **Controller + tests:** `SalesController.recordPayment` and existing Sales PaymentSync/FX tests updated to pass the required bridge.
+  - **Architecture guard:** New `267-F (Sales PaymentSync)` guard blocks `PostingGateway` in `PaymentSyncUseCases.ts` and requires `recordPreBuiltVoucher` + `IAccountingBridge`.
+- **Verification (all green):**
+  - `SalesPaymentSyncGoldenVoucher.test.ts` — 3/3 PASS
+  - `SalesPaymentSyncUseCases.test.ts` — 10/10 PASS
+  - `FxGainLossSettlement.test.ts` — 4/4 PASS
+  - `SystemCoreBoundaries.test.ts` — 20/20 PASS
+  - `npm run build` — tsc clean
+- **Accounting impact:** None intended. Full mode runs the same voucher persistence through the ledger door; minimal mode remains bridge-owned and links no GL voucher id.
+
+### Next action
+
+Commit Task 267-F (Sales PaymentSync slice). Next bridge-migration slice: **Purchases document vouchers** (PI/GRN/PR, same `SubledgerDocumentPoster` / `postFinancialEvent` fallback pattern).
+
+---
+
+## Task 267-F (SR slice) — Accounting bridge migration: SalesReturn document vouchers (2026-06-25) [committed 41406894]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Follow-up to the SI slice. The `PostSalesReturnUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue reversal + COGS reversal + optional refund) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback.
+- **What:**
+  - **Golden tests first:** New `SalesReturnGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact COGS-reversal + revenue-reversal voucher output (account ids, sides, base/doc amounts, currency, source metadata, period-lock override, BEFORE_INVOICE COGS-only, minimal mode null ids, foreign-currency REVENUE/COGS split, PERIODIC no-COGS, output stability). Green before AND after migration → zero drift.
+  - **Migration:** `SalesReturnUseCases.ts` — removed `SubledgerVoucherPostingService` import + field + constructor param; `accountingBridge` now **required** (moved before optional params, compile-time enforced); poster constructed as `SubledgerDocumentPoster(undefined, this.accountingBridge)`.
+  - **Controller + tests:** `SalesController.postReturn` updated to new constructor signature (removed posting-service local + arg, bridge moved to required position). 14 inline SVPS constructions in `SalesReturnUseCases.test.ts` wrapped in `LegacyAccountingBridgeAdapter` at the required bridge position; 1 stub construction (test 22) rewired to new arg order.
+  - **SubledgerDocumentPoster:** NOT changed in this slice — `postingService` was already optional from the SI slice (backward-compatible; PI/PR still pass both args unchanged).
+  - **Architecture guard:** New `267-F (SR)` guard — `SalesReturnUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 18 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SR subsection + cross-module touchpoints), `module-boundaries.md` (FUP-3), `posting-log.md` (SR row → bridge-routed), completion report `planning/done/267-f-sales-return-bridge-migration.md`.
+  - **CTO review fixes:** Corrected one adapted legacy test so the uninitialized-engine fixture also passes an uninitialized repo into `LegacyAccountingBridgeAdapter`; replaced stale App/UI-toggle wording in `SalesController.buildAccountingBridge()` and `module-boundaries.md` with Engine initialized/not-initialized wording.
+- **Verification (all green):**
+  - `SalesReturnGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesReturnUseCases.test.ts` — 15/15 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 19/19 PASS (18 existing + 1 new)
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Accounting impact:** None. Golden tests prove identical voucher output.
+
+### Next action
+
+Commit Task 267-F (SR slice). Next bridge-migration slice: **PaymentSyncUseCases** (settlement `PostingGateway` → bridge) or **Purchases** (PI/PR/GRN, same `SubledgerDocumentPoster` pattern).
+
+---
+
+## Task 267-F (SI slice) — Accounting bridge migration: SalesInvoice document vouchers (2026-06-25) [not committed]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — ready to commit.
+
+- **Why:** Follow-up to the DN COGS migration. The `PostSalesInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue + COGS) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback.
+- **What:**
+  - **Golden tests first:** New `SalesInvoiceGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact revenue + COGS voucher output (account ids, sides, base/doc amounts, currency, source metadata, period-lock override, minimal mode, PERIODIC mode, output stability). Green before AND after migration → zero drift.
+  - **SubledgerDocumentPoster:** `postingService` made optional (backward-compatible — PI/SR still pass both args unchanged).
+  - **Migration:** `SalesInvoiceUseCases.ts` — removed `SubledgerVoucherPostingService` import + field + constructor param; `accountingBridge` now **required** (moved before optional params, compile-time enforced); poster constructed as `SubledgerDocumentPoster(undefined, bridge)`. `PostingGateway` retained for settlement (FUP-5, out of scope).
+  - **Controller + tests:** 2 controller sites + 4 test files (19+ SI constructions) updated to new constructor signature with `LegacyAccountingBridgeAdapter` as the required bridge.
+  - **Architecture guard:** New `267-F (SI)` guard — `SalesInvoiceUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 17 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SI section), `module-boundaries.md` (FUP-3), `posting-log.md` (SI row), completion report `planning/done/267-f-sales-invoice-bridge-migration.md`.
+- **Verification (all green):**
+  - `SalesInvoiceGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 18/18 PASS (17 existing + 1 new)
+  - `npm run build` — tsc clean
+  - Additional: ErrorTaxonomy + Settlement + RuleError = 14/14 PASS
+- **Accounting impact:** None. Golden tests prove identical voucher output.
+
+### Next action
+
+Commit Task 267-F (SI slice). Next bridge-migration slice: **SalesReturnUseCases** (same `SubledgerDocumentPoster` pattern) or **PaymentSyncUseCases** (settlement `PostingGateway` → bridge).
+
+---
+
+## Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS (2026-06-25) [committed a645cc86]
+
+**Status:** ✅ Complete on `codex/267-system-core-boundary-audit` — review fixes applied, ready to commit.
+
+- **Why:** The engine-boundary audit (267-A) found that Sales/Purchases/Inventory use cases still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. The task prompt required migrating one module path to bridge-only with golden voucher-output tests first. Sales / DeliveryNote COGS was chosen as the safest first target — it's the simplest, most isolated posting path (single `postFinancialEvent` call, no settlement/`PostingGateway` complexity, no existing golden tests).
+- **What:**
+  - **Golden tests first:** New `SalesDeliveryNoteGoldenVoucher.test.ts` (7 tests) captures the exact voucher output that flows into the bridge — account ids, debit/credit sides, base/doc amounts, currency metadata, source reference metadata, period-lock override, minimal-mode null-voucher, PERIODIC no-post, and output stability. Written and run green against pre-migration code, then remained green after migration → zero accounting output drift.
+  - **Migration:** `DeliveryNoteUseCases.ts` — removed `SubledgerVoucherPostingService` import + the `accountingPostingService` constructor param; changed `postFinancialEvent({ bridge, postingService })` → `postFinancialEvent({ bridge })` (bridge-only). `accountingBridge` is now a **required** constructor param (reordered before `auditEngine?` for TypeScript compliance). `SalesController.postDN` — removed the posting-service local + 12th constructor arg, swapped bridge/auditEngine arg order. 8 existing DN test constructions updated to wire a `LegacyAccountingBridgeAdapter`.
+  - **Architecture guard:** New `267-F` guard in `SystemCoreBoundaries.test.ts` — `DeliveryNoteUseCases.ts` must not import `SubledgerVoucherPostingService` or `PostingGateway`, and must use `postFinancialEvent` + `IAccountingBridge`. No existing guard weakened.
+  - **Review fixes (P1+P2):** P1 — fixed "Accounting App is enabled/disabled" wording → "Accounting Engine is initialized/not initialized" in `accounting.md`, `system-core.md`, `IAccountingBridge.ts`, and the completion report. P2 — made `accountingBridge` required (was optional despite no fallback), reordered constructor + updated all 11 call sites.
+  - **Docs:** `docs/architecture/accounting.md` (cross-module touchpoints + 267-F section + wording fix), `docs/architecture/system-core.md` (wording fix), `docs/architecture/module-boundaries.md` (FUP-3 update), `docs/architecture/posting-log.md` (DN row → bridge-routed), `IAccountingBridge.ts` (wording fix), completion report `planning/done/267-f-accounting-bridge-migration-delivery-note.md`.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales/SalesDeliveryNoteGoldenVoucher.test.ts` — 7/7 PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 17/17 PASS (16 existing + 1 new 267-F guard).
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales/SalesPostingUseCases.test.ts` — 29/29 PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales` — 27 suites / 287 tests PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core` — 12 suites / 73 tests PASS.
+  - `npm --prefix backend run build` — tsc clean.
+- **Accounting impact:** None. Golden tests prove identical voucher output. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight fallback dependency from the use case.
+
+### Next action
+
+Commit Task 267-F after review. Then choose the next bridge-migration slice: **SalesInvoiceUseCases** (SI revenue + COGS via `SubledgerDocumentPoster` → make poster's `postingService` optional, remove the field from SI use case) or move to **267-G** (Inventory core ownership completion) or **267-H** (Catalog/Item engine plan).
+
+---
+
+## Task 267-E — Engine Management Frontend (2026-06-25) [committed 7119d26c]
+
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`). `opencode.json` not touched.
+
+- **Why:** The typed `PolicyConfig` store (267-C) and its four API doorways (267-D) had no user-facing surface. Each consuming module needs its own permission-gated Controls screen so a POS-only / Sales-only / Purchases-only tenant can each manage the rules it consumes, while company-wide rules live in a single matrix page. The 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") now passes at the UI layer.
+- **What:** Four UI doorways, all using business wording (the word "engine" never appears in user copy):
+  - **Company Settings → Controls and Policies** — new page `ControlsAndPoliciesPage.tsx` at `/settings/controls-and-policies` (gated `system.company.manage`), linked from the Settings home "workflow" group. Full matrix editor over `GET/PUT /tenant/settings/controls/policies`, including unscoped TENANT rules.
+  - **POS → Settings → Controls** tab, **Sales → Settings → Controls** tab, **Purchases → Settings → Controls** tab — each renders a self-contained `ModuleControlsTab` that calls its own `/tenant/{pos,sales,purchase}/policies` doorway. The module tag is locked in the shared `PolicyRulesEditor`; the backend already filters GET to module-tagged rules only and force-stamps / rejects cross-module tags on PUT.
+  - New shared `controls` i18n namespace (en/ar/tr) holding every visible string (titles, columns, action labels, scope/effect labels, toasts, confirmations). Registered in `i18n/config.ts`. Plus one new `settings.home.links.controls.title` per locale.
+  - New neutral API client `controlsPoliciesApi.ts` (company-wide) and `getPolicies`/`updatePolicies` on `posApi` / `salesApi` / `purchasesApi`. No frontend ever sends a `companyId` in the request body — the axios client attaches `x-company-id` from the active-company context.
+  - Shared components: `PolicyRulesEditor.tsx` (business-language matrix table + add/delete + Advanced accordion) and `ModuleControlsTab.tsx` (load/save/discard body), both under `frontend/src/components/shared/`.
+  - Docs: `docs/architecture/policy-engine.md` §9 added (UI doorway file map, invariants, permissions); user guides `docs/user-guide/{settings,pos,sales,purchases}/controls*.md`; completion report `planning/done/267-engine-management-frontend.md`.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix frontend run typecheck` — tsc --noEmit PASS.
+  - `npm --prefix frontend run build` — vite build PASS (`built in 28.79s`; only the pre-existing chunk-size warning remains).
+  - `npm --prefix backend test -- --runInBand src/tests/api/controllers/pos src/tests/api/controllers/sales src/tests/api/controllers/purchases src/tests/api/controllers/system-core src/tests/infrastructure/firestore/system-core` — 5 suites / 30 tests PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 16/16 PASS (no backend guard weakened; the slice is UI-only).
+
+### Next action
+
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**. Verify that every document poster (SI, PI, SR, PR, DN, GRN, stock adjustments, opening stock, revaluation) routes through `IAccountingBridge` with golden voucher-output parity tests.
+
+---
+
+## Task 267-D — Engine Management API Doorways (2026-06-25) [CTO corrections applied 2026-06-25, committed 7119d26c]
+
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`).
+
+---
+
+## Task 267-C — Policy Resolution Engine foundation (2026-06-25) [committed 7119d26c]
+
+**Status:** ✅ Committed on `codex/267-system-core-boundary-audit` (`7119d26c`).
+
+- **Why:** The policy-resolution concern was the largest hybrid on the engine boundary map. A typed, data-driven precedence engine is the smallest change that makes the owner-flagged POS-vs-Sales-vs-Purchases approval example (POS terminal direct sale can post without approval; Sales / Purchases invoice posting requires approval over a threshold) expressible as one rule per module — and the smallest change that stops modules from growing the old `switch` over `(scope, action)` tuples.
+- **What:** New `PolicyConfig` entity, neutral `IPolicyConfigRepository` interface, pure `PolicyResolver` precedence engine (hard → tenant → module → role → user → context → approved override), `IPolicyEngine.resolveTyped(...)` extension, and 21 new tests. The legacy `IPolicyEngine.resolve({ scope, action, ... })` facade is preserved byte-for-byte. No posting, inventory movement/costing, frontend, or catalog is touched.
+- **Verification:** All four required commands green — `application/system-core` full sweep, `PolicyEnginePosPolicy` + `PolicyEngineCommercialBelowCost`, `SystemCoreBoundaries`, `npm run build`. 14 existing architecture guards still pass; one new non-failing export guard added.
+- **Docs:** [done/267](./done/267-policy-resolution-engine-foundation.md); `docs/architecture/policy-engine.md`.
+
+### Next action
+
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**.
+
+---
+
+## Task 267 — System Core engine management execution plan (2026-06-24)
+
+**Status:** ✅ 267-A audit completed. ✅ 267-C (foundation), 267-D (API doorways), 267-E (UI doorways) all committed in `7119d26c` on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Owner wants a mistake-resistant handoff so cheaper execution agents can audit and remediate module independence, shared engines, policy resolution, and engine management UI without guessing.
+- **What:** Created a detailed slice plan at [tasks/267](./tasks/267-system-core-engine-management-execution-plan.md), completed the engine-boundary audit at [audits/267](./audits/267-system-core-boundary-inventory.md), wrote the first implementation brief at [briefs/20260624-policy-resolution-engine-builder-brief](./briefs/20260624-policy-resolution-engine-builder-brief.md), and implemented the typed Policy Resolution Engine foundation (267-C) per that brief.
+- **Scope:** Foundation is shipped (additive, behaviour-preserving). Remaining work in this epic: 267-D (engine management API doorways), 267-E (management UI), 267-F (Accounting bridge migration with golden tests), 267-G (Inventory core ownership completion), 267-H (Catalog/Item engine plan + implementation).
+
+### Next action
+
+Proceed to **Slice 267-F — Accounting bridge migration with golden voucher-output tests**. All of 267-C/D/E are committed in `7119d26c`.
+
+---
+
+## Task 266 — POS tax-account configuration error clarity (2026-06-24)
+
+**Status:** ✅ Fixed on `main` (uncommitted).
+
+- **Why:** Owner QA hit POS posting error: `No tax account configured ... Tax code undefined needs salesTaxAccountId configured.` The accounting gate was correct, but the message was not actionable when tax was manually entered without a resolved active Sales/Both tax code.
+- **What:** POS still requires output tax to map through `TaxCode.salesTaxAccountId`. `PostPosSaleUseCase` now distinguishes:
+  - resolved tax code exists but lacks Sales Tax Account → name that tax code;
+  - positive tax amount but no active Sales/Both tax code resolved → tell the user to assign the item default Sales Tax Code or select an active sales tax code before posting.
+- **Verification:** `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` passed (20/20); backend `npm run build` passed.
+- **Docs:** [done/266](./done/266-pos-tax-account-error-message.md); `docs/architecture/pos.md`; `docs/user-guide/pos/selling.md`.
+
+### Next action
+
+Owner: open **Settings → Tax Codes**, set **Sales Tax Account** for the tax code used by item `e9a00617-1aaf-4719-bd3f-bf9ba877cbd3`, confirm the item has that **Default Sales Tax Code**, then rerun the POS sale. This should either post or expose the next real POS configuration blocker.
+
+---
+
 ## Task 265 — POS Keyboard Shortcuts (2026-06-23)
 
 **Status:** ✅ Built on `main` (uncommitted).

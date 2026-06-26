@@ -20,7 +20,7 @@ export interface FinancialEventRecord {
  * FUP-5: a settlement/payment receipt the caller has already fully assembled (and posted to a
  * `VoucherEntity`), posted to the ledger via `PostingGateway` rather than the subledger assembler.
  * The caller passes the real posting action as `postFull`; the bridge decides full-vs-minimal and
- * only invokes `postFull` when the Accounting App is enabled. In minimal mode it records a
+ * only invokes `postFull` when the Accounting Engine is initialized. In minimal mode it records a
  * minimal-journal `PostingLog` and skips the GL voucher entirely.
  */
 export interface PreBuiltVoucherEvent {

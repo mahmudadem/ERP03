@@ -53,7 +53,7 @@ const makeParty = () =>
     updatedAt: new Date(),
   });
 
-const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitCostBase?: number; item?: Item; onHand?: number } = {}) => {
+const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitCostBase?: number; item?: Item; onHand?: number; taxCode?: any } = {}) => {
   const itemRepo = {
     getItem: jest.fn().mockResolvedValue(options.item || makeItem()),
     updateItemInTransaction: jest.fn().mockResolvedValue(undefined),
@@ -61,7 +61,7 @@ const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitC
   const itemCategoryRepo = { getCompanyCategories: jest.fn().mockResolvedValue([]) };
   const inventorySettingsRepo = { getSettings: jest.fn().mockResolvedValue({ defaultCOGSAccountId: 'cogs-default', defaultInventoryAssetAccountId: 'inv-default' }) };
   const partyRepo = { getById: jest.fn().mockResolvedValue(makeParty()) };
-  const taxCodeRepo = { getById: jest.fn().mockResolvedValue(null) };
+  const taxCodeRepo = { getById: jest.fn().mockResolvedValue(options.taxCode || null) };
   const companyCurrencyRepo = { getBaseCurrency: jest.fn().mockResolvedValue('USD') };
   const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(null) };
   // POS now follows the Sales pattern: pre-fetch levels (bare reads), compute the
@@ -93,7 +93,7 @@ const setup = (options: { commercialCore?: any; promotionRuleReader?: any; unitC
     options.commercialCore,
     options.promotionRuleReader
   );
-  return { useCase, inventoryCore, accountingBridge };
+  return { useCase, inventoryCore, accountingBridge, taxCodeRepo };
 };
 
 describe('PostPosSaleUseCase', () => {
@@ -165,6 +165,53 @@ describe('PostPosSaleUseCase', () => {
     expect(inventoryCore.writeStockMovement).not.toHaveBeenCalled();
     expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
     expect(result.grandTotal).toBe(20);
+  });
+
+  it('blocks positive manual POS tax when no active sales tax code is resolved', async () => {
+    const { useCase, inventoryCore, accountingBridge } = setup();
+
+    await expect(useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 1, unitPrice: 10, manualTaxAmount: 1, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 11 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/tax amount but no active Sales tax code was resolved/);
+
+    expect(inventoryCore.writeStockMovement).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
+  });
+
+  it('blocks POS tax when the resolved tax code has no sales tax account', async () => {
+    const { useCase, inventoryCore, accountingBridge } = setup({
+      item: makeItem({ defaultSalesTaxCodeId: 'vat-10' }),
+      taxCode: {
+        id: 'vat-10',
+        code: 'VAT10',
+        name: 'VAT 10%',
+        active: true,
+        scope: 'SALES',
+        rate: 0.1,
+        priceIsInclusive: false,
+      },
+    });
+
+    await expect(useCase.execute({
+      companyId: 'cmp_test',
+      customerId: 'walk-in-cust',
+      documentNumber: 'R-000001',
+      date: '2026-06-21',
+      lines: [{ itemId: 'item_1', qty: 1, unitPrice: 10, warehouseId: 'wh1' }],
+      payments: [{ method: 'CASH', amount: 11 }],
+      paymentMethods: [{ code: 'CASH', settlementAccountId: 'cash-acc', requiresReference: false, allowsChange: true, isEnabled: true }],
+      createdBy: 'cashier_1',
+    })).rejects.toThrow(/Tax code VAT10 needs salesTaxAccountId configured/);
+
+    expect(inventoryCore.writeStockMovement).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
   });
 
   describe('POS negative-stock policy (independent of company allowNegativeStock)', () => {

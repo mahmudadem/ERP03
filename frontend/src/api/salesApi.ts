@@ -1,4 +1,5 @@
 import client from './client';
+import type { PolicyConfigDTO, PolicyRule } from './controlsPoliciesApi';
 
 export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
 
@@ -757,6 +758,15 @@ export const salesApi = {
 
   updateSellingPolicy: (payload: Partial<SellingPolicyDTO>): Promise<SellingPolicyDTO> =>
     client.put('/tenant/sales/selling-policy', payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  // Typed Controls (Task 267-E): Sales-only doorway to the engine-owned typed
+  // PolicyConfig. Backend returns ONLY module:'sales' rules and force-stamps
+  // the 'sales' tag on PUT. Unscoped TENANT/company-wide rules never appear.
+  getPolicies: (): Promise<PolicyConfigDTO> =>
+    client.get('/tenant/sales/policies').then((r: any) => r?.data?.data ?? r?.data ?? r),
+
+  updatePolicies: (payload: { rules: PolicyRule[] }): Promise<PolicyConfigDTO> =>
+    client.put('/tenant/sales/policies', payload).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   createSO: (payload: CreateSalesOrderPayload): Promise<SalesOrderDTO> =>
     client.post('/tenant/sales/orders', payload),

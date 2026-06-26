@@ -14,6 +14,11 @@ export class PrismaTaxCodeRepository implements ITaxCodeRepository {
         name: taxCode.name,
         rate: taxCode.rate,
         type: taxCode.taxType,
+        scope: taxCode.scope,
+        purchaseTaxAccountId: taxCode.purchaseTaxAccountId || null,
+        salesTaxAccountId: taxCode.salesTaxAccountId || null,
+        purchaseTaxTreatment: taxCode.purchaseTaxTreatment,
+        priceIsInclusive: taxCode.priceIsInclusive,
         isActive: taxCode.active,
         createdAt: taxCode.createdAt,
         updatedAt: taxCode.updatedAt,
@@ -29,6 +34,11 @@ export class PrismaTaxCodeRepository implements ITaxCodeRepository {
         name: taxCode.name,
         rate: taxCode.rate,
         type: taxCode.taxType,
+        scope: taxCode.scope,
+        purchaseTaxAccountId: taxCode.purchaseTaxAccountId || null,
+        salesTaxAccountId: taxCode.salesTaxAccountId || null,
+        purchaseTaxTreatment: taxCode.purchaseTaxTreatment,
+        priceIsInclusive: taxCode.priceIsInclusive,
         isActive: taxCode.active,
         updatedAt: taxCode.updatedAt,
       },
@@ -54,7 +64,7 @@ export class PrismaTaxCodeRepository implements ITaxCodeRepository {
   async list(companyId: string, opts?: TaxCodeListOptions): Promise<TaxCode[]> {
     const where: any = { companyId };
     if (opts?.scope) {
-      where.type = opts.scope;
+      where.scope = opts.scope;
     }
     if (opts?.active !== undefined) {
       where.isActive = opts.active;
@@ -78,7 +88,11 @@ export class PrismaTaxCodeRepository implements ITaxCodeRepository {
       name: record.name,
       rate: record.rate,
       taxType: record.type as TaxType,
-      scope: 'BOTH' as TaxScope,
+      scope: (record.scope || 'BOTH') as TaxScope,
+      purchaseTaxAccountId: record.purchaseTaxAccountId || undefined,
+      salesTaxAccountId: record.salesTaxAccountId || undefined,
+      purchaseTaxTreatment: record.purchaseTaxTreatment || 'RECOVERABLE',
+      priceIsInclusive: record.priceIsInclusive === true,
       active: record.isActive,
       createdBy: 'SYSTEM',
       createdAt: record.createdAt,

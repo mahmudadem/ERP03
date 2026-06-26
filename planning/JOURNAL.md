@@ -2,6 +2,376 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-26 (Task 269 - Purchase tax recoverability and cost capitalization)
+
+- **Goal:** Implement the owner-requested purchase tax treatment behavior so purchase tax can be recoverable or capitalized into item/expense cost.
+- **What changed:** Added `TaxCode.purchaseTaxTreatment` with backward-compatible `RECOVERABLE` default, persisted it in Prisma tax-code storage, exposed it in Tax Codes UI/API, and added it to posted-use tax-code locks. Purchase Invoice line normalization now capitalizes tax into line cost only when treatment is `NON_RECOVERABLE`; recoverable purchase tax output remains unchanged. Direct stock PI movements use the adjusted line cost, so non-recoverable tax flows into movement cost and average cost.
+- **Accounting impact:** Controlled behavior change for Purchase Invoices only. Recoverable PI vouchers are unchanged. Non-recoverable PI vouchers debit inventory/expense for gross cost, credit AP for gross payable, and create no separate purchase tax debit. Sales Invoice golden output remains unchanged.
+- **Verification:** `PurchaseInvoiceGoldenVoucher.test.ts` 5/5 PASS; `TaxCodeUseCases.test.ts` 6/6 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SalesInvoiceGoldenVoucher.test.ts` 7/7 PASS; frontend typecheck PASS. Final build/diff checks follow before commit.
+- **Actual time:** ~2.6h.
+- **Next:** Task 270 - Stock Levels ReportContainer migration, negative-stock valuation correctness, and Item Movement report.
+
+### Session: 2026-06-26 (Task 271 planned - Purchase Return layout and direct return parity)
+
+- **Context:** Owner tested Purchase Return from PI successfully, then requested a task to make PR layout match SI/PI and add a direct return option instead of requiring source ids.
+- **Decision:** Create a separate PR workflow/layout task. Direct PR is a business/accounting behavior change and must be tested separately from the source-based PR reversal that already passed QA.
+- **What changed:** Created and updated `planning/tasks/271-purchase-return-layout-and-direct-return-parity.md` covering modern SR/PR document layout, source mode control, selector-based source/vendor/customer/item fields, direct PR behavior, backend tests, stop conditions, and owner QA script. Owner clarified that both SR and PR must use source document selectors/search (Sales Invoice, Purchase Invoice, Goods Receipt) instead of hand-typed raw ids.
+- **Actual time:** ~0.2h.
+- **Next:** Keep existing PR voucher output stable; implement direct PR only after confirming the cost/AP/tax rule for no-source returns.
+
+### Session: 2026-06-26 (Manual QA fix - voucher links and PI GL Impact)
+
+- **Context:** Owner testing Accounting Dashboard and PI/SI GL impact flows asked for recent voucher numbers to open the voucher view page, and for Purchase Invoice to expose the same GL Impact action available on Sales Invoice.
+- **What changed:** Accounting Dashboard recent voucher numbers now navigate to `/accounting/vouchers/:id/view`. Posted Purchase Invoice footer now includes **GL Impact**, reusing the existing GL impact modal with purchase context so the voucher badge reads as purchase/AP rather than sales revenue.
+- **Accounting impact:** UI-only. No voucher posting, tax, settlement, inventory, or ledger math changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/confirm/SoD guards; only existing bundle/browser-data warnings remain.
+- **Actual time:** ~0.4h.
+- **Next:** Retest dashboard voucher link and PI GL Impact from the posted PI page.
+
+### Session: 2026-06-26 (Task 270 planned - Stock Levels report and Item Movement drill-down)
+
+- **Context:** Owner found Stock Levels showing an item at quantity `-2` with average cost `0.00` and value `0.00`. Owner correctly noted that if negative stock is allowed and the item has a known cost basis, the valuation should remain visible as negative value (for example `-2 * 1200 = -2400`) until receipt/correction arrives.
+- **Decision:** Negative stock permission is policy-driven, but negative-stock valuation correctness is not optional. If negative stock is allowed, reports must carry a cost basis or visibly flag the item as unvalued negative stock.
+- **What changed:** Created and then expanded `planning/tasks/270-negative-stock-valuation-policy-and-reporting.md` with required behavior, cost-basis priority, tests, stop conditions, and owner QA script. Added requirements to convert Stock Levels to the mandatory `ReportContainer` pattern and add a new Inventory Item Movement report with filters, sorting/search, running quantity/value, and source-document drill-down.
+- **Actual time:** ~0.2h.
+- **Next:** Keep Task 270 separate from tax-code work; implement after current QA fixes are committed or assign as a focused inventory/accounting correctness slice.
+
+### Session: 2026-06-26 (Task 269 planned - Purchase tax recoverability and cost capitalization)
+
+- **Context:** Owner clarified that purchase tax is not always recoverable and asked for a flag so tax codes can model whether purchase tax affects item/expense cost. We separated this from inclusive/exclusive price basis because price basis controls entered-price math, while recoverability controls capitalization/cost treatment.
+- **Decision:** Create a separate accounting-behavior task after Task 268. Sales tax remains unchanged because output tax is a liability and does not affect inventory cost; purchase tax gets a new treatment such as `RECOVERABLE` vs `NON_RECOVERABLE`.
+- **What changed:** Created `planning/tasks/269-purchase-tax-recoverability-and-cost-capitalization.md` with the four expected cases, backend/frontend requirements, tests, stop conditions, and owner QA script.
+- **Actual time:** ~0.2h.
+- **Next:** Finish/commit the current QA fixes first, then implement Task 268 before Task 269 because Task 269 depends on clear locked tax-code master data.
+
+### Session: 2026-06-26 (Task 268 planned - Tax Code controls and page repolish)
+
+- **Context:** Owner asked whether used tax codes should be editable from inclusive to exclusive, then requested a task for Tax Codes page repolishment: list-first page, add/edit modal, locked icon, explicit inclusive/exclusive selection, and Rate `%` input instead of decimal entry.
+- **Decision:** Changing rate, basis, type/scope, or tax accounts after posted use is an accounting-control risk. The safe ERP behavior is to lock accounting-critical fields after posted document usage and require a new tax code for changed tax treatment. UI locking must be backed by backend enforcement.
+- **What changed:** Created `planning/tasks/268-tax-code-master-data-controls-and-page-repolish.md` with backend immutability rules, frontend modal/list requirements, Rate `%` conversion, tests, acceptance criteria, verification commands, and owner QA script.
+- **Actual time:** ~0.25h.
+- **Next:** Implement Task 268 as a focused accounting-control slice if tax-code setup remains the current QA blocker.
+
+### Session: 2026-06-26 (Manual QA fixes — PI date, tax-code price basis, item selector noise)
+
+- **Context:** Owner manual QA found Purchase Invoice defaulting to `2026-06-25` while the system date/header showed `2026-06-26`, confusing downstream ledger/report checks. Owner also flagged that tax code `10%INC` behaved exclusive because the saved tax-code basis was not visible enough, and Stock Levels showed repeated DevTools `Failed to load UOMs for item selector` errors.
+- **What changed:** Purchase Invoice now uses the shared local-date helper (`todayLocalIso`) instead of UTC `toISOString()`, matching Sales Invoice behavior. Tax Codes now requires a deliberate **Price Basis** dropdown selection (`Exclusive` or `Inclusive`) and shows the saved basis in the list. `ItemSelector` now loads UOM master data only when the user opens the create-item modal, removing noisy non-critical UOM preload calls from normal item selection/pages.
+- **Accounting impact:** No posting math, tax calculation, voucher posting, stock movement, AP/AR, COGS, valuation, or settlement code changed. Sales and Purchases already inherit `TaxCode.priceIsInclusive`; if a document posts exclusive, first check the saved Tax Code **Price Basis** flag and any line-level override.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/confirm/SoD guards; only existing bundle/browser-data warnings remain.
+- **Actual time:** ~0.7h.
+- **Next:** Retest a fresh PI after refreshing the frontend bundle.
+
+### Session: 2026-06-25 (Task 267-F Inventory Revaluation slice — Accounting bridge migration: value-only revaluation voucher)
+
+- **Context:** After Stock Transfer, `PostInventoryRevaluationUseCase` was the last known Inventory source-module posting path with a direct `SubledgerVoucherPostingService` fallback. Goal: make value-only revaluation vouchers bridge-only while preserving write-up/write-down voucher output and PERIODIC no-GL behavior.
+- **What changed:** Added `InventoryRevaluationGoldenVoucher.test.ts` (5 tests) pinning exact write-up/write-down Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PostInventoryRevaluationUseCase`; `accountingBridge` is required, the old service gate was removed, and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.postInventoryRevaluation` passes `buildAccountingBridge()` directly. Existing revaluation tests now assert bridge events, and the old posting-service smoke guard was replaced with a bridge-dependency smoke guard. Added the `267-F (Inventory Revaluation)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Write-up/write-down sides, absolute delta amounts, periodic no-GL behavior, and sub-ledger average-cost updates are unchanged.
+- **Verification:** `InventoryRevaluationGoldenVoucher.test.ts` 5/5 PASS; `InventoryRevaluationUseCases.test.ts` 16/16 PASS; `SystemCoreBoundaries.test.ts` 28/28 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only). Final direct-fallback audit found no `SubledgerVoucherPostingService` / `postingService:` fallbacks in audited Sales/Purchases/Inventory posting paths; only the known SalesInvoice/PurchaseInvoice settlement full-mode `PostingGateway` closures remain.
+- **Actual time:** ~1.0h.
+- **Next:** No known audited Task 267-F source-module posting fallback slices remain.
+
+### Session: 2026-06-25 (Task 267-F Inventory Stock Transfer slice — Accounting bridge migration: valued-transfer uplift voucher)
+
+- **Context:** After Stock Adjustment, `CompleteStockTransferUseCase` still held an optional direct `SubledgerVoucherPostingService` field and only entered valued-transfer uplift voucher creation when that field was present. Goal: make explicit added-cost/revaluation transfer vouchers bridge-only while preserving no-GL behavior for FLAT and no-uplift transfers.
+- **What changed:** Added `StockTransferGoldenVoucher.test.ts` (5 tests) pinning exact added-cost Inventory/Clearing output, explicit revaluation Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, no-uplift no-post behavior, and output stability. Removed `SubledgerVoucherPostingService` from `CompleteStockTransferUseCase`; `accountingBridge` is required, the old service gate was removed, and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.buildCompleteStockTransferUseCase()` passes `buildAccountingBridge()` directly. Existing valuation tests now assert bridge events. Added the `267-F (Inventory Stock Transfer)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Added-cost and revaluation account routing are unchanged. FLAT transfers and VALUED transfers with no explicit uplift still create no GL voucher.
+- **Verification:** `StockTransferGoldenVoucher.test.ts` 5/5 PASS; `StockTransferValuedVoucher.test.ts` 8/8 PASS; `SystemCoreBoundaries.test.ts` 27/27 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.0h.
+- **Next:** Commit, then continue with Inventory Revaluation.
+
+### Session: 2026-06-25 (Task 267-F Inventory Stock Adjustment slice — Accounting bridge migration: gain/loss adjustment voucher)
+
+- **Context:** After Opening Stock, `PostStockAdjustmentUseCase` still held an optional direct `SubledgerVoucherPostingService` field and only entered voucher creation when that field was present. Goal: make Stock Adjustment voucher posting bridge-only while preserving real-cost valuation and gain/loss routing.
+- **What changed:** Added `StockAdjustmentGoldenVoucher.test.ts` (4 tests) pinning exact Inventory Gain/Loss + Inventory Asset voucher output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PostStockAdjustmentUseCase`; `accountingBridge` is required, the old service gate was removed, and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.postStockAdjustment` passes `buildAccountingBridge()` directly. Existing valuation/atomicity tests now assert bridge events. Added the `267-F (Inventory Stock Adjustment)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Voucher amounts still come from actual stock movement cost, not typed cost. Dedicated Inventory Gain/Loss routing remains unchanged. PERIODIC mode still posts stock only and links no GL voucher.
+- **Verification:** `StockAdjustmentGoldenVoucher.test.ts` 4/4 PASS; `StockAdjustmentGLValuation.test.ts` 4/4 PASS; `StockAdjustmentAtomicity.test.ts` 2/2 PASS; `SystemCoreBoundaries.test.ts` 26/26 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.0h.
+- **Next:** Commit, then continue with Stock Transfer.
+
+### Session: 2026-06-25 (Task 267-F Inventory Opening Stock slice — Accounting bridge migration: Opening Stock document voucher)
+
+- **Context:** After Sales/Purchases slices, Inventory still held direct `SubledgerVoucherPostingService` fallbacks. Opening Stock was selected first because it is the smallest inventory posting path: stock movement plus one optional Inventory/Opening Equity voucher when accounting effect is enabled.
+- **What changed:** Added `OpeningStockGoldenVoucher.test.ts` (5 tests) pinning exact Inventory/Opening Equity bridge output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC asset-account selection, inventory-only no-event behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PostOpeningStockDocumentUseCase`; `accountingBridge` is required and `postFinancialEvent` receives `{ bridge }` only. `InventoryController.postOpeningStockDocument` passes `buildAccountingBridge()` directly. Existing Opening Stock tests now inject a full-mode bridge. Added the `267-F (Inventory Opening Stock)` architecture guard. Updated accounting/system-core/module-boundary/posting-log docs and created the completion report.
+- **Accounting / control impact:** None intended. Full mode sends the same opening-stock voucher payload to the bridge. Inventory-only mode still creates no GL event. Minimal mode remains bridge-owned and links no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `OpeningStockGoldenVoucher.test.ts` 5/5 PASS; `OpeningStockDocumentUseCases.test.ts` 5/5 PASS; `SystemCoreBoundaries.test.ts` 25/25 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.0h.
+- **Next:** Commit, then continue with Stock Adjustment.
+
+### Session: 2026-06-25 (Task 267-F Purchases PaymentSync slice — Accounting bridge migration: record-payment vouchers)
+
+- **Context:** Purchases `PaymentSyncUseCases.ts` already called `accountingBridge.recordPreBuiltVoucher(...)`, but retained an optional no-bridge fallback that constructed `PostingGateway` directly. Goal: make the bridge compile-time required and remove the direct source-module gateway dependency while preserving payment voucher output.
+- **What changed:** Added `PurchasePaymentSyncGoldenVoucher.test.ts` (3 tests) pinning exact prebuilt payment voucher output, minimal-mode null GL link behavior, and DEFERRED no-voucher behavior. `PostPurchaseInvoiceWithSettlementUseCase` and `RecordPurchaseInvoicePaymentUseCase` now require `IAccountingBridge`; fallback direct posting was removed. Full-mode persistence uses `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` through the bridge `postFull` callback. `PurchaseController.recordPayment` and existing tests pass the required bridge. Added the `267-F (Purchases PaymentSync)` architecture guard.
+- **Accounting / control impact:** None intended. Full mode still runs the same ledger-door persistence and voucher save. Minimal mode links no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `PurchasePaymentSyncGoldenVoucher.test.ts` 3/3 PASS; `PurchasePaymentSyncUseCases.test.ts` 9/9 PASS; `SystemCoreBoundaries.test.ts` 24/24 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.25h.
+- **Next:** Commit. Next bridge-migration area: Inventory posting paths.
+
+### Session: 2026-06-25 (Task 267-F PR slice — Accounting bridge migration: Purchase Return document vouchers)
+
+- **Context:** After GRN and PI, `PostPurchaseReturnUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. Goal: migrate PR document vouchers to `IAccountingBridge`-only with golden tests first.
+- **What changed:** Added `PurchaseReturnGoldenVoucher.test.ts` (5 tests) pinning AFTER_INVOICE AP/return/tax reversal output, BEFORE_INVOICE GRNI/Inventory reversal output, no-accounting-effect behavior, minimal-mode null voucher id, and output stability. Removed `SubledgerVoucherPostingService` from `PostPurchaseReturnUseCase`; `accountingBridge` is required and both `postFinancialEvent` calls receive `{ bridge }` only. `PurchaseController.postReturn` now passes `buildAccountingBridge()` directly. Existing PR tests use `LegacyAccountingBridgeAdapter` for full-mode parity. Added the `267-F (PR)` architecture guard.
+- **Accounting / control impact:** None intended. Golden tests prove both PR voucher branches sent to the bridge are unchanged.
+- **Verification:** `PurchaseReturnGoldenVoucher.test.ts` 5/5 PASS; `PurchaseReturnUseCases.test.ts` 8/8 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SystemCoreBoundaries.test.ts` 23/23 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.5h.
+- **Next:** Commit. Next slice: Purchases PaymentSync / record-payment path.
+
+### Session: 2026-06-25 (Task 267-F PI slice — Accounting bridge migration: Purchase Invoice document vouchers)
+
+- **Context:** After the GRN slice, `PostPurchaseInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field and used it as a fallback for Purchase Invoice document voucher posting. Goal: migrate the PI document voucher path to `IAccountingBridge`-only with golden voucher-output tests first, preserving Expense/Tax/AP output exactly.
+- **What changed:** Added `PurchaseInvoiceGoldenVoucher.test.ts` (3 tests) pinning exact service-PI Expense/Tax/AP bridge output, no-accounting-effect behavior, and output stability. Removed `SubledgerVoucherPostingService` from `PurchaseInvoiceUseCases.ts`; `accountingBridge` is required and document vouchers use `SubledgerDocumentPoster(undefined, bridge)`. Purchase settlement payments now call `recordPreBuiltVoucher` directly; the existing full-mode `PostingGateway` remains only inside the `postFull` closure. `PurchaseController.postPI` and the shared PI builder now pass `buildAccountingBridge(true)` explicitly. Existing purchase posting and PI settlement tests were rewired with `LegacyAccountingBridgeAdapter`. Added the `267-F (PI)` architecture guard.
+- **Accounting / control impact:** None intended. Golden tests prove the document voucher output sent to the bridge is unchanged. Settlement math and voucher construction are unchanged; only the full-vs-minimal decision is forced through the bridge.
+- **Verification:** `PurchaseInvoiceGoldenVoucher.test.ts` 3/3 PASS; `PurchaseInvoiceSettlementPosting.test.ts` 5/5 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SystemCoreBoundaries.test.ts` 22/22 PASS; `npm run build` clean; `git diff --check` no whitespace errors (CRLF normalization warnings only).
+- **Actual time:** ~1.75h.
+- **Next:** Commit. Next slice: PurchaseReturnUseCases document voucher path.
+
+### Session: 2026-06-25 (Task 267-F GRN slice — Accounting bridge migration: Goods Receipt voucher)
+
+- **Context:** `PostGoodsReceiptUseCase` still held a direct `SubledgerVoucherPostingService` field and passed it as a fallback into `postFinancialEvent`. GRN was selected as the smallest Purchases document path: one Inventory/GRNI voucher, no settlement.
+- **What changed:** Added `GoodsReceiptGoldenVoucher.test.ts` (3 tests) for exact Inventory/GRNI bridge output, minimal mode, and PERIODIC no-post. Removed the posting-service fallback from `PostGoodsReceiptUseCase`; `accountingBridge` is required and `postFinancialEvent` receives `{ bridge }` only. `PurchaseController.postGRN` now passes `buildAccountingBridge()` directly. Existing GRN tests use `LegacyAccountingBridgeAdapter` for full-mode parity. Added a `267-F (GRN)` architecture guard.
+- **Accounting / control impact:** None intended. PERPETUAL remains Dr Inventory / Cr GRNI; PERIODIC no-post unchanged; minimal mode links no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `GoodsReceiptGoldenVoucher.test.ts` 3/3 PASS; `PurchasePostingUseCases.test.ts` 22/22 PASS; `SystemCoreBoundaries.test.ts` 21/21 PASS; `npm run build` clean.
+- **Next:** Commit. Next slice: PurchaseInvoiceUseCases document voucher path.
+
+### Session: 2026-06-25 (Task 267-F Sales PaymentSync slice — Accounting bridge migration: record-payment receipts)
+
+- **Context:** Sales `PaymentSyncUseCases.ts` already used `accountingBridge.recordPreBuiltVoucher(...)`, but still imported and constructed `PostingGateway` inside an optional no-bridge fallback. Goal: make the bridge compile-time required and remove the direct source-module gateway dependency while preserving receipt voucher output.
+- **What changed:**
+  - **Golden tests:** Added `SalesPaymentSyncGoldenVoucher.test.ts` (3 tests) pinning the exact prebuilt receipt voucher sent to the bridge, minimal-mode null GL voucher link behavior, and realized FX gain line output.
+  - **Migration:** `PostSalesInvoiceWithSettlementUseCase` and `RecordSalesInvoicePaymentUseCase` now require `IAccountingBridge`; fallback direct posting was removed.
+  - **Accounting helper:** Added `PreBuiltVoucherFullPoster.postPreBuiltVoucherFullMode(...)` so full-mode persistence of prebuilt vouchers lives in the accounting layer and is invoked only through the bridge's `postFull` callback.
+  - **Controller/tests:** `SalesController.recordPayment`, `SalesPaymentSyncUseCases.test.ts`, and `FxGainLossSettlement.test.ts` now pass the required bridge.
+  - **Architecture guard:** Added `267-F (Sales PaymentSync)` guard: `PaymentSyncUseCases.ts` must not import `PostingGateway`, must use `recordPreBuiltVoucher` and `IAccountingBridge`.
+- **Accounting / control impact:** None intended. Full mode runs the same ledger-door persistence and voucher save. Minimal mode still records no GL voucher id when the Accounting Engine is not initialized.
+- **Verification:** `SalesPaymentSyncGoldenVoucher.test.ts` 3/3 PASS; `SalesPaymentSyncUseCases.test.ts` 10/10 PASS; `FxGainLossSettlement.test.ts` 4/4 PASS; `SystemCoreBoundaries.test.ts` 20/20 PASS; `npm run build` clean.
+- **Next:** Commit. Next slice: Purchases document vouchers (PI/GRN/PR) or Purchases PaymentSync.
+
+### Session: 2026-06-25 (Task 267-F SR slice — Accounting bridge migration: SalesReturn document vouchers)
+
+- **Context:** Follow-up to the SI slice (267-F). The `PostSalesReturnUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue reversal + COGS reversal + optional refund) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback. Goal: migrate to bridge-only with golden tests first, preserving accounting output exactly.
+- **What changed:**
+  - **Golden tests first:** New `SalesReturnGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact COGS-reversal + revenue-reversal voucher output: G1 (AFTER_INVOICE: COGS Dr INV-200/Cr COGS-200 = 8; REVENUE Dr REV-200=20 + Dr TAX-200=2 / Cr AR-200=22; voucher numbers, currency, metadata, settlement mode), G2 (BEFORE_INVOICE: COGS-only, no revenue), G3 (minimal mode → null voucher ids but events still flow), G4 (period-lock override forwarded on both vouchers), G5 (foreign-currency EUR/1.5: REVENUE keeps EUR+rate, COGS keeps base USD, amounts 20 EUR/30 USD, 2 EUR/3 USD, 22 EUR/33 USD), G6 (PERIODIC: revenue only, no COGS), G7 (stability — identical subledgerVoucher across runs). Written before migration, run green against pre-migration code (poster already preferred the bridge when wired), remained green after → zero drift.
+  - **SalesReturnUseCases:** Removed `SubledgerVoucherPostingService` import + field + constructor param (was position 15). `accountingBridge` moved from optional last position to **required** position 17 (right after `transactionManager`, before the optional `auditEngine?` / `postingLogRepo?` / `partyItemPriceRepo?` / `profitFactRecorder?`) — compile-time enforced. Poster: `new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge)` → `new SubledgerDocumentPoster(undefined, this.accountingBridge)`.
+  - **Controller:** `SalesController.postReturn` — removed `accountingPostingService` local + 15th arg; `buildAccountingBridge()` moved to the required bridge position (before optional audit/log repos).
+  - **Tests:** `SalesReturnUseCases.test.ts` — added `LegacyAccountingBridgeAdapter` import; wrapped each of the 14 inline `new SubledgerVoucherPostingService(...)` constructions in `new LegacyAccountingBridgeAdapter(new SubledgerVoucherPostingService(...), makeCompanyModuleRepo() as any)` and reordered to the required bridge position (after `transactionManager`). Full mode → same `postInTransaction` → same `voucherRepo.save` behavior; existing assertions unchanged. The 1 stub-only construction (test 22, DIRECT standalone blocked in PERPETUAL — throws before posting) was rewired to new arg order: `undefined, {} as any, {} as any` (accountRepo, transactionManager, bridge stub).
+  - **SubledgerDocumentPoster:** NOT changed — `postingService` was already optional from the SI slice. PI/PR still pass both args unchanged → backward-compatible.
+  - **Architecture guard:** New `267-F (SR)` guard — `SalesReturnUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 18 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SR subsection + cross-module touchpoints + "What was NOT changed" line updated to drop SR), `module-boundaries.md` (FUP-3 update), `posting-log.md` (SR row → bridge-routed), completion report `planning/done/267-f-sales-return-bridge-migration.md`.
+- **CTO review fixes before commit:** Corrected one adapted legacy test so the uninitialized-engine fixture also passes an uninitialized repo into `LegacyAccountingBridgeAdapter`; replaced stale App/UI-toggle wording in `SalesController.buildAccountingBridge()` and `module-boundaries.md` with Engine initialized/not-initialized wording; cleaned the golden-test fixture type typo.
+- **Accounting / control impact:** None. Golden tests prove identical voucher output. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight fallback dependency.
+- **Verification (all green):**
+  - `SalesReturnGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesReturnUseCases.test.ts` — 15/15 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 19/19 PASS (18 existing + 1 new)
+  - `npm run build` — tsc clean
+  - `git diff --check` — no whitespace errors (CRLF normalization warnings only)
+- **Reviewer-blocker check:** posting output changed? **no.** SubledgerDocumentPoster changed? **no** (already had optional postingService from SI slice). `accountingBridge` compile-time required? **yes.** Guards weakened? **no.** `opencode.json` touched? **no.**
+- **Actual time:** ~2.0h (golden tests + migration + 14 test rewrites via script + 1 stub rewire + guard + verification + docs).
+- **Next:** Commit. Next slice: PaymentSyncUseCases (settlement `PostingGateway` → bridge) or Purchases (PI/PR/GRN, same SubledgerDocumentPoster pattern).
+
+### Session: 2026-06-25 (Task 267-F SI slice — Accounting bridge migration: SalesInvoice document vouchers)
+
+- **Context:** Follow-up to the DN COGS migration (267-F). The `PostSalesInvoiceUseCase` still held a direct `SubledgerVoucherPostingService` field alongside `IAccountingBridge`. Document vouchers (revenue + COGS) were posted via `SubledgerDocumentPoster(postingService, bridge)` with the posting service as fallback. Goal: migrate to bridge-only with golden tests first, preserving accounting output exactly.
+- **What changed:**
+  - **Golden tests first:** New `SalesInvoiceGoldenVoucher.test.ts` (7 tests) — CapturingBridge pins exact revenue + COGS voucher output (account ids, sides, base/doc amounts, currency, exchange rate, source metadata, period-lock override, minimal mode, PERIODIC mode, output stability). Written before migration, green after → zero drift.
+  - **SubledgerDocumentPoster:** `postingService` made optional (`postingService?: ISubledgerPostingService`) — backward-compatible, PI/SR still pass both args unchanged. `post()` now throws if neither bridge nor postingService is configured.
+  - **SalesInvoiceUseCases:** Removed `SubledgerVoucherPostingService` import + field + constructor param. `accountingBridge` moved from optional position 27 to **required** position 17 (right after `transactionManager`, before all optional params) — compile-time enforced. Poster: `new SubledgerDocumentPoster(undefined, this.accountingBridge)` (bridge-only). `PostingGateway` retained for settlement (FUP-5, out of scope).
+  - **Controller:** 2 SI construction sites in `SalesController.ts` updated — removed `accountingPostingService` local + arg, moved `buildAccountingBridge(true)` to required bridge position.
+  - **Tests:** 4 test files updated — `SalesPostingUseCases.test.ts` (19 SI constructions + `buildUseCase` helper), `ErrorTaxonomyBusinessRuleMapping.test.ts`, `SalesInvoiceSettlementPosting.test.ts`, `SalesRuleErrorMapping.test.ts`. All SI constructions rewired to pass `LegacyAccountingBridgeAdapter` as the required bridge arg.
+  - **Architecture guard:** New `267-F (SI)` guard — `SalesInvoiceUseCases.ts` must not import `SubledgerVoucherPostingService`, must use `SubledgerDocumentPoster` + `IAccountingBridge`. 17 existing guards untouched.
+  - **Docs:** `accounting.md` (267-F SI section), `module-boundaries.md` (FUP-3 update), `posting-log.md` (SI row → bridge-routed), completion report `planning/done/267-f-sales-invoice-bridge-migration.md`.
+- **Accounting / control impact:** None. Golden tests prove identical voucher output. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight fallback dependency.
+- **Verification (all green):**
+  - `SalesInvoiceGoldenVoucher.test.ts` — 7/7 PASS
+  - `SalesPostingUseCases.test.ts` — 29/29 PASS
+  - `SystemCoreBoundaries.test.ts` — 18/18 PASS (17 existing + 1 new)
+  - `npm run build` — tsc clean
+  - ErrorTaxonomy + Settlement + RuleError = 14/14 PASS
+- **Reviewer-blocker check:** posting output changed? **no.** SubledgerDocumentPoster change forced PI/SR? **no** (backward-compatible optional). `accountingBridge` compile-time required? **yes.** Guards weakened? **no.** `opencode.json` touched? **no.**
+- **Actual time:** ~3.0h (golden tests + SubledgerDocumentPoster change + SI migration + 4 test files + guard + verification + docs).
+- **Next:** Commit. Next slice: SalesReturnUseCases (same SubledgerDocumentPoster pattern) or PaymentSyncUseCases (settlement PostingGateway → bridge).
+
+### Session: 2026-06-25 (Task 267-F — Accounting bridge migration: Sales DeliveryNote COGS)
+
+- **Context:** Task 267-F required migrating one source-module financial posting path to `IAccountingBridge`-only, with golden voucher-output tests written BEFORE any code change. The audit (267-A) found that Sales/Purchases/Inventory use cases still held a direct `SubledgerVoucherPostingService` field as a fallback alongside the bridge. Sales / DeliveryNote COGS was chosen as the safest first target: single `postFinancialEvent` call, no settlement/`PostingGateway` complexity, no existing golden tests, isolated to one use case.
+- **What changed:**
+  - **Golden tests first:** New `backend/src/tests/application/sales/SalesDeliveryNoteGoldenVoucher.test.ts` (7 tests) — a `CapturingBridge` records the exact `FinancialEvent` the use case sends to the bridge. Tests pin: G1 (exact account ids, sides, base/doc amounts, currency, exchange rate, voucher type, posting lock policy, reference, base-currency override, source metadata), G2 (minimal mode → null voucher), G3 (PERIODIC → no COGS event), G4 (COGS account fallback to inventory settings), G5 (period-lock override metadata forwarded), G6 (foreign-currency DN), G7 (output stability across runs). Run green against pre-migration code, then green after migration → zero drift.
+  - **Migration:** `backend/src/application/sales/use-cases/DeliveryNoteUseCases.ts` — removed `import { SubledgerVoucherPostingService }`, removed the `accountingPostingService` constructor param (was 12th positional arg), changed `postFinancialEvent({ bridge, postingService })` → `postFinancialEvent({ bridge })` (bridge-only). The use case now depends only on `IAccountingBridge`.
+  - **Controller:** `backend/src/api/controllers/sales/SalesController.ts` — removed the `accountingPostingService` local in `postDN`, removed the 12th constructor arg.
+  - **Tests:** `backend/src/tests/application/sales/SalesPostingUseCases.test.ts` — updated 8 `PostDeliveryNoteUseCase` constructions: removed the 12th arg, shifted subsequent args, wired `LegacyAccountingBridgeAdapter(postingService, companyModuleRepo)` as the bridge (last arg). Full mode → same `postInTransaction` → same `voucherRepo.save` behavior.
+  - **Architecture guard:** `backend/src/tests/architecture/SystemCoreBoundaries.test.ts` — new `267-F` guard: `DeliveryNoteUseCases.ts` must not import `SubledgerVoucherPostingService` or `PostingGateway`, must use `postFinancialEvent` + `IAccountingBridge`. 16 existing guards untouched.
+  - **Docs:** `docs/architecture/accounting.md` (cross-module touchpoints + 267-F section), `docs/architecture/module-boundaries.md` (FUP-3 update), `docs/architecture/posting-log.md` (DN row → bridge-routed), completion report `planning/done/267-f-accounting-bridge-migration-delivery-note.md`.
+- **Accounting / control impact:** None. The bridge already owned the full-vs-minimal decision; this slice only removes the dead-weight `SubledgerVoucherPostingService` fallback dependency from the DN use case. Golden tests prove identical voucher output. No posting math, tax, COGS, inventory valuation, settlement, period-lock, or approval behavior changed.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 17/17 PASS (16 existing + 1 new).
+  - `npm --prefix backend test -- --runInBand src/tests/application/sales` — 27 suites / 287 tests PASS (26 existing + 1 new golden suite / 7 tests).
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core` — 12 suites / 73 tests PASS.
+  - `npm --prefix backend run build` — tsc clean.
+- **Reviewer-blocker check:**
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.** Golden tests prove identical voucher output.
+  - direct new `SubledgerVoucherPostingService` or `PostingGateway` source-module usage introduced? — **no.** The DN path no longer imports either.
+  - new `StockMovement` / `StockLevel` construction outside inventory core? — **no.**
+  - tests or boundary guards weakened? — **no.** 16 existing guards still pass; 1 new guard added.
+  - `opencode.json` modified? — **no.** (verified via `git status`).
+  - golden tests fail if voucher lines/metadata drift? — **yes.** G1/G4/G5/G6/G7 pin exact fields; G2 pins minimal-mode null; G3 pins PERIODIC no-post.
+- **Actual time:** ~2.5h (audit + golden tests + migration + 8 test-construction updates + guard + verification + docs) + ~0.5h review fixes.
+- **Review fixes (pre-commit):** P1 — fixed "Accounting App is enabled/disabled" → "Accounting Engine is initialized/not initialized" wording in `accounting.md`, `system-core.md`, `IAccountingBridge.ts`, and the completion report. P2 — made `accountingBridge` a required constructor param (was optional despite no fallback); reordered before `auditEngine?` for TypeScript compliance; updated all 11 call sites. Re-verified: golden 7/7, boundaries 17/17, sales posting 29/29, build clean.
+- **Next:** Commit Task 267-F. Next bridge-migration slice: SalesInvoiceUseCases (make `SubledgerDocumentPoster.postingService` optional, remove the field from SI use case, golden tests first) — or move to 267-G (Inventory core ownership) or 267-H (Catalog/Item engine plan).
+
+### Session: 2026-06-25 (Task 267 — commit)
+
+- **What happened:** Task 267-D (engine management API doorways) and Task 267-E (engine management frontend) were committed as one bundle, together with the pre-existing 267-C (policy resolution engine).
+- **Commit hash:** `7119d26c` — 46 files, +3343/−10.
+- **Not pushed.**
+- **Next recommended slice:** 267-F — Accounting bridge migration with golden voucher-output tests. Every document poster (SI, PI, SR, PR, DN, GRN, stock adjustments, opening stock, revaluation) should be verified to route through `IAccountingBridge` with golden voucher-output parity tests.
+
+### Session: 2026-06-25 (Task 267-E — Engine Management Frontend)
+
+- **Context:** After 267-D's CTO-corrected backend doorways were green, the typed `PolicyConfig` store still had no user-facing surface. Owner asked for the four UI doorways (Company-wide matrix + POS/Sales/Purchases Controls tabs) with business wording, full i18n, toast feedback on every save, and zero posting/tax/stock/ledger/approval behavior changes. The 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") had to pass at the UI layer too.
+- **What changed:**
+  - New `controls` i18n namespace (`frontend/src/locales/{en,ar,tr}/controls.json`) holding every visible string (titles, columns, action labels, scope/effect labels, toasts, confirmations, empty states). Registered in `frontend/src/i18n/config.ts` resources + `ns`. Plus one new `settings.home.links.controls.title` key per locale.
+  - New neutral API client `frontend/src/api/controlsPoliciesApi.ts` (`getControlsPolicies` / `updateControlsPolicies` against `/tenant/settings/controls/policies`). No `companyId` in the body — the axios client attaches `x-company-id` from the active-company context. Added `getPolicies` / `updatePolicies` to `posApi.ts` (`/tenant/pos/policies`), `salesApi.ts` (`/tenant/sales/policies`), and `purchasesApi.ts` (`/tenant/purchase/policies` — the module id is `purchase`, singular).
+  - New shared `frontend/src/components/shared/PolicyRulesEditor.tsx` — reusable business-language matrix table (What it controls / Applies to / Behaviour / When / Cannot be overridden) with add/delete and an "Advanced" accordion (id, priority, reasonCode). `allowedModule` prop locks the module tag for module doorways; when omitted (company-wide) the "Applies to area" dropdown lets the user pick any module or "Whole company".
+  - New shared `frontend/src/components/shared/ModuleControlsTab.tsx` — self-contained load/save/discard body a module Settings tab hosts. Toast success/error/info on every action.
+  - New `frontend/src/modules/settings/pages/ControlsAndPoliciesPage.tsx` — company-wide matrix page mounted at `/settings/controls-and-policies` (gated `system.company.manage`), lazy-imported in `router/routes.config.ts` and linked from `SettingsHomePage.tsx` "workflow" group with a `ListChecks` icon.
+  - Added a **Controls** tab to `PosSettingsPage.tsx`, `SalesSettingsPage.tsx` (plus `TabId` update), and `PurchaseSettingsPage.tsx` (plus `TabId` update). Each tab renders `<ModuleControlsTab module="…" load={…getPolicies} save={…updatePolicies} knownActions=… />`.
+  - Docs: `docs/architecture/policy-engine.md` §9 (UI doorway file map, invariants, permissions table); user guides `docs/user-guide/{settings,pos,sales,purchases}/controls*.md`; completion report `planning/done/267-engine-management-frontend.md`.
+- **Accounting / control impact:** None. No backend code touched in this slice. The slice is UI-only; the typed `PolicyConfig` store, the four doorways, the validator, the repository, and the architecture guards are byte-for-byte the 267-D state. No posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock, or approval behavior changed.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix frontend run typecheck` — PASS (tsc --noEmit, no errors).
+  - `npm --prefix frontend run build` — PASS (vite build `built in 28.79s`; only the pre-existing chunk-size warning remains).
+  - `npm --prefix backend test -- --runInBand src/tests/api/controllers/pos src/tests/api/controllers/sales src/tests/api/controllers/purchases src/tests/api/controllers/system-core src/tests/infrastructure/firestore/system-core` — 5 suites / **30 tests** PASS.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — **16/16 PASS** (14 existing + 267-C + 267-D guards; no guard weakened).
+- **Reviewer-blocker check:**
+  - module route hidden behind another module's enablement? — **no** (each module's Controls tab lives in its own settings page, already gated to that module).
+  - module UI shows or persists unscoped / other-module rules? — **no** (the module doorway GET already filters to module-tagged rules only; the UI only renders what GET returns; the module editor never round-trips unscoped TENANT rules).
+  - frontend sends a forged `companyId`? — **no** (no API client puts `companyId` in the body; axios attaches `x-company-id` from the active-company context; the backend resolves `companyId` from `tenantContext.companyId` and ignores body-level companyId).
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.**
+  - tests or boundary guards weakened? — **no** (all 16 architecture guards still pass; no backend code touched).
+  - `opencode.json` modified? — **no** (forbidden, not touched — verified via `git status`).
+  - user-facing strings outside i18n? — **no** (controls namespace covers every visible string; `defaultValue` fallbacks are only for resilience).
+- **Actual time:** ~2.1h (clarification + exploration + i18n + 2 shared components + 1 company page + 3 module tabs + typecheck/build + backend regression + docs).
+- **Next:** Commit Task 267-E (when owner approves); not committed by owner instruction. Then choose the next epic slice — 267-F (Accounting bridge migration w/ golden voucher-output tests), 267-G (Inventory core ownership completion), or 267-H (Catalog/Item engine plan).
+
+### Session: 2026-06-25 (Task 267-D — CTO review corrections applied)
+
+- **Context:** CTO review of Task 267-D flagged two bugs that had to be fixed before merge:
+  1. **Module doorway GET corrupted company-wide/tenant rules.** `PosController.getPolicies` / `SalesController.getPolicies` / `PurchaseController.getPolicies` were filtering `rule.module === undefined || rule.module === '<module>'` and then `.map((rule) => ({ ...rule, module: '<module>' }))`. That returned unscoped TENANT/company-wide rules to a module editor AND silently rewrote their module tag, so a single module GET could mutate unscoped rules in the response payload. A hard period-lock TENANT rule could be presented as a module-scoped rule on every save.
+  2. **Module doorway PUT silently DELETED unscoped TENANT rules.** The preservation filter was `rule.module !== undefined && rule.module !== '<module>'` — every rule without a defined module tag (e.g. a hard unscoped TENANT period lock) was dropped on every module save. The `Get/Set roundtrip` in the company-wide matrix would then show the rule gone, with no audit trail.
+  3. **`FirestorePolicyConfigRepository.getConfig` failed open on a corrupt document.** The `try { return PolicyConfig.fromJSON(data); } catch { return PolicyConfig.createDefault(companyId); }` block silently coerced a corrupt payload (e.g. `rules: 'not-an-array'`) into an empty rule set, which the engine treated as "no rules → ALLOW" — a fail-open grant of permissions the tenant never configured. The engine's `resolveTyped` repositoryError fail-closed path was unreachable from this scenario.
+- **What changed:**
+  - `backend/src/api/controllers/pos/PosController.ts` — `getPolicies` filter is now `rule.module === 'pos'` (no `undefined` branch, no `map` rewrite). `updatePolicies` `preservedRules` filter is now `rule.module !== 'pos'` so unscoped rules survive. Both changes are pure bug fixes; the controller contract and route surface are unchanged.
+  - `backend/src/api/controllers/sales/SalesController.ts` — same fix for the `'sales'` module tag.
+  - `backend/src/api/controllers/purchases/PurchaseController.ts` — same fix for the `'purchases'` module tag.
+  - `backend/src/infrastructure/firestore/repositories/system-core/FirestorePolicyConfigRepository.ts` — `getConfig` now runs a strict shape check (`isPolicyConfigShape`) on the raw Firestore payload BEFORE the lenient `PolicyConfig.fromJSON`. A missing document is still `null` (default-allow fallback is correct for "no config yet"). A present-but-corrupt document now throws an `Error` with a descriptive message; the engine's `resolveTyped` catches it and returns `PolicyConfig.repositoryError` (BLOCK). The fail-closed audit chain is now reachable.
+  - `backend/src/tests/api/controllers/pos/PosPolicyConfigController.test.ts` — renamed "GET returns ONLY POS-tagged rules" to assert `tenant-default` is NOT in the response and the rule list is exactly `['pos-direct-sale']`. Added a new test "PUT preserves an existing unscoped TENANT hard rule (CTO 267-D)" that pins the unscoped-TENANT preservation.
+  - `backend/src/tests/api/controllers/sales/SalesPolicyConfigController.test.ts` — same corrections and new test.
+  - `backend/src/tests/api/controllers/purchases/PurchasePolicyConfigController.test.ts` — same corrections and new test.
+  - `backend/src/tests/infrastructure/firestore/system-core/FirestorePolicyConfigRepository.test.ts` — renamed "falls back to a default (empty) config when the stored document is malformed" → "THROWS on a malformed stored document so the engine fails closed (CTO 267-D)" with `await expect(...).rejects.toBeDefined()`. Added a second new test "THROWS on a stored document whose rules fail entity validation (e.g. missing id)" so the entity-boundary guard is pinned at the repository level too. The "returns null when no document exists" test is unchanged (missing ≠ corrupt).
+- **Accounting / control impact:** Improved. The previous behaviour was a tenant-isolation / accounting-control risk: a corrupt stored document was treated as "no config" (default-allow), and a module save could delete unscoped company-wide hard rules without an audit trail. The fix is fail-closed at both the repository (throws on corrupt) and the module doorways (preserve unscoped rules). No posting, settlement, or valuation behavior changed; the change is in the policy-config persistence path only.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/api/controllers/pos src/tests/api/controllers/sales src/tests/api/controllers/purchases src/tests/api/controllers/system-core src/tests/infrastructure/firestore/system-core` — 5 suites / **30 tests** pass (was 26 before the fix). +4 from the new unscoped-TENANT preservation tests and the renamed/expanded repository tests.
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core src/tests/domain/system-core/PolicyConfig.test.ts` — 13 suites / 82 tests pass (no regression; the engine contract and the entity contract are unchanged).
+  - `npm --prefix backend test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/system-core/PolicyEngineCommercialBelowCost.test.ts` — 2 suites / 7 tests pass (legacy `resolve(...)` facade is byte-for-byte unchanged).
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 16/16 pass (no guard weakened; 1 new 267-C guard + 1 new 267-D guard still in place).
+  - `npm --prefix backend run build` — TypeScript clean.
+  - Wider regression sweeps: `application/pos` 15/15 / 111, `application/sales` 26/26 / 280, `application/purchases` 9/9 / 85, `infrastructure` 2/2 / 11, `api` 9/9 / 42, `architecture` 3/3 / 24, full `application` sweep 127/127 / 1225.
+- **Reviewer-blocker re-check (from the brief):**
+  - module doorway corrupts unscoped company-wide/tenant rules? — **No longer** (bug fixed and pinned by 3 new tests).
+  - repository fails open on malformed document? — **No longer** (bug fixed and pinned by 2 new tests; the engine's `repositoryError` fail-closed path is now reachable).
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.**
+  - direct new `SubledgerVoucherPostingService` or `PostingGateway` source-module usage introduced? — **no.**
+  - new `StockMovement` / `StockLevel` construction introduced outside inventory core? — **no.**
+  - tests or boundary guards weakened? — **no** (existing 16 architecture guards still pass; the corrected behaviour is fully pinned by 4 new tests).
+  - legacy `POSPolicy` / `SellingPolicy` doorways changed? — **no.**
+  - `opencode.json` modified? — **no** (verified via `git status`).
+- **Actual time:** ~0.6h for the corrections (focused diff: 6 production files + 4 test files; build + verification).
+- **Next:** Re-submit Task 267-D for CTO audit pass. After audit acceptance, **Slice 267-E — Engine Management Frontend** (Company Settings → Controls and Policies, POS → Controls, Sales → Controls, Purchases → Controls; business-language labels; i18n complete; no "engine" wording in user copy).
+
+### Session: 2026-06-25 (Task 267-D — Engine Management API Doorways)
+
+- **Context:** Per `planning/tasks/267-system-core-engine-management-execution-plan.md` and the audit at `planning/audits/267-system-core-boundary-inventory.md`, the typed `PolicyConfig` foundation (Task 267-C) needed safe backend API doorways so every consuming module can manage the rules it consumes without depending on another module being enabled. The brief's 🚩 litmus test ("If this tenant had ONLY the POS module enabled, could a POS-only user still set this?") had to pass for POS, Sales, and Purchases. Same neutral store, module-local doorways, no cross-module validator/controller imports.
+- **What changed:**
+  - New `FirestorePolicyConfigRepository` (`backend/src/infrastructure/firestore/repositories/system-core/FirestorePolicyConfigRepository.ts`) — one `PolicyConfig` document per company, key path `companies/{companyId}/systemCorePolicies/{companyId}`. Falls back to a default empty config when the stored document is malformed (defensive — a bad write must not crash the resolver path).
+  - New neutral validator `policyConfig.validators.ts` (`backend/src/api/validators/policyConfig.validators.ts`) — exports `validateUpdatePolicyConfigInput` (full-matrix shape) and `validateAndFilterModuleRules(body, moduleName)` (per-module filter that force-stamps the module tag and rejects cross-module tags with 400). Lives in the neutral `api/validators/` directory so no module imports another module's validator.
+  - New company-wide `PolicyConfigController` (`backend/src/api/controllers/system-core/PolicyConfigController.ts`) and `settings.controls.routes.ts` (`backend/src/api/routes/settings.controls.routes.ts`) — mounted at `/settings/controls` on the tenant router, so the final route is `/tenant/settings/controls/policies`. Gated by `ownerOrPermissionGuard('system.company.manage')` so owners automatically bypass the permission check.
+  - Module-local `getPolicies` / `updatePolicies` static methods on `PosController` / `SalesController` / `PurchaseController`, plus `GET/PUT /policies` routes in `pos.routes.ts` / `sales.routes.ts` / `purchases.routes.ts`, each gated by its own `*.settings.manage` permission and never behind another module's `moduleInitializedGuard`. Each doorway reads the shared `PolicyConfig`, filters to its own module's rules on GET, and merges on PUT (saving a POS rule does NOT erase a Sales rule).
+  - `bindRepositories.ts` now wires the new repository into the existing optional 4th constructor argument of `PolicyEngine`, so `PolicyEngine.resolveTyped(...)` is backed by persisted rules out of the box. Pure additive change — the 4th argument was already optional in 267-C and the existing DI call site was already passing three arguments; we now pass four.
+  - 26 new tests: `FirestorePolicyConfigRepository.test.ts` (6 — save/load, malformed fallback, entity-boundary guard, multi-rule round-trip, transaction path); `PolicyConfigController.test.ts` (5 — company-wide GET, default empty GET, full multi-module PUT, malformed rule rejection, forged-companyId rejection); `PosPolicyConfigController.test.ts` / `SalesPolicyConfigController.test.ts` / `PurchasePolicyConfigController.test.ts` (5 each — module-only filter, default empty GET, cross-module rule preservation, cross-module tag rejection, forged-companyId rejection).
+  - One new non-failing architecture guard: `'267-D: Engine management PolicyConfigRepository (Firestore) file is in place'`. No existing guard was weakened, skipped, or deleted.
+  - New completion report: `planning/done/267-engine-management-api-doorways.md`.
+- **Accounting / control impact:** None. The legacy `IPolicyEngine.resolve(...)` outputs are byte-for-byte identical. No `POSPolicy` or `SellingPolicy` persistence is removed; their routes, controllers, and validators are byte-for-byte unchanged. No `SubledgerVoucherPostingService`, `PostingGateway`, `StockMovement`, `StockLevel`, item/catalog, or frontend code is touched. The new doorways read/write the SAME `PolicyConfig` document that `PolicyEngine.resolveTyped(...)` consults — single source of truth, multiple entry points.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core src/tests/domain/system-core/PolicyConfig.test.ts` — 13 suites / 82 tests pass (every existing system-core suite green; 267-C PolicyResolver + PolicyEngineTypedResolution + PolicyEngineCommercialBelowCost + CommercialCoreBelowCostPolicy + everything else).
+  - `npm --prefix backend test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/system-core/PolicyEngineCommercialBelowCost.test.ts` — 4/4 + 3/3 pass, **no source changes** to either file.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 16/16 pass (14 existing + 1 new 267-C guard + 1 new 267-D guard). No existing guard weakened.
+  - `npm --prefix backend run build` — tsc clean, `lib/` rebuilt.
+  - Wider sweeps for regression confidence: `application/pos` 15/15 / 111 tests, `application/sales` 26/26 / 280 tests, `application/purchases` 9/9 / 85 tests, `infrastructure` 2/2 / 10 tests, `api` 9/9 / 39 tests, full `application` sweep 127/127 / 1225 tests.
+- **Reviewer-blocker check (from the brief):**
+  - shared logic added inside Sales/Purchases/POS/Inventory instead of System Core? — **no.** All shared logic lives in `application/system-core/*`, `domain/system-core/*`, and `infrastructure/firestore/repositories/system-core/*`. The new controller `PolicyConfigController` lives in `api/controllers/system-core/`, mirroring the engine-owned seam.
+  - module route hidden behind another module's enablement? — **no.** Each module route is gated by its own `permissionGuard` (and the existing per-module `moduleInitializedGuard` for Sales/Purchases — never for another module). The POS route has no `moduleInitializedGuard`, matching the existing POS pattern (POS has no setup wizard).
+  - POS-only / Sales-only / Purchases-only tenant can manage the policy it consumes? — **yes.** Each module's `/policies` route is reachable when only that module is enabled; the test suite pins this for every module.
+  - posting, tax, COGS, stock valuation, AP/AR, settlement, period-lock behavior changed? — **no.**
+  - direct new `SubledgerVoucherPostingService` or `PostingGateway` source-module usage introduced? — **no.** Architecture guard `250k: POS financial events must route through IAccountingBridge` still passes.
+  - new `StockMovement` / `StockLevel` construction introduced outside inventory core? — **no.** Architecture guard `FUP-4: Sales must not construct inventory sub-ledger movements/levels` still passes.
+  - tests or boundary guards weakened? — **no.** All 14 existing architecture guards still pass; 2 new non-failing guards added (one from 267-C, one from 267-D).
+  - legacy `POSPolicy` / `SellingPolicy` doorways changed? — **no.** Their routes, controllers, repositories, and validators are byte-for-byte unchanged.
+  - `opencode.json` modified? — **no.** Forbidden, not touched.
+- **Actual time:** ~1.7h (one focused implementation pass + tests + verification).
+- **Next:** CTO audit pass against Task 267-D. After audit acceptance, **Slice 267-E — Engine Management Frontend** (Company Settings → Controls and Policies, POS → Controls, Sales → Controls, Purchases → Controls; business-language labels; i18n complete; toast feedback on save; no "engine" wording in user copy). The Accounting doorway stays out of scope per the brief ("only if it fits existing accounting settings patterns without broad refactor").
+
+### Session: 2026-06-25 (Task 267-C — Policy Resolution Engine foundation)
+
+- **Context:** Per `planning/audits/267-system-core-boundary-inventory.md` and the builder brief at `planning/briefs/20260624-policy-resolution-engine-builder-brief.md`, the policy-resolution concern was the largest hybrid on the engine map. Owner goal: a typed, data-driven precedence engine that lets a POS-only tenant, a Sales-only tenant, and a Purchases-only tenant all answer the same policy question the same way — without losing the existing `POSPolicy` / `SellingPolicy` / `AccountingPolicyRegistry` / `DocumentPolicyResolver` compatibility sources.
+- **What changed:**
+  - New `PolicyConfig` entity (`backend/src/domain/system-core/entities/PolicyConfig.ts`) — typed rule records (`id + module + action + scope + effect + isHard + requireApprovalAbove + conditions + approvalSubject + reasonCode + priority`).
+  - New neutral store interface `IPolicyConfigRepository` (`backend/src/repository/interfaces/system-core/IPolicyConfigRepository.ts`). No Firestore implementation yet — deliberately deferred to a persistence slice so this slice stays pure.
+  - `IPolicyEngine` contract extended **additively** (`backend/src/application/system-core/contracts/IPolicyEngine.ts`): `PolicyResolveResult` gains optional `decision?`, `reasonCode?`, `effectiveRuleId?`, `approvalSubject?`; new `TypedPolicyResolveRequest`; new `resolveTyped(request)` method.
+  - New pure precedence engine `PolicyResolver` (`backend/src/application/system-core/policy/PolicyResolver.ts`) — hard → tenant → module → role → user → context → approved-override, with a per-rule `trace` for audit. Most restrictive wins at each level; more-specific levels override less-specific ones; hard rules are absolute.
+  - `PolicyEngine` extended **additively** (`backend/src/application/system-core/PolicyEngine.ts`): optional 4th ctor arg `IPolicyConfigRepository`; new `resolveTyped(...)` method. Legacy `resolve(...)` body is **byte-for-byte unchanged** so every existing caller keeps behaving exactly as before.
+  - `LegacyPolicyEngineAdapter` extended with a default-allow `resolveTyped` so it still satisfies the extended `IPolicyEngine` interface.
+  - New tests: `PolicyResolver.test.ts` (14 precedence tests pinning the brief's required scenarios) and `PolicyEngineTypedResolution.test.ts` (7 wired-engine tests for `resolveTyped` end-to-end).
+  - New non-failing architecture guard: `'267-C: Policy Resolution Engine foundation files are in place'` (positive export/structure check). No existing guard was weakened, skipped, or deleted.
+  - New docs: `docs/architecture/policy-engine.md` (precedence contract, compatibility sources, files added/changed, what is NOT in this slice, test coverage, next-slice roadmap). New completion report: `planning/done/267-policy-resolution-engine-foundation.md`.
+- **Accounting impact:** None. The legacy `IPolicyEngine.resolve(...)` outputs are byte-for-byte identical. No `POSPolicy` or `SellingPolicy` persistence is removed. No `SubledgerVoucherPostingService`, `PostingGateway`, `StockMovement`, or `StockLevel` is touched. No frontend is touched. No item / catalog route is touched. The new path is additive; modules opt in by calling `engine.resolveTyped(...)` or by registering adapter rules in a future slice.
+- **Verification (all green, run on `D:\DEV2026\ERP03-267-engine-audit`):**
+  - `npm --prefix backend test -- --runInBand src/tests/application/system-core` — PolicyResolver 14/14, PolicyEngineTypedResolution 7/7, PolicyEngineCommercialBelowCost 3/3, CommercialCoreBelowCostPolicy 8/8, plus every other existing system-core suite green.
+  - `npm --prefix backend test -- --runInBand src/tests/application/pos/PolicyEnginePosPolicy.test.ts src/tests/application/system-core/PolicyEngineCommercialBelowCost.test.ts` — 4/4 + 3/3 pass, **no source changes** to either file.
+  - `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` — 14 existing guards pass, 1 new non-failing export guard added and passes.
+  - `npm --prefix backend run build` — tsc clean, `lib/` rebuilt.
+- **Reviewer-blocker check (from the brief):** posting output unchanged? **no.** source module gains new shared policy logic outside System Core? **no.** existing POS / SellingPolicy behavior changed? **no.** unknown old `scope/action` default-allow preserved? **no.** tests / boundary guards weakened? **no.** docs missing? **no.**
+- **Actual time:** ~3.0h.
+- **Next:** A CTO audit pass against this slice. Then **Slice 267-D — Engine management API doorways** (`GET/PUT /tenant/settings/controls/policies` + per-module policy routes, each permission-gated to its own module and never behind another module's `moduleInitializedGuard`). Persistence (Firestore `PolicyConfig`) and `bindRepositories` wiring can land in the same slice as the doorways, or be split — owner's call.
+
+### Session: 2026-06-24 (Task 267-A — System Core boundary audit)
+
+- **Context:** Owner corrected the delegation plan: architecture auditing and planning must stay with Codex/CTO, while cheaper agents should receive narrow implementation briefs.
+- **What changed:** Completed the System Core boundary audit in `planning/audits/267-system-core-boundary-inventory.md`. The audit classifies current engines as extracted/hybrid/wrapper/missing, names specific violations with file/line evidence, and sets the implementation order. Added `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` so the next cheaper agent can implement only the Policy Resolution Engine foundation without touching posting, inventory movement/costing, frontend UI, or catalog/items.
+- **Key findings:** POS is the cleanest engine consumer. Remaining risk is concentrated in missing generic policy resolution, Sales/Purchases/Inventory direct posting paths, Purchases stock movement construction, module-gated item/catalog setup, and incomplete shared-setting doorway enforcement.
+- **Accounting impact:** Audit/planning only. No posting, tax, stock, approval, policy, settlement, ledger, or valuation behavior changed.
+- **Verification:** `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts` passed in `D:\DEV2026\ERP03-267-engine-audit` (14/14).
+- **Actual time:** ~0.8h.
+- **Next:** Backend builder should implement `planning/briefs/20260624-policy-resolution-engine-builder-brief.md` in the isolated worktree.
+
+### Session: 2026-06-24 (Task 267 — System Core engine management execution plan)
+
+- **Context:** Owner asked for a detailed, low-mistake plan that cheaper executor agents can follow to complete the System Core/module independence work and that a starter/reviewer agent can audit.
+- **What changed:** Added `planning/tasks/267-system-core-engine-management-execution-plan.md` with the architecture rules, current-state snapshot, engine UI management model, execution slices, executor prompts, backend builder prompt, and reviewer audit prompt. Added `planning/briefs/20260624-system-core-engine-management-agent-brief.md` as the copy-paste read-only executor brief. Added `planning/audits/.gitkeep` so the required audit output directory exists.
+- **Accounting impact:** Planning only. No posting, tax, stock, approval, policy, settlement, ledger, or valuation behavior changed.
+- **Verification:** File creation/readback completed. No tests were required because no application code changed.
+- **Actual time:** ~0.4h.
+- **Next:** Run Slice 267-A: create `planning/audits/267-system-core-boundary-inventory.md` from live repo evidence and run `npm --prefix backend test -- --runInBand src/tests/architecture/SystemCoreBoundaries.test.ts`.
+
+### Session: 2026-06-24 (Task 266 — POS tax-account configuration error clarity)
+
+- **Context:** Owner QA hit POS posting error: `No tax account configured ... Tax code undefined needs salesTaxAccountId configured.` This is an accounting configuration gate, not a case where POS should invent a tax account.
+- **What changed:** Kept the strict `TaxCode.salesTaxAccountId` requirement for output tax, but tightened `PostPosSaleUseCase` so positive POS tax with no resolved active Sales/Both tax code now says to assign the item's default Sales Tax Code or select an active tax code. If a tax code is resolved but lacks `salesTaxAccountId`, the message still names that tax code. Added focused regressions for both cases.
+- **Accounting impact:** No posting math/account fallback changed. POS still blocks before stock, receipt, settlement, or ledger writes when output tax cannot map to a Sales Tax Account.
+- **Verification:** `npm test -- --runInBand src/tests/application/pos/PostPosSale.test.ts` passed (20/20); `npm run build` passed.
+- **Docs:** `planning/done/266-pos-tax-account-error-message.md`, `docs/architecture/pos.md`, `docs/user-guide/pos/selling.md`.
+- **Actual time:** ~0.5h.
+- **Next:** Owner should set **Settings → Tax Codes → Sales Tax Account** for the item's default sales tax code, confirm the item has **Default Sales Tax Code**, then rerun the POS sale.
+
 ### Session: 2026-06-23 (Task 265 — POS Keyboard Shortcuts)
 
 - **Context:** The owner requested keyboard shortcuts in the POS terminal for faster actions (F12 for pay, Delete for void, etc.). They specified a three-tier configuration: system defaults, register-level overrides (manager controlled), and user preferences (cashier controlled).
@@ -4811,3 +5181,21 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** UI localization only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
 - **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
 - **Time spent:** ~0.8h.
+### Session: 2026-06-26 (Task 268 — Tax Code master-data controls and page repolish)
+
+- **Goal:** Finish the owner-requested Tax Codes safety slice: list-first page, explicit inclusive/exclusive basis, percentage rate entry, and backend locks after posted use.
+- **What was done:** Reworked Tax Codes into a list + modal workflow, changed Rate input to `Rate %`, preserved decimal API/domain storage, added visible lock state for used codes, and exposed `usedInPostedDocuments` / `lockedFields` from the shared tax-code API. Added backend immutability enforcement in `UpdateTaxCodeUseCase` by scanning posted SI/PI/SR/PR documents through repository interfaces.
+- **Accounting/ERP impact:** This is a control hardening change. Existing tax math and posted voucher output are unchanged. The new rule prevents changing tax treatment after posted usage; users must create a new tax code instead.
+- **Verification:** Focused backend TaxCodeUseCases test passed (5/5). Backend build passed. Frontend typecheck and build passed; existing browser/chunk warnings remain. `git diff --check` reported only CRLF normalization warnings.
+- **Docs:** Updated settings architecture, added user guide `docs/user-guide/settings/tax-codes.md`, marked Task 268 complete, and created completion report `planning/done/268-tax-code-master-data-controls-and-page-repolish.md`.
+- **Time spent:** ~2.1h.
+- **Next:** Task 269 — purchase tax recoverability and cost capitalization.
+
+### Session: 2026-06-26 (Task 270 — Stock level reporting, negative valuation, and Item Movement)
+
+- **Goal:** Fix allowed negative stock reporting so it does not silently show zero value, convert Stock Levels to the mandatory report pattern, and add an item-level movement report with source drill-down where supported.
+- **What was done:** Removed the stale POS readiness worktree after confirming it was clean and contained in `origin/main`. Added stock-level report valuation fields from `GetStockLevelsUseCase.executeReport(...)`, using average cost first, last-known cost for negative balances, and an explicit unvalued-negative flag when no cost basis exists. Converted `StockLevelsPage` to `ReportContainer`. Added `ItemMovementReportPage` under Inventory Reports with shared item/warehouse/date controls, running quantity/value, and safe source route mapping. Updated API DTOs, route/menu wiring, inventory architecture docs, user guide, completion report, and ACTIVE.
+- **Accounting/ERP impact:** Reporting/control correction only. No posted voucher output, stock movement persistence, average-cost engine, COGS posting, settlement, period-lock, or approval behavior changed. The financial exposure of negative stock is now visible in reports instead of hidden behind zero valuation.
+- **Verification:** Focused StockLevelUseCases tests passed (4/4). InventoryValuationService focused tests passed (3/3). Backend build passed. Frontend `check:reports`, typecheck, and production build passed; existing browser-data/chunk-size warnings remain. `git diff --check` reported CRLF normalization warnings only. `graphify update .` was not run because `graphify` is not installed in this shell.
+- **Time spent:** ~3.1h.
+- **Next:** Commit/push Task 270, then continue Task 271 — Sales/Purchase Return layout parity and direct Purchase Return.

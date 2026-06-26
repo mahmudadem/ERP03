@@ -14,6 +14,7 @@ import {
   SlidersHorizontal,
   UserCog,
   Workflow,
+  ListChecks,
 } from 'lucide-react';
 
 const settingsGroups = [
@@ -32,6 +33,7 @@ const settingsGroups = [
     icon: Workflow,
     links: [
       { id: 'approval', path: '/settings/approval', icon: ShieldCheck },
+      { id: 'controls', path: '/settings/controls-and-policies', icon: ListChecks },
       { id: 'sales', path: '/sales/settings', icon: ReceiptText },
       { id: 'purchases', path: '/purchases/settings', icon: FileText },
     ],

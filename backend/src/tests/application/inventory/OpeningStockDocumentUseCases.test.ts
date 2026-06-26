@@ -5,6 +5,16 @@ describe('PostOpeningStockDocumentUseCase', () => {
   const COMPANY_ID = 'cmp-1';
   const USER_ID = 'u-1';
 
+  const makeFullBridge = () => ({
+    recordFinancialEvent: jest.fn(async (event: any) => ({
+      mode: 'full',
+      voucher: { id: event.subledgerVoucher.voucherNo === 'OS-osd-1' ? 'vch-1' : 'vch-periodic-1' },
+    })),
+    recordPreBuiltVoucher: jest.fn(async () => {
+      throw new Error('Opening Stock should not send prebuilt voucher events');
+    }),
+  });
+
   const makeDocument = (overrides: Partial<OpeningStockDocument> = {}) =>
     new OpeningStockDocument({
       id: 'osd-1',
@@ -96,9 +106,7 @@ describe('PostOpeningStockDocumentUseCase', () => {
     const movementUseCase = {
       processIN: jest.fn(async () => undefined),
     };
-    const accountingPostingService = {
-      postInTransaction: jest.fn(async () => ({ id: 'vch-1' })),
-    };
+    const accountingBridge = makeFullBridge();
     const txn = { id: 'txn-1' };
     const transactionManager = {
       runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation(txn)),
@@ -114,8 +122,9 @@ describe('PostOpeningStockDocumentUseCase', () => {
       companyModuleRepo as any,
       accountRepo as any,
       movementUseCase as any,
-      accountingPostingService as any,
       transactionManager as any
+      ,
+      accountingBridge as any
     );
 
     const result = await useCase.execute(COMPANY_ID, document.id, USER_ID);
@@ -129,8 +138,11 @@ describe('PostOpeningStockDocumentUseCase', () => {
         transaction: txn,
       })
     );
-    expect(accountingPostingService.postInTransaction).toHaveBeenCalledWith(
+    expect(accountingBridge.recordFinancialEvent).toHaveBeenCalledWith(
       expect.objectContaining({
+        kind: 'OPENING_STOCK',
+        transaction: txn,
+        subledgerVoucher: expect.objectContaining({
         voucherType: 'opening_balance',
         strategyPayload: expect.objectContaining({
           balances: expect.arrayContaining([
@@ -138,8 +150,8 @@ describe('PostOpeningStockDocumentUseCase', () => {
             expect.objectContaining({ accountId: 'OPEN-100', creditBalance: 50 }),
           ]),
         }),
+        }),
       }),
-      txn
     );
     expect(documentRepo.updateDocument).toHaveBeenCalledWith(
       COMPANY_ID,
@@ -194,8 +206,8 @@ describe('PostOpeningStockDocumentUseCase', () => {
       { get: jest.fn(async () => ({ initialized: false })) } as any,
       { getById: jest.fn(async () => null) } as any,
       { processIN: jest.fn(async () => undefined) } as any,
-      { postInTransaction: jest.fn(async () => ({ id: 'vch-1' })) } as any,
-      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-2' })) } as any
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-2' })) } as any,
+      makeFullBridge() as any
     );
 
     const result = await useCase.execute(COMPANY_ID, document.id, USER_ID);
@@ -217,8 +229,8 @@ describe('PostOpeningStockDocumentUseCase', () => {
       { get: jest.fn(async () => ({ initialized: true })) } as any,
       { getById: jest.fn(async (_companyId: string, accountId: string) => ({ id: accountId, accountRole: 'POSTING', classification: 'EXPENSE', status: 'ACTIVE' })) } as any,
       { processIN: jest.fn(async () => undefined) } as any,
-      { postInTransaction: jest.fn(async () => ({ id: 'vch-1' })) } as any,
-      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-3' })) } as any
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-3' })) } as any,
+      makeFullBridge() as any
     );
 
     await expect(useCase.execute(COMPANY_ID, document.id, USER_ID)).rejects.toThrow(
@@ -239,8 +251,8 @@ describe('PostOpeningStockDocumentUseCase', () => {
       { get: jest.fn(async () => ({ initialized: true })) } as any,
       { getById: jest.fn(async (_companyId: string, accountId: string) => ({ id: accountId, accountRole: 'POSTING', classification: 'EQUITY', status: 'ACTIVE' })) } as any,
       { processIN: jest.fn(async () => undefined) } as any,
-      { postInTransaction: jest.fn(async () => ({ id: 'vch-1' })) } as any,
-      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-4' })) } as any
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-4' })) } as any,
+      makeFullBridge() as any
     );
 
     await expect(useCase.execute(COMPANY_ID, document.id, USER_ID)).rejects.toThrow(
@@ -260,9 +272,7 @@ describe('PostOpeningStockDocumentUseCase', () => {
       getDocument: jest.fn().mockResolvedValueOnce(document).mockResolvedValueOnce(posted),
       updateDocument: jest.fn(async () => undefined),
     };
-    const accountingPostingService = {
-      postInTransaction: jest.fn(async () => ({ id: 'vch-periodic-1' })),
-    };
+    const accountingBridge = makeFullBridge();
 
     const useCase = new PostOpeningStockDocumentUseCase(
       documentRepo as any,
@@ -298,20 +308,20 @@ describe('PostOpeningStockDocumentUseCase', () => {
         })),
       } as any,
       { processIN: jest.fn(async () => undefined) } as any,
-      accountingPostingService as any,
-      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-periodic' })) } as any
+      { runTransaction: jest.fn(async (operation: (transaction: unknown) => Promise<unknown>) => operation({ id: 'txn-periodic' })) } as any,
+      accountingBridge as any
     );
 
     await useCase.execute(COMPANY_ID, document.id, USER_ID);
 
-    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
-    expect(payload.strategyPayload.balances).toEqual(
+    const event = (accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any;
+    expect(event.subledgerVoucher.strategyPayload.balances).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ accountId: 'GOODS-OPEN-100', debitBalance: 50 }),
         expect.objectContaining({ accountId: 'OPEN-100', creditBalance: 50 }),
       ])
     );
-    expect(payload.strategyPayload.balances).not.toEqual(
+    expect(event.subledgerVoucher.strategyPayload.balances).not.toEqual(
       expect.arrayContaining([expect.objectContaining({ accountId: 'INV-ITEM-100' })])
     );
   });

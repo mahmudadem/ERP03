@@ -2374,6 +2374,9 @@
         "approval": {
           "title": "Onay İş Akışı"
         },
+        "controls": {
+          "title": "Kontroller ve Politikalar"
+        },
         "sales": {
           "title": "Satış Ayarları"
         },

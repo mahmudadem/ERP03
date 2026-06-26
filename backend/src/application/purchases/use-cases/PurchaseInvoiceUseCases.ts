@@ -15,7 +15,7 @@ import {
   PurchaseInvoiceLine,
 } from '../../../domain/purchases/entities/PurchaseInvoice';
 import { Party } from '../../../domain/shared/entities/Party';
-import { TaxCode } from '../../../domain/shared/entities/TaxCode';
+import { PurchaseTaxTreatment, TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PaymentHistory, PaymentMethod } from '../../../domain/shared/entities/PaymentHistory';
 import { IInventoryCore } from '../../inventory/contracts/InventoryIntegrationContracts';
 import { IAccountRepository, ICompanyCurrencyRepository } from '../../../repository/interfaces/accounting';
@@ -46,7 +46,6 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { PostingGateway } from '../../accounting/services/PostingGateway';
 import { VoucherLineEntity } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { AccountingEngineUnavailableError } from '../../../domain/accounting/errors/AccountingEngineUnavailableError';
-import { SubledgerVoucherPostingService } from '../../accounting/services/SubledgerVoucherPostingService';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
   ItemQtyToBaseUomResult,
@@ -82,6 +81,10 @@ export type SettlementMode = 'DEFERRED' | 'CASH_FULL' | 'MULTI';
 export const SETTLEMENT_MODES: SettlementMode[] = ['DEFERRED', 'CASH_FULL', 'MULTI'];
 export const VALID_PAYMENT_METHODS: PaymentMethod[] = ['CASH', 'BANK_TRANSFER', 'CHECK', 'CREDIT_CARD', 'OTHER'];
 const DOCUMENT_SOURCES: DocumentSource[] = ['native', 'default_form', 'custom_form'];
+
+interface VoucherDeletionService {
+  deleteVoucherInTransaction(companyId: string, voucherId: string, transaction?: unknown): Promise<void>;
+}
 
 export interface SettlementRow {
   settlementAccountId: string;
@@ -173,6 +176,7 @@ export interface PurchaseInvoiceLineInput {
   /** When true, `unitPriceDoc` already includes tax. Entity splits gross into
    *  net + tax during construction so totals match the user's input. */
   priceIsInclusive?: boolean;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   taxCodeId?: string;
   warehouseId?: string;
   description?: string;
@@ -336,12 +340,14 @@ export class CreatePurchaseInvoiceUseCase {
       const taxCodeId = await this.resolveTaxCodeId(input.companyId, sourceLine.taxCodeId, item);
       let taxRate = 0;
       let taxCodeDefaultInclusive = false;
+      let purchaseTaxTreatment: 'RECOVERABLE' | 'NON_RECOVERABLE' = 'RECOVERABLE';
       if (taxCodeId) {
         const taxCode = await this.taxCodeRepo.getById(input.companyId, taxCodeId);
         if (!taxCode) throw new Error(`Tax code not found: ${taxCodeId}`);
         assertValidPurchaseTaxCode(taxCode, taxCodeId);
         taxRate = taxCode.rate;
         taxCodeDefaultInclusive = taxCode.priceIsInclusive === true;
+        purchaseTaxTreatment = taxCode.purchaseTaxTreatment;
       }
       // Effective inclusive: explicit line flag wins; otherwise inherit the tax
       // code's default. Without this fallback a form that doesn't set the flag
@@ -393,6 +399,7 @@ export class CreatePurchaseInvoiceUseCase {
         taxCodeId,
         taxCode: undefined,
         taxRate,
+        purchaseTaxTreatment,
         priceIsInclusive: effectiveInclusive,
         taxAmountDoc: lineAmounts.taxAmountDoc,
         taxAmountBase: lineAmounts.taxAmountBase,
@@ -537,17 +544,16 @@ export class PostPurchaseInvoiceUseCase {
     private readonly exchangeRateRepo: IExchangeRateRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
     accountRepo: IAccountRepository | undefined,
     private readonly transactionManager: ITransactionManager,
+    private readonly accountingBridge: IAccountingBridge,
     private readonly paymentHistoryRepo?: IPaymentHistoryRepository,
     private readonly voucherRepo?: IVoucherRepository,
     private readonly voucherSequenceRepo?: IVoucherSequenceRepository,
     private readonly ledgerRepo?: ILedgerRepository,
     private readonly partyItemPriceRepo?: IPartyItemPriceRepository,
     private readonly profitFactRecorder?: RecordSalesProfitLineFactsUseCase,
-    private readonly numberingEngine?: INumberingEngine,
-    private readonly accountingBridge?: IAccountingBridge
+    private readonly numberingEngine?: INumberingEngine
   ) {
     this.accountRepo = accountRepo;
   }
@@ -1021,7 +1027,7 @@ export class PostPurchaseInvoiceUseCase {
         });
 
         if (shouldPostAccounting) {
-          const poster = new SubledgerDocumentPoster(this.accountingPostingService, this.accountingBridge);
+          const poster = new SubledgerDocumentPoster(undefined, this.accountingBridge);
           const voucher = await poster.post(
             {
               companyId,
@@ -1164,6 +1170,7 @@ export class PostPurchaseInvoiceUseCase {
   private freezeTaxSnapshotSync(line: PurchaseInvoiceLine, rate: number, tax?: TaxCode): void {
     line.taxCode = tax?.code;
     line.taxRate = tax?.rate || 0;
+    line.purchaseTaxTreatment = tax?.purchaseTaxTreatment || line.purchaseTaxTreatment || 'RECOVERABLE';
     const amounts = calculateCommercialLineAmounts({
       quantity: line.invoicedQty,
       unitPriceDoc: line.unitPriceDoc,
@@ -1174,15 +1181,20 @@ export class PostPurchaseInvoiceUseCase {
       discountValue: line.discountValue,
       discountAmountDoc: line.discountAmountDoc,
     });
+    const capitalizePurchaseTax = line.purchaseTaxTreatment === 'NON_RECOVERABLE';
     line.grossLineTotalDoc = amounts.grossLineTotalDoc;
     line.discountAmountDoc = amounts.discountAmountDoc;
-    line.lineTotalDoc = amounts.lineTotalDoc;
+    line.lineTotalDoc = capitalizePurchaseTax
+      ? roundMoney(amounts.lineTotalDoc + amounts.taxAmountDoc)
+      : amounts.lineTotalDoc;
     line.unitPriceBase = amounts.unitPriceBase;
     line.grossLineTotalBase = amounts.grossLineTotalBase;
     line.discountAmountBase = amounts.discountAmountBase;
-    line.lineTotalBase = amounts.lineTotalBase;
-    line.taxAmountDoc = amounts.taxAmountDoc;
-    line.taxAmountBase = amounts.taxAmountBase;
+    line.lineTotalBase = capitalizePurchaseTax
+      ? roundMoney(amounts.lineTotalBase + amounts.taxAmountBase)
+      : amounts.lineTotalBase;
+    line.taxAmountDoc = capitalizePurchaseTax ? 0 : amounts.taxAmountDoc;
+    line.taxAmountBase = capitalizePurchaseTax ? 0 : amounts.taxAmountBase;
   }
 
   private recalcInvoiceTotals(pi: PurchaseInvoice): void {
@@ -1374,21 +1386,16 @@ export class PostPurchaseInvoiceUseCase {
       };
 
       // FUP-5: route the payment through the accounting bridge (full-vs-minimal). Full mode posts the
-      // identical voucher via the gateway; minimal mode (Accounting App disabled) records a minimal
-      // journal and posts no GL voucher. Without a bridge, post directly (legacy behavior preserved).
-      let settlementPosted = true;
-      if (this.accountingBridge) {
-        const result = await this.accountingBridge.recordPreBuiltVoucher({
-          companyId,
-          kind: 'PURCHASE_PAYMENT',
-          voucher: postedVoucher,
-          postFull,
-          transaction,
-        });
-        settlementPosted = result.mode === 'full';
-      } else {
-        await postFull();
-      }
+      // identical voucher via the gateway; minimal mode (Accounting Engine not initialized) records a
+      // minimal journal and posts no GL voucher.
+      const result = await this.accountingBridge.recordPreBuiltVoucher({
+        companyId,
+        kind: 'PURCHASE_PAYMENT',
+        voucher: postedVoucher,
+        postFull,
+        transaction,
+      });
+      const settlementPosted = result.mode === 'full';
 
       const paymentId = `pay_${randomUUID()}`;
       const payment = new PaymentHistory({
@@ -1577,6 +1584,7 @@ export class UpdatePurchaseInvoiceUseCase {
           taxCodeId: line.taxCodeId ?? existing?.taxCodeId,
           taxCode: existing?.taxCode,
           taxRate: existing?.taxRate ?? 0,
+          purchaseTaxTreatment: line.purchaseTaxTreatment ?? existing?.purchaseTaxTreatment ?? 'RECOVERABLE',
           priceIsInclusive:
             line.priceIsInclusive !== undefined
               ? line.priceIsInclusive === true
@@ -1661,7 +1669,7 @@ export class UnpostPurchaseInvoiceUseCase {
     private readonly purchaseOrderRepo: IPurchaseOrderRepository,
     private readonly inventoryService: IInventoryCore,
     private readonly companyModuleRepo: ICompanyModuleRepository,
-    private readonly accountingPostingService: SubledgerVoucherPostingService,
+    private readonly accountingPostingService: VoucherDeletionService,
     private readonly transactionManager: ITransactionManager
   ) {}
 

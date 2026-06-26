@@ -309,13 +309,16 @@ export class PostPosSaleUseCase {
       if (taxAmountBase > 0) {
         if (!tax.salesTaxAccountId) {
           const taxLabel = tax.code || tax.id;
+          const hint = tax.id
+            ? `Tax code ${taxLabel} needs salesTaxAccountId configured.`
+            : `This POS line has a tax amount but no active Sales tax code was resolved. Assign a default Sales Tax Code to item ${item.code || item.id}, or select an active Sales/Both tax code before posting.`;
           throw new AccountMappingError({
             companyId: input.companyId,
             itemId: item.id,
             accountRole: 'tax',
             fallbackChain: ['taxCode.salesTaxAccountId'],
             lineNo: idx + 1,
-            hint: `Tax code ${taxLabel} needs salesTaxAccountId configured.`,
+            hint,
           });
         }
         addToBucket(taxCredits, tax.salesTaxAccountId, taxAmountBase, baseCurrency);

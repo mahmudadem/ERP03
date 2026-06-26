@@ -12,6 +12,12 @@ import { PostStockAdjustmentUseCase } from '../../../application/inventory/use-c
 describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () => {
   const COMPANY_ID = 'cmp-1';
   const USER_ID = 'u-1';
+  const makeFullBridge = () => ({
+    recordFinancialEvent: jest.fn(async () => ({ mode: 'full', voucher: { id: 'vch-1' } })),
+    recordPreBuiltVoucher: jest.fn(async () => {
+      throw new Error('Stock Adjustment should not send prebuilt voucher events');
+    }),
+  });
 
   const ITEM = {
     id: 'item-1',
@@ -76,9 +82,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
       runTransaction: jest.fn(async (op: (t: unknown) => Promise<unknown>) => op({ id: 'txn' })),
     };
 
-    const accountingPostingService = {
-      postInTransaction: jest.fn(async () => ({ id: 'vch-1' })),
-    };
+    const accountingBridge = makeFullBridge();
 
     const companyModuleRepo = { get: jest.fn(async () => ({ initialized: true })) };
     const inventorySettingsRepo = { getSettings: jest.fn(async () => opts.settings) };
@@ -89,15 +93,15 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
       movementUseCase as any,
       transactionManager as any,
       companyModuleRepo as any,
-      accountingPostingService as any,
+      accountingBridge as any,
       inventorySettingsRepo as any
     );
 
-    return { useCase, adjustment, accountingPostingService, adjustmentRepo };
+    return { useCase, adjustment, accountingBridge, adjustmentRepo };
   };
 
   it('values an OUT adjustment from the real avg cost (not the typed cost) and debits the Loss account', async () => {
-    const { useCase, accountingPostingService, adjustmentRepo } = buildHarness({
+    const { useCase, accountingBridge, adjustmentRepo } = buildHarness({
       adjustmentQty: -4,
       movementTotalCostBase: 50, // real avg cost: 4 units @ 12.50
       typedUnitCost: 999, // bogus — would have produced 3996 under the old bug
@@ -110,7 +114,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
 
     await useCase.execute(COMPANY_ID, 'adj-1', USER_ID);
 
-    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    const payload = ((accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const lines = payload.lines as Array<any>;
 
     const debit = lines.find((l) => l.side === 'Debit');
@@ -139,7 +143,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
   });
 
   it('credits the Gain account on an IN write-up valued from the applied cost', async () => {
-    const { useCase, accountingPostingService } = buildHarness({
+    const { useCase, accountingBridge } = buildHarness({
       adjustmentQty: 4,
       movementTotalCostBase: 40,
       typedUnitCost: 10,
@@ -151,7 +155,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
 
     await useCase.execute(COMPANY_ID, 'adj-1', USER_ID);
 
-    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    const payload = ((accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const lines = payload.lines as Array<any>;
     const debit = lines.find((l) => l.side === 'Debit');
     const credit = lines.find((l) => l.side === 'Credit');
@@ -165,7 +169,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
   });
 
   it('falls back to the item COGS account when no dedicated gain/loss account is set', async () => {
-    const { useCase, accountingPostingService } = buildHarness({
+    const { useCase, accountingBridge } = buildHarness({
       adjustmentQty: -2,
       movementTotalCostBase: 25,
       typedUnitCost: 12.5,
@@ -174,7 +178,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
 
     await useCase.execute(COMPANY_ID, 'adj-1', USER_ID);
 
-    const payload = (accountingPostingService.postInTransaction as jest.Mock).mock.calls[0][0];
+    const payload = ((accountingBridge.recordFinancialEvent as jest.Mock).mock.calls[0][0] as any).subledgerVoucher;
     const lines = payload.lines as Array<any>;
     const debit = lines.find((l) => l.side === 'Debit');
 
@@ -222,9 +226,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
       preFetchStockLevel: jest.fn(async () => null),
     };
 
-    const accountingPostingService = {
-      postInTransaction: jest.fn(async () => ({ id: 'vch-periodic-1' })),
-    };
+    const accountingBridge = makeFullBridge();
 
     const useCase = new PostStockAdjustmentUseCase(
       adjustmentRepo as any,
@@ -232,7 +234,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
       movementUseCase as any,
       { runTransaction: jest.fn(async (op: (t: unknown) => Promise<unknown>) => op({ id: 'txn-periodic' })) } as any,
       { get: jest.fn(async () => ({ initialized: true })) } as any,
-      accountingPostingService as any,
+      accountingBridge as any,
       { getSettings: jest.fn(async () => ({ accountingMode: 'PERIODIC', inventoryAccountingMethod: 'PERIODIC' })) } as any
     );
 
@@ -240,7 +242,7 @@ describe('PostStockAdjustmentUseCase — GL valuation & gain/loss routing', () =
 
     expect(posted.status).toBe('POSTED');
     expect(movementUseCase.processIN).toHaveBeenCalledTimes(1);
-    expect(accountingPostingService.postInTransaction).not.toHaveBeenCalled();
+    expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
     expect(adjustmentRepo.updateAdjustment).toHaveBeenCalledWith(
       COMPANY_ID,
       adjustment.id,

@@ -1,0 +1,88 @@
+{
+  "pageTitle": "الضوابط والسياسات",
+  "pageSubtitle": "قواعد على مستوى الشركة تحدد ما هو مسموح به وما يتطلب موافقة عبر المبيعات والمشتريات ونقطة البيع.",
+  "toastSaved": "تم حفظ الضوابط والسياسات.",
+  "toastSaveError": "تعذر حفظ الضوابط والسياسات.",
+  "toastLoadError": "تعذر تحميل الضوابط والسياسات.",
+  "discardInfo": "تم تجاهل التغييرات",
+  "loading": "جار التحميل…",
+  "save": "حفظ",
+  "saving": "جار الحفظ...",
+  "discard": "تجاهل",
+  "empty": {
+    "title": "لا توجد قواعد بعد",
+    "description": "أضف قاعدة لتحديد من يمكنه فعل ماذا ومتى تتطلب الموافقة. القواعد دون تجاوز تعمل بجانب إعدادات الوحدة الخاصة بك."
+  },
+  "addRule": "إضافة قاعدة",
+  "removeRule": "إزالة",
+  "advanced": "متقدم",
+  "scopes": {
+    "TENANT": "الشركة بأكملها",
+    "MODULE": "هذه المنطقة فقط",
+    "ROLE": "دور محدد",
+    "USER": "مستخدم محدد",
+    "CONTEXT": "مكان محدد (مسجل، مستودع، فرع)"
+  },
+  "effects": {
+    "ALLOW": "سماح",
+    "BLOCK": "منع",
+    "REQUIRE_APPROVAL": "يتطلب موافقة"
+  },
+  "columns": {
+    "whatItControls": "ما الذي يتحكم فيه",
+    "appliesTo": "ينطبق على",
+    "behaviour": "السلوك",
+    "when": "عند (اختياري)",
+    "cannotBeOverridden": "لا يمكن تجاوزه؟",
+    "approvalCeiling": "فقط فوق المبلغ",
+    "priority": "الأولوية",
+    "id": "معرّف القاعدة",
+    "reasonCode": "رمز السبب",
+    "actions": "إجراءات"
+  },
+  "settingsTabLabel": "الضوابط",
+  "fields": {
+    "actionPlaceholder": "اختر ما تتحكم فيه هذه القاعدة",
+    "scopePlaceholder": "اختر من تنطبق عليه",
+    "effectPlaceholder": "اختر ما يحدث",
+    "amountOp": "المقارنة",
+    "amountValue": "المبلغ",
+    "addMatchCondition": "مطابقة حسب المكان (اختياري)",
+    "requireApprovalAbove": "يتطلب الموافقة فقط فوق هذا المبلغ",
+    "reasonCodePlaceholder": "مثال: PERIOD_LOCKED"
+  },
+  "companyMatrixTitle": "جميع قواعد الشركة",
+  "companyMatrixSubtitle": "تنطبق هذه القواعد عبر جميع المناطق. أضف قواعد لمنطقة محددة (المبيعات أو المشتريات أو نقطة البيع) من شاشة الضوابط الخاصة بتلك المنطقة.",
+  "moduleMatrixTitle": "ضوابط {{module}}",
+  "moduleMatrixSubtitle": "فقط القواعد التي تنتمي إلى {{module}}. تتم إدارة القواعد على مستوى الشركة من إعدادات الشركة.",
+  "moduleTagLocked": "مقفل على {{module}}",
+  "actionLabels": {
+    "directSale": "بيع مباشر عند نقطة البيع",
+    "invoicePosting": "ترحيل فاتورة",
+    "return": "معالجة مرتجع",
+    "reprint": "إعادة طباعة إيصال",
+    "priceOverride": "تغيير سعر",
+    "discountOverride": "تطبيق خصم",
+    "taxOverride": "تغيير الضريبة",
+    "voidLine": "إلغاء بند",
+    "belowCostSale": "البيع بأقل من التكلفة"
+  },
+  "moduleLabels": {
+    "pos": "نقطة البيع",
+    "sales": "المبيعات",
+    "purchases": "المشتريات",
+    "accounting": "المحاسبة"
+  },
+  "confirmRemove": {
+    "title": "إزالة هذه القاعدة؟",
+    "message": "سيتوقف تطبيق هذا الضابط. يمكنك دائمًا إضافته مرة أخرى.",
+    "confirm": "إزالة",
+    "cancel": "إبقاء"
+  },
+  "validator": {
+    "idRequired": "مطلوب معرّف قصير حتى يمكن تدقيق هذه القاعدة.",
+    "actionRequired": "اختر ما تتحكم فيه هذه القاعدة.",
+    "amountNumber": "يجب أن يكون المبلغ رقمًا.",
+    "amountOpRequired": "اختر مقارنة لشرط المبلغ."
+  }
+}

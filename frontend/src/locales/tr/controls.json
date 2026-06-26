@@ -1,0 +1,88 @@
+{
+  "pageTitle": "Kontroller ve Politikalar",
+  "pageSubtitle": "Satış, satın alma ve yazar kasa genelinde neyin izinli ve neyin onay gerektirdiğine karar veren şirket geneli kurallar.",
+  "toastSaved": "Kontroller ve politikalar kaydedildi.",
+  "toastSaveError": "Kontroller ve politikalar kaydedilemedi.",
+  "toastLoadError": "Kontroller ve politikalar yüklenemedi.",
+  "discardInfo": "Değişiklikler geri alındı",
+  "loading": "Yükleniyor…",
+  "save": "Kaydet",
+  "saving": "Kaydediliyor...",
+  "discard": "Geri al",
+  "empty": {
+    "title": "Henüz kural yok",
+    "description": "Kimin neyi ne zaman yapabileceğini ve ne zaman onay gerektiğini belirlemek için bir kural ekleyin. Geçersiz kılma içermeyen kurallar mevcut modül ayarlarınızla birlikte çalışır."
+  },
+  "addRule": "Kural ekle",
+  "removeRule": "Kaldır",
+  "advanced": "Gelişmiş",
+  "scopes": {
+    "TENANT": "Tüm şirket",
+    "MODULE": "Yalnızca bu alan",
+    "ROLE": "Belirli rol",
+    "USER": "Belirli kullanıcı",
+    "CONTEXT": "Belirli yer (yazar kasa, depo, şube)"
+  },
+  "effects": {
+    "ALLOW": "İzin ver",
+    "BLOCK": "Engelle",
+    "REQUIRE_APPROVAL": "Onay gerektir"
+  },
+  "columns": {
+    "whatItControls": "Kontrol ettiği şey",
+    "appliesTo": "Geçerli olduğu",
+    "behaviour": "Davranış",
+    "when": "Ne zaman (isteğe bağlı)",
+    "cannotBeOverridden": "Geçersiz kılınamaz mı?",
+    "approvalCeiling": "Yalnızca tutarın üstünde",
+    "priority": "Öncelik",
+    "id": "Kural kimliği",
+    "reasonCode": "Sebep kodu",
+    "actions": "İşlemler"
+  },
+  "settingsTabLabel": "Kontroller",
+  "fields": {
+    "actionPlaceholder": "Bu kuralın neyi kontrol ettiğini seçin",
+    "scopePlaceholder": "Geçerli olduğu kişiyi seçin",
+    "effectPlaceholder": "Ne olacağını seçin",
+    "amountOp": "Karşılaştırma",
+    "amountValue": "Tutar",
+    "addMatchCondition": "Yere göre eşleştir (isteğe bağlı)",
+    "requireApprovalAbove": "Yalnızca bu tutarın üstünde onap gerektir",
+    "reasonCodePlaceholder": "ör. PERIOD_LOCKED"
+  },
+  "companyMatrixTitle": "Tüm şirket kuralları",
+  "companyMatrixSubtitle": "Bu kurallar her alanda geçerlidir. Belirli bir alana (Satış, Satın Alma veya yazar kasa) ait kuralları o alanın kendi Kontroller ekranından ekleyin.",
+  "moduleMatrixTitle": "{{module}} için kontroller",
+  "moduleMatrixSubtitle": "Yalnızca {{module}} alanına ait kurallar. Şirket geneli kurallar Şirket Ayarları'ndan yönetilir.",
+  "moduleTagLocked": "{{module}} ile kilitli",
+  "actionLabels": {
+    "directSale": "Yazar kasada doğrudan satış",
+    "invoicePosting": "Fatura deftere aktarma",
+    "return": "İade işleme",
+    "reprint": "Makbuzu yeniden yazdırma",
+    "priceOverride": "Fiyat değiştirme",
+    "discountOverride": "İndirim uygulama",
+    "taxOverride": "Vergi değiştirme",
+    "voidLine": "Satır iptali",
+    "belowCostSale": "Maliyetin altında satış"
+  },
+  "moduleLabels": {
+    "pos": "Yazar Kasa",
+    "sales": "Satış",
+    "purchases": "Satın Alma",
+    "accounting": "Muhasebe"
+  },
+  "confirmRemove": {
+    "title": "Bu kural kaldırılsın mı?",
+    "message": "Bu kontrol uygulanmayı bırakacak. İstediğiniz zaman tekrar ekleyebilirsiniz.",
+    "confirm": "Kaldır",
+    "cancel": "Tut"
+  },
+  "validator": {
+    "idRequired": "Bu kuralın denetlenebilmesi için kısa bir kimlik gereklidir.",
+    "actionRequired": "Bu kuralın neyi kontrol ettiğini seçin.",
+    "amountNumber": "Tutar bir sayı olmalıdır.",
+    "amountOpRequired": "Tutar koşulu için bir karşılaştırma seçin."
+  }
+}

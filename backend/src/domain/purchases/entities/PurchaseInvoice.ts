@@ -1,5 +1,6 @@
 import { roundMoney } from '../../../application/system-core/money/roundMoney';
 import { calculateCommercialLineAmounts } from '../../../application/system-core/commercial/CommercialCore';
+import { PurchaseTaxTreatment } from '../../shared/entities/TaxCode';
 export type PIStatus = 'DRAFT' | 'PENDING_APPROVAL' | 'POSTED' | 'CANCELLED';
 export type PaymentStatus = 'UNPAID' | 'PARTIALLY_PAID' | 'PAID';
 export type DocumentSource = 'native' | 'default_form' | 'custom_form';
@@ -78,6 +79,7 @@ export interface PurchaseInvoiceLine {
   taxCodeId?: string;
   taxCode?: string;
   taxRate: number;
+  purchaseTaxTreatment?: PurchaseTaxTreatment;
   // When true, `unitPriceDoc` already includes tax. The entity derives net
   // (lineTotalDoc) and tax (taxAmountDoc) by splitting the gross — same
   // shape as the SI fix (Task 168) and the SO fix (Task 170B).
@@ -329,6 +331,16 @@ export class PurchaseInvoice {
       discountAmountDoc: explicitDiscountDoc,
       currency: this.currency,
     });
+    const purchaseTaxTreatment = line.purchaseTaxTreatment || 'RECOVERABLE';
+    const capitalizePurchaseTax = purchaseTaxTreatment === 'NON_RECOVERABLE';
+    const lineTotalDoc = capitalizePurchaseTax
+      ? roundMoney(amounts.lineTotalDoc + amounts.taxAmountDoc)
+      : amounts.lineTotalDoc;
+    const lineTotalBase = capitalizePurchaseTax
+      ? roundMoney(amounts.lineTotalBase + amounts.taxAmountBase)
+      : amounts.lineTotalBase;
+    const taxAmountDoc = capitalizePurchaseTax ? 0 : amounts.taxAmountDoc;
+    const taxAmountBase = capitalizePurchaseTax ? 0 : amounts.taxAmountBase;
 
     return {
       lineId: line.lineId,
@@ -347,17 +359,18 @@ export class PurchaseInvoice {
       discountType,
       discountValue: discountType ? discountValue : undefined,
       discountAmountDoc: amounts.discountAmountDoc,
-      lineTotalDoc: amounts.lineTotalDoc,
+      lineTotalDoc,
       unitPriceBase: amounts.unitPriceBase,
       grossLineTotalBase: amounts.grossLineTotalBase,
       discountAmountBase: amounts.discountAmountBase,
-      lineTotalBase: amounts.lineTotalBase,
+      lineTotalBase,
       taxCodeId: line.taxCodeId,
       taxCode: line.taxCode,
       taxRate,
+      purchaseTaxTreatment,
       priceIsInclusive,
-      taxAmountDoc: amounts.taxAmountDoc,
-      taxAmountBase: amounts.taxAmountBase,
+      taxAmountDoc,
+      taxAmountBase,
       warehouseId: line.warehouseId,
       accountId: line.accountId || '',
       stockMovementId: line.stockMovementId ?? null,

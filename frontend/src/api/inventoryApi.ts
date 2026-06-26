@@ -297,6 +297,12 @@ export interface StockLevelDTO {
   maxBusinessDate: string;
   totalMovements: number;
   lastMovementId: string;
+  reportUnitCostBase?: number | null;
+  reportUnitCostCCY?: number | null;
+  reportValueBase?: number | null;
+  reportValueCCY?: number | null;
+  costBasis?: 'AVG' | 'LAST_KNOWN' | 'MISSING';
+  unvaluedNegativeStock?: boolean;
   version: number;
   updatedAt: string;
 }
@@ -317,13 +323,28 @@ export interface StockMovementDTO {
   uom: string;
   referenceType: string;
   referenceId?: string;
+  referenceLineId?: string;
   transferPairId?: string;
   reversesMovementId?: string;
   unitCostBase: number;
   totalCostBase: number;
   unitCostCCY: number;
   totalCostCCY: number;
+  avgCostBaseAfter: number;
+  avgCostCCYAfter: number;
+  qtyBefore: number;
+  qtyAfter: number;
+  settledQty?: number;
+  unsettledQty?: number;
+  unsettledCostBasis?: 'AVG' | 'LAST_KNOWN' | 'MISSING';
+  settlesNegativeQty?: number;
+  newPositiveQty?: number;
+  negativeQtyAtPosting: boolean;
   costSettled: boolean;
+  isBackdated: boolean;
+  costSource: string;
+  notes?: string;
+  metadata?: Record<string, any>;
 }
 
 export interface StockAdjustmentDTO {
@@ -656,7 +677,7 @@ export const inventoryApi = {
   updateUom: (id: string, payload: Partial<InventoryUomDTO>): Promise<InventoryUomDTO> =>
     client.put(`/tenant/inventory/uoms/${id}`, payload),
 
-  getStockLevels: (filters?: { itemId?: string; warehouseId?: string; limit?: number; offset?: number }): Promise<StockLevelDTO[]> =>
+  getStockLevels: (filters?: { itemId?: string; warehouseId?: string; includeZero?: boolean; includeNegative?: boolean; limit?: number; offset?: number }): Promise<StockLevelDTO[]> =>
     client.get('/tenant/inventory/stock-levels', { params: filters }),
 
   getStockLevelsByItem: (itemId: string): Promise<StockLevelDTO[]> =>

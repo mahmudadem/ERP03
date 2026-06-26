@@ -11,6 +11,7 @@ import { TaxCode } from '../../../domain/shared/entities/TaxCode';
 import { PostPurchaseReturnUseCase } from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
 import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
+import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
 
 const COMPANY_ID = 'cmp-1';
 const USER_ID = 'u-1';
@@ -445,13 +446,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
@@ -511,13 +515,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
@@ -555,13 +562,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          { save: jest.fn(async (voucher: any) => voucher), delete: jest.fn(async () => true) } as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, purchaseReturn.id);
@@ -603,13 +613,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await expect(useCase.execute(COMPANY_ID, purchaseReturn.id)).rejects.toThrow(/exceeds invoiced qty/i);
@@ -649,13 +662,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       inventoryService as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await expect(useCase.execute(COMPANY_ID, purchaseReturn.id)).rejects.toThrow(/exceeds received qty/i);
@@ -715,13 +731,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          { recordForVoucher: jest.fn(async () => undefined), deleteForVoucher: jest.fn(async () => undefined) } as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     await useCase.execute(COMPANY_ID, purchaseReturn.id);
@@ -738,7 +757,7 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
     expect(savedVoucher.totalCredit).toBe(33);
   });
 
-  it('7) AFTER_INVOICE return skips voucher creation when accounting module is not initialized', async () => {
+  it('7) AFTER_INVOICE return skips voucher creation when the Accounting Engine is not initialized', async () => {
     const settings = makeSettings('SIMPLE', {
       defaultPurchaseReturnAccountId: 'PUR-RET-100',
     });
@@ -776,13 +795,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo(false) as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo(false) as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
@@ -860,13 +882,16 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
       { getBaseCurrency: jest.fn(async () => 'USD') } as any,
       makeInventoryService() as any,
       makeCompanyModuleRepo() as any,
-      new SubledgerVoucherPostingService(
-        voucherRepo as any,
-        ledgerRepo as any,
-        { getBaseCurrency: jest.fn(async () => 'USD') } as any
-      ),
       makeAccountRepo() as any,
-      makeTransactionManager() as any
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
     );
 
     const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);

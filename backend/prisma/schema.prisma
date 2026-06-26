@@ -1595,16 +1595,21 @@ model PartyItemPrice {
 }
 
 model TaxCode {
-  id          String   @id @default(uuid())
-  companyId   String
-  code        String
-  name        String
-  rate        Float    @default(0)
-  type        String
-  isActive    Boolean  @default(true)
-  description String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                   String   @id @default(uuid())
+  companyId            String
+  code                 String
+  name                 String
+  rate                 Float    @default(0)
+  type                 String
+  scope                String   @default("BOTH")
+  purchaseTaxAccountId String?
+  salesTaxAccountId    String?
+  purchaseTaxTreatment String   @default("RECOVERABLE")
+  priceIsInclusive     Boolean  @default(false)
+  isActive             Boolean  @default(true)
+  description          String?
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 

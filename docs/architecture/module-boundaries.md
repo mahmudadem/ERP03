@@ -38,7 +38,7 @@ This document defines the boundary every application module must respect. It exi
 | Policy | `IPolicyEngine` | `resolve(scope, action, ctx)` → allowed / requiresApproval |
 | Approval | `IApprovalEngine` | `evaluate(subject, ctx)` for any subject (voucher, price/discount/below-cost override, POS manager override) |
 | Inventory | `IInventoryCore` | stock IN/OUT, costing, COGS account resolution + accumulation |
-| Accounting | `IAccountingBridge` | record a financial event (full posting, or minimal-journal when Accounting App disabled) |
+| Accounting | `IAccountingBridge` | record a financial event (full posting when the Accounting Engine is initialized, or minimal-journal when it is not initialized) |
 | Audit | `IAuditEngine` | record lifecycle / override / approval events |
 
 ## When you need new shared behavior
@@ -50,5 +50,5 @@ If two modules would need the same business rule, it belongs in an engine, not c
 These are tracked in `planning/ACTIVE.md` (FUP-1..4). They are gaps in the boundary, not exceptions to the rule:
 - **FUP-1:** promotion stacking/cap model missing — POS/Sales promotions must stay disabled in production until it lands.
 - **FUP-2:** SO/PO/SR/PR still use local pricing/discount helpers (only SI/PI moved to `ICommercialCore`).
-- **FUP-3:** Sales/Purchases/Inventory posters not yet all routed behind `IAccountingBridge`.
+- **FUP-3:** Audited Sales/Purchases/Inventory posting slices are routed behind `IAccountingBridge`. Sales DeliveryNote COGS, SalesInvoice, SalesReturn, Sales PaymentSync, Goods Receipt, Purchase Invoice, Purchase Return, Purchases PaymentSync, Inventory Opening Stock, Inventory Stock Adjustment, Inventory Stock Transfer, and Inventory Revaluation migrated to bridge-only (Task 267-F). New source-module posting paths must use required `IAccountingBridge` and golden voucher-output tests first.
 - **FUP-4:** Sales still imports inventory domain entities for stock-OUT orchestration (only COGS accumulation moved to `IInventoryCore`).
