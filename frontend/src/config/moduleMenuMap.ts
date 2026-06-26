@@ -95,6 +95,7 @@ export const moduleMenuMap: Record<
         children: [
           { label: 'Stock Levels', path: '/inventory/stock-levels', permission: 'inventory.stock.view', icon: 'Layers' },
           { label: 'Movements', path: '/inventory/movements', permission: 'inventory.movements.view', icon: 'Repeat' },
+          { label: 'Item Movement', path: '/inventory/reports/item-movement', permission: 'inventory.movements.view', icon: 'ListTree' },
           { label: 'Low Stock Alerts', path: '/inventory/alerts/low-stock', permission: 'inventory.stock.view', icon: 'AlertTriangle' },
           { label: 'Unsettled Costs', path: '/inventory/reports/unsettled-costs', permission: 'inventory.movements.view', icon: 'CircleDollarSign' },
           { label: 'Inventory Valuation', path: '/inventory/reports/valuation', permission: 'inventory.valuation.view', icon: 'Coins' },

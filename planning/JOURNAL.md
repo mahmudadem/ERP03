@@ -5190,3 +5190,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs:** Updated settings architecture, added user guide `docs/user-guide/settings/tax-codes.md`, marked Task 268 complete, and created completion report `planning/done/268-tax-code-master-data-controls-and-page-repolish.md`.
 - **Time spent:** ~2.1h.
 - **Next:** Task 269 — purchase tax recoverability and cost capitalization.
+
+### Session: 2026-06-26 (Task 270 — Stock level reporting, negative valuation, and Item Movement)
+
+- **Goal:** Fix allowed negative stock reporting so it does not silently show zero value, convert Stock Levels to the mandatory report pattern, and add an item-level movement report with source drill-down where supported.
+- **What was done:** Removed the stale POS readiness worktree after confirming it was clean and contained in `origin/main`. Added stock-level report valuation fields from `GetStockLevelsUseCase.executeReport(...)`, using average cost first, last-known cost for negative balances, and an explicit unvalued-negative flag when no cost basis exists. Converted `StockLevelsPage` to `ReportContainer`. Added `ItemMovementReportPage` under Inventory Reports with shared item/warehouse/date controls, running quantity/value, and safe source route mapping. Updated API DTOs, route/menu wiring, inventory architecture docs, user guide, completion report, and ACTIVE.
+- **Accounting/ERP impact:** Reporting/control correction only. No posted voucher output, stock movement persistence, average-cost engine, COGS posting, settlement, period-lock, or approval behavior changed. The financial exposure of negative stock is now visible in reports instead of hidden behind zero valuation.
+- **Verification:** Focused StockLevelUseCases tests passed (4/4). InventoryValuationService focused tests passed (3/3). Backend build passed. Frontend `check:reports`, typecheck, and production build passed; existing browser-data/chunk-size warnings remain. `git diff --check` reported CRLF normalization warnings only. `graphify update .` was not run because `graphify` is not installed in this shell.
+- **Time spent:** ~3.1h.
+- **Next:** Commit/push Task 270, then continue Task 271 — Sales/Purchase Return layout parity and direct Purchase Return.

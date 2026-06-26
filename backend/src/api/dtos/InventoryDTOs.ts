@@ -200,6 +200,12 @@ export interface StockLevelDTO {
   maxBusinessDate: string;
   totalMovements: number;
   lastMovementId: string;
+  reportUnitCostBase?: number | null;
+  reportUnitCostCCY?: number | null;
+  reportValueBase?: number | null;
+  reportValueCCY?: number | null;
+  costBasis?: 'AVG' | 'LAST_KNOWN' | 'MISSING';
+  unvaluedNegativeStock?: boolean;
   version: number;
   updatedAt: string;
 }
@@ -500,7 +506,30 @@ export class InventoryDTOMapper {
     };
   }
 
-  static toStockLevelDTO(level: StockLevel): StockLevelDTO {
+  static toStockLevelDTO(level: {
+    id: string;
+    companyId: string;
+    itemId: string;
+    warehouseId: string;
+    qtyOnHand: number;
+    reservedQty: number;
+    avgCostBase: number;
+    avgCostCCY: number;
+    lastCostBase: number;
+    lastCostCCY: number;
+    postingSeq: number;
+    maxBusinessDate: string;
+    totalMovements: number;
+    lastMovementId: string;
+    reportUnitCostBase?: number | null;
+    reportUnitCostCCY?: number | null;
+    reportValueBase?: number | null;
+    reportValueCCY?: number | null;
+    costBasis?: 'AVG' | 'LAST_KNOWN' | 'MISSING';
+    unvaluedNegativeStock?: boolean;
+    version: number;
+    updatedAt: Date;
+  }): StockLevelDTO {
     return {
       id: level.id,
       companyId: level.companyId,
@@ -516,6 +545,12 @@ export class InventoryDTOMapper {
       maxBusinessDate: level.maxBusinessDate,
       totalMovements: level.totalMovements,
       lastMovementId: level.lastMovementId,
+      reportUnitCostBase: level.reportUnitCostBase,
+      reportUnitCostCCY: level.reportUnitCostCCY,
+      reportValueBase: level.reportValueBase,
+      reportValueCCY: level.reportValueCCY,
+      costBasis: level.costBasis,
+      unvaluedNegativeStock: level.unvaluedNegativeStock,
       version: level.version,
       updatedAt: level.updatedAt.toISOString(),
     };

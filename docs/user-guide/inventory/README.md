@@ -85,18 +85,25 @@ Transfer costing rules:
 
 ### Viewing what's on hand — Stock Levels
 
-`Inventory → Stock Levels`. Shows for each item/warehouse:
+`Inventory → Reports → Stock Levels`. Shows for each item/warehouse:
 - On-hand qty
 - Reserved qty *(reserved is currently not populated — for future Sales Order reservations)*
-- Average cost (weighted moving average)
-- Last cost (cost of the most recent IN movement)
+- Report cost basis
 - Total value
 
-### Tracking history — Stock Movements
+If negative stock is allowed, the report still shows the financial exposure. Example: qty `-2` with known cost `1200`
+shows value `-2400`. If there is no known cost basis, the report marks the line as **Unvalued negative stock** instead
+of showing a clean zero.
 
-`Inventory → Movements`. The full append-only ledger. Filter by item, warehouse, date range, or movement type.
+### Tracking history — Item Movement
+
+`Inventory → Reports → Item Movement`. Select an item to see the full append-only ledger for that item. Filter by
+warehouse, date range, source type, direction, or movement type.
 
 Use this when an auditor asks "show me every transaction that touched item X in May".
+
+The report shows running quantity and running value. If the source document has a supported detail page, the source
+reference is clickable. If not, the reference remains plain text.
 
 ### Maintaining item UOM conversions
 

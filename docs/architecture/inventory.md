@@ -169,6 +169,28 @@ On IN movements that cover a prior deficit:
 - `settlesNegativeQty` = qty applied against deficit (corrects cost retroactively for the affected OUT movements *via reporting*, not by rewriting them).
 - `newPositiveQty` = qty above zero.
 
+### Stock-level report valuation for negative balances
+
+`Inventory -> Reports -> Stock Levels` uses a report DTO from `GetStockLevelsUseCase.executeReport(...)` instead of
+recomputing value in the browser. The report value rule is:
+
+1. Use `avgCostBase/CCY` when the level has a non-zero moving average.
+2. For negative `qtyOnHand` only, fall back to `lastCostBase/CCY` when the moving average is missing.
+3. If a negative level has neither average nor last-known cost, return `reportValueBase = null` and
+   `unvaluedNegativeStock = true`.
+
+This keeps an allowed negative balance financially visible (`-2 x 1200 = -2400`) without inventing a cost where no
+cost basis exists. Positive stock behavior is unchanged: positive lines continue to use moving average and do not fall
+back to last-known cost.
+
+### Item Movement report
+
+`Inventory -> Reports -> Item Movement` is a read-only movement ledger over the existing immutable
+`StockMovement` stream. It requires an item, optionally filters by warehouse/date/source/movement type, and computes
+running quantity/value in the browser from the movement rows returned by `/tenant/inventory/movements`. Source document
+drill-down is intentionally route-mapped only for document detail routes that exist in `routes.config.ts`; unsupported
+source types remain plain text so the report never opens a dead route.
+
 ### Backdating
 
 Allowed. Movement `date` can be earlier than prior movements. Flagged with `isBackdated = true`.

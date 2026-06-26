@@ -47,6 +47,7 @@ const CategoriesPage = lazy(() => import('../modules/inventory/pages/CategoriesP
 const WarehousesPage = lazy(() => import('../modules/inventory/pages/WarehousesPage'));
 const StockLevelsPage = lazy(() => import('../modules/inventory/pages/StockLevelsPage'));
 const StockMovementsPage = lazy(() => import('../modules/inventory/pages/StockMovementsPage'));
+const ItemMovementReportPage = lazy(() => import('../modules/inventory/pages/ItemMovementReportPage'));
 const StockAdjustmentPage = lazy(() => import('../modules/inventory/pages/StockAdjustmentPage'));
 const InventoryRevaluationPage = lazy(() => import('../modules/inventory/pages/InventoryRevaluationPage'));
 const OpeningStockPage = lazy(() => import('../modules/inventory/pages/OpeningStockPage'));
@@ -271,6 +272,7 @@ export const routesConfig: AppRoute[] = [
   { path: '/inventory/transfers', label: 'Transfers', component: StockTransfersPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.adjust', requiredModule: 'inventory' },
   { path: '/inventory/alerts/low-stock', label: 'Low Stock Alerts', component: LowStockAlertsPage, section: 'INVENTORY', requiredPermission: 'inventory.stock.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/unsettled-costs', label: 'Unsettled Costs', component: UnsettledCostsPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
+  { path: '/inventory/reports/item-movement', label: 'Item Movement', component: ItemMovementReportPage, section: 'INVENTORY', requiredPermission: 'inventory.movements.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/valuation', label: 'Inventory Valuation', component: InventoryValuationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/reports/gl-reconciliation', label: 'Inventory ↔ GL Reconciliation', component: InventoryGLReconciliationPage, section: 'INVENTORY', requiredPermission: 'inventory.valuation.view', requiredModule: 'inventory' },
   { path: '/inventory/opening-stock/new', label: 'New Opening Stock Document', component: OpeningStockPage, section: 'INVENTORY', hideInMenu: true, requiredPermission: 'inventory.movements.record', requiredModule: 'inventory' },

@@ -1,5 +1,27 @@
 # 🎯 Current Focus
 
+## Task 270 — Stock level reporting, negative valuation, and Item Movement (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit` (uncommitted).
+
+- **Why:** Owner QA found allowed negative stock displaying as zero value. That can hide a real inventory/accounting exposure.
+- **What changed:**
+  - Stock Levels API now returns report valuation fields: cost basis, report unit cost, report value, and unvalued-negative warning.
+  - Positive stock still uses moving average.
+  - Negative stock with missing moving average but known last cost uses last-known cost for report value.
+  - Negative stock with no cost basis is explicitly flagged as unvalued instead of showing a clean zero value.
+  - Stock Levels now uses `ReportContainer` and supports item, warehouse, zero-quantity, negative-stock, and by-item/by-warehouse filters.
+  - Added `Inventory -> Reports -> Item Movement`, with required shared item selector, optional warehouse/date/source/direction/movement filters, running quantity/value, and source drill-down where routes exist.
+  - Updated inventory architecture/user docs and created the completion report.
+- **Verification:** StockLevelUseCases focused tests green; InventoryValuationService focused tests green; backend build green; frontend report guard/typecheck/build green; `git diff --check` clean except CRLF normalization warnings.
+- **Estimated/actual time:** 5-8h / ~3.1h.
+
+### Next action
+
+Commit/push the Task 270 local work, then continue Task 271: Sales/Purchase Return layout parity and direct Purchase Return.
+
+---
+
 ## Task 269 — Purchase tax recoverability and cost capitalization (2026-06-26)
 
 **Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit`.
