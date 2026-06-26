@@ -1,8 +1,32 @@
 # 🎯 Current Focus
 
+## Task 271 — Sales/Purchase Return layout parity and direct Purchase Return (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/271-returns-parity` (pending PR/merge).
+
+- **Why:** Owner QA confirmed source-based Purchase Return accounting, then found the return screens still expose raw source ids and do not match the SI/PI document pattern. Purchase Return also needs a safe direct-return option.
+- **Recommended approach:** Backend correctness first for direct PR, then UI parity in focused slices. Direct PR must not post zero base cost/tax just because it has no PI/GRN source.
+- **Accounting rule for direct PR:** Vendor/AP credit amount follows the user-entered return cost and selected purchase tax code. Inventory OUT movement uses inventory core issue cost at posting. If a later variance/accounting-control requirement is needed between vendor credit and inventory cost, handle it as a separate design task instead of hiding the difference.
+- **What changed:**
+  - Direct Purchase Return draft creation now preserves unit cost, base cost, FX, selected purchase tax code, inclusive flag, and tax amounts.
+  - Direct Purchase Return posting now credits purchase tax when applicable, keeping the AP debit balanced against net return + tax credit.
+  - Purchase Return create page now uses `Direct / From PI / From GRN` modes and posted PI/GRN pickers instead of raw source ID inputs.
+  - Direct mode uses vendor, warehouse, item, UOM, discount, and tax selectors.
+  - Posted Purchase Returns now expose GL Impact.
+  - Shared GL Impact role labels now identify return vouchers as return reversals.
+  - Purchases architecture/user docs and completion report were updated.
+- **Verification:** PurchaseReturnUseCases, PurchaseReturnGoldenVoucher, SalesReturnGoldenVoucher, SystemCoreBoundaries, backend build, frontend typecheck, and frontend build all pass.
+- **Estimated/actual time:** 6-10h / ~3.5h.
+
+### Next action
+
+Commit/push Task 271 and open a PR. Owner QA should test: Direct PR with tax, From PI PR, From GRN PR, and posted PR GL Impact.
+
+---
+
 ## Task 270 — Stock level reporting, negative valuation, and Item Movement (2026-06-26)
 
-**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit` (uncommitted).
+**Status:** ✅ Merged to `main` via PR #37.
 
 - **Why:** Owner QA found allowed negative stock displaying as zero value. That can hide a real inventory/accounting exposure.
 - **What changed:**
@@ -18,7 +42,7 @@
 
 ### Next action
 
-Commit/push the Task 270 local work, then continue Task 271: Sales/Purchase Return layout parity and direct Purchase Return.
+Continue Task 271: Sales/Purchase Return layout parity and direct Purchase Return.
 
 ---
 

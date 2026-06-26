@@ -3670,6 +3670,28 @@
     }
   },
   "purchases": {
+    "returnDetail": {
+      "returnMode": "وضع الإرجاع",
+      "modeDirect": "مباشر",
+      "modeFromPi": "من فاتورة شراء",
+      "modeFromGrn": "من استلام بضاعة",
+      "purchaseInvoice": "فاتورة الشراء",
+      "selectPostedPi": "اختر فاتورة شراء مرحلة",
+      "goodsReceipt": "استلام البضاعة",
+      "selectPostedGrn": "اختر استلام بضاعة مرحل",
+      "vendor": "المورد",
+      "selectVendor": "اختر المورد",
+      "noPurchaseTaxCodes": "لا توجد رموز ضريبة شراء.",
+      "selectGoodsReceiptTitle": "اختيار استلام بضاعة",
+      "selectGoodsReceiptHint": "أحدث استلامات البضاعة المرحلة. اختر واحدًا لسحب البنود إلى هذا الإرجاع.",
+      "loadingGoodsReceipts": "جارٍ تحميل استلامات البضاعة...",
+      "noPostedGoodsReceipts": "لا توجد استلامات بضاعة مرحلة.",
+      "grnNo": "رقم الاستلام",
+      "receiptDate": "تاريخ الاستلام",
+      "lines": "البنود",
+      "pullSelectedReceipt": "سحب الاستلام المحدد",
+      "glImpact": "الأثر المحاسبي"
+    },
     "invoicesList": {
       "title": "فواتير المشتريات",
       "subtitle": "الفواتير المرحلة تنشئ الذمم الدائنة وقيود دفتر الأستاذ.",

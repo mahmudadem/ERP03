@@ -1157,6 +1157,7 @@ export class PurchaseController {
         diContainer.goodsReceiptRepository,
         diContainer.partyRepository,
         diContainer.itemRepository,
+        diContainer.taxCodeRepository,
         diContainer.numberingEngine
       );
 

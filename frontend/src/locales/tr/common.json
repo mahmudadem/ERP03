@@ -3672,6 +3672,28 @@
     }
   },
   "purchases": {
+    "returnDetail": {
+      "returnMode": "İade Modu",
+      "modeDirect": "Doğrudan",
+      "modeFromPi": "AF'den",
+      "modeFromGrn": "Mal kabulden",
+      "purchaseInvoice": "Alış Faturası",
+      "selectPostedPi": "İşlenmiş alış faturası seç",
+      "goodsReceipt": "Mal Kabul",
+      "selectPostedGrn": "İşlenmiş mal kabul seç",
+      "vendor": "Tedarikçi",
+      "selectVendor": "Tedarikçi seç",
+      "noPurchaseTaxCodes": "Alış vergi kodu bulunamadı.",
+      "selectGoodsReceiptTitle": "Mal Kabul Seç",
+      "selectGoodsReceiptHint": "Son işlenmiş mal kabuller. Satırları bu iadeye almak için birini seçin.",
+      "loadingGoodsReceipts": "Mal kabuller yükleniyor...",
+      "noPostedGoodsReceipts": "İşlenmiş mal kabul bulunamadı.",
+      "grnNo": "Mal Kabul No",
+      "receiptDate": "Kabul Tarihi",
+      "lines": "Satırlar",
+      "pullSelectedReceipt": "Seçili kabulü al",
+      "glImpact": "Muhasebe Etkisi"
+    },
     "invoicesList": {
       "title": "Satın Alma Faturaları",
       "subtitle": "Kaydedilen faturalar borç ve genel muhasebe kayıtları oluşturur.",

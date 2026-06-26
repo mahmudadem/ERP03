@@ -8,7 +8,10 @@ import { PurchaseReturn } from '../../../domain/purchases/entities/PurchaseRetur
 import { PurchaseSettings } from '../../../domain/purchases/entities/PurchaseSettings';
 import { Party } from '../../../domain/shared/entities/Party';
 import { TaxCode } from '../../../domain/shared/entities/TaxCode';
-import { PostPurchaseReturnUseCase } from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
+import {
+  CreatePurchaseReturnUseCase,
+  PostPurchaseReturnUseCase,
+} from '../../../application/purchases/use-cases/PurchaseReturnUseCases';
 import { VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
@@ -398,6 +401,75 @@ const makeCompanyModuleRepo = (initialized = true) => ({
     moduleKey: 'accounting',
     initialized,
   })),
+});
+
+describe('PurchaseReturn creation use-case', () => {
+  it('creates DIRECT taxable return lines with real base cost and inclusive tax split', async () => {
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+      prNumberPrefix: 'PR',
+      prNumberNextSeq: 7,
+    });
+    const item = makeItem();
+    const taxCode = new TaxCode({
+      id: 'tax-inc',
+      companyId: COMPANY_ID,
+      code: 'VAT10INC',
+      name: 'VAT 10 Inclusive',
+      rate: 0.1,
+      taxType: 'VAT',
+      scope: 'PURCHASE',
+      purchaseTaxAccountId: 'TAX-100',
+      priceIsInclusive: true,
+      active: true,
+      createdBy: USER_ID,
+      createdAt: nowDate(),
+      updatedAt: nowDate(),
+    });
+    let createdReturn: PurchaseReturn | null = null;
+
+    const useCase = new CreatePurchaseReturnUseCase(
+      {
+        getSettings: jest.fn(async () => settings),
+        saveSettings: jest.fn(async () => undefined),
+      } as any,
+      {
+        create: jest.fn(async (entity: PurchaseReturn) => { createdReturn = entity; }),
+      } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getById: jest.fn(async () => null) } as any,
+      { getById: jest.fn(async () => makeVendor()) } as any,
+      makeItemRepo(item) as any,
+      { getById: jest.fn(async () => taxCode) } as any
+    );
+
+    const result = await useCase.execute({
+      companyId: COMPANY_ID,
+      vendorId: 'ven-1',
+      returnDate: '2026-01-15',
+      warehouseId: 'wh-1',
+      currency: 'USD',
+      exchangeRate: 1,
+      reason: 'Direct vendor credit',
+      createdBy: USER_ID,
+      lines: [{
+        itemId: 'item-1',
+        returnQty: 2,
+        unitCostDoc: 110,
+        taxCodeId: 'tax-inc',
+      }],
+    });
+
+    expect(createdReturn).toBe(result);
+    expect(result.returnContext).toBe('DIRECT');
+    expect(result.lines[0].taxCodeId).toBe('tax-inc');
+    expect(result.lines[0].taxRate).toBe(0.1);
+    expect(result.lines[0].priceIsInclusive).toBe(true);
+    expect(result.lines[0].unitCostBase).toBe(110);
+    expect(result.subtotalDoc).toBeCloseTo(200, 2);
+    expect(result.taxTotalDoc).toBeCloseTo(20, 2);
+    expect(result.grandTotalDoc).toBeCloseTo(220, 2);
+  });
 });
 
 describe('PurchaseReturn posting use-case (Phase 3)', () => {
@@ -910,6 +982,108 @@ describe('PurchaseReturn posting use-case (Phase 3)', () => {
     // Voucher balances at the net.
     expect(savedVoucher.totalDebit).toBeCloseTo(savedVoucher.totalCredit, 2);
     expect(savedVoucher.totalDebit).toBeCloseTo(47.5, 2);
+  });
+
+  it('9) DIRECT taxable return posts a balanced AP debit, return credit, and purchase tax credit', async () => {
+    const settings = makeSettings('SIMPLE', {
+      defaultPurchaseReturnAccountId: 'PUR-RET-100',
+    });
+    const vendor = makeVendor();
+    const item = makeItem();
+    const taxCode = makeTaxCode();
+    const purchaseReturn = new PurchaseReturn({
+      id: 'pr-direct-tax',
+      companyId: COMPANY_ID,
+      returnNumber: 'PR-DIRECT',
+      vendorId: 'ven-1',
+      vendorName: 'Vendor One',
+      returnContext: 'DIRECT',
+      returnDate: '2026-01-15',
+      warehouseId: 'wh-1',
+      currency: 'USD',
+      exchangeRate: 1,
+      lines: [{
+        lineId: 'pr-line-direct-tax',
+        lineNo: 1,
+        itemId: 'item-1',
+        itemCode: 'IT-1',
+        itemName: 'Stock Item',
+        returnQty: 2,
+        uom: 'EA',
+        unitCostDoc: 10,
+        unitCostBase: 10,
+        fxRateMovToBase: 1,
+        fxRateCCYToBase: 1,
+        taxCodeId: 'tax-1',
+        taxCode: 'VAT10',
+        taxRate: 0.1,
+        taxAmountDoc: 2,
+        taxAmountBase: 2,
+        stockMovementId: null,
+      }],
+      subtotalDoc: 20,
+      taxTotalDoc: 2,
+      grandTotalDoc: 22,
+      subtotalBase: 20,
+      taxTotalBase: 2,
+      grandTotalBase: 22,
+      reason: 'Direct vendor credit',
+      status: 'DRAFT',
+      createdBy: USER_ID,
+      createdAt: nowDate(),
+      updatedAt: nowDate(),
+    });
+
+    const returnStore = new Map([[purchaseReturn.id, purchaseReturn]]);
+    const voucherRepo = { save: jest.fn(async (voucher: any) => voucher) };
+    const ledgerRepo = { recordForVoucher: jest.fn(async () => undefined) };
+
+    const useCase = new PostPurchaseReturnUseCase(
+      { getSettings: jest.fn(async () => settings) } as any,
+      makeInventorySettingsRepository('PERIODIC') as any,
+      {
+        getById: jest.fn(async (_c: string, id: string) => returnStore.get(id) ?? null),
+        list: jest.fn(async () => []),
+        update: jest.fn(async (entity: PurchaseReturn) => { returnStore.set(entity.id, entity); }),
+      } as any,
+      { getSettings: jest.fn(async () => null) } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => null), list: jest.fn(async () => []) } as any,
+      { getById: jest.fn(async () => null), update: jest.fn(async () => undefined) } as any,
+      { getById: jest.fn(async () => vendor) } as any,
+      { getById: jest.fn(async () => taxCode) } as any,
+      makeItemRepo(item) as any,
+      { getById: jest.fn(async () => ({ defaultInventoryAccountId: 'INV-100' })) } as any,
+      { getConversionsForItem: jest.fn(async () => []) } as any,
+      { getBaseCurrency: jest.fn(async () => 'USD') } as any,
+      makeInventoryService() as any,
+      makeCompanyModuleRepo() as any,
+      makeAccountRepo() as any,
+      makeTransactionManager() as any,
+      new LegacyAccountingBridgeAdapter(
+        new SubledgerVoucherPostingService(
+          voucherRepo as any,
+          ledgerRepo as any,
+          { getBaseCurrency: jest.fn(async () => 'USD') } as any
+        ),
+        makeCompanyModuleRepo() as any
+      )
+    );
+
+    const posted = await useCase.execute(COMPANY_ID, purchaseReturn.id);
+    expect(posted.status).toBe('POSTED');
+    expect(posted.grandTotalBase).toBeCloseTo(22, 2);
+
+    const savedVoucher = (voucherRepo.save as any).mock.calls[0][0];
+    const apLine = savedVoucher.lines.find((l: any) => l.accountId === 'AP-200' && l.side === 'Debit');
+    const returnLine = savedVoucher.lines.find((l: any) => l.accountId === 'PUR-RET-100' && l.side === 'Credit');
+    const taxLine = savedVoucher.lines.find((l: any) => l.accountId === 'TAX-100' && l.side === 'Credit');
+
+    expect(apLine?.baseAmount).toBeCloseTo(22, 2);
+    expect(returnLine?.baseAmount).toBeCloseTo(20, 2);
+    expect(taxLine?.baseAmount).toBeCloseTo(2, 2);
+    expect(savedVoucher.totalDebit).toBeCloseTo(savedVoucher.totalCredit, 2);
+    expect(savedVoucher.totalDebit).toBeCloseTo(22, 2);
   });
 });
 

@@ -124,8 +124,10 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
     if (tkn.includes('RECEIPT')) return t('sales.glImpact.roleReceipt', 'Receipt — cash/bank in');
     if (tkn.includes('PAYMENT')) return t('sales.glImpact.rolePayment', 'Payment — cash/bank out');
     if (postingContext === 'purchases') {
+      if (tkn.includes('RETURN')) return t('sales.glImpact.rolePurchaseReturn', 'Purchase return — AP/tax/stock reversal');
       return t('sales.glImpact.rolePurchaseInvoice', 'Bill & inventory/AP');
     }
+    if (tkn.includes('RETURN')) return t('sales.glImpact.roleSalesReturn', 'Sales return — revenue/tax/stock reversal');
     return t('sales.glImpact.roleInvoice', 'Invoice & revenue');
   };
 

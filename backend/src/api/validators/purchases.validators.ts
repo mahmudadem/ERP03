@@ -199,8 +199,11 @@ const validatePRLine = (line: any, index: number) => {
   if (line.poLineId !== undefined) ensureOptionalString(line.poLineId, `lines[${index}].poLineId`);
   if (line.itemId !== undefined) ensureOptionalString(line.itemId, `lines[${index}].itemId`);
   if (line.returnQty !== undefined) ensurePositiveNumber(line.returnQty, `lines[${index}].returnQty`);
+  if (line.unitCostDoc !== undefined) ensureNonNegativeNumber(line.unitCostDoc, `lines[${index}].unitCostDoc`);
   if (line.uom !== undefined) ensureOptionalString(line.uom, `lines[${index}].uom`);
   if (line.uomId !== undefined) ensureOptionalString(line.uomId, `lines[${index}].uomId`);
+  if (line.taxCodeId !== undefined) ensureOptionalString(line.taxCodeId, `lines[${index}].taxCodeId`);
+  if (line.priceIsInclusive !== undefined) ensureBoolean(line.priceIsInclusive, `lines[${index}].priceIsInclusive`);
   if (
     line.piLineId === undefined
     && line.grnLineId === undefined
@@ -513,6 +516,7 @@ export const validateCreatePurchaseReturnInput = (body: any) => {
   if (body.purchaseInvoiceId !== undefined) ensureOptionalString(body.purchaseInvoiceId, 'purchaseInvoiceId');
   if (body.goodsReceiptId !== undefined) ensureOptionalString(body.goodsReceiptId, 'goodsReceiptId');
   if (body.vendorId !== undefined) ensureOptionalString(body.vendorId, 'vendorId');
+  const isDirect = !body.purchaseInvoiceId && !body.goodsReceiptId && !!body.vendorId;
 
   if (!body.purchaseInvoiceId && !body.goodsReceiptId && !body.vendorId) {
     throw ApiError.badRequest('purchaseInvoiceId, goodsReceiptId or vendorId is required');
@@ -521,6 +525,9 @@ export const validateCreatePurchaseReturnInput = (body: any) => {
   if (body.purchaseOrderId !== undefined) ensureOptionalString(body.purchaseOrderId, 'purchaseOrderId');
   ensureIsoDate(body.returnDate, 'returnDate');
   if (body.warehouseId !== undefined) ensureOptionalString(body.warehouseId, 'warehouseId');
+  if (isDirect) ensureRequiredString(body.warehouseId, 'warehouseId');
+  if (body.currency !== undefined) ensureOptionalString(body.currency, 'currency');
+  if (body.exchangeRate !== undefined) ensurePositiveNumber(body.exchangeRate, 'exchangeRate');
   ensureRequiredString(body.reason, 'reason');
   if (body.notes !== undefined && typeof body.notes !== 'string') {
     throw ApiError.badRequest('notes must be a string');
@@ -531,6 +538,8 @@ export const validateCreatePurchaseReturnInput = (body: any) => {
       throw ApiError.badRequest('lines must be a non-empty array when provided');
     }
     body.lines.forEach((line: any, index: number) => validatePRLine(line, index));
+  } else if (isDirect) {
+    throw ApiError.badRequest('lines must be a non-empty array for direct purchase returns');
   }
 };
 

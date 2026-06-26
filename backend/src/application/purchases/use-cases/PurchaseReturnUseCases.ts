@@ -43,6 +43,7 @@ import {
   PartyItemPriceUpsertInput,
 } from '../../../repository/interfaces/shared/IPartyItemPriceRepository';
 import { postFinancialEvent } from '../../accounting/services/postFinancialEvent';
+import { resolveLineDiscountAmount } from '../../system-core/commercial/CommercialCore';
 import { IAccountingBridge } from '../../system-core/contracts/IAccountingBridge';
 import {
   ItemQtyToBaseUomResult,
@@ -74,6 +75,7 @@ export interface PurchaseReturnLineInput {
   /** When true, `unitCostDoc` already includes tax. Normally inherited from
    *  the source PI line so the return reverses the same gross/net split. */
   priceIsInclusive?: boolean;
+  taxCodeId?: string;
   uomId?: string;
   uom?: string;
   accountId?: string;
@@ -203,6 +205,7 @@ export class CreatePurchaseReturnUseCase {
     private readonly goodsReceiptRepo: IGoodsReceiptRepository,
     private readonly partyRepo: IPartyRepository,
     private readonly itemRepo: IItemRepository,
+    private readonly taxCodeRepo: ITaxCodeRepository,
     private readonly numberingEngine?: INumberingEngine
   ) {}
 
@@ -238,7 +241,7 @@ export class CreatePurchaseReturnUseCase {
       ? this.prefillLinesFromInvoice(purchaseInvoice, input.lines)
       : goodsReceipt
         ? this.prefillLinesFromGoodsReceipt(goodsReceipt, input.lines)
-        : await this.createLinesDirectly(input.companyId, input.lines);
+        : await this.createLinesDirectly(input.companyId, input.lines, input.exchangeRate || 1);
 
     const warehouseId = input.warehouseId
       || (purchaseInvoice ? purchaseInvoice.lines[0]?.warehouseId : undefined)
@@ -438,7 +441,11 @@ export class CreatePurchaseReturnUseCase {
     };
   }
 
-  private async createLinesDirectly(companyId: string, inputLines?: PurchaseReturnLineInput[]): Promise<PurchaseReturnLine[]> {
+  private async createLinesDirectly(
+    companyId: string,
+    inputLines: PurchaseReturnLineInput[] | undefined,
+    exchangeRate: number
+  ): Promise<PurchaseReturnLine[]> {
     if (!inputLines?.length) {
       throw new Error('DIRECT purchase return requires lines to be provided manually');
     }
@@ -453,6 +460,34 @@ export class CreatePurchaseReturnUseCase {
 
       const qty = input.returnQty || 0;
       const unitCost = input.unitCostDoc || 0;
+      const taxCode = input.taxCodeId
+        ? await this.taxCodeRepo.getById(companyId, input.taxCodeId)
+        : null;
+
+      if (input.taxCodeId && !taxCode) {
+        throw new Error(`Line ${i + 1}: Tax code not found: ${input.taxCodeId}`);
+      }
+      const unitCostBase = roundMoney(unitCost * exchangeRate);
+      const taxRate = taxCode?.rate || 0;
+      const priceIsInclusive = input.priceIsInclusive ?? taxCode?.priceIsInclusive ?? false;
+      const grossLineTotalDoc = roundMoney(qty * unitCost);
+      const grossLineTotalBase = roundMoney(qty * unitCostBase);
+      const discountAmountDoc = resolveLineDiscountAmount(grossLineTotalDoc, {
+        discountType: input.discountType,
+        discountValue: input.discountValue || 0,
+      });
+      const discountAmountBase = roundMoney(discountAmountDoc * exchangeRate);
+      const postDiscountDoc = roundMoney(grossLineTotalDoc - discountAmountDoc);
+      const postDiscountBase = roundMoney(grossLineTotalBase - discountAmountBase);
+      const divisor = priceIsInclusive ? 1 + taxRate : 1;
+      const netLineTotalDoc = roundMoney(postDiscountDoc / divisor);
+      const netLineTotalBase = roundMoney(postDiscountBase / divisor);
+      const taxAmountDoc = priceIsInclusive
+        ? roundMoney(postDiscountDoc - netLineTotalDoc)
+        : roundMoney(netLineTotalDoc * taxRate);
+      const taxAmountBase = priceIsInclusive
+        ? roundMoney(postDiscountBase - netLineTotalBase)
+        : roundMoney(netLineTotalBase * taxRate);
 
       lines.push({
         lineId: input.lineId || randomUUID(),
@@ -466,12 +501,16 @@ export class CreatePurchaseReturnUseCase {
         unitCostDoc: unitCost,
         discountType: input.discountType,
         discountValue: input.discountValue,
-        unitCostBase: 0,
-        fxRateMovToBase: 0,
-        fxRateCCYToBase: 0,
-        taxRate: 0,
-        taxAmountDoc: 0,
-        taxAmountBase: 0,
+        unitCostBase,
+        fxRateMovToBase: exchangeRate,
+        fxRateCCYToBase: exchangeRate,
+        taxCodeId: taxCode?.id,
+        taxCode: taxCode?.code,
+        taxRate,
+        priceIsInclusive,
+        taxAmountDoc,
+        taxAmountBase,
+        accountId: input.accountId,
         description: input.description,
       });
     }
@@ -705,7 +744,16 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
         line.accountId = line.accountId || periodicDirectAccount;
         if (!line.accountId) throw new Error(`Account is required for manual return line ${line.lineId}`);
         line.unitCostBase = roundMoney(line.unitCostDoc * purchaseReturn.exchangeRate);
-        line.taxRate = 0;
+        if (line.taxCodeId) {
+          const taxCode = taxCodesMap.get(line.taxCodeId);
+          if (!taxCode) throw new Error(`Tax code not found for manual return line ${line.lineId}: ${line.taxCodeId}`);
+          line.taxCode = line.taxCode || taxCode.code;
+          line.taxRate = taxCode.rate || 0;
+          line.priceIsInclusive = line.priceIsInclusive ?? (taxCode.priceIsInclusive === true);
+        } else {
+          line.taxRate = 0;
+          line.priceIsInclusive = false;
+        }
       }
 
       // Posting-time recompute. lineTotalDoc/Base feed inventory/expense
@@ -976,6 +1024,37 @@ async execute(companyId: string, id: string, createAccountingEffect: boolean = t
             itemId: line.itemId,
           },
         });
+
+        if (line.taxAmountBase > 0 && line.taxCodeId) {
+          const sTaxCode = taxCodesMap.get(line.taxCodeId);
+          const taxAccountId = sTaxCode?.purchaseTaxAccountId;
+          if (!taxAccountId) {
+            const taxLabel = sTaxCode?.code || line.taxCode || line.taxCodeId;
+            throw new AccountMappingError({
+              companyId,
+              itemId: line.itemId,
+              accountRole: 'tax',
+              fallbackChain: ['taxCode.purchaseTaxAccountId'],
+              lineNo: (line as any).lineNo,
+              hint: `Tax code "${taxLabel}" has no Purchase Tax Account configured. Set it in Settings → Tax Codes before posting this return.`,
+            });
+          }
+          voucherLines.push({
+            accountId: taxAccountId,
+            side: 'Credit',
+            baseAmount: line.taxAmountBase,
+            docAmount: line.taxAmountDoc,
+            notes: `Tax reversal: ${line.taxCode || line.taxCodeId || ''}`,
+            effectiveRate: line.taxAmountDoc > 0 ? line.taxAmountBase / line.taxAmountDoc : purchaseReturn.exchangeRate,
+            metadata: {
+              sourceModule: 'purchases',
+              sourceType: 'PURCHASE_RETURN',
+              sourceId: purchaseReturn.id,
+              lineId: line.lineId,
+              taxCodeId: line.taxCodeId,
+            },
+          });
+        }
       }
 
       if (purchaseOrder) {
