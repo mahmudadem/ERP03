@@ -1,5 +1,6 @@
 import { StockLevel } from '../../../domain/inventory/entities/StockLevel';
 import { IStockLevelRepository } from '../../../repository/interfaces/inventory/IStockLevelRepository';
+import { roundMoney } from '../../system-core/money/roundMoney';
 
 export interface StockLevelFilters {
   itemId?: string;
@@ -36,8 +37,6 @@ export interface StockLevelReportRow {
   version: number;
   updatedAt: Date;
 }
-
-const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
 
 export const toStockLevelReportRow = (level: StockLevel): StockLevelReportRow => {
   const hasAverage = level.avgCostBase > 0;
