@@ -3594,6 +3594,28 @@
     }
   },
   "purchases": {
+    "returnDetail": {
+      "returnMode": "Return Mode",
+      "modeDirect": "Direct",
+      "modeFromPi": "From PI",
+      "modeFromGrn": "From GRN",
+      "purchaseInvoice": "Purchase Invoice",
+      "selectPostedPi": "Select posted PI",
+      "goodsReceipt": "Goods Receipt",
+      "selectPostedGrn": "Select posted GRN",
+      "vendor": "Vendor",
+      "selectVendor": "Select vendor",
+      "noPurchaseTaxCodes": "No purchase tax codes found.",
+      "selectGoodsReceiptTitle": "Select Goods Receipt",
+      "selectGoodsReceiptHint": "Latest posted receipts. Choose one to pull lines into this return.",
+      "loadingGoodsReceipts": "Loading goods receipts...",
+      "noPostedGoodsReceipts": "No posted goods receipts found.",
+      "grnNo": "GRN No",
+      "receiptDate": "Receipt Date",
+      "lines": "Lines",
+      "pullSelectedReceipt": "Pull Selected Receipt",
+      "glImpact": "GL Impact"
+    },
     "invoicesList": {
       "title": "Purchase Invoices",
       "subtitle": "Posted invoices create AP and GL voucher entries.",

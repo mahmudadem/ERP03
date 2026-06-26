@@ -579,6 +579,8 @@ export interface PurchaseReturnLineInputDTO {
   unitCostDoc?: number;
   discountType?: 'PERCENT' | 'AMOUNT';
   discountValue?: number;
+  taxCodeId?: string;
+  priceIsInclusive?: boolean;
   uomId?: string;
   uom?: string;
   accountId?: string;

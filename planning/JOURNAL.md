@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-26 (Task 271 - Purchase Return direct mode and source picker parity)
+
+- **Goal:** Finish the next active return workflow slice after PR #37: remove raw Purchase Return source-id entry, make direct PR accounting-safe, and expose GL Impact on posted PR.
+- **What changed:** Direct PR creation now resolves purchase tax codes and stores real unit/base cost, FX, inclusive flag, and tax amounts. Direct PR posting now adds the purchase tax credit line when tax applies so AP debit balances against net return + tax. Purchase Return create UI now uses `Direct / From PI / From GRN` modes, posted PI/GRN pickers, vendor/warehouse/item/UOM/tax selectors, and passes tax fields for direct lines. Posted PR now has GL Impact. GL Impact voucher role labels now distinguish return reversals from invoice vouchers. Purchases architecture/user docs and completion report were updated.
+- **Accounting impact:** Source-based PR/SR golden outputs stayed unchanged. Direct PR vendor/AP amount follows user-entered return cost and selected purchase tax code; inventory OUT movement uses inventory issue cost at posting. Any future variance recognition between vendor credit and inventory issue cost should be a separate accounting-control task.
+- **Verification:** `PurchaseReturnUseCases.test.ts` 10/10 PASS; `PurchaseReturnGoldenVoucher.test.ts` 5/5 PASS; `SalesReturnGoldenVoucher.test.ts` 7/7 PASS; `SystemCoreBoundaries.test.ts` 28/28 PASS; backend build PASS; frontend typecheck PASS; frontend build PASS.
+- **Actual time:** ~3.5h.
+- **Next:** Commit/push Task 271 and open PR for owner QA.
+
 ### Session: 2026-06-26 (Task 269 - Purchase tax recoverability and cost capitalization)
 
 - **Goal:** Implement the owner-requested purchase tax treatment behavior so purchase tax can be recoverable or capitalized into item/expense cost.

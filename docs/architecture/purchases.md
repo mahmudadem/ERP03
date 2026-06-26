@@ -154,7 +154,19 @@ Purchase Order (PO) → Goods Receipt (GRN) → Purchase Invoice (PI) → Paymen
 - **Purchase Order (PO)** — pre-purchase commitment to a vendor. Tracks `orderedQty`, `receivedQty`, `invoicedQty`, `returnedQty`. Status: DRAFT → CONFIRMED → PARTIALLY_RECEIVED / FULLY_RECEIVED → CLOSED / CANCELLED.
 - **Goods Receipt (GRN)** — physical receipt of goods. Creates a `PURCHASE_RECEIPT` inventory movement. **Does NOT** post GL entries — purely operational.
 - **Purchase Invoice (PI)** — the financial event. Posts AP + Inventory (for stock items) or AP + Expense (for services). Three personas: Direct (standalone), Linked (PO-linked), Service.
-- **Purchase Return (PR)** — reverses a delivery and/or invoice. Two contexts: `AFTER_INVOICE` (reverses AP and inventory) and `BEFORE_INVOICE` (reverses inventory only).
+- **Purchase Return (PR)** — reverses a delivery and/or invoice. Contexts: `AFTER_INVOICE` (reverses AP/tax and inventory), `BEFORE_INVOICE` (reverses GRNI/inventory), and `DIRECT` (vendor credit/debit-note style return without a PI/GRN source).
+
+### Purchase Return direct mode (2026-06-26)
+
+Direct Purchase Return is intentionally narrow:
+
+- The user must select a vendor, warehouse, item lines, return quantity, unit cost, and any purchase tax code.
+- The vendor/AP amount follows the user-entered unit cost and selected purchase tax code.
+- The stock OUT movement uses the inventory core issue-cost basis at posting time.
+- The PR voucher credits the purchase return/expense line for the net amount, credits the purchase tax account when tax applies, and debits AP for the gross vendor credit amount.
+- Existing `AFTER_INVOICE` and `BEFORE_INVOICE` golden voucher outputs are unchanged.
+
+This avoids inventing source cost snapshots for no-source returns. If a later requirement needs explicit variance recognition between vendor credit and inventory issue cost, that should be designed as a separate accounting-control slice.
 
 ## Workflow Modes
 

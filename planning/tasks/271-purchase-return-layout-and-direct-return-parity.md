@@ -1,10 +1,21 @@
 # Task 271 - Sales/Purchase Return Layout Parity and Direct Purchase Return
 
-**Status:** Planned  
-**Branch/worktree:** `codex/267-system-core-boundary-audit` / `D:\DEV2026\ERP03-267-engine-audit`  
+**Status:** Complete locally, pending PR/merge
+**Branch/worktree:** `codex/271-returns-parity` / `D:\DEV2026\ERP03-271-returns-parity`
 **Created:** 2026-06-26  
 **Estimated time:** 6-10 hours  
 **Priority:** P1 purchase workflow parity follow-up from manual QA
+
+## Completion Note (2026-06-26)
+
+Implemented the safe Task 271 slice in `planning/done/271-purchase-return-direct-mode-and-source-picker-parity.md`.
+
+- Direct PR backend creation/posting is now accounting-safe for taxable lines.
+- Purchase Return create UI now uses mode buttons and posted PI/GRN pickers instead of raw source ID inputs.
+- Posted PR now exposes GL Impact.
+- Source-based PR/SR golden voucher output remains unchanged.
+
+Remaining optional polish: replace Sales Return's native source `<select>` controls with richer modal pickers if owner QA still finds the existing selector/search insufficient.
 
 ## Context
 

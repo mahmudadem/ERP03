@@ -1,18 +1,20 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { CreatePurchaseReturnPayload, PurchaseInvoiceDTO, PurchaseReturnDTO, purchasesApi } from '../../../api/purchasesApi';
+import { useTranslation } from 'react-i18next';
+import { CreatePurchaseReturnPayload, GoodsReceiptDTO, PurchaseInvoiceDTO, PurchaseReturnDTO, purchasesApi } from '../../../api/purchasesApi';
 import { sharedApi } from '../../../api/sharedApi';
 import { InventoryItemDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { CurrencyExchangeWidget } from '../../accounting/components/shared/CurrencyExchangeWidget';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
-import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, DiscountTypeSelector } from '../../../components/shared/selectors';
+import { ItemSelector, PartySelector, UomSelector, WarehouseSelector, DiscountTypeSelector, TaxCodeSelector } from '../../../components/shared/selectors';
 import { ClassicLineItemsTable, ColumnDef } from '../../../components/shared/ClassicLineItemsTable';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { useCompanyCurrencies } from '../../accounting/hooks/useCompanyCurrencies';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
 import { FileText } from 'lucide-react';
+import { GlImpactModal } from '../../sales/components/GlImpactModal';
 import {
   DocumentDetailScaffold,
   DocumentFooterTotalsStrip,
@@ -25,14 +27,22 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
+type PurchaseReturnMode = 'DIRECT' | 'FROM_PI' | 'FROM_GRN';
 
 const PurchaseReturnDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
+  const { t } = useTranslation('common');
   const isCreateMode = !params.id || params.id === 'new';
 
   const [purchaseReturn, setPurchaseReturn] = useState<PurchaseReturnDTO | null>(null);
+  const initialMode: PurchaseReturnMode = searchParams.get('purchaseInvoiceId')
+    ? 'FROM_PI'
+    : searchParams.get('goodsReceiptId')
+      ? 'FROM_GRN'
+      : 'DIRECT';
+  const [sourceMode, setSourceMode] = useState<PurchaseReturnMode>(initialMode);
   const [vendorId, setVendorId] = useState('');
   const [purchaseInvoiceId, setPurchaseInvoiceId] = useState(searchParams.get('purchaseInvoiceId') || '');
   const [goodsReceiptId, setGoodsReceiptId] = useState(searchParams.get('goodsReceiptId') || '');
@@ -48,6 +58,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const [error, setError] = useState<string | null>(null);
   const [isEditMode, setIsEditMode] = useState(false);
   const [unpostConfirmOpen, setUnpostConfirmOpen] = useState(false);
+  const [glImpactOpen, setGlImpactOpen] = useState(false);
   const [editReturnDate, setEditReturnDate] = useState('');
   const [editWarehouseId, setEditWarehouseId] = useState('');
   const [editReason, setEditReason] = useState('');
@@ -69,6 +80,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const [piPickerError, setPiPickerError] = useState<string | null>(null);
   const [piOptions, setPiOptions] = useState<PurchaseInvoiceDTO[]>([]);
   const [selectedPiId, setSelectedPiId] = useState('');
+  const [showGrnPicker, setShowGrnPicker] = useState(false);
+  const [grnPickerLoading, setGrnPickerLoading] = useState(false);
+  const [grnPickerError, setGrnPickerError] = useState<string | null>(null);
+  const [grnOptions, setGrnOptions] = useState<GoodsReceiptDTO[]>([]);
+  const [selectedGrnId, setSelectedGrnId] = useState('');
   
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [vendors, setVendors] = useState<any[]>([]);
@@ -81,11 +97,30 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const { data: currencies = [] } = useCompanyCurrencies();
 
   const contextLabel = useMemo(() => {
-    if (purchaseInvoiceId.trim()) return 'AFTER_INVOICE';
-    if (goodsReceiptId.trim()) return 'BEFORE_INVOICE';
-    if (vendorId.trim()) return 'DIRECT';
+    if (sourceMode === 'FROM_PI') return 'AFTER_INVOICE';
+    if (sourceMode === 'FROM_GRN') return 'BEFORE_INVOICE';
+    if (sourceMode === 'DIRECT') return 'DIRECT';
     return '-';
-  }, [goodsReceiptId, purchaseInvoiceId, vendorId]);
+  }, [sourceMode]);
+
+  const purchaseTaxCodes = useMemo(
+    () => taxCodes.filter((code) => code.scope === 'PURCHASE' || code.scope === 'BOTH'),
+    [taxCodes]
+  );
+
+  const computeLineTotalDoc = (line: any): number => {
+    const gross = (Number(line.returnQty) || 0) * (Number(line.unitCostDoc) || 0);
+    const dv = Number(line.discountValue || 0);
+    const discount = line.discountType === 'PERCENT'
+      ? Math.max(0, Math.min(gross, gross * (dv / 100)))
+      : line.discountType === 'AMOUNT'
+        ? Math.max(0, Math.min(dv, gross))
+        : 0;
+    const postDiscount = gross - discount;
+    const taxRate = Number(line.taxRate || 0);
+    if (line.priceIsInclusive) return postDiscount;
+    return postDiscount + (postDiscount * taxRate);
+  };
 
   const itemById = useMemo(
     () =>
@@ -268,8 +303,76 @@ const PurchaseReturnDetailPage: React.FC = () => {
     setPurchaseInvoiceId(selectedPiId);
     setGoodsReceiptId('');
     setVendorId('');
+    setSourceMode('FROM_PI');
     setShowPiPicker(false);
     await fetchSourceData({ purchaseInvoiceId: selectedPiId, goodsReceiptId: '' });
+  };
+
+  const openGoodsReceiptPicker = async () => {
+    try {
+      setShowGrnPicker(true);
+      setGrnPickerLoading(true);
+      setGrnPickerError(null);
+
+      const result = await purchasesApi.listGRNs({ status: 'POSTED', limit: 30 });
+      const list = (unwrap<GoodsReceiptDTO[]>(result) || []).slice().sort((a, b) => {
+        const aDate = Date.parse(a.receiptDate || a.createdAt || '');
+        const bDate = Date.parse(b.receiptDate || b.createdAt || '');
+        return bDate - aDate;
+      });
+
+      setGrnOptions(list);
+      if (list.length === 0) {
+        setSelectedGrnId('');
+        return;
+      }
+
+      const existingSelection = goodsReceiptId && list.some((grn) => grn.id === goodsReceiptId);
+      setSelectedGrnId(existingSelection ? goodsReceiptId : list[0].id);
+    } catch (err) {
+      console.error('Failed to load latest goods receipts', err);
+      setGrnPickerError('Failed to load latest goods receipts.');
+      setGrnOptions([]);
+      setSelectedGrnId('');
+    } finally {
+      setGrnPickerLoading(false);
+    }
+  };
+
+  const handlePullSelectedGRN = async () => {
+    if (!selectedGrnId) {
+      setGrnPickerError('Please select a Goods Receipt.');
+      return;
+    }
+
+    setGoodsReceiptId(selectedGrnId);
+    setPurchaseInvoiceId('');
+    setVendorId('');
+    setSourceMode('FROM_GRN');
+    setShowGrnPicker(false);
+    await fetchSourceData({ purchaseInvoiceId: '', goodsReceiptId: selectedGrnId });
+  };
+
+  const switchSourceMode = (mode: PurchaseReturnMode) => {
+    setSourceMode(mode);
+    setPurchaseInvoiceId('');
+    setGoodsReceiptId('');
+    setSourceDocument(null);
+    setSelectedLines([{
+      itemId: '',
+      itemName: '',
+      itemCode: '',
+      returnQty: 0,
+      uomId: undefined,
+      uom: '',
+      unitCostDoc: 0,
+      discountType: undefined,
+      discountValue: 0,
+      lineId: `new-${Date.now()}`
+    }]);
+    if (mode !== 'DIRECT') {
+      setVendorId('');
+    }
   };
 
   const handleReturnQtyChange = (lineId: string, qtyValue: string) => {
@@ -287,6 +390,22 @@ const PurchaseReturnDetailPage: React.FC = () => {
     setSelectedLines((prev) =>
       prev.map((line) =>
         line.lineId === lineId ? { ...line, uomId: selected?.uomId, uom: selected?.code || '' } : line
+      )
+    );
+  };
+
+  const handleTaxCodeChange = (lineId: string, option: any | null) => {
+    setSelectedLines((prev) =>
+      prev.map((line) =>
+        line.lineId === lineId
+          ? {
+              ...line,
+              taxCodeId: option?.id,
+              taxCode: option?.code,
+              taxRate: option?.rate || 0,
+              priceIsInclusive: option?.priceIsInclusive === true,
+            }
+          : line
       )
     );
   };
@@ -327,6 +446,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           uomId: defaultUom?.uomId,
           uom: defaultUom?.code || item.purchaseUom || item.baseUom,
           unitCostDoc: (item as any).lastPurchasePrice || 0,
+          taxCodeId: undefined,
+          priceIsInclusive: false,
           availableQty: undefined,
           returnQty: 1,
         };
@@ -336,7 +457,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   };
 
   const grandTotalDoc = useMemo(() => {
-    return selectedLines.reduce((acc, l) => acc + (l.returnQty * l.unitCostDoc), 0);
+    return selectedLines.reduce((acc, l) => acc + computeLineTotalDoc(l), 0);
   }, [selectedLines]);
 
   const createDraft = async () => {
@@ -344,8 +465,16 @@ const PurchaseReturnDetailPage: React.FC = () => {
       setBusy(true);
       setError(null);
 
-      if (!purchaseInvoiceId && !goodsReceiptId && !vendorId) {
-        setError('Purchase Invoice, Goods Receipt, or Vendor is required.');
+      if (sourceMode === 'FROM_PI' && !purchaseInvoiceId) {
+        setError('Select a posted Purchase Invoice first.');
+        return;
+      }
+      if (sourceMode === 'FROM_GRN' && !goodsReceiptId) {
+        setError('Select a posted Goods Receipt first.');
+        return;
+      }
+      if (sourceMode === 'DIRECT' && !vendorId) {
+        setError('Vendor is required for direct purchase return.');
         return;
       }
       if (!returnDate) {
@@ -381,6 +510,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           unitCostDoc: l.unitCostDoc,
           discountType: l.discountType,
           discountValue: l.discountValue,
+          taxCodeId: l.taxCodeId,
+          priceIsInclusive: l.priceIsInclusive,
           uomId: l.uomId,
           uom: l.uom,
           description: l.description,
@@ -414,6 +545,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
       unitCostDoc: 0,
       discountType: undefined,
       discountValue: 0,
+      taxCodeId: undefined,
+      priceIsInclusive: false,
       lineId: `new-${Date.now()}`
     }]);
   };
@@ -567,6 +700,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const openNewPurchaseReturnForm = () => {
     setPurchaseReturn(null);
     setVendorId('');
+    setSourceMode('DIRECT');
     setPurchaseInvoiceId('');
     setGoodsReceiptId('');
     setPurchaseOrderId('');
@@ -584,6 +718,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
       uomId: undefined,
       uom: '',
       unitCostDoc: 0,
+      discountType: undefined,
+      discountValue: 0,
+      taxCodeId: undefined,
+      priceIsInclusive: false,
       lineId: `new-${Date.now()}`
     }]);
     setIsEditMode(false);
@@ -609,47 +747,61 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
         <Card className="overflow-visible p-0">
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
-            <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Purchase Invoice ID</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
-                  value={purchaseInvoiceId}
-                  onChange={(e) => {
-                    setPurchaseInvoiceId(e.target.value);
-                    if (e.target.value) {
-                      setGoodsReceiptId('');
-                      setVendorId('');
-                    }
-                  }}
-                  placeholder="Use for AFTER_INVOICE"
-                />
+            <div className="sm:col-span-2">
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.returnMode')}</label>
+              <div className="grid h-9 grid-cols-3 rounded border border-slate-200 bg-slate-50 p-0.5 text-[11px] font-bold">
+                {([
+                  ['DIRECT', t('purchases.returnDetail.modeDirect')],
+                  ['FROM_PI', t('purchases.returnDetail.modeFromPi')],
+                  ['FROM_GRN', t('purchases.returnDetail.modeFromGrn')],
+                ] as const).map(([mode, label]) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    className={`rounded px-2 transition-colors ${
+                      sourceMode === mode ? 'bg-white text-indigo-700 shadow-sm' : 'text-slate-500 hover:text-slate-800'
+                    }`}
+                    onClick={() => switchSourceMode(mode)}
+                    disabled={busy}
+                  >
+                    {label}
+                  </button>
+                ))}
               </div>
             </div>
-            <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Goods Receipt ID</label>
-              <div className="flex gap-2">
-                <input
-                  type="text"
-                  className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
-                  value={goodsReceiptId}
-                  onChange={(e) => {
-                    setGoodsReceiptId(e.target.value);
-                    if (e.target.value) {
-                      setPurchaseInvoiceId('');
-                      setVendorId('');
-                    }
-                  }}
-                  placeholder="Use for BEFORE_INVOICE"
-                />
+            {sourceMode === 'FROM_PI' && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.purchaseInvoice')}</label>
+                <button
+                  type="button"
+                  className="h-9 w-full rounded border border-indigo-200 bg-indigo-50 px-3 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  onClick={openPurchaseInvoicePicker}
+                  disabled={busy}
+                >
+                  {sourceDocument?.invoiceNumber || purchaseInvoiceId || t('purchases.returnDetail.selectPostedPi')}
+                </button>
               </div>
-            </div>
+            )}
+            {sourceMode === 'FROM_GRN' && (
+              <div>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.goodsReceipt')}</label>
+                <button
+                  type="button"
+                  className="h-9 w-full rounded border border-indigo-200 bg-indigo-50 px-3 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  onClick={openGoodsReceiptPicker}
+                  disabled={busy}
+                >
+                  {sourceDocument?.grnNumber || goodsReceiptId || t('purchases.returnDetail.selectPostedGrn')}
+                </button>
+              </div>
+            )}
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Vendor (Manual Selection)</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.vendor')}</label>
               <PartySelector 
                 value={vendorId}
-                disabled={!!purchaseInvoiceId || !!goodsReceiptId}
+                role="VENDOR"
+                disabled={sourceMode !== 'DIRECT'}
+                placeholder={t('purchases.returnDetail.selectVendor')}
                 onChange={(party) => {
                   setVendorId(party?.id || '');
                   if (party) {
@@ -660,22 +812,6 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   }
                 }}
               />
-            </div>
-            <div className="flex items-end justify-end">
-              <button
-                type="button"
-                className="h-9 rounded border border-indigo-200 bg-indigo-50 px-3 text-[10px] font-black uppercase tracking-wide text-indigo-700 hover:bg-indigo-100"
-                onClick={async () => {
-                  if (goodsReceiptId.trim()) {
-                    await fetchSourceData({ goodsReceiptId });
-                    return;
-                  }
-                  await openPurchaseInvoicePicker();
-                }}
-                disabled={busy}
-              >
-                Fetch Items from Source
-              </button>
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Purchase Order ID (optional)</label>
@@ -695,16 +831,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Warehouse</label>
-              <select
-                className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
+              <WarehouseSelector
                 value={warehouseId}
-                onChange={(e) => setWarehouseId(e.target.value)}
-              >
-                <option value="">-- Select Warehouse --</option>
-                {warehouses.map(w => (
-                  <option key={w.id} value={w.id}>{w.name}</option>
-                ))}
-              </select>
+                onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
+              />
             </div>
             <div>
               <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Context</label>
@@ -807,20 +937,28 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   },
                   { id: 'discountValue', label: 'Discount', kind: 'number', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }) },
                   {
+                    id: 'tax',
+                    label: 'Tax',
+                    kind: 'custom',
+                    width: '150px',
+                    render: (line) => (
+                      <TaxCodeSelector
+                        options={purchaseTaxCodes}
+                        valueId={line.taxCodeId}
+                        noBorder
+                        disabled={sourceMode !== 'DIRECT'}
+                        placeholder="Tax"
+                        emptySetupMessage={t('purchases.returnDetail.noPurchaseTaxCodes')}
+                        onChange={(option) => handleTaxCodeChange(line.lineId, option)}
+                      />
+                    ),
+                  },
+                  {
                     id: 'total',
                     label: 'Total',
                     kind: 'computed',
                     width: '120px',
-                    compute: (line) => {
-                      const gross = (line.returnQty || 0) * (line.unitCostDoc || 0);
-                      const dv = Number(line.discountValue || 0);
-                      const discount = line.discountType === 'PERCENT'
-                        ? Math.max(0, Math.min(gross, gross * (dv / 100)))
-                        : line.discountType === 'AMOUNT'
-                          ? Math.max(0, Math.min(dv, gross))
-                          : 0;
-                      return gross - discount;
-                    },
+                    compute: computeLineTotalDoc,
                   },
                 ]}
               />
@@ -999,6 +1137,106 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
           </div>
         )}
+
+        {showGrnPicker && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            onClick={() => !grnPickerLoading && setShowGrnPicker(false)}
+          >
+            <div
+              className="w-full max-w-5xl rounded-xl border border-slate-200 bg-white shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
+                <div>
+                  <h3 className="text-lg font-semibold text-slate-900">{t('purchases.returnDetail.selectGoodsReceiptTitle')}</h3>
+                  <p className="text-xs text-slate-500">{t('purchases.returnDetail.selectGoodsReceiptHint')}</p>
+                </div>
+                <button
+                  type="button"
+                  className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
+                  onClick={() => setShowGrnPicker(false)}
+                  disabled={grnPickerLoading}
+                >
+                  Close
+                </button>
+              </div>
+
+              <div className="max-h-[60vh] overflow-auto p-4">
+                {grnPickerError && (
+                  <div className="mb-3 rounded-lg border border-red-200 bg-red-50 p-2 text-sm text-red-700">
+                    {grnPickerError}
+                  </div>
+                )}
+
+                {grnPickerLoading ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    {t('purchases.returnDetail.loadingGoodsReceipts')}
+                  </div>
+                ) : grnOptions.length === 0 ? (
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
+                    {t('purchases.returnDetail.noPostedGoodsReceipts')}
+                  </div>
+                ) : (
+                  <table className="min-w-full divide-y divide-slate-200 text-sm">
+                    <thead className="bg-slate-50">
+                      <tr>
+                        <th className="px-3 py-2 text-left">Pick</th>
+                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.grnNo')}</th>
+                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.vendor')}</th>
+                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.receiptDate')}</th>
+                        <th className="px-3 py-2 text-left">Warehouse</th>
+                        <th className="px-3 py-2 text-right">{t('purchases.returnDetail.lines')}</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-200 bg-white">
+                      {grnOptions.map((grn) => (
+                        <tr
+                          key={grn.id}
+                          className={`cursor-pointer hover:bg-slate-50 ${selectedGrnId === grn.id ? 'bg-indigo-50' : ''}`}
+                          onClick={() => setSelectedGrnId(grn.id)}
+                        >
+                          <td className="px-3 py-2">
+                            <input
+                              type="radio"
+                              name="selected-grn"
+                              checked={selectedGrnId === grn.id}
+                              onChange={() => setSelectedGrnId(grn.id)}
+                            />
+                          </td>
+                          <td className="px-3 py-2 font-medium text-indigo-700">{grn.grnNumber}</td>
+                          <td className="px-3 py-2">{grn.vendorName}</td>
+                          <td className="px-3 py-2">{grn.receiptDate}</td>
+                          <td className="px-3 py-2">{grn.warehouseId}</td>
+                          <td className="px-3 py-2 text-right font-mono">{grn.lines.length}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-4">
+                <button
+                  type="button"
+                  className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
+                  onClick={() => setShowGrnPicker(false)}
+                  disabled={grnPickerLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
+                  onClick={handlePullSelectedGRN}
+                  disabled={grnPickerLoading || !selectedGrnId}
+                >
+                  {t('purchases.returnDetail.pullSelectedReceipt')}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     );
   }
@@ -1094,14 +1332,24 @@ const PurchaseReturnDetailPage: React.FC = () => {
         </>
       )}
       {purchaseReturn.status === 'POSTED' && (
-        <button
-          type="button"
-          className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
-          onClick={() => setUnpostConfirmOpen(true)}
-          disabled={busy}
-        >
-          {busy ? 'Unposting...' : 'Unpost Return'}
-        </button>
+        <>
+          <button
+            type="button"
+            className="rounded border border-indigo-300 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-50"
+            onClick={() => setGlImpactOpen(true)}
+            disabled={busy}
+          >
+            {t('purchases.returnDetail.glImpact')}
+          </button>
+          <button
+            type="button"
+            className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
+            onClick={() => setUnpostConfirmOpen(true)}
+            disabled={busy}
+          >
+            {busy ? 'Unposting...' : 'Unpost Return'}
+          </button>
+        </>
       )}
     </>
   );
@@ -1375,6 +1623,17 @@ const PurchaseReturnDetailPage: React.FC = () => {
         onConfirm={unpostReturn}
         onCancel={() => { if (!busy) setUnpostConfirmOpen(false); }}
       />
+      {purchaseReturn.status === 'POSTED' && (
+        <GlImpactModal
+          isOpen={glImpactOpen}
+          onClose={() => setGlImpactOpen(false)}
+          sourceId={purchaseReturn.id}
+          sourceLabel={purchaseReturn.returnNumber}
+          fallbackVoucherIds={purchaseReturn.voucherId ? [purchaseReturn.voucherId] : []}
+          documentStatus={purchaseReturn.status}
+          postingContext="purchases"
+        />
+      )}
     </>
   );
 };

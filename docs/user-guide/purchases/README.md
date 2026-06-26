@@ -122,15 +122,18 @@ The persona drives the validation rules and the GL posting (inventory account vs
 
 ## Purchase returns
 
-Two scenarios:
+The Purchase Return page uses a mode selector instead of typed source IDs.
+
+Three scenarios:
 
 ### You return goods after the vendor billed you (AFTER_INVOICE)
 
 Most common.
 
 1. `Purchases → Returns → New Return`.
-2. Link to the posted bill. Pick the lines being returned.
-3. **Post**. The system:
+2. Choose **From PI** and select the posted Purchase Invoice from the picker.
+3. Pick the lines being returned.
+4. **Post**. The system:
    - Decreases your payable to the vendor
    - Decreases inventory
    - Reverses the tax
@@ -139,9 +142,21 @@ Most common.
 
 Only in OPERATIONAL mode. Less common.
 
-1. `Purchases → Returns → New Return → Before Invoice`.
-2. Link to the posted goods receipt (not a bill — there isn't one yet).
+1. `Purchases → Returns → New Return`.
+2. Choose **From GRN** and select the posted Goods Receipt from the picker.
 3. **Post**. Inventory goes down. No payable impact (since you weren't billed yet).
+
+### You return goods without a source document (DIRECT)
+
+Use this for a vendor credit/debit note style return when there is no PI or GRN to reverse.
+
+1. `Purchases → Returns → New Return`.
+2. Choose **Direct**.
+3. Select the vendor and warehouse.
+4. Add item lines with return quantity, UOM, unit cost, discount if needed, and purchase tax code if tax applies.
+5. **Post**.
+
+Direct PR reduces stock using the inventory cost at posting time. The vendor credit/AP amount follows the unit cost and tax code entered on the return. Use **GL Impact** on posted returns to review the AP, tax, and return/stock voucher lines.
 
 ---
 
