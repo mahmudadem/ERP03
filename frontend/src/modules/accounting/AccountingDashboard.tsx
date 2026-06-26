@@ -142,7 +142,17 @@ const AccountingDashboard: React.FC = () => {
                 {summary.recentVouchers.map((v: any) => (
                   <div key={v.id} className="py-3 flex items-center justify-between">
                     <div>
-                      <div className="font-semibold text-slate-800">{v.voucherNo || v.id}</div>
+                      <button
+                        type="button"
+                        className="font-semibold text-slate-800 hover:text-primary-600 hover:underline"
+                        onClick={() => navigate(`/accounting/vouchers/${v.id}/view`)}
+                        title={t('accountingDashboard.openVoucher', {
+                          defaultValue: 'Open voucher {{voucherNo}}',
+                          voucherNo: v.voucherNo || v.id,
+                        })}
+                      >
+                        {v.voucherNo || v.id}
+                      </button>
                       <div className="text-xs text-slate-500">{v.date} · {v.type}</div>
                     </div>
                     <div className="text-right">

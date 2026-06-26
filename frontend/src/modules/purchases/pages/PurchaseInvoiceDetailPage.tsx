@@ -33,6 +33,8 @@ import { SettlementBlock } from '../../../components/shared/settlement/Settlemen
 import { RecordPaymentDialog, RecordPaymentPayload } from '../../../components/shared/settlement/RecordPaymentDialog';
 import { PaymentHistoryModal } from '../../../components/shared/settlement/PaymentHistoryModal';
 import { buildItemUomOptions, getDefaultItemUomOption, ManagedUomOption } from '../../inventory/utils/uomOptions';
+import { GlImpactModal } from '../../sales/components/GlImpactModal';
+import { todayLocalIso } from '../../../utils/dateUtils';
 import { clsx } from 'clsx';
 import {
   AlertTriangle,
@@ -70,7 +72,7 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const roundMoney = (value: number): number => Math.round((value + Number.EPSILON) * 100) / 100;
-const todayIso = (): string => new Date().toISOString().slice(0, 10);
+const todayIso = todayLocalIso;
 const MAX_ATTACHMENT_FILES = 5;
 const MAX_ATTACHMENT_SIZE = 10 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = [
@@ -226,6 +228,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [recordPaymentOpen, setRecordPaymentOpen] = useState(false);
   const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
+  const [glImpactOpen, setGlImpactOpen] = useState(false);
 
   const vendorNameById = useMemo(
     () =>
@@ -2212,6 +2215,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           {invoice.status === 'POSTED' && (
             <button
               type="button"
+              className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
+              onClick={() => setGlImpactOpen(true)}
+            >
+              {t('purchases.invoiceDetail.glImpact', 'GL Impact')}
+            </button>
+          )}
+          {invoice.status === 'POSTED' && (
+            <button
+              type="button"
               className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
               onClick={() => navigate(createReturnHref)}
               disabled={!canCreateReturn}
@@ -2521,6 +2533,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         currencyCode={invoice.currency}
         fetchPayments={() => purchasesApi.getPaymentHistory(invoice.id)}
         onClose={() => setPaymentHistoryOpen(false)}
+      />
+      <GlImpactModal
+        isOpen={glImpactOpen}
+        onClose={() => setGlImpactOpen(false)}
+        sourceId={invoice.id}
+        sourceLabel={invoice.invoiceNumber}
+        fallbackVoucherIds={invoice.voucherId ? [invoice.voucherId] : []}
+        documentStatus={invoice.status}
+        postingContext="purchases"
       />
       {renderChargeModal()}
     </>

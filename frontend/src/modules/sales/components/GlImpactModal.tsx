@@ -12,6 +12,7 @@ interface GlImpactModalProps {
   sourceLabel?: string;
   fallbackVoucherIds?: string[];
   documentStatus?: string;
+  postingContext?: 'sales' | 'purchases';
 }
 
 const fmt = (n: number) => n.toFixed(2);
@@ -23,6 +24,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
   sourceLabel,
   fallbackVoucherIds,
   documentStatus,
+  postingContext = 'sales',
 }) => {
   const { t } = useTranslation('common');
   const { getAccountById } = useAccounts();
@@ -121,6 +123,9 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
     const tkn = String(type || '').toUpperCase();
     if (tkn.includes('RECEIPT')) return t('sales.glImpact.roleReceipt', 'Receipt — cash/bank in');
     if (tkn.includes('PAYMENT')) return t('sales.glImpact.rolePayment', 'Payment — cash/bank out');
+    if (postingContext === 'purchases') {
+      return t('sales.glImpact.rolePurchaseInvoice', 'Bill & inventory/AP');
+    }
     return t('sales.glImpact.roleInvoice', 'Invoice & revenue');
   };
 

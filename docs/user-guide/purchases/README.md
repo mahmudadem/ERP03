@@ -72,6 +72,8 @@ When the vendor's bill arrives:
 4. Apply tax codes.
 5. **Post** the bill. This creates the payable: you now owe the vendor this amount, and your inventory's cost basis is finalized.
 
+New direct bills default to the current company/system date shown in the top bar. On posted bills, use **GL Impact** to review the generated inventory/expense, tax, and AP voucher lines without leaving the bill.
+
 You can also attach the vendor's bill scan or supporting documents while entering a new Purchase Invoice or after it is saved. For a new invoice, files are queued and uploaded automatically when you save. Attachments are stored as evidence only; they do not change posting amounts.
 
 ### 4. Pay the bill

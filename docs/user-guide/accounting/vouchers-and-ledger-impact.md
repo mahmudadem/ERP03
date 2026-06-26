@@ -20,6 +20,8 @@ Use **Ledger impact** when you want to confirm which ledger accounts were affect
 4. Review the posted ledger rows, including account, debit, credit, base amount, exchange rate, and cost center where available.
 5. Use **View voucher** to return to the source voucher document.
 
+The Accounting Dashboard recent-journal list also opens voucher view when you click a voucher number. Posted Sales and Purchase document pages may also show **GL Impact**, which opens the same accounting effect directly from the source document.
+
 ## Moving Between Records
 
 The voucher view and ledger-impact view show a small navigation panel at the top of the page:
