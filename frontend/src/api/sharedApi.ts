@@ -50,6 +50,8 @@ export interface TaxCodeDTO {
   purchaseTaxAccountId?: string;
   salesTaxAccountId?: string;
   priceIsInclusive?: boolean;
+  usedInPostedDocuments?: boolean;
+  lockedFields?: string[];
   active: boolean;
   createdBy: string;
   createdAt: string;

@@ -13,6 +13,7 @@ import {
   CreateTaxCodeUseCase,
   GetTaxCodeUseCase,
   ListTaxCodesUseCase,
+  TaxCodeWithUsage,
   UpdateTaxCodeUseCase,
 } from '../../../application/shared/use-cases/TaxCodeUseCases';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
@@ -55,6 +56,23 @@ export class SharedController {
       throw new Error(`Invalid scope: ${value}`);
     }
     return scope;
+  }
+
+  private static taxCodeUsageRepos() {
+    return {
+      salesInvoiceRepo: diContainer.salesInvoiceRepository,
+      purchaseInvoiceRepo: diContainer.purchaseInvoiceRepository,
+      salesReturnRepo: diContainer.salesReturnRepository,
+      purchaseReturnRepo: diContainer.purchaseReturnRepository,
+    };
+  }
+
+  private static taxCodeDto(result: TaxCodeWithUsage): Record<string, any> {
+    return {
+      ...result.taxCode.toJSON(),
+      usedInPostedDocuments: result.usedInPostedDocuments,
+      lockedFields: result.lockedFields,
+    };
   }
 
   static async createParty(req: Request, res: Response, next: NextFunction) {
@@ -183,7 +201,10 @@ export class SharedController {
   static async updateTaxCode(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SharedController.getCompanyId(req);
-      const useCase = new UpdateTaxCodeUseCase(diContainer.taxCodeRepository);
+      const useCase = new UpdateTaxCodeUseCase(
+        diContainer.taxCodeRepository,
+        SharedController.taxCodeUsageRepos()
+      );
       const taxCode = await useCase.execute({
         ...((req as any).body || {}),
         companyId,
@@ -202,12 +223,15 @@ export class SharedController {
   static async getTaxCode(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SharedController.getCompanyId(req);
-      const useCase = new GetTaxCodeUseCase(diContainer.taxCodeRepository);
+      const useCase = new GetTaxCodeUseCase(
+        diContainer.taxCodeRepository,
+        SharedController.taxCodeUsageRepos()
+      );
       const taxCode = await useCase.execute(companyId, (req as any).params.id);
 
       (res as any).json({
         success: true,
-        data: taxCode.toJSON(),
+        data: SharedController.taxCodeDto(taxCode),
       });
     } catch (error) {
       next(error);
@@ -217,7 +241,10 @@ export class SharedController {
   static async listTaxCodes(req: Request, res: Response, next: NextFunction) {
     try {
       const companyId = SharedController.getCompanyId(req);
-      const useCase = new ListTaxCodesUseCase(diContainer.taxCodeRepository);
+      const useCase = new ListTaxCodesUseCase(
+        diContainer.taxCodeRepository,
+        SharedController.taxCodeUsageRepos()
+      );
       const taxCodes = await useCase.execute(companyId, {
         scope: SharedController.toTaxScope((req as any).query.scope),
         active: SharedController.toBoolean((req as any).query.active),
@@ -227,7 +254,7 @@ export class SharedController {
 
       (res as any).json({
         success: true,
-        data: taxCodes.map((taxCode) => taxCode.toJSON()),
+        data: taxCodes.map((taxCode) => SharedController.taxCodeDto(taxCode)),
       });
     } catch (error) {
       next(error);

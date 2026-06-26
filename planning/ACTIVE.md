@@ -1,5 +1,57 @@
 # 🎯 Current Focus
 
+## Task 268 — Tax Code master-data controls and page repolish (2026-06-26)
+
+**Status:** ✅ Complete locally on `codex/267-system-core-boundary-audit`.
+
+- **Why:** Owner QA showed that a tax code's saved inclusive/exclusive flag was too easy to miss, and changing tax treatment after posted use would weaken accounting auditability.
+- **What changed:**
+  - Tax Codes is now list-first with `New Tax Code` / `Edit` modal workflow.
+  - Rate entry is now **Rate %**; users type `10`, while the backend still stores `0.10`.
+  - Price Basis is required and explicit: Exclusive vs Inclusive.
+  - List/get APIs expose posted usage lock metadata.
+  - Backend blocks accounting-critical tax-code changes after posted SI/PI/SR/PR usage, while allowing name/status edits.
+  - Focused backend tests cover unused edits, posted SI/PI locks, safe name/status edits, and lock metadata.
+- **Verification:** backend focused TaxCodeUseCases test green; backend build green; frontend typecheck/build green; `git diff --check` clean except CRLF normalization warnings.
+- **Estimated/actual time:** 1.5-2.5h / ~2.1h.
+
+### Next action
+
+Continue Task 269: purchase tax recoverability and cost capitalization. This is the next accounting-behavior task and must be implemented with focused golden tests because it affects PI voucher output and inventory average cost.
+
+---
+
+## Manual QA fixes — PI date, tax-code price basis, item selector noise (2026-06-26)
+
+**Status:** ✅ Fixed locally on `codex/267-system-core-boundary-audit` (uncommitted).
+
+- **Why:** Owner QA found three issues while testing SI/PI/inventory:
+  - New Purchase Invoice defaulted to the previous UTC date near local midnight, unlike Sales Invoice.
+  - Tax code inclusivity/exclusivity was too easy to miss; a code/name like `10%INC` could hide an exclusive saved flag.
+  - Item selector preloaded UOMs on mount and produced repeated DevTools errors on unrelated pages.
+- **What changed:**
+  - `PurchaseInvoiceDetailPage` now uses `todayLocalIso`.
+  - `TaxCodesPage` now requires a deliberate **Price Basis** dropdown selection: Exclusive or Inclusive. The list also displays the saved basis.
+  - `ItemSelector` loads UOMs only when creating an item inline.
+  - Accounting Dashboard recent voucher numbers now open the voucher view page.
+  - Posted Purchase Invoices now have a **GL Impact** action matching Sales Invoice, using a purchase-specific journal badge.
+- **Accounting note:** No posting math changed. Sales and Purchases already inherit `TaxCode.priceIsInclusive`; retest should first confirm the saved Tax Code **Price Basis** flag in Settings.
+- **Verification:** `npm --prefix frontend run typecheck` green; `npm --prefix frontend run build` green with existing bundle/browser-data warnings only.
+- **Estimated/actual time:** 0.5h / ~0.7h.
+
+### Next action
+
+Retest after frontend rebuild: open **Settings → Tax Codes**, set `10%INC` to **Inclusive**, then create fresh SI/PI documents and verify the date defaults to `2026-06-26` and inclusive tax splits the entered price instead of adding tax on top.
+
+Follow-up tasks created:
+
+- [Task 268 - Tax Code Master-Data Controls and Page Repolish](tasks/268-tax-code-master-data-controls-and-page-repolish.md). This should be the next accounting-control slice if manual QA continues to focus on tax-code setup.
+- [Task 269 - Purchase Tax Recoverability and Cost Capitalization](tasks/269-purchase-tax-recoverability-and-cost-capitalization.md). This is the later accounting-behavior slice for recoverable vs non-recoverable purchase tax and stock average cost.
+- [Task 270 - Stock Level Reporting, Negative Valuation, and Item Movement Drill-Down](tasks/270-negative-stock-valuation-policy-and-reporting.md). This is the inventory reporting/valuation correctness slice: Stock Levels must use `ReportContainer`, negative stock must keep/flag valuation, and a new Item Movement report must show historical movements with source-document drill-down.
+- [Task 271 - Sales/Purchase Return Layout Parity and Direct Purchase Return](tasks/271-purchase-return-layout-and-direct-return-parity.md). This is the return workflow parity slice: SR and PR should match SI/PI document layout/buttons/controls; PR should also support direct returns, not only source-driven returns.
+
+---
+
 ## Task 267-F (Inventory Revaluation slice) — Accounting bridge migration: value-only revaluation voucher (2026-06-25) [committed]
 
 **Status:** ✅ Complete on `codex/267-system-core-boundary-audit`.

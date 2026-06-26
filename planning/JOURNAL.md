@@ -2,6 +2,56 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-26 (Task 271 planned - Purchase Return layout and direct return parity)
+
+- **Context:** Owner tested Purchase Return from PI successfully, then requested a task to make PR layout match SI/PI and add a direct return option instead of requiring source ids.
+- **Decision:** Create a separate PR workflow/layout task. Direct PR is a business/accounting behavior change and must be tested separately from the source-based PR reversal that already passed QA.
+- **What changed:** Created and updated `planning/tasks/271-purchase-return-layout-and-direct-return-parity.md` covering modern SR/PR document layout, source mode control, selector-based source/vendor/customer/item fields, direct PR behavior, backend tests, stop conditions, and owner QA script. Owner clarified that both SR and PR must use source document selectors/search (Sales Invoice, Purchase Invoice, Goods Receipt) instead of hand-typed raw ids.
+- **Actual time:** ~0.2h.
+- **Next:** Keep existing PR voucher output stable; implement direct PR only after confirming the cost/AP/tax rule for no-source returns.
+
+### Session: 2026-06-26 (Manual QA fix - voucher links and PI GL Impact)
+
+- **Context:** Owner testing Accounting Dashboard and PI/SI GL impact flows asked for recent voucher numbers to open the voucher view page, and for Purchase Invoice to expose the same GL Impact action available on Sales Invoice.
+- **What changed:** Accounting Dashboard recent voucher numbers now navigate to `/accounting/vouchers/:id/view`. Posted Purchase Invoice footer now includes **GL Impact**, reusing the existing GL impact modal with purchase context so the voucher badge reads as purchase/AP rather than sales revenue.
+- **Accounting impact:** UI-only. No voucher posting, tax, settlement, inventory, or ledger math changed.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/confirm/SoD guards; only existing bundle/browser-data warnings remain.
+- **Actual time:** ~0.4h.
+- **Next:** Retest dashboard voucher link and PI GL Impact from the posted PI page.
+
+### Session: 2026-06-26 (Task 270 planned - Stock Levels report and Item Movement drill-down)
+
+- **Context:** Owner found Stock Levels showing an item at quantity `-2` with average cost `0.00` and value `0.00`. Owner correctly noted that if negative stock is allowed and the item has a known cost basis, the valuation should remain visible as negative value (for example `-2 * 1200 = -2400`) until receipt/correction arrives.
+- **Decision:** Negative stock permission is policy-driven, but negative-stock valuation correctness is not optional. If negative stock is allowed, reports must carry a cost basis or visibly flag the item as unvalued negative stock.
+- **What changed:** Created and then expanded `planning/tasks/270-negative-stock-valuation-policy-and-reporting.md` with required behavior, cost-basis priority, tests, stop conditions, and owner QA script. Added requirements to convert Stock Levels to the mandatory `ReportContainer` pattern and add a new Inventory Item Movement report with filters, sorting/search, running quantity/value, and source-document drill-down.
+- **Actual time:** ~0.2h.
+- **Next:** Keep Task 270 separate from tax-code work; implement after current QA fixes are committed or assign as a focused inventory/accounting correctness slice.
+
+### Session: 2026-06-26 (Task 269 planned - Purchase tax recoverability and cost capitalization)
+
+- **Context:** Owner clarified that purchase tax is not always recoverable and asked for a flag so tax codes can model whether purchase tax affects item/expense cost. We separated this from inclusive/exclusive price basis because price basis controls entered-price math, while recoverability controls capitalization/cost treatment.
+- **Decision:** Create a separate accounting-behavior task after Task 268. Sales tax remains unchanged because output tax is a liability and does not affect inventory cost; purchase tax gets a new treatment such as `RECOVERABLE` vs `NON_RECOVERABLE`.
+- **What changed:** Created `planning/tasks/269-purchase-tax-recoverability-and-cost-capitalization.md` with the four expected cases, backend/frontend requirements, tests, stop conditions, and owner QA script.
+- **Actual time:** ~0.2h.
+- **Next:** Finish/commit the current QA fixes first, then implement Task 268 before Task 269 because Task 269 depends on clear locked tax-code master data.
+
+### Session: 2026-06-26 (Task 268 planned - Tax Code controls and page repolish)
+
+- **Context:** Owner asked whether used tax codes should be editable from inclusive to exclusive, then requested a task for Tax Codes page repolishment: list-first page, add/edit modal, locked icon, explicit inclusive/exclusive selection, and Rate `%` input instead of decimal entry.
+- **Decision:** Changing rate, basis, type/scope, or tax accounts after posted use is an accounting-control risk. The safe ERP behavior is to lock accounting-critical fields after posted document usage and require a new tax code for changed tax treatment. UI locking must be backed by backend enforcement.
+- **What changed:** Created `planning/tasks/268-tax-code-master-data-controls-and-page-repolish.md` with backend immutability rules, frontend modal/list requirements, Rate `%` conversion, tests, acceptance criteria, verification commands, and owner QA script.
+- **Actual time:** ~0.25h.
+- **Next:** Implement Task 268 as a focused accounting-control slice if tax-code setup remains the current QA blocker.
+
+### Session: 2026-06-26 (Manual QA fixes — PI date, tax-code price basis, item selector noise)
+
+- **Context:** Owner manual QA found Purchase Invoice defaulting to `2026-06-25` while the system date/header showed `2026-06-26`, confusing downstream ledger/report checks. Owner also flagged that tax code `10%INC` behaved exclusive because the saved tax-code basis was not visible enough, and Stock Levels showed repeated DevTools `Failed to load UOMs for item selector` errors.
+- **What changed:** Purchase Invoice now uses the shared local-date helper (`todayLocalIso`) instead of UTC `toISOString()`, matching Sales Invoice behavior. Tax Codes now requires a deliberate **Price Basis** dropdown selection (`Exclusive` or `Inclusive`) and shows the saved basis in the list. `ItemSelector` now loads UOM master data only when the user opens the create-item modal, removing noisy non-critical UOM preload calls from normal item selection/pages.
+- **Accounting impact:** No posting math, tax calculation, voucher posting, stock movement, AP/AR, COGS, valuation, or settlement code changed. Sales and Purchases already inherit `TaxCode.priceIsInclusive`; if a document posts exclusive, first check the saved Tax Code **Price Basis** flag and any line-level override.
+- **Verification:** `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/confirm/SoD guards; only existing bundle/browser-data warnings remain.
+- **Actual time:** ~0.7h.
+- **Next:** Retest a fresh PI after refreshing the frontend bundle.
+
 ### Session: 2026-06-25 (Task 267-F Inventory Revaluation slice — Accounting bridge migration: value-only revaluation voucher)
 
 - **Context:** After Stock Transfer, `PostInventoryRevaluationUseCase` was the last known Inventory source-module posting path with a direct `SubledgerVoucherPostingService` fallback. Goal: make value-only revaluation vouchers bridge-only while preserving write-up/write-down voucher output and PERIODIC no-GL behavior.
@@ -5122,3 +5172,12 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** UI localization only. No posting, tax, COGS, inventory valuation, settlement routing, period lock, voucher, or approval behavior changed.
 - **Verification:** POS/common locale JSON parsed successfully. Frontend typecheck passed. Frontend build passed; existing browser-data/chunk-size warnings remain.
 - **Time spent:** ~0.8h.
+### Session: 2026-06-26 (Task 268 — Tax Code master-data controls and page repolish)
+
+- **Goal:** Finish the owner-requested Tax Codes safety slice: list-first page, explicit inclusive/exclusive basis, percentage rate entry, and backend locks after posted use.
+- **What was done:** Reworked Tax Codes into a list + modal workflow, changed Rate input to `Rate %`, preserved decimal API/domain storage, added visible lock state for used codes, and exposed `usedInPostedDocuments` / `lockedFields` from the shared tax-code API. Added backend immutability enforcement in `UpdateTaxCodeUseCase` by scanning posted SI/PI/SR/PR documents through repository interfaces.
+- **Accounting/ERP impact:** This is a control hardening change. Existing tax math and posted voucher output are unchanged. The new rule prevents changing tax treatment after posted usage; users must create a new tax code instead.
+- **Verification:** Focused backend TaxCodeUseCases test passed (5/5). Backend build passed. Frontend typecheck and build passed; existing browser/chunk warnings remain. `git diff --check` reported only CRLF normalization warnings.
+- **Docs:** Updated settings architecture, added user guide `docs/user-guide/settings/tax-codes.md`, marked Task 268 complete, and created completion report `planning/done/268-tax-code-master-data-controls-and-page-repolish.md`.
+- **Time spent:** ~2.1h.
+- **Next:** Task 269 — purchase tax recoverability and cost capitalization.

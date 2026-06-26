@@ -37,9 +37,32 @@ Settings pages are control surfaces. Workflow, approval, account defaults, tax, 
 - Toast feedback for save/discard/server errors.
 - Predictable grouping across Sales, Purchases, Accounting, Inventory, and company settings.
 
+## Tax Code Controls
+
+Tax codes are accounting master data. The Settings -> Tax Codes page uses a list-first workflow with modal add/edit forms. Users enter rates as percentages (`10` for 10%), while the API/domain continue to store decimal rates (`0.10`).
+
+`priceIsInclusive` is exposed as the required **Price Basis** setting:
+
+- Exclusive: tax is added on top of the entered price.
+- Inclusive: the entered price already includes tax.
+
+The backend enforces posted-document immutability for accounting-critical tax fields. `UpdateTaxCodeUseCase` checks posted Sales Invoices, Purchase Invoices, Sales Returns, and Purchase Returns through repository interfaces. Once a posted document references the tax code, these fields are locked:
+
+- code
+- rate
+- tax type
+- scope
+- purchase tax account
+- sales tax account
+- price basis
+
+Name/display text and active/inactive status remain editable. The list/get APIs expose `usedInPostedDocuments` and `lockedFields` so the UI can display a lock icon and disable locked controls, but the API check is the control boundary.
+
 ## File Map
 
 - `frontend/src/modules/settings/pages/SettingsHomePage.tsx` - settings hub taxonomy.
+- `frontend/src/modules/settings/pages/TaxCodesPage.tsx` - tax-code list/modal UI and price-basis display.
 - `frontend/src/components/shared/ModuleSettingsLayout.tsx` - shared settings page shell.
+- `backend/src/application/shared/use-cases/TaxCodeUseCases.ts` - tax-code creation, update, listing, usage metadata, and posted-document immutability.
 - `frontend/src/locales/*/common.json` - settings hub and shared layout strings.
 - `frontend/src/router/routes.config.ts` - underlying settings routes and permission guards.
