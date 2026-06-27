@@ -40,6 +40,7 @@ export interface ItemProps {
   name: string;
   description?: string;
   barcode?: string;
+  barcodes?: string[];
   type: ItemType;
   categoryId?: string;
   brand?: string;
@@ -89,6 +90,7 @@ export class Item {
   name: string;
   description?: string;
   barcode?: string;
+  barcodes?: string[];
   type: ItemType;
   categoryId?: string;
   brand?: string;
@@ -163,6 +165,7 @@ export class Item {
     this.name = props.name.trim();
     this.description = props.description;
     this.barcode = props.barcode;
+    this.barcodes = props.barcodes ? [...props.barcodes] : [];
     this.type = props.type;
     this.categoryId = props.categoryId;
     this.brand = props.brand;
@@ -214,6 +217,7 @@ export class Item {
       name: this.name,
       description: this.description,
       barcode: this.barcode,
+      barcodes: this.barcodes ? [...this.barcodes] : [],
       type: this.type,
       categoryId: this.categoryId,
       brand: this.brand,
@@ -255,6 +259,7 @@ export class Item {
       name: data.name,
       description: data.description,
       barcode: data.barcode,
+      barcodes: data.barcodes || [],
       type: data.type,
       categoryId: data.categoryId,
       brand: data.brand,

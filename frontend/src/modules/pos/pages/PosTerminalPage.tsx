@@ -65,6 +65,7 @@ import {
 import { usePosKeyboardShortcuts } from '../hooks/usePosKeyboardShortcuts';
 import { PosKeyboardShortcutsDialog } from '../components/PosKeyboardShortcutsDialog';
 import { userPreferencesApi } from '../../../api/userPreferencesApi';
+import { useScanner } from '../hooks/useScanner';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
@@ -166,6 +167,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [runtimeLayout, setRuntimeLayout] = useState<PosRuntimeLayoutDTO | null>(null);
   const [shortcutPath, setShortcutPath] = useState<PosProductShortcutNodeDTO[]>([]);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [saleNotes, setSaleNotes] = useState('');
 
   const uomRefs = useRef<Record<string, UomSelectorHandle>>({});
 
@@ -463,6 +465,22 @@ const PosTerminalPage: React.FC<Props> = () => {
       ];
     });
   };
+
+  useScanner({
+    onScan: async (barcode) => {
+      try {
+        const result = await posApi.searchProducts(barcode, 1);
+        const match = unwrap<{ items: any[] }>(result);
+        if (match && match.items && match.items.length > 0) {
+          onAddToCart(match.items[0]);
+        } else {
+          toast.error(t('pos:terminal.barcodeNotFound', { defaultValue: 'Barcode not found.' }));
+        }
+      } catch (err) {
+        toast.error(t('pos:terminal.barcodeError', { defaultValue: 'Failed to scan barcode.' }));
+      }
+    }
+  });
 
   const onShortcutClick = (node: PosProductShortcutNodeDTO) => {
     if (node.nodeType === 'GROUP') {
@@ -856,7 +874,7 @@ const PosTerminalPage: React.FC<Props> = () => {
     setShowSaleManagerOverride(false);
   };
 
-  const onCompleteSale = async () => {
+  const onCompleteSale = async (creditSaleFlag: boolean = false) => {
     const register = bootstrap?.register;
     const shift = bootstrap?.openShift;
     if (!register || !shift) {
@@ -867,8 +885,17 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.error(t('pos:terminal.noActiveLines', { defaultValue: 'Add at least one active line before taking payment.' }));
       return;
     }
-    if (Math.abs(paid - grandTotal) > 0.005) {
+    if (!creditSaleFlag && Math.abs(paid - grandTotal) > 0.005) {
       toast.error(t('pos:terminal.tenderMismatch', { defaultValue: 'Tendered total does not match grand total.' }));
+      return;
+    }
+    if (creditSaleFlag && !customerId) {
+      toast.error(t('pos:terminal.needCustomerForCredit', { defaultValue: 'Credit sale requires a selected customer.' }));
+      return;
+    }
+    if (creditSaleFlag && settings?.creditSaleManagerOverride && !saleManagerOverride) {
+      toast.error(t('pos:terminal.creditSaleNeedsApproval', { defaultValue: 'Manager approval is required for deferred payment.' }));
+      setShowSaleManagerOverride(true);
       return;
     }
     try {
@@ -899,6 +926,9 @@ const PosTerminalPage: React.FC<Props> = () => {
           managerOverrideId: l.managerOverrideId,
         })),
         payments: salePayments,
+        notes: saleNotes,
+        isCreditSale: creditSaleFlag,
+        managerOverrideId: creditSaleFlag ? saleManagerOverride?.managerOverrideId : undefined,
       });
       const data = unwrap<any>(result);
       setLastReceipt(data);
@@ -907,6 +937,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       setPayments([]);
       setSaleManagerOverride(null);
       setSearchQuery('');
+      setSaleNotes('');
       searchRef.current?.focus();
     } catch (err: any) {
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to complete sale.');
@@ -1533,6 +1564,19 @@ const PosTerminalPage: React.FC<Props> = () => {
                   onChange={(p) => setCustomerId(p?.id || settings?.walkInCustomerId)}
                 />
               </div>
+
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-slate-500 lg:mb-1 lg:text-xs dark:text-[var(--color-text-secondary)]">
+                  {t('pos:terminal.saleNotes', { defaultValue: 'Notes' })}
+                </label>
+                <textarea
+                  value={saleNotes}
+                  onChange={(e) => setSaleNotes(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
+                  rows={2}
+                  placeholder={t('pos:terminal.saleNotesPlaceholder', { defaultValue: 'Optional sale notes...' })}
+                />
+              </div>
             </div>
 
             {bottomControlButtons.length > 0 && (
@@ -1550,15 +1594,25 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             )}
 
-            <button
-              onClick={openPayDialog}
-              disabled={activeCart.length === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
-            >
-              <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
-              {t('pos:terminal.pay', { defaultValue: 'Pay' })}
-              <span className="font-mono">{money(grandTotal)}</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onCompleteSale(true)}
+                disabled={activeCart.length === 0}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base cursor-pointer dark:disabled:bg-[var(--color-bg-tertiary)]"
+              >
+                <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
+                {t('pos:terminal.creditSale', { defaultValue: 'Deferred Payment to Customer Account' })}
+              </button>
+
+              <button
+                onClick={openPayDialog}
+                disabled={activeCart.length === 0}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base cursor-pointer dark:disabled:bg-[var(--color-bg-tertiary)]"
+              >
+                <Banknote className="h-4 w-4 lg:h-5 lg:w-5" />
+                {t('pos:terminal.pay', { defaultValue: 'Pay' })}
+              </button>
+            </div>
           </div>
         </aside>
       </div>

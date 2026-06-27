@@ -4,7 +4,8 @@ export type POSManagerOverrideAction =
   | 'DISCOUNT_OVERRIDE'
   | 'TAX_OVERRIDE'
   | 'RETURN'
-  | 'REPRINT';
+  | 'REPRINT'
+  | 'CREDIT_SALE';
 
 export interface POSTerminalPolicyProps {
   registerId: string;

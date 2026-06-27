@@ -107,6 +107,20 @@ export class PrismaItemRepository implements IItemRepository {
     return this.toDomain(record);
   }
 
+  async getItemByBarcode(companyId: string, barcode: string): Promise<Item | null> {
+    const record = await this.prisma.item.findFirst({
+      where: {
+        companyId,
+        OR: [
+          { barcode },
+          { barcodes: { has: barcode } },
+        ],
+      },
+    });
+    if (!record) return null;
+    return this.toDomain(record);
+  }
+
   async getItemsByCategory(companyId: string, categoryId: string, opts?: ItemListOptions): Promise<Item[]> {
     const where: any = { companyId, categoryId };
     if (opts?.active !== undefined) {
@@ -135,6 +149,7 @@ export class PrismaItemRepository implements IItemRepository {
         { name: { contains: query, mode: 'insensitive' as any } },
         { description: { contains: query, mode: 'insensitive' as any } },
         { barcode: { contains: query, mode: 'insensitive' as any } },
+        { barcodes: { has: query } },
         { brand: { contains: query, mode: 'insensitive' as any } },
       ],
     };
@@ -180,6 +195,7 @@ export class PrismaItemRepository implements IItemRepository {
       name: record.name,
       description: record.description,
       barcode: record.barcode,
+      barcodes: record.barcodes,
       type: record.type,
       categoryId: record.categoryId,
       brand: record.brand,

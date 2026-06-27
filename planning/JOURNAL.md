@@ -5208,3 +5208,10 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused StockLevelUseCases tests passed (4/4). InventoryValuationService focused tests passed (3/3). Backend build passed. Frontend `check:reports`, typecheck, and production build passed; existing browser-data/chunk-size warnings remain. `git diff --check` reported CRLF normalization warnings only. `graphify update .` was not run because `graphify` is not installed in this shell.
 - **Time spent:** ~3.1h.
 - **Next:** Commit/push Task 270, then continue Task 271 — Sales/Purchase Return layout parity and direct Purchase Return.
+
+### 2026-06-27: Finalized POS Fixes and Tests
+- Completed layout restructure cleanly on branch codex/pos-terminal-layout.
+- Added full integration tests for POS Credit Sales in CompletePosSale.test.ts.
+- Tests verified handling of settings flags, manager overrides, and bypassing of receipt totals validation.
+- Updated ACTIVE.md with latest status. Both branches are now clean and ready for review.
+

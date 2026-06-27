@@ -117,6 +117,13 @@ class InMemoryItemRepository implements IItemRepository {
     return Array.from(this.items.values()).find((item) => item.companyId === companyId && item.code === code) || null;
   }
 
+  async getItemByBarcode(companyId: string, barcode: string): Promise<Item | null> {
+    return Array.from(this.items.values()).find((item) =>
+      item.companyId === companyId &&
+      (item.barcode === barcode || (item.barcodes || []).includes(barcode))
+    ) || null;
+  }
+
   async getItemsByCategory(companyId: string, categoryId: string): Promise<Item[]> {
     return Array.from(this.items.values()).filter((item) => item.companyId === companyId && item.categoryId === categoryId);
   }

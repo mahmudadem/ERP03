@@ -13,7 +13,7 @@ export type PosNegativeStockPolicy = 'BLOCK' | 'ALLOW';
 export type PosRegisterStatus = 'ACTIVE' | 'INACTIVE';
 export type PosShiftStatus = 'OPEN' | 'CLOSED' | 'RECONCILED' | 'FORCE_CLOSED' | 'CANCELLED';
 export type PosHeldCartStatus = 'HELD' | 'RECALLED' | 'CANCELLED';
-export type PosManagerOverrideAction = 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE' | 'RETURN' | 'REPRINT';
+export type PosManagerOverrideAction = 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE' | 'RETURN' | 'REPRINT' | 'CREDIT_SALE';
 export type PosShiftPaymentTotals = Record<PosPaymentMethodCode, number>;
 export type PosLayoutScopeType = 'COMPANY' | 'BRANCH' | 'REGISTER' | 'USER';
 export type PosProductShortcutNodeType = 'GROUP' | 'ITEM';
@@ -72,6 +72,8 @@ export interface PosSettingsDTO {
   receiptNextSeq: number;
   cashRounding: PosCashRounding;
   allowPosDirectSales: boolean;
+  allowCreditSales: boolean;
+  creditSaleManagerOverride: boolean;
   negativeStockPolicy: PosNegativeStockPolicy;
   paymentMethods: PosPaymentMethodDTO[];
 }
@@ -430,6 +432,9 @@ export const posApi = {
       managerOverrideId?: string;
     }>;
     payments: Array<{ method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM'; amount: number; reference?: string }>;
+    notes?: string;
+    isCreditSale?: boolean;
+    managerOverrideId?: string;
   }): Promise<any> =>
     ok(client.post('/tenant/pos/sales', payload)),
 

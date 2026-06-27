@@ -25,6 +25,7 @@ export class PrismaPosReceiptRepository implements IPosReceiptRepository {
         salesInvoiceId: receipt.salesInvoiceId || null,
         salesInvoiceNumber: receipt.salesInvoiceNumber || null,
         exchangeId: receipt.exchangeId || null,
+        notes: receipt.notes || null,
         createdBy: receipt.createdBy,
         createdAt: receipt.createdAt,
       },
@@ -86,6 +87,7 @@ export class PrismaPosReceiptRepository implements IPosReceiptRepository {
       salesInvoiceId: record.salesInvoiceId || undefined,
       salesInvoiceNumber: record.salesInvoiceNumber || undefined,
       exchangeId: record.exchangeId || undefined,
+      notes: record.notes || undefined,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
     });
