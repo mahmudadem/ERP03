@@ -439,14 +439,57 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                     )}
                  </div>
               </Field>
-              <Field label={t('Barcode', 'Barcode')}>
-                <div className="flex items-center gap-2">
-                   <div className="w-9 h-9 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0">
-                      <Barcode size={16} />
-                   </div>
-                   <input className="form-control" value={item.barcode || ''} onChange={e => setItem(p => ({ ...p, barcode: e.target.value }))} />
-                </div>
-              </Field>
+              <div className="col-span-1 sm:col-span-2">
+                <Field label={t('Primary Barcode', 'Primary Barcode')}>
+                  <div className="flex items-center gap-2">
+                     <div className="w-9 h-9 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0">
+                        <Barcode size={16} />
+                     </div>
+                     <input className="form-control" value={item.barcode || ''} onChange={e => setItem(p => ({ ...p, barcode: e.target.value }))} />
+                  </div>
+                </Field>
+              </div>
+              <div className="col-span-1 sm:col-span-2">
+                <Field label={t('Secondary Barcodes', 'Secondary Barcodes')}>
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap gap-2">
+                      {(item.barcodes || []).map((code, idx) => (
+                        <div key={idx} className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-sm">
+                          <span>{code}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const next = [...(item.barcodes || [])];
+                              next.splice(idx, 1);
+                              setItem(p => ({ ...p, barcodes: next }));
+                            }}
+                            className="text-slate-400 hover:text-rose-500"
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        className="form-control text-sm" 
+                        placeholder={t('Add secondary barcode...', 'Add secondary barcode...')}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            const val = e.currentTarget.value.trim();
+                            if (val && !(item.barcodes || []).includes(val)) {
+                              setItem(p => ({ ...p, barcodes: [...(p.barcodes || []), val] }));
+                            }
+                            e.currentTarget.value = '';
+                          }
+                        }}
+                      />
+                      <span className="text-xs text-slate-400">{t('Press Enter to add', 'Press Enter to add')}</span>
+                    </div>
+                  </div>
+                </Field>
+              </div>
               <div className="col-span-2"><Field label={t('Name', 'Name')} required><input className="form-control font-medium" value={item.name} onChange={e => setItem(p => ({ ...p, name: e.target.value }))} /></Field></div>
             </div>
           </FormSection>

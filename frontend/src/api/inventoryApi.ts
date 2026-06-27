@@ -30,6 +30,7 @@ export interface InventoryItemDTO {
   name: string;
   description?: string;
   barcode?: string;
+  barcodes?: string[];
   type: 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
   categoryId?: string;
   brand?: string;

@@ -577,6 +577,7 @@ model Item {
   name                      String
   description               String?
   barcode                   String?
+  barcodes                  String[] @default([])
   type                      String   @default("PRODUCT")
   categoryId                String?
   brand                     String?
@@ -1784,6 +1785,7 @@ model PosReceipt {
   salesInvoiceId      String?
   salesInvoiceNumber  String?
   exchangeId          String?
+  notes               String?
   createdBy           String
   createdAt           DateTime @default(now())
 

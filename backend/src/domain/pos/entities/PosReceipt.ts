@@ -55,6 +55,7 @@ export interface PosReceiptProps {
   salesInvoiceId?: string;
   salesInvoiceNumber?: string;
   exchangeId?: string;
+  notes?: string;
   createdBy: string;
   createdAt: Date;
 }
@@ -76,6 +77,7 @@ export class PosReceipt {
   salesInvoiceId?: string;
   salesInvoiceNumber?: string;
   exchangeId?: string;
+  notes?: string;
   readonly createdBy: string;
   readonly createdAt: Date;
 
@@ -107,6 +109,7 @@ export class PosReceipt {
     this.salesInvoiceId = props.salesInvoiceId;
     this.salesInvoiceNumber = props.salesInvoiceNumber;
     this.exchangeId = props.exchangeId;
+    this.notes = props.notes;
     this.createdBy = props.createdBy;
     this.createdAt = props.createdAt;
   }
@@ -129,6 +132,7 @@ export class PosReceipt {
       salesInvoiceId: this.salesInvoiceId,
       salesInvoiceNumber: this.salesInvoiceNumber,
       exchangeId: this.exchangeId,
+      notes: this.notes,
       createdBy: this.createdBy,
       createdAt: this.createdAt.toISOString(),
     };
@@ -180,6 +184,7 @@ export class PosReceipt {
       salesInvoiceId: data.salesInvoiceId,
       salesInvoiceNumber: data.salesInvoiceNumber,
       exchangeId: data.exchangeId,
+      notes: data.notes,
       createdBy: data.createdBy,
       createdAt: data.createdAt ? new Date(data.createdAt) : new Date(),
     });
