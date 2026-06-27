@@ -5242,3 +5242,18 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** None. Centralized item logic.
 - **Time spent:** ~1h.
 - **Next:** Waiting for user instruction.
+
+### 2026-06-27: Finalized POS Fixes and Tests
+- Completed layout restructure cleanly on branch codex/pos-terminal-layout.
+- Added full integration tests for POS Credit Sales in CompletePosSale.test.ts.
+- Tests verified handling of settings flags, manager overrides, and bypassing of receipt totals validation.
+- Updated ACTIVE.md with latest status. Both branches are now clean and ready for review.
+
+### Session: 2026-06-27 (Task 274 — Purchase Invoice native header, rail focus, and print engine)
+
+- **Goal:** Apply owner-requested PI native form parity: move direct PI warehouse selection to the header like SI, make the rail reflect focused vendor/item/warehouse context, and implement printing through the shared print engine.
+- **What was done:** Created isolated worktree `D:\DEV2026\ERP03-pi-native-print-rail` on branch `codex/pi-native-print-rail`. Added direct PI header **Main Warehouse** selection and line-payload fallback, while preserving source warehouses for PO/GRN-linked lines. Added rail focus state for vendor, item, and warehouse. Extended `PrintLayoutCore` with `PURCHASE_INVOICE`, added read-only PI print use case and `/tenant/purchase/invoices/:id/print`, and wired the native PI page Print action to render the returned engine layout/payload in a print window. Updated Purchases/print architecture docs, Purchases user guide, ACTIVE, and completion report.
+- **Accounting/ERP impact:** UI/data-entry placement and read-only print output only. No AP posting, purchase tax, inventory valuation, average cost, settlement, approval, period lock, unpost, returns, or ledger behavior changed.
+- **Verification:** Focused backend print-layout test passed (4/4). Backend build passed. Frontend typecheck passed.
+- **Time spent:** ~2.0h.
+- **Next:** Owner QA via `planning/done/274-purchase-invoice-native-header-rail-print.md`, then review and commit branch if accepted.

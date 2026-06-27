@@ -12,6 +12,7 @@ export interface CreateItemInput {
   name: string;
   description?: string;
   barcode?: string;
+  barcodes?: string[];
   type: Item['type'];
   categoryId?: string;
   brand?: string;
@@ -123,6 +124,26 @@ export class CreateItemUseCase {
       throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Item code already exists: ${data.code}`, { field: 'code', code: data.code });
     }
 
+    const normalizedSecondaryBarcodes = (data.barcodes || []).map((b) => b.trim()).filter(Boolean);
+    const allBarcodes = [data.barcode?.trim(), ...normalizedSecondaryBarcodes].filter(Boolean) as string[];
+    
+    const uniqueBarcodes = new Set<string>();
+    for (const b of allBarcodes) {
+      const trimmed = b.trim();
+      if (!trimmed) continue;
+
+      if (uniqueBarcodes.has(trimmed)) {
+        throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Duplicate barcode in payload: ${trimmed}`, { field: 'barcodes', value: trimmed });
+      }
+      uniqueBarcodes.add(trimmed);
+    }
+    for (const trimmed of uniqueBarcodes) {
+      const existingBarcode = await this.itemRepo.getItemByBarcode(data.companyId, trimmed);
+      if (existingBarcode) {
+        throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Barcode already in use: ${trimmed}`, { field: 'barcodes', value: trimmed });
+      }
+    }
+
     let revenueAccountId = data.revenueAccountId;
     let cogsAccountId = data.cogsAccountId;
     let inventoryAssetAccountId = data.inventoryAssetAccountId;
@@ -150,6 +171,7 @@ export class CreateItemUseCase {
         name: data.name,
         description: data.description,
         barcode: data.barcode,
+        barcodes: normalizedSecondaryBarcodes,
         type: normalizedType,
         categoryId: data.categoryId,
         brand: data.brand,
@@ -193,6 +215,28 @@ export class UpdateItemUseCase {
     const current = await this.repo.getItem(id);
     if (!current) {
       throw new Error(`Item not found: ${id}`);
+    }
+
+    // Only run duplication checks if barcodes field or barcode field is being updated
+    if (data.barcode !== undefined || data.barcodes !== undefined) {
+      const normalizedSecondaryBarcodes = (data.barcodes !== undefined ? data.barcodes : current.barcodes || []).map((b) => b.trim()).filter(Boolean);
+      const primaryBarcode = data.barcode !== undefined ? data.barcode?.trim() : current.barcode?.trim();
+      const newBarcodes = [primaryBarcode, ...normalizedSecondaryBarcodes].filter(Boolean) as string[];
+      const uniqueBarcodes = new Set<string>();
+      for (const b of newBarcodes) {
+        const trimmed = b;
+
+        if (uniqueBarcodes.has(trimmed)) {
+          throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Duplicate barcode in payload: ${trimmed}`, { field: 'barcodes', value: trimmed });
+        }
+        uniqueBarcodes.add(trimmed);
+      }
+      for (const trimmed of uniqueBarcodes) {
+        const existingBarcode = await this.repo.getItemByBarcode(current.companyId, trimmed);
+        if (existingBarcode && existingBarcode.id !== id) {
+          throw new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, `Barcode already in use: ${trimmed}`, { field: 'barcodes', value: trimmed });
+        }
+      }
     }
 
     if (data.costCurrency && data.costCurrency !== current.costCurrency) {

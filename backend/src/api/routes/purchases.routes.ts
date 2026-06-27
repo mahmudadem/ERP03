@@ -97,6 +97,7 @@ router.post('/invoices', PurchaseController.createPI);
 router.post('/invoices/create-and-post', idempotencyMiddleware, PurchaseController.createAndPostPI);
 router.get('/invoices', PurchaseController.listPIs);
 router.get('/invoices/:id', PurchaseController.getPI);
+router.get('/invoices/:id/print', PurchaseController.printPI);
 router.put('/invoices/:id', PurchaseController.updatePI);
 router.put('/invoices/:id/update-and-post', idempotencyMiddleware, PurchaseController.updateAndPostPI);
 router.post('/invoices/:id/post', idempotencyMiddleware, PurchaseController.postPI);

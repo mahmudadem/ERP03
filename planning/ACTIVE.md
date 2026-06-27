@@ -1,5 +1,42 @@
 # 🎯 Current Focus
 
+## Task 274 — Purchase Invoice native header warehouse, rail focus, and print engine (2026-06-27)
+
+**Status:** ✅ Complete locally on `codex/pi-native-print-rail` (not committed).
+
+- **Why:** Owner asked for native direct Purchase Invoice to match Sales Invoice: warehouse selector belongs in the header, the rail should reflect focused vendor/item/warehouse context, and printing should use the shared print engine instead of page print.
+- **Recommended approach used:** UI/data-entry parity first, plus a read-only print-engine consumer. No AP, tax, stock valuation, settlement, approval, period-lock, or posting behavior was changed.
+- **What changed:**
+  - Direct PI now shows **Main Warehouse** in the compact header.
+  - Direct PI stock lines use the header warehouse fallback when saved/posted.
+  - PO/GRN-linked lines keep their source warehouse for traceability.
+  - PI rail info now switches between vendor, item, and warehouse context.
+  - Print Layout Engine now exposes a `PURCHASE_INVOICE` schema.
+  - Added `GET /tenant/purchase/invoices/:id/print`, returning a read-only PI print payload and saved/default layout.
+  - Native PI page now opens a print window from the returned print-engine layout.
+  - Updated purchases/print architecture docs, Purchases user guide, and completion report.
+- **Verification:** Backend print-layout focused test PASS (4/4), backend build PASS, frontend typecheck PASS.
+- **Estimated/actual time:** 1.5-2.5h / ~2.0h.
+
+### Next action
+
+Run owner manual QA from `planning/done/274-purchase-invoice-native-header-rail-print.md`, then review/commit this branch if accepted.
+
+---
+
+## Task 272/273 — POS Fixes Batch & Terminal Restructure (2026-06-27)
+
+**Status:** ✅ Complete locally on `codex/pos-fixes-batch` and `codex/pos-terminal-layout`.
+
+- **Why:** Implementation of required fixes for scanner integration, multiple barcode support, credit sales policies, held notes, Z-report list generation, and POS terminal viewport restructuring without scrolling.
+- **What changed:**
+  - Branch `codex/pos-fixes-batch` holds backend schemas, APIs, test coverages, and core scanner logic.
+  - Integration tests for Credit Sales were added in `CompletePosSale.test.ts` to ensure policy rules and manager overrides behave natively.
+  - Branch `codex/pos-terminal-layout` is fully isolated and applies only flex-level grid layout changes to `PosTerminalPage.tsx` for optimal dual-pane scrolling and fixed button footprints.
+- **Next action:** Review and open PRs.
+
+---
+
 ## Task 267-H — Catalog/Item engine plan & Execution (2026-06-26)
 
 **Status:** ✅ Complete locally on `main`.
@@ -39,6 +76,7 @@ This concludes the 267 System Core Engine Management epic. Next action is to con
 
 Commit and review Task 267-G. The next task in the system core engine management plan is **267-H (Catalog/Item engine plan)**.
 
+---
 
 ## Task 271 — Sales/Purchase Return layout parity and direct Purchase Return (2026-06-26)
 

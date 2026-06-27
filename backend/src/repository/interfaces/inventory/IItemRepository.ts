@@ -21,6 +21,7 @@ export interface IItemRepository {
   getItem(id: string): Promise<Item | null>;
   getCompanyItems(companyId: string, opts?: ItemListOptions): Promise<Item[]>;
   getItemByCode(companyId: string, code: string): Promise<Item | null>;
+  getItemByBarcode(companyId: string, barcode: string): Promise<Item | null>;
   getItemsByCategory(companyId: string, categoryId: string, opts?: ItemListOptions): Promise<Item[]>;
   searchItems(companyId: string, query: string, opts?: ItemListOptions): Promise<Item[]>;
   deleteItem(id: string): Promise<void>;

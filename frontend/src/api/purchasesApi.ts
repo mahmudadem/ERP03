@@ -1,6 +1,7 @@
 import client from './client';
 import { PartyAccountsBackfillResult, WorkflowMode } from './salesApi';
 import type { PolicyConfigDTO, PolicyRule } from './controlsPoliciesApi';
+import type { PrintLayoutSchema } from './printLayoutApi';
 
 export type POStatus =
   | 'DRAFT'
@@ -627,6 +628,18 @@ export interface PurchaseInvoiceAttachmentDownloadLinkResult {
   url: string;
 }
 
+export interface PurchaseInvoicePrintResultDTO {
+  payload: Record<string, any>;
+  printTemplate: {
+    id?: string;
+    name: string;
+    documentType: 'PURCHASE_INVOICE';
+    isDefault: boolean;
+    source: 'SAVED_TEMPLATE' | 'GENERATED_DEFAULT';
+    layout: PrintLayoutSchema;
+  };
+}
+
 export type VendorStatementLineType = 'BILL' | 'PAYMENT' | 'DEBIT_NOTE' | 'REFUND' | 'ADJUSTMENT';
 
 export interface VendorStatementLineDTO {
@@ -897,6 +910,9 @@ export const purchasesApi = {
 
   getPI: (id: string): Promise<PurchaseInvoiceDTO> =>
     client.get(`/tenant/purchase/invoices/${id}`),
+
+  printPI: (id: string): Promise<PurchaseInvoicePrintResultDTO> =>
+    client.get(`/tenant/purchase/invoices/${id}/print`).then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   postPI: (id: string, settlementInput?: SettlementInputPayload): Promise<PurchaseInvoiceDTO> =>
     client.post(`/tenant/purchase/invoices/${id}/post`, { settlementInput }),

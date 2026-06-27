@@ -878,6 +878,8 @@ export class PosController {
         customerId: (req as any).body?.customerId ? String((req as any).body.customerId) : undefined,
         lines: (req as any).body?.lines || [],
         payments: (req as any).body?.payments || [],
+        notes: (req as any).body?.notes,
+        isCreditSale: (req as any).body?.isCreditSale === true,
         actor: { userId, userEmail, roleId: (req as any).body?.cashierRoleId ? String((req as any).body.cashierRoleId) : undefined },
       });
       (res as any).status(201).json({

@@ -51,6 +51,8 @@ export interface PosSettingsProps {
   receiptNextSeq?: number;
   cashRounding?: PosCashRounding;
   allowPosDirectSales?: boolean;
+  allowCreditSales?: boolean;
+  creditSaleManagerOverride?: boolean;
   negativeStockPolicy?: PosNegativeStockPolicy;
   paymentMethods?: PosPaymentMethodConfig[];
 }
@@ -70,6 +72,8 @@ export class PosSettings {
   receiptNextSeq: number;
   cashRounding: PosCashRounding;
   allowPosDirectSales: boolean;
+  allowCreditSales: boolean;
+  creditSaleManagerOverride: boolean;
   negativeStockPolicy: PosNegativeStockPolicy;
   paymentMethods: PosPaymentMethodConfig[];
 
@@ -105,6 +109,8 @@ export class PosSettings {
     this.receiptNextSeq = Number.isFinite(props.receiptNextSeq) ? Number(props.receiptNextSeq) : 1;
     this.cashRounding = rounding;
     this.allowPosDirectSales = props.allowPosDirectSales === true;
+    this.allowCreditSales = props.allowCreditSales === true;
+    this.creditSaleManagerOverride = props.creditSaleManagerOverride === true;
     // Default to BLOCK: POS never silently oversells, even if the company has
     // turned on negative stock for back-office invoice-driven sales.
     this.negativeStockPolicy = VALID_NEGATIVE_STOCK_POLICIES.includes(props.negativeStockPolicy as PosNegativeStockPolicy)
@@ -121,6 +127,8 @@ export class PosSettings {
       receiptNextSeq: 1,
       cashRounding: 'none',
       allowPosDirectSales: false,
+      allowCreditSales: false,
+      creditSaleManagerOverride: false,
       negativeStockPolicy: 'BLOCK',
       paymentMethods: [
         // CASH is the only always-on method; settlementAccountId empty until the
@@ -154,6 +162,8 @@ export class PosSettings {
       receiptNextSeq: this.receiptNextSeq,
       cashRounding: this.cashRounding,
       allowPosDirectSales: this.allowPosDirectSales,
+      allowCreditSales: this.allowCreditSales,
+      creditSaleManagerOverride: this.creditSaleManagerOverride,
       negativeStockPolicy: this.negativeStockPolicy,
       paymentMethods: this.paymentMethods,
     };
@@ -171,6 +181,8 @@ export class PosSettings {
       receiptNextSeq: Number(data.receiptNextSeq) || 1,
       cashRounding: VALID_ROUNDING.includes(data.cashRounding) ? data.cashRounding : 'none',
       allowPosDirectSales: data.allowPosDirectSales === true,
+      allowCreditSales: data.allowCreditSales === true,
+      creditSaleManagerOverride: data.creditSaleManagerOverride === true,
       negativeStockPolicy: VALID_NEGATIVE_STOCK_POLICIES.includes(data.negativeStockPolicy) ? data.negativeStockPolicy : 'BLOCK',
       paymentMethods: Array.isArray(data.paymentMethods) ? data.paymentMethods : [],
     });

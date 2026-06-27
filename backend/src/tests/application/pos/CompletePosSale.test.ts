@@ -450,4 +450,53 @@ describe('CompletePosSaleUseCase', () => {
       }),
     }));
   });
+
+  describe('Credit Sale Policies', () => {
+    it('rejects credit sale if allowCreditSales=false', async () => {
+      const { useCase } = setup({ settings: { allowCreditSales: false } });
+      await expect(run(useCase, [], { isCreditSale: true, customerId: 'cust-1' }))
+        .rejects.toThrow(/Credit sales are not allowed by POS settings/);
+    });
+
+    it('rejects credit sale if customer is missing or walk-in', async () => {
+      const { useCase } = setup({ settings: { allowCreditSales: true, walkInCustomerId: 'walk-in' } });
+      await expect(run(useCase, [], { isCreditSale: true }))
+        .rejects.toThrow(/Credit sale requires a selected customer/);
+
+      await expect(run(useCase, [], { isCreditSale: true, customerId: 'walk-in' }))
+        .rejects.toThrow(/Credit sales cannot be made to the walk-in customer/);
+    });
+
+    it('rejects credit sale if creditSaleManagerOverride=true and no manager approval', async () => {
+      const { useCase, policyEngine } = setup({ settings: { allowCreditSales: true, creditSaleManagerOverride: true } });
+      policyEngine.resolve.mockImplementation((req: any) => {
+        if (req.action === 'managerOverride' && req.context?.overrideAction === 'CREDIT_SALE') {
+          return Promise.resolve({ allowed: false, requiresApproval: true });
+        }
+        return Promise.resolve({ allowed: true, requiresApproval: false });
+      });
+
+      await expect(run(useCase, [], { isCreditSale: true, customerId: 'cust-1' }))
+        .rejects.toThrow(/Manager approval is required for POS credit sale/);
+    });
+
+    it('completes credit sale posting with 0 payments and records manager override when required', async () => {
+      const { useCase, postPosSaleUC } = setup({ settings: { allowCreditSales: true, creditSaleManagerOverride: true }, draftGrand: 10 });
+      const result = await run(useCase, [], { isCreditSale: true, customerId: 'cust-1', managerOverrideId: 'mgr-1' });
+      const postedInput = postedInputOf(postPosSaleUC);
+      expect(postedInput.payments).toEqual([]);
+      expect(result.receipt.grandTotal).toBe(10);
+      expect(result.receipt.grandTotal).toBe(10);
+      expect(result.change).toBe(0);
+    });
+
+    it('completes credit sale posting and bypasses receipt payment total checks', async () => {
+      const { useCase, postPosSaleUC } = setup({ settings: { allowCreditSales: true }, draftGrand: 50 });
+      const result = await run(useCase, [], { isCreditSale: true, customerId: 'cust-1' });
+      const postedInput = postedInputOf(postPosSaleUC);
+      expect(postedInput.payments).toEqual([]);
+      expect(result.change).toBe(0);
+      expect(result.receipt.grandTotal).toBe(50);
+    });
+  });
 });

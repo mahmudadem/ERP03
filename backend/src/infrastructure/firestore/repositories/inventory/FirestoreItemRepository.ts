@@ -103,6 +103,18 @@ export class FirestoreItemRepository implements IItemRepository {
     return ItemMapper.toDomain(snap.docs[0].data());
   }
 
+  async getItemByBarcode(companyId: string, barcode: string): Promise<Item | null> {
+    const snap = await this.collection(companyId).where('barcode', '==', barcode).limit(1).get();
+    if (!snap.empty) {
+      return ItemMapper.toDomain(snap.docs[0].data());
+    }
+    const snap2 = await this.collection(companyId).where('barcodes', 'array-contains', barcode).limit(1).get();
+    if (!snap2.empty) {
+      return ItemMapper.toDomain(snap2.docs[0].data());
+    }
+    return null;
+  }
+
   async getItemsByCategory(companyId: string, categoryId: string, opts?: ItemListOptions): Promise<Item[]> {
     let query: Query = this.collection(companyId)
       .where('categoryId', '==', categoryId)
@@ -129,7 +141,8 @@ export class FirestoreItemRepository implements IItemRepository {
     const matches = list.filter((item) =>
       item.code.toLowerCase().includes(normalized) ||
       item.name.toLowerCase().includes(normalized) ||
-      (item.barcode || '').toLowerCase().includes(normalized)
+      (item.barcode || '').toLowerCase().includes(normalized) ||
+      (item.barcodes || []).some((b) => b.toLowerCase().includes(normalized))
     );
 
     return matches.slice(0, opts?.limit ?? 50);

@@ -323,11 +323,14 @@ Purchase Invoice now reuses the Sales Invoice page anatomy inside the scaffold, 
 
 - Purchase Order shows a sticky subtotal / tax / grand-total strip beside save, confirm, receive, invoice, cancel, and close actions.
 - Purchase Invoice create/edit and posted views show a sticky subtotal / tax / grand-total strip beside save/post/payment/return/unpost actions.
+- Direct Purchase Invoice now keeps the warehouse selector in the compact header, matching Sales Invoice. The header warehouse is applied to direct stock lines that do not already come from a PO/GRN source. PO-linked lines keep their source warehouse for traceability.
+- Purchase Invoice's rail info card now tracks the focused vendor, item line, or warehouse context so users can inspect AP, stock, and warehouse context while editing or reviewing the bill.
+- Purchase Invoice printing now consumes the shared Print Layout Engine through `GET /tenant/purchase/invoices/:id/print`. The endpoint returns an approved `PURCHASE_INVOICE` print payload plus the saved/default layout; the frontend opens a print window from that layout.
 - Purchase Invoice source selection no longer accepts arbitrary raw `purchaseOrderId` text. The form loads real Purchase Orders and uses a dropdown, then loads open PO lines from the selected document.
 - Purchase Invoice no longer renders the old standalone header/totals/attachments card stack in create/edit or saved view; totals live in the rail and sticky footer like Sales Invoice.
 - Both pages use the same shared route shell pattern instead of each page owning a separate topbar/footer implementation.
 
-These changes are UI/data-integrity improvements only. They do not change AP posting, tax calculation, inventory receipt valuation, settlement, approval, SoD enforcement, period-lock behavior, or ledger writes.
+These changes are UI/data-integrity and read-only print improvements only. They do not change AP posting, tax calculation, inventory receipt valuation, settlement, approval, SoD enforcement, period-lock behavior, or ledger writes.
 
 ## Native Purchases document table/list parity (2026-06-09)
 

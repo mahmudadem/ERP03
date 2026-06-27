@@ -15,6 +15,22 @@ const PosZReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
 
   const Initiator: React.FC<{ onSubmit: (p: ZParams) => void; initialParams?: ZParams | null }> = ({ onSubmit, initialParams }) => {
     const [shiftId, setShiftId] = useState(initialParams?.shiftId || '');
+    const [shifts, setShifts] = useState<any[]>([]);
+
+    useEffect(() => {
+      posApi.listShifts({ limit: 100 })
+        .then((data) => {
+          // Sort so OPEN is at top (if we want) or just sort by openedAt desc
+          const sorted = data.sort((a, b) => new Date(b.openedAt).getTime() - new Date(a.openedAt).getTime());
+          setShifts(sorted);
+          if (!shiftId) {
+            const firstClosed = sorted.find(s => s.status === 'CLOSED');
+            if (firstClosed) setShiftId(firstClosed.id);
+          }
+        })
+        .catch(() => {});
+    }, []);
+
     return (
       <form
         onSubmit={(e) => { e.preventDefault(); onSubmit({ shiftId: shiftId.trim() }); }}
@@ -23,15 +39,29 @@ const PosZReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
           <div className="md:col-span-8 space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
-              {t('pos:report.z.shiftId', { defaultValue: 'Shift ID' })}
+              {t('pos:report.z.shiftId', { defaultValue: 'Shift' })}
             </label>
-            <input
-              type="text"
+            <select
               value={shiftId}
               onChange={(e) => setShiftId(e.target.value)}
-              className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm"
-              placeholder="shift_…"
-            />
+              className="w-full rounded border border-slate-300 px-3 py-1.5 text-sm dark:bg-[var(--color-bg-primary)] dark:border-[var(--color-border)] dark:text-[var(--color-text-primary)]"
+            >
+              <option value="" disabled>{t('pos:report.z.selectShift', { defaultValue: 'Select a closed shift...' })}</option>
+              <optgroup label={t('pos:report.z.openShifts', { defaultValue: 'Open Shifts (Must be closed first)' })}>
+                {shifts.filter(s => s.status === 'OPEN').map((s) => (
+                  <option key={s.id} value={s.id} disabled>
+                    {new Date(s.openedAt).toLocaleString()} ({s.registerId}) - OPEN
+                  </option>
+                ))}
+              </optgroup>
+              <optgroup label={t('pos:report.z.closedShifts', { defaultValue: 'Closed Shifts' })}>
+                {shifts.filter(s => s.status === 'CLOSED' || s.status === 'RECONCILED').map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {new Date(s.openedAt).toLocaleString()} - {s.closedAt ? new Date(s.closedAt).toLocaleString() : 'Closing...'} ({s.registerId})
+                  </option>
+                ))}
+              </optgroup>
+            </select>
           </div>
           <div className="md:col-span-4 flex justify-end">
             <Button

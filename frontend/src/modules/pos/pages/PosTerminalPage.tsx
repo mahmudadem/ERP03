@@ -65,6 +65,7 @@ import {
 import { usePosKeyboardShortcuts } from '../hooks/usePosKeyboardShortcuts';
 import { PosKeyboardShortcutsDialog } from '../components/PosKeyboardShortcutsDialog';
 import { userPreferencesApi } from '../../../api/userPreferencesApi';
+import { useScanner } from '../hooks/useScanner';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
@@ -166,6 +167,7 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [runtimeLayout, setRuntimeLayout] = useState<PosRuntimeLayoutDTO | null>(null);
   const [shortcutPath, setShortcutPath] = useState<PosProductShortcutNodeDTO[]>([]);
   const [showShortcutsDialog, setShowShortcutsDialog] = useState(false);
+  const [saleNotes, setSaleNotes] = useState('');
 
   const uomRefs = useRef<Record<string, UomSelectorHandle>>({});
 
@@ -463,6 +465,22 @@ const PosTerminalPage: React.FC<Props> = () => {
       ];
     });
   };
+
+  useScanner({
+    onScan: async (barcode) => {
+      try {
+        const result = await posApi.searchProducts(barcode, 1);
+        const match = unwrap<{ items: any[] }>(result);
+        if (match && match.items && match.items.length > 0) {
+          onAddToCart(match.items[0]);
+        } else {
+          toast.error(t('pos:terminal.barcodeNotFound', { defaultValue: 'Barcode not found.' }));
+        }
+      } catch (err) {
+        toast.error(t('pos:terminal.barcodeError', { defaultValue: 'Failed to scan barcode.' }));
+      }
+    }
+  });
 
   const onShortcutClick = (node: PosProductShortcutNodeDTO) => {
     if (node.nodeType === 'GROUP') {
@@ -856,7 +874,7 @@ const PosTerminalPage: React.FC<Props> = () => {
     setShowSaleManagerOverride(false);
   };
 
-  const onCompleteSale = async () => {
+  const onCompleteSale = async (creditSaleFlag: boolean = false) => {
     const register = bootstrap?.register;
     const shift = bootstrap?.openShift;
     if (!register || !shift) {
@@ -867,8 +885,17 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.error(t('pos:terminal.noActiveLines', { defaultValue: 'Add at least one active line before taking payment.' }));
       return;
     }
-    if (Math.abs(paid - grandTotal) > 0.005) {
+    if (!creditSaleFlag && Math.abs(paid - grandTotal) > 0.005) {
       toast.error(t('pos:terminal.tenderMismatch', { defaultValue: 'Tendered total does not match grand total.' }));
+      return;
+    }
+    if (creditSaleFlag && !customerId) {
+      toast.error(t('pos:terminal.needCustomerForCredit', { defaultValue: 'Credit sale requires a selected customer.' }));
+      return;
+    }
+    if (creditSaleFlag && settings?.creditSaleManagerOverride && !saleManagerOverride) {
+      toast.error(t('pos:terminal.creditSaleNeedsApproval', { defaultValue: 'Manager approval is required for deferred payment.' }));
+      setShowSaleManagerOverride(true);
       return;
     }
     try {
@@ -899,6 +926,9 @@ const PosTerminalPage: React.FC<Props> = () => {
           managerOverrideId: l.managerOverrideId,
         })),
         payments: salePayments,
+        notes: saleNotes,
+        isCreditSale: creditSaleFlag,
+        managerOverrideId: creditSaleFlag ? saleManagerOverride?.managerOverrideId : undefined,
       });
       const data = unwrap<any>(result);
       setLastReceipt(data);
@@ -907,6 +937,7 @@ const PosTerminalPage: React.FC<Props> = () => {
       setPayments([]);
       setSaleManagerOverride(null);
       setSearchQuery('');
+      setSaleNotes('');
       searchRef.current?.focus();
     } catch (err: any) {
       errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to complete sale.');
@@ -956,9 +987,9 @@ const PosTerminalPage: React.FC<Props> = () => {
   }
 
   return (
-    <div ref={containerRef} className="flex h-full flex-col bg-slate-50 dark:bg-[var(--color-bg-primary)]">
+    <div ref={containerRef} className="flex h-[calc(100vh-64px)] min-h-0 flex-col overflow-hidden bg-slate-50 dark:bg-[var(--color-bg-primary)]">
       {/* Context bar */}
-      <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
+      <header className="flex flex-none shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
             <MonitorSmartphone className="h-5 w-5" />
@@ -1046,10 +1077,10 @@ const PosTerminalPage: React.FC<Props> = () => {
       </header>
 
       {/* Workspace */}
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 landscape:grid-cols-12 lg:grid-cols-12">
+      <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-12">
         {/* Products pane */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-4 lg:col-span-7 lg:landscape:col-span-7">
-          <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
+        <section className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-7">
+          <div className="flex-none shrink-0 border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
             <div className="relative">
               <input
                 ref={searchRef}
@@ -1063,6 +1094,38 @@ const PosTerminalPage: React.FC<Props> = () => {
               />
               <ScanLine className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
             </div>
+            
+            {!searching && !searchQuery && currentShortcutNodes.length > 0 && (
+              <div className="mt-3 flex overflow-x-auto items-center gap-2 text-xs pb-1 shrink-0 no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setShortcutPath([])}
+                  disabled={shortcutPath.length === 0}
+                  className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
+                >
+                  {t('pos:terminal.shortcutsRoot', { defaultValue: 'Root' })}
+                </button>
+                {shortcutPath.map((node, index) => (
+                  <button
+                    key={node.id}
+                    type="button"
+                    onClick={() => setShortcutPath((prev) => prev.slice(0, index + 1))}
+                    className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)]"
+                  >
+                    {node.label}
+                  </button>
+                ))}
+                {shortcutPath.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShortcutPath((prev) => prev.slice(0, -1))}
+                    className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
+                  >
+                    {t('common.back', { defaultValue: 'Back' })}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -1123,35 +1186,6 @@ const PosTerminalPage: React.FC<Props> = () => {
 
             {!searching && !searchQuery && currentShortcutNodes.length > 0 && (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShortcutPath([])}
-                    disabled={shortcutPath.length === 0}
-                    className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
-                  >
-                    {t('pos:terminal.shortcutsRoot', { defaultValue: 'Root' })}
-                  </button>
-                  {shortcutPath.map((node, index) => (
-                    <button
-                      key={node.id}
-                      type="button"
-                      onClick={() => setShortcutPath((prev) => prev.slice(0, index + 1))}
-                      className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)]"
-                    >
-                      {node.label}
-                    </button>
-                  ))}
-                  {shortcutPath.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShortcutPath((prev) => prev.slice(0, -1))}
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
-                    >
-                      {t('common.back', { defaultValue: 'Back' })}
-                    </button>
-                  )}
-                </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
                   {currentShortcutNodes.map((node) => (
                     <button
@@ -1215,8 +1249,8 @@ const PosTerminalPage: React.FC<Props> = () => {
         </section>
 
         {/* Order pane */}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-8 lg:col-span-5 lg:landscape:col-span-5">
-          <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
+        <aside className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-5">
+          <div className="flex flex-none shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
               <Receipt className="h-4 w-4 text-indigo-600" />
               {t('pos:terminal.currentSale', { defaultValue: 'Current sale' })}
@@ -1266,7 +1300,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                     <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
                       {/* Left Side: Name, Edit (Desktop), Code, DefPrice, DefTax */}
                       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
-                        <span className={`inline-block whitespace-normal break-words rounded bg-indigo-50/60 px-2 py-1 text-sm sm:text-[16px] font-semibold border border-indigo-100/60 dark:border-indigo-500/20 dark:bg-indigo-500/10 ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-indigo-950 dark:text-indigo-50'}`} title={l.itemName}>
+                        <span className={`block truncate rounded bg-indigo-50/60 px-2 py-1 text-sm sm:text-[16px] font-semibold border border-indigo-100/60 dark:border-indigo-500/20 dark:bg-indigo-500/10 ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-indigo-950 dark:text-indigo-50'}`} title={l.itemName}>
                           <span className="mr-1 sm:mr-1.5 text-[12px] sm:text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
                           {l.itemName}
                         </span>
@@ -1482,7 +1516,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
 
           {/* Totals + customer + pay */}
-          <div className="flex-none space-y-2 border-t border-slate-200 bg-slate-100 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)]">
+          <div className="flex-none shrink-0 space-y-2 border-t border-slate-200 bg-slate-100 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)]">
             {/* Mobile Expand Toggle */}
             <button
               onClick={() => setIsTotalsExpanded(!isTotalsExpanded)}
@@ -1533,6 +1567,19 @@ const PosTerminalPage: React.FC<Props> = () => {
                   onChange={(p) => setCustomerId(p?.id || settings?.walkInCustomerId)}
                 />
               </div>
+
+              <div>
+                <label className="mb-0.5 block text-[10px] font-medium text-slate-500 lg:mb-1 lg:text-xs dark:text-[var(--color-text-secondary)]">
+                  {t('pos:terminal.saleNotes', { defaultValue: 'Notes' })}
+                </label>
+                <textarea
+                  value={saleNotes}
+                  onChange={(e) => setSaleNotes(e.target.value)}
+                  className="w-full rounded-md border border-slate-300 p-2 text-sm focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 dark:border-slate-600 dark:bg-slate-700 dark:text-white dark:focus:border-indigo-400 dark:focus:ring-indigo-400"
+                  rows={2}
+                  placeholder={t('pos:terminal.saleNotesPlaceholder', { defaultValue: 'Optional sale notes...' })}
+                />
+              </div>
             </div>
 
             {bottomControlButtons.length > 0 && (
@@ -1550,15 +1597,25 @@ const PosTerminalPage: React.FC<Props> = () => {
               </div>
             )}
 
-            <button
-              onClick={openPayDialog}
-              disabled={activeCart.length === 0}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base dark:disabled:bg-[var(--color-bg-tertiary)] cursor-pointer"
-            >
-              <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
-              {t('pos:terminal.pay', { defaultValue: 'Pay' })}
-              <span className="font-mono">{money(grandTotal)}</span>
-            </button>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => onCompleteSale(true)}
+                disabled={activeCart.length === 0}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base cursor-pointer dark:disabled:bg-[var(--color-bg-tertiary)]"
+              >
+                <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
+                {t('pos:terminal.creditSale', { defaultValue: 'Deferred Payment to Customer Account' })}
+              </button>
+
+              <button
+                onClick={openPayDialog}
+                disabled={activeCart.length === 0}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-emerald-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-emerald-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base cursor-pointer dark:disabled:bg-[var(--color-bg-tertiary)]"
+              >
+                <Banknote className="h-4 w-4 lg:h-5 lg:w-5" />
+                {t('pos:terminal.pay', { defaultValue: 'Pay' })}
+              </button>
+            </div>
           </div>
         </aside>
       </div>
