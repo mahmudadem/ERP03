@@ -3,7 +3,7 @@ import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
 
 // We reuse the inventory validators for now since the Item entity hasn't structurally changed.
-import { validateCreateItemInput, validateUpdateItemInput } from '../../validators/inventoryValidators';
+import { validateCreateItemInput, validateUpdateItemInput } from '../../validators/inventory.validators';
 
 export class CatalogController {
   private static getCompanyId(req: Request): string {
@@ -46,7 +46,6 @@ export class CatalogController {
         type: (req as any).query.type,
         categoryId: (req as any).query.categoryId,
         active: (req as any).query.active === undefined ? undefined : (req as any).query.active === 'true',
-        search: (req as any).query.search,
       });
 
       (res as any).json({
