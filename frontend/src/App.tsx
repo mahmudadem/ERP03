@@ -12,9 +12,16 @@ import { setAuthTokenGetter, setCompanyIdGetter } from './api/client';
 import { useCompanyAccess } from './context/CompanyAccessContext';
 import { GlobalLoaderProvider } from './context/GlobalLoaderContext';
 
+import { detectAndSetIpLanguage } from './services/ipLanguageDetector';
+
 const AxiosInitializer: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { getToken } = useAuth();
   const { companyId } = useCompanyAccess();
+
+  useEffect(() => {
+    // Detect IP location and set language on startup
+    detectAndSetIpLanguage();
+  }, []);
 
   useEffect(() => {
     setAuthTokenGetter(getToken);

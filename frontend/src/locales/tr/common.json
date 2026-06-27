@@ -1716,6 +1716,13 @@
           "title": "Global Operasyon",
           "desc": "Coklu para birimi, dil ve sirket destegi."
         }
+      },
+      "errors": {
+        "invalidCredential": "Geçersiz e-posta veya şifre.",
+        "wrongPassword": "Yanlış şifre.",
+        "emailInUse": "E-posta zaten kayıtlı.",
+        "weakPassword": "Şifre çok zayıf.",
+        "networkError": "Ağ hatası. Lütfen bağlantınızı kontrol edin."
       }
     },
     "companyWizard": {

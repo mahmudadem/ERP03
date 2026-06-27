@@ -16,7 +16,7 @@ import { cn } from '../../../lib/utils';
 import { Spinner } from '../../../components/ui/Spinner';
 
 const LandingPage: React.FC = () => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { login } = useAuth();
@@ -90,7 +90,30 @@ const LandingPage: React.FC = () => {
       }
     } catch (err: any) {
       console.error('Auth error:', err);
-      setError(err.response?.data?.message || err.message || t('onboarding.landing.authFailed', { defaultValue: 'Authentication failed' }));
+      let errorMessage = err.response?.data?.message || err.message;
+      
+      if (err.code) {
+        switch (err.code) {
+          case 'auth/user-not-found':
+          case 'auth/invalid-credential':
+            errorMessage = t('onboarding.landing.errors.invalidCredential', { defaultValue: 'Invalid email or password.' });
+            break;
+          case 'auth/wrong-password':
+            errorMessage = t('onboarding.landing.errors.wrongPassword', { defaultValue: 'Incorrect password.' });
+            break;
+          case 'auth/email-already-in-use':
+            errorMessage = t('onboarding.landing.errors.emailInUse', { defaultValue: 'Email is already registered.' });
+            break;
+          case 'auth/weak-password':
+            errorMessage = t('onboarding.landing.errors.weakPassword', { defaultValue: 'Password is too weak.' });
+            break;
+          case 'auth/network-request-failed':
+            errorMessage = t('onboarding.landing.errors.networkError', { defaultValue: 'Network error. Please check your connection.' });
+            break;
+        }
+      }
+      
+      setError(errorMessage || t('onboarding.landing.authFailed', { defaultValue: 'Authentication failed' }));
     } finally {
       setIsLoading(false);
     }
@@ -115,6 +138,28 @@ const LandingPage: React.FC = () => {
             <a href="#" className="hover:text-primary-500 transition-colors">{t('onboarding.landing.nav.enterprise', { defaultValue: 'Enterprise' })}</a>
           </div>
           <div className="flex items-center gap-4">
+            {/* Language Switcher */}
+            <div className="flex items-center gap-2 mr-2 border-r border-[var(--color-border)] pr-4">
+              <button 
+                onClick={() => i18n.changeLanguage('en')}
+                className={cn("text-xs font-bold transition-colors", i18n.language === 'en' ? "text-primary-600" : "text-[var(--color-text-secondary)] hover:text-primary-500")}
+              >
+                EN
+              </button>
+              <button 
+                onClick={() => i18n.changeLanguage('ar')}
+                className={cn("text-xs font-bold transition-colors", i18n.language === 'ar' ? "text-primary-600" : "text-[var(--color-text-secondary)] hover:text-primary-500")}
+              >
+                AR
+              </button>
+              <button 
+                onClick={() => i18n.changeLanguage('tr')}
+                className={cn("text-xs font-bold transition-colors", i18n.language === 'tr' ? "text-primary-600" : "text-[var(--color-text-secondary)] hover:text-primary-500")}
+              >
+                TR
+              </button>
+            </div>
+            
             <button 
               onClick={() => setAuthMode('login')}
               className="text-sm font-semibold text-[var(--color-text-secondary)] hover:text-primary-500 hidden md:block transition-colors"
