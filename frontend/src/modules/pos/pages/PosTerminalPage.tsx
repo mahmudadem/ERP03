@@ -893,6 +893,11 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.error(t('pos:terminal.needCustomerForCredit', { defaultValue: 'Credit sale requires a selected customer.' }));
       return;
     }
+    if (creditSaleFlag && settings?.creditSaleManagerOverride && !saleManagerOverride) {
+      toast.error(t('pos:terminal.creditSaleNeedsApproval', { defaultValue: 'Manager approval is required for deferred payment.' }));
+      setShowSaleManagerOverride(true);
+      return;
+    }
     try {
       setCompleting(true);
       const result = await posApi.completeSale({
@@ -923,6 +928,7 @@ const PosTerminalPage: React.FC<Props> = () => {
         payments: salePayments,
         notes: saleNotes,
         isCreditSale: creditSaleFlag,
+        managerOverrideId: creditSaleFlag ? saleManagerOverride?.managerOverrideId : undefined,
       });
       const data = unwrap<any>(result);
       setLastReceipt(data);
@@ -1595,7 +1601,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base cursor-pointer dark:disabled:bg-[var(--color-bg-tertiary)]"
               >
                 <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
-                {t('pos:terminal.creditSale', { defaultValue: 'Credit Sale' })}
+                {t('pos:terminal.creditSale', { defaultValue: 'Deferred Payment to Customer Account' })}
               </button>
 
               <button

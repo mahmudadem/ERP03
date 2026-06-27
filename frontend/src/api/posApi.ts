@@ -434,6 +434,7 @@ export const posApi = {
     payments: Array<{ method: 'CASH' | 'CARD' | 'BANK_TRANSFER' | 'CUSTOM'; amount: number; reference?: string }>;
     notes?: string;
     isCreditSale?: boolean;
+    managerOverrideId?: string;
   }): Promise<any> =>
     ok(client.post('/tenant/pos/sales', payload)),
 

@@ -36,7 +36,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcodes: ['123', ' 123 '], // Duplicates when trimmed
       };
 
-      await expect(createUseCase.execute(input)).rejects.toThrowError(
+      await expect(createUseCase.execute(input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Duplicate barcode in payload: 123', { field: 'barcodes', value: '123' })
       );
       expect(mockItemRepo.getItemByBarcode).not.toHaveBeenCalled();
@@ -56,7 +56,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcodes: ['456', '123'], // Primary barcode is also in the array
       };
 
-      await expect(createUseCase.execute(input)).rejects.toThrowError(
+      await expect(createUseCase.execute(input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Duplicate barcode in payload: 123', { field: 'barcodes', value: '123' })
       );
     });
@@ -76,7 +76,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcode: '123',
       };
 
-      await expect(createUseCase.execute(input)).rejects.toThrowError(
+      await expect(createUseCase.execute(input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Barcode already in use: 123', { field: 'barcodes', value: '123' })
       );
     });
@@ -90,7 +90,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcodes: ['999', '999'],
       };
 
-      await expect(updateUseCase.execute('item1', input)).rejects.toThrowError(
+      await expect(updateUseCase.execute('item1', input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Duplicate barcode in payload: 999', { field: 'barcodes', value: '999' })
       );
     });
@@ -103,7 +103,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcode: '999',
       };
 
-      await expect(updateUseCase.execute('item1', input)).rejects.toThrowError(
+      await expect(updateUseCase.execute('item1', input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Barcode already in use: 999', { field: 'barcodes', value: '999' })
       );
     });

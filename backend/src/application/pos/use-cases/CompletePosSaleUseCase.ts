@@ -152,13 +152,6 @@ export class CompletePosSaleUseCase {
       if (customerId === settings.walkInCustomerId) {
         throw new Error('Credit sales cannot be made to the walk-in customer. Select a named customer.');
       }
-      if (settings.creditSaleManagerOverride) {
-        // Enforce using the same manager override pattern used for voids/price-overrides.
-        // POS sends a dummy line for the credit sale, or we check a managerOverrideId on the input level?
-        // Wait, the managerOverride is currently line-level `activeLines.some(...)`.
-        // Let's see how `assertManagerOverrideIfRequired` works. It takes a condition.
-        // We will assert later.
-      }
     }
 
     const register = await this.registerRepo.getById(input.companyId, input.registerId);
@@ -203,9 +196,6 @@ export class CompletePosSaleUseCase {
       await this.assertManagerOverrideIfRequired(
         input,
         'CREDIT_SALE',
-        // In POS frontend, if credit sale override is needed, the cashier captures a manager pin.
-        // We will assume `managerOverrideId` is either on a dummy line or we add it to the top level.
-        // Let's add it to CompletePosSaleInput.
         Boolean(input.managerOverrideId),
         { isCreditSale: true },
         true
