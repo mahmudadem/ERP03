@@ -1,16 +1,9 @@
-
 /**
  * InventoryController.ts
  */
 import { Request, Response, NextFunction } from 'express';
 import { ApiError } from '../../errors/ApiError';
-import {
-  CreateItemUseCase,
-  DeleteItemUseCase,
-  GetItemUseCase,
-  ListItemsUseCase,
-  UpdateItemUseCase,
-} from '../../../application/inventory/use-cases/ItemUseCases';
+// Item use cases now routed through ICatalogCore
 import {
   CreateUomUseCase,
   GetUomUseCase,
@@ -417,12 +410,7 @@ export class InventoryController {
       const companyId = InventoryController.getCompanyId(req);
       const userId = InventoryController.getUserId(req);
 
-      const useCase = new CreateItemUseCase(
-        diContainer.itemRepository,
-        diContainer.itemCategoryRepository,
-        diContainer.uomRepository
-      );
-      const item = await useCase.execute({
+      const item = await diContainer.catalogCore.createItem({
         ...(req as any).body,
         companyId,
         createdBy: userId,
@@ -440,8 +428,7 @@ export class InventoryController {
   static async listItems(req: Request, res: Response, next: NextFunction) {
       try {
           const companyId = InventoryController.getCompanyId(req);
-          const useCase = new ListItemsUseCase(diContainer.itemRepository);
-          const items = await useCase.execute(companyId, {
+          const items = await diContainer.catalogCore.listItems(companyId, {
             type: (req as any).query.type,
             categoryId: (req as any).query.categoryId,
           active: (req as any).query.active === undefined
@@ -467,7 +454,7 @@ export class InventoryController {
     try {
       const companyId = InventoryController.getCompanyId(req);
       const query = String((req as any).query.q || '');
-      const items = await diContainer.itemRepository.searchItems(companyId, query, {
+      const items = await diContainer.catalogCore.searchItems(companyId, query, {
         trackInventory: (req as any).query.trackInventory === undefined
           ? undefined
           : String((req as any).query.trackInventory) === 'true',
@@ -486,8 +473,7 @@ export class InventoryController {
 
   static async getItem(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new GetItemUseCase(diContainer.itemRepository);
-      const item = await useCase.execute((req as any).params.id);
+      const item = await diContainer.catalogCore.getItem((req as any).params.id);
       (res as any).json({
         success: true,
         data: item ? InventoryDTOMapper.toItemDTO(item) : null,
@@ -500,8 +486,7 @@ export class InventoryController {
   static async updateItem(req: Request, res: Response, next: NextFunction) {
     try {
       validateUpdateItemInput((req as any).body);
-      const useCase = new UpdateItemUseCase(diContainer.itemRepository, diContainer.uomRepository);
-      const item = await useCase.execute((req as any).params.id, (req as any).body);
+      const item = await diContainer.catalogCore.updateItem((req as any).params.id, (req as any).body);
       (res as any).json({
         success: true,
         data: InventoryDTOMapper.toItemDTO(item),
@@ -513,8 +498,7 @@ export class InventoryController {
 
   static async deleteItem(req: Request, res: Response, next: NextFunction) {
     try {
-      const useCase = new DeleteItemUseCase(diContainer.itemRepository);
-      await useCase.execute((req as any).params.id);
+      await diContainer.catalogCore.deleteItem((req as any).params.id);
       (res as any).json({ success: true });
     } catch (error) {
       next(error);

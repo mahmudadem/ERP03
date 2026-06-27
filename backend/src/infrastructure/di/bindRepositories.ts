@@ -145,7 +145,16 @@ import {
   PolicyEngine,
   LegacyTaxEngineAdapter,
   LegacyFxAdapter,
+  CatalogCore,
 } from '../../application/system-core';
+import {
+  CreateItemUseCase,
+  UpdateItemUseCase,
+  GetItemUseCase,
+  ListItemsUseCase,
+  SearchItemsUseCase,
+  DeleteItemUseCase,
+} from '../../application/system-core/catalog/use-cases/ItemUseCases';
 import {
   IAccountingBridge,
   IApprovalEngine,
@@ -158,6 +167,7 @@ import {
   IPolicyEngine,
   ITaxEngine,
   IFxEngine,
+  ICatalogCore,
 } from '../../application/system-core';
 import { SubledgerVoucherPostingService } from '../../application/accounting/services/SubledgerVoucherPostingService';
 import { RecordChangeService } from '../../application/system/services/RecordChangeService';
@@ -1145,6 +1155,16 @@ export const diContainer = {
         this.voucherTypeDefinitionRepository,
         this.voucherFormRepository
       )
+    );
+  },
+  get catalogCore(): ICatalogCore {
+    return new CatalogCore(
+      new CreateItemUseCase(this.itemRepository, this.itemCategoryRepository, this.uomRepository),
+      new UpdateItemUseCase(this.itemRepository, this.uomRepository),
+      new GetItemUseCase(this.itemRepository),
+      new ListItemsUseCase(this.itemRepository),
+      new SearchItemsUseCase(this.itemRepository),
+      new DeleteItemUseCase(this.itemRepository)
     );
   },
   get inventoryCore(): IInventoryCore {

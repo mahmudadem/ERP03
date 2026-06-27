@@ -20,6 +20,8 @@ export class SalesModule implements IModule {
     'sales.orders.manage',
     'sales.invoices.view',
     'sales.invoices.manage',
+    'sales.items.view',
+    'sales.items.manage',
   ];
 
   getManifest(): ModuleManifest {

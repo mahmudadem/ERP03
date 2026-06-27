@@ -119,6 +119,8 @@ export const PERMISSION_CATALOG: ModulePermissionCatalog[] = [
             { id: 'pos.registers.manage', label: 'Manage POS Registers' },
             { id: 'pos.settings.manage',  label: 'Manage POS Settings' },
             { id: 'pos.reports.view',     label: 'View POS Reports' },
+            { id: 'pos.items.view',       label: 'View POS Items' },
+            { id: 'pos.items.manage',     label: 'Manage POS Items' },
         ]
     },
     {

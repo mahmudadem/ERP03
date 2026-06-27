@@ -20,6 +20,8 @@ export class PurchaseModule implements IModule {
     'purchase.orders.manage',
     'purchases.invoices.view',
     'purchases.invoices.manage',
+    'purchase.items.view',
+    'purchase.items.manage',
   ];
 
   getManifest(): ModuleManifest {

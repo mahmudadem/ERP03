@@ -288,6 +288,8 @@ export const routesConfig: AppRoute[] = [
   // POS
   { path: '/pos/setup', label: 'POS Setup', component: PosSetupPage, section: 'SETUP', requiredModule: 'pos', requiredPermission: 'pos.settings.manage', hideInMenu: true },
   { path: '/pos', label: 'Terminal', component: PosHomePage, section: 'POS', requiredPermission: 'pos.terminal.access', requiredModule: 'pos' },
+  { path: '/pos/items', label: 'Products & Services', component: ItemsListPage, section: 'POS', requiredModule: 'pos', requiredPermission: 'pos.items.view' },
+  { path: '/pos/items/:id', label: 'Item Detail', component: ItemDetailPage, section: 'POS', hideInMenu: true, requiredModule: 'pos', requiredPermission: 'pos.items.view' },
   { path: '/pos/shortcuts', label: 'Shortcuts', component: PosShortcutManagerPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
   { path: '/pos/settings', label: 'Settings', component: PosSettingsPage, section: 'POS', requiredPermission: 'pos.settings.manage', requiredModule: 'pos' },
   { path: '/pos/registers', label: 'Registers', component: PosRegistersPage, section: 'POS', requiredPermission: 'pos.registers.manage', requiredModule: 'pos' },

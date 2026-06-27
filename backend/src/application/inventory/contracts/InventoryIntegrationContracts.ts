@@ -157,6 +157,7 @@ export interface ComputeStockOutMovementInput {
   referenceType: ReferenceType;
   referenceId: string;
   referenceLineId?: string;
+  reversesMovementId?: string;
   costSource?: CostSource;
   metadata?: Record<string, any>;
 }
@@ -201,7 +202,7 @@ export const computeStockOutMovement = (input: ComputeStockOutMovementInput): Co
     referenceType: input.referenceType,
     referenceId: input.referenceId,
     referenceLineId: input.referenceLineId,
-    reversesMovementId: undefined,
+    reversesMovementId: input.reversesMovementId,
     transferPairId: undefined,
     unitCostBase: issueCostBase,
     totalCostBase: roundMoney(issueCostBase * qtyInBaseUom),
@@ -327,6 +328,103 @@ export const computeStockReturnInMovement = (input: ComputeStockReturnInMovement
   level.lastMovementId = movement.id;
 
   const lineCostBase = roundMoney(unitCostBase * qtyInBaseUom);
+  return { movement, unitCostBase: roundMoney(unitCostBase), lineCostBase };
+};
+
+export interface ComputeStockReceiptInMovementInput {
+  companyId: string;
+  item: Item;
+  /** Mutated in place to reflect the IN (qtyOnHand, weighted avg cost, etc.). */
+  level: StockLevel;
+  warehouseId: string;
+  qtyInBaseUom: number;
+  date: string;
+  createdBy: string;
+  unitCostBase: number;
+  unitCostCCY: number;
+  totalCostBase?: number;
+  totalCostCCY?: number;
+  movementCurrency: string;
+  fxRateMovToBase: number;
+  fxRateCCYToBase: number;
+  referenceType: ReferenceType;
+  referenceId: string;
+  referenceLineId?: string;
+  movementType?: Extract<MovementType, 'PURCHASE_RECEIPT' | 'OPENING_STOCK' | 'ADJUSTMENT_IN' | 'TRANSFER_IN'>;
+  metadata?: Record<string, any>;
+}
+
+/** Compute a PURCHASE_RECEIPT / IN movement (weighted-average cost recompute) and mutate the level in place. */
+export const computeStockReceiptInMovement = (input: ComputeStockReceiptInMovementInput): ComputeStockMovementResult => {
+  const { item, level, qtyInBaseUom, unitCostBase, unitCostCCY } = input;
+  const qtyBefore = level.qtyOnHand;
+  const oldMaxBusinessDate = level.maxBusinessDate;
+
+  let newAvgBase = unitCostBase;
+  let newAvgCCY = unitCostCCY;
+  if (qtyBefore > 0) {
+    const newQty = qtyBefore + qtyInBaseUom;
+    newAvgBase = roundMoney(((level.avgCostBase * qtyBefore) + (unitCostBase * qtyInBaseUom)) / newQty);
+    newAvgCCY = roundMoney(((level.avgCostCCY * qtyBefore) + (unitCostCCY * qtyInBaseUom)) / newQty);
+  }
+  const settlesNegativeQty = Math.min(qtyInBaseUom, Math.max(-qtyBefore, 0));
+  const newPositiveQty = qtyInBaseUom - settlesNegativeQty;
+  const qtyAfter = qtyBefore + qtyInBaseUom;
+
+  const totalCostBase = input.totalCostBase ?? roundMoney(unitCostBase * qtyInBaseUom);
+  const totalCostCCY = input.totalCostCCY ?? roundMoney(unitCostCCY * qtyInBaseUom);
+
+  const movement = new StockMovement({
+    id: `sm_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`,
+    companyId: input.companyId,
+    date: input.date,
+    postingSeq: level.postingSeq + 1,
+    createdAt: new Date(),
+    createdBy: input.createdBy,
+    postedAt: new Date(),
+    itemId: item.id,
+    warehouseId: input.warehouseId,
+    direction: 'IN',
+    movementType: input.movementType || 'PURCHASE_RECEIPT',
+    qty: qtyInBaseUom,
+    uom: item.baseUom,
+    referenceType: input.referenceType,
+    referenceId: input.referenceId,
+    referenceLineId: input.referenceLineId,
+    unitCostBase,
+    totalCostBase,
+    unitCostCCY,
+    totalCostCCY,
+    movementCurrency: input.movementCurrency,
+    fxRateMovToBase: input.fxRateMovToBase,
+    fxRateCCYToBase: input.fxRateCCYToBase,
+    fxRateKind: 'DOCUMENT',
+    avgCostBaseAfter: newAvgBase,
+    avgCostCCYAfter: newAvgCCY,
+    qtyBefore,
+    qtyAfter,
+    settlesNegativeQty,
+    newPositiveQty,
+    negativeQtyAtPosting: qtyAfter < 0,
+    costSettled: true,
+    isBackdated: input.date < oldMaxBusinessDate,
+    costSource: 'PURCHASE',
+    metadata: input.metadata,
+  });
+
+  level.qtyOnHand += qtyInBaseUom;
+  level.avgCostBase = newAvgBase;
+  level.avgCostCCY = newAvgCCY;
+  level.lastCostBase = unitCostBase;
+  level.lastCostCCY = unitCostCCY;
+  level.postingSeq += 1;
+  level.version += 1;
+  level.totalMovements += 1;
+  level.maxBusinessDate = input.date > oldMaxBusinessDate ? input.date : oldMaxBusinessDate;
+  level.updatedAt = new Date();
+  level.lastMovementId = movement.id;
+
+  const lineCostBase = totalCostBase;
   return { movement, unitCostBase: roundMoney(unitCostBase), lineCostBase };
 };
 

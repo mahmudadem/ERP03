@@ -46,6 +46,18 @@ const permissions = [
   // HR
   { id: 'hr.employees.manage', category: 'hr', labelEn: 'Manage Employees', labelAr: 'إدارة الموظفين', labelTr: 'Çalışanları Yönet', descriptionEn: 'Manage employee records' },
   { id: 'hr.payroll.manage', category: 'hr', labelEn: 'Manage Payroll', labelAr: 'إدارة الرواتب', labelTr: 'Bordro Yönet', descriptionEn: 'Process payroll' },
+
+  // Pos
+  { id: 'pos.items.manage', category: 'pos', labelEn: 'Manage POS Items', labelAr: 'إدارة أصناف نقاط البيع', labelTr: 'POS Ürünlerini Yönet', descriptionEn: 'Create, edit, and delete POS items' },
+  { id: 'pos.items.view', category: 'pos', labelEn: 'View POS Items', labelAr: 'عرض أصناف نقاط البيع', labelTr: 'POS Ürünlerini Görüntüle', descriptionEn: 'View POS items' },
+
+  // Sales
+  { id: 'sales.items.manage', category: 'sales', labelEn: 'Manage Sales Items', labelAr: 'إدارة أصناف المبيعات', labelTr: 'Satış Ürünlerini Yönet', descriptionEn: 'Create, edit, and delete sales items' },
+  { id: 'sales.items.view', category: 'sales', labelEn: 'View Sales Items', labelAr: 'عرض أصناف المبيعات', labelTr: 'Satış Ürünlerini Görüntüle', descriptionEn: 'View sales items' },
+
+  // Purchases
+  { id: 'purchase.items.manage', category: 'purchase', labelEn: 'Manage Purchase Items', labelAr: 'إدارة أصناف المشتريات', labelTr: 'Satın Alma Ürünlerini Yönet', descriptionEn: 'Create, edit, and delete purchase items' },
+  { id: 'purchase.items.view', category: 'purchase', labelEn: 'View Purchase Items', labelAr: 'عرض أصناف المشتريات', labelTr: 'Satın Alma Ürünlerini Görüntüle', descriptionEn: 'View purchase items' },
 ];
 
 const systemRoleTemplates = [

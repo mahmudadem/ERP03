@@ -23,6 +23,8 @@ export class PosModule implements IModule {
     'pos.registers.manage',
     'pos.settings.manage',
     'pos.reports.view',
+    'pos.items.view',
+    'pos.items.manage',
   ];
 
   getManifest(): ModuleManifest {

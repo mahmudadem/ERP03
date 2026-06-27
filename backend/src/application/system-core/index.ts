@@ -30,3 +30,5 @@ export * from './PolicyEngine';
 export * from './approval/ApprovalEngine';
 export * from './approval/ApprovalSubjectRegistry';
 export * from './approval/plugins/LedgerCustodyApprovalPlugin';
+export * from './contracts/ICatalogCore';
+export * from './catalog/CatalogCore';

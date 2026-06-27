@@ -218,6 +218,18 @@ describe('Architecture guard: system core boundaries', () => {
     expect(offenders).toEqual([]);
   });
 
+  it('267-G: Purchases must not construct inventory sub-ledger movements/levels (delegate to inventory core)', () => {
+    const purchasesDir = path.resolve(SRC, 'application/purchases');
+    const offenders: string[] = [];
+    for (const file of collectTsFiles(purchasesDir)) {
+      const content = fs.readFileSync(file, 'utf8');
+      if (/new\s+StockMovement\s*\(|new\s+StockLevel\s*\(|StockLevel\.createNew\s*\(|StockLevel\.fromJSON\s*\(/.test(content)) {
+        offenders.push(path.relative(SRC, file));
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
   it('250j: Sales must delegate COGS account resolution and bucket accumulation to inventory core', () => {
     const salesFiles = [
       path.resolve(SRC, 'application/sales/use-cases/DeliveryNoteUseCases.ts'),

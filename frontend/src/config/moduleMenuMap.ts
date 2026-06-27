@@ -119,7 +119,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Overview', path: '/sales', icon: 'LayoutDashboard' },
       { label: 'Customers', path: '/sales/customers', icon: 'Users' },
-      { label: 'Products & Services', path: '/sales/items', icon: 'Package' },
+      { label: 'Products & Services', path: '/sales/items', permission: 'sales.items.view', icon: 'Package' },
       {
         label: 'Forms',
         icon: 'FolderOpen',
@@ -163,7 +163,7 @@ export const moduleMenuMap: Record<
     items: [
       { label: 'Overview', path: '/purchases', icon: 'LayoutDashboard' },
       { label: 'Vendors', path: '/purchases/vendors', icon: 'Store' },
-      { label: 'Products & Services', path: '/purchases/items', icon: 'Package' },
+      { label: 'Products & Services', path: '/purchases/items', permission: 'purchase.items.view', icon: 'Package' },
       {
         label: 'Forms',
         icon: 'FolderOpen',
@@ -215,6 +215,7 @@ export const moduleMenuMap: Record<
     icon: 'Monitor',
     items: [
       { label: 'Terminal', path: '/pos', permission: 'pos.terminal.access', icon: 'Calculator' },
+      { label: 'Products & Services', path: '/pos/items', permission: 'pos.items.view', icon: 'Package' },
       { label: 'Shortcuts', path: '/pos/shortcuts', permission: 'pos.settings.manage', icon: 'Grid3X3' },
       { label: 'Shift', path: '/pos/shift', permission: 'pos.shift.open', icon: 'Clock' },
       { label: 'Returns', path: '/pos/returns', permission: 'pos.return.create', icon: 'Undo2' },

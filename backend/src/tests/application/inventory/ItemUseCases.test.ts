@@ -1,4 +1,4 @@
-import { CreateItemUseCase, UpdateItemUseCase } from '../../../application/inventory/use-cases/ItemUseCases';
+import { CreateItemUseCase, UpdateItemUseCase } from '../../../application/system-core/catalog/use-cases/ItemUseCases';
 import { IItemRepository } from '../../../repository/interfaces/inventory';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { BusinessError } from '../../../errors/AppError';

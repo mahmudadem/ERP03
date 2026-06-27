@@ -1,9 +1,9 @@
 
-import { Item } from '../../../domain/inventory/entities/Item';
-import { IItemRepository, ItemListOptions, IUomRepository } from '../../../repository/interfaces/inventory';
-import { BusinessError } from '../../../errors/AppError';
-import { ErrorCode } from '../../../errors/ErrorCodes';
-import { IItemCategoryRepository } from '../../../repository/interfaces/inventory/IItemCategoryRepository';
+import { Item } from '../../../../domain/inventory/entities/Item';
+import { IItemRepository, ItemListOptions, IUomRepository } from '../../../../repository/interfaces/inventory';
+import { BusinessError } from '../../../../errors/AppError';
+import { ErrorCode } from '../../../../errors/ErrorCodes';
+import { IItemCategoryRepository } from '../../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { randomUUID } from 'crypto';
 
 export interface CreateItemInput {
@@ -292,5 +292,13 @@ export class DeleteItemUseCase {
 
   async execute(id: string): Promise<void> {
     await this.repo.setItemActive(id, false);
+  }
+}
+
+export class SearchItemsUseCase {
+  constructor(private readonly repo: IItemRepository) {}
+
+  async execute(companyId: string, query: string, filters: ItemListOptions = {}): Promise<Item[]> {
+    return this.repo.searchItems(companyId, query, filters);
   }
 }
