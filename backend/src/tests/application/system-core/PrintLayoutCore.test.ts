@@ -12,6 +12,19 @@ describe('PrintLayoutCore', () => {
     expect(() => core.validateLayout(layout, schema)).not.toThrow();
   });
 
+  it('creates and validates a default Purchase Invoice layout', () => {
+    const core = new PrintLayoutCore();
+    const layout = core.createDefaultLayout('PURCHASE_INVOICE');
+    const schema = core.getDataSchema('PURCHASE_INVOICE');
+
+    expect(schema.documentType).toBe('PURCHASE_INVOICE');
+    expect(schema.fields.some((field) => field.path === 'vendor.name')).toBe(true);
+    expect(schema.tables[0].columns.some((column) => column.path === 'warehouse')).toBe(true);
+    expect(layout.paper.type).toBe('A4');
+    expect(layout.components.find((component) => component.id === 'doc_no')?.fieldPath).toBe('invoice.number');
+    expect(() => core.validateLayout(layout, schema)).not.toThrow();
+  });
+
   it('rejects unknown dynamic fields and components outside the paper area', () => {
     const core = new PrintLayoutCore();
     const schema = core.getDataSchema('POS_RECEIPT');

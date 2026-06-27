@@ -9,6 +9,7 @@ Key guides:
 - [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)
 - [Vendor Statement and Ledger](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-statement.md)
 - [Vendor Groups](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-groups.md)
+- [Purchase Invoice Native Form](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-native-form.md)
 - [Purchase Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-attachments.md)
 - [Purchase Price Lists](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-price-lists.md)
 

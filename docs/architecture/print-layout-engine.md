@@ -18,7 +18,7 @@ The engine validates structured layout JSON. It does not execute user scripts. T
 
 Each template stores:
 
-- `documentType`, such as `POS_RECEIPT` or `SALES_INVOICE`
+- `documentType`, such as `POS_RECEIPT`, `SALES_INVOICE`, or `PURCHASE_INVOICE`
 - paper profile: A4, A5, 80mm receipt, 58mm receipt, or custom-compatible schema
 - canvas components: text, dynamic field, table, image/logo placeholder, box, line, barcode/QR placeholder
 - component bounds in paper units
@@ -43,8 +43,17 @@ V1 schemas:
 
 - `POS_RECEIPT`
 - `SALES_INVOICE`
+- `PURCHASE_INVOICE`
 
 The designer only allows fields and table columns from the schema. Unknown bindings are rejected by backend validation before save.
+
+## Runtime Consumers
+
+Purchase Invoice now consumes the engine at runtime through `GET /tenant/purchase/invoices/:id/print`.
+
+The Purchases controller fetches the saved Purchase Invoice, resolves the company default `PURCHASE_INVOICE` template from the print-layout template repository, and falls back to `PrintLayoutCore.createDefaultLayout('PURCHASE_INVOICE')` when no saved default exists. The frontend renders only the returned approved field and table bindings in a temporary browser print window. It does not execute scripts or formulas from the template.
+
+The Purchase Invoice print payload is read-only and includes company identity, invoice header fields, vendor identity, line rows, totals, and notes. It does not create, post, approve, unpost, settle, or otherwise mutate the invoice.
 
 ## Current Scope
 
