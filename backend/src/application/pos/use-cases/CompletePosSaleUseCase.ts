@@ -54,6 +54,9 @@ export interface CompletePosSaleInput {
   lines: PosCartLine[];
   payments: PosCartPayment[];
   exchangeId?: string;
+  notes?: string;
+  isCreditSale?: boolean;
+  managerOverrideId?: string;
   actor: { userId: string; userEmail?: string; roleId?: string };
 }
 
@@ -99,6 +102,9 @@ export class CompletePosSaleUseCase {
     if (!input.lines?.length) {
       throw new Error('Cart must have at least one line.');
     }
+    if (input.isCreditSale && !input.customerId) {
+      throw new Error('Credit sale requires a selected customer.');
+    }
     const activeLines = input.lines.filter((line) => line.status !== 'VOIDED');
     const voidedLines = input.lines.filter((line) => line.status === 'VOIDED');
     if (activeLines.length === 0) {
@@ -112,7 +118,7 @@ export class CompletePosSaleUseCase {
         throw new Error('Voided POS lines require the cashier user.');
       }
     }
-    if (!input.payments?.length) {
+    if (!input.isCreditSale && !input.payments?.length) {
       throw new Error('At least one payment is required.');
     }
 
@@ -137,6 +143,22 @@ export class CompletePosSaleUseCase {
     const customerId = input.customerId || settings.walkInCustomerId;
     if (!customerId) {
       throw new Error('No customer on the receipt and no walk-in customer is configured.');
+    }
+
+    if (input.isCreditSale) {
+      if (!settings.allowCreditSales) {
+        throw new Error('Credit sales are not allowed by POS settings.');
+      }
+      if (customerId === settings.walkInCustomerId) {
+        throw new Error('Credit sales cannot be made to the walk-in customer. Select a named customer.');
+      }
+      if (settings.creditSaleManagerOverride) {
+        // Enforce using the same manager override pattern used for voids/price-overrides.
+        // POS sends a dummy line for the credit sale, or we check a managerOverrideId on the input level?
+        // Wait, the managerOverride is currently line-level `activeLines.some(...)`.
+        // Let's see how `assertManagerOverrideIfRequired` works. It takes a condition.
+        // We will assert later.
+      }
     }
 
     const register = await this.registerRepo.getById(input.companyId, input.registerId);
@@ -176,6 +198,20 @@ export class CompletePosSaleUseCase {
     await this.assertManagerOverrideIfRequired(input, 'TAX_OVERRIDE', activeLines.some((line) => Boolean(line.managerOverrideId)), {
       lineCount: activeLines.filter((line) => line.taxOverride === true).length,
     }, activeLines.some((line) => line.taxOverride === true));
+
+    if (input.isCreditSale && settings.creditSaleManagerOverride) {
+      await this.assertManagerOverrideIfRequired(
+        input,
+        'CREDIT_SALE',
+        // In POS frontend, if credit sale override is needed, the cashier captures a manager pin.
+        // We will assume `managerOverrideId` is either on a dummy line or we add it to the top level.
+        // Let's add it to CompletePosSaleInput.
+        Boolean(input.managerOverrideId),
+        { isCreditSale: true },
+        true
+      );
+    }
+
     await this.assertSaleLineControls(input, activeLines);
 
     // Validate payment-method config up front (independent of the total).
@@ -245,29 +281,29 @@ export class CompletePosSaleUseCase {
     if (cashRoundingAdjustment < 0 && !settings.cashShortAccountId) {
       throw new Error('POS cash rounding loss requires a configured Cash Short account.');
     }
-    const cashTendered = roundMoney(
+    const cashTendered = input.isCreditSale ? 0 : roundMoney(
       input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0),
       preview.currency
     );
-    const cashChange = roundMoney(Math.max(0, cashTendered - roundedGrandTotal), preview.currency);
-    const appliedTotal = roundMoney(
+    const cashChange = input.isCreditSale ? 0 : roundMoney(Math.max(0, cashTendered - roundedGrandTotal), preview.currency);
+    const appliedTotal = input.isCreditSale ? 0 : roundMoney(
       input.payments.reduce((s, p) => s + p.amount, 0) - cashChange,
       preview.currency
     );
-    if (Math.abs(appliedTotal - roundedGrandTotal) > 0.005) {
+    if (!input.isCreditSale && Math.abs(appliedTotal - roundedGrandTotal) > 0.005) {
       throw new Error(
         `Payment total (${appliedTotal.toFixed(2)}) must equal the POS sale grand total ` +
         `incl. tax (${roundedGrandTotal.toFixed(2)}). Cash change of ${cashChange.toFixed(2)} is allowed.`
       );
     }
 
-    const appliedPayments = input.payments.map((p) => ({
+    const appliedPayments = input.isCreditSale ? [] : input.payments.map((p) => ({
       method: p.method,
       amount: p.method === 'CASH' ? roundMoney(p.amount - cashChange, preview.currency) : roundMoney(p.amount, preview.currency),
       reference: p.reference,
     }));
 
-    const cashApplied = roundMoney(
+    const cashApplied = input.isCreditSale ? 0 : roundMoney(
       input.payments.filter((p) => p.method === 'CASH').reduce((s, p) => s + p.amount, 0) - cashChange,
       preview.currency
     );
@@ -295,6 +331,7 @@ export class CompletePosSaleUseCase {
         negativeStockPolicy: settings.negativeStockPolicy,
         cashRoundingAdjustmentBase: cashRoundingAdjustment,
         cashRoundingAccountId: cashRoundingAdjustment > 0 ? settings.cashOverAccountId : settings.cashShortAccountId,
+        notes: input.notes,
         createdBy: input.actor.userId,
         transaction: tx,
       });
@@ -368,11 +405,12 @@ export class CompletePosSaleUseCase {
         salesInvoiceId: sale.documentId,
         salesInvoiceNumber: sale.documentNumber,
         exchangeId: input.exchangeId,
+        notes: input.notes,
         createdBy: input.actor.userId,
         createdAt: new Date(),
       });
 
-      const payments: PosPayment[] = input.payments.map((p) =>
+      const payments: PosPayment[] = input.isCreditSale ? [] : input.payments.map((p) =>
         new PosPayment({
           id: `pmt_${randomUUID()}`,
           companyId: input.companyId,
@@ -438,7 +476,7 @@ export class CompletePosSaleUseCase {
 
   private async assertManagerOverrideIfRequired(
     input: CompletePosSaleInput,
-    overrideAction: 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE',
+    overrideAction: 'VOID_LINE' | 'PRICE_OVERRIDE' | 'DISCOUNT_OVERRIDE' | 'TAX_OVERRIDE' | 'CREDIT_SALE',
     approvedOverride: boolean,
     payload: Record<string, unknown>,
     shouldEvaluate: boolean

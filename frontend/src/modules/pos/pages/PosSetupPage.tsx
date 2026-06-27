@@ -26,6 +26,8 @@ const createDefaultSettings = (): PosSettingsDTO => ({
   cashRounding: 'none',
   allowPosDirectSales: false,
   negativeStockPolicy: 'BLOCK',
+  allowCreditSales: false,
+  creditSaleManagerOverride: false,
   paymentMethods: ALL_METHOD_CODES.map((code) => ({
     code,
     settlementAccountId: '',

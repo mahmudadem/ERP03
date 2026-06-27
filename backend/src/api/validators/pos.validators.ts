@@ -7,7 +7,7 @@ const VALID_METHOD_CODES = ['CASH', 'CARD', 'BANK_TRANSFER', 'CUSTOM'] as const;
 const VALID_ROUNDING = ['none', 'nearest_05', 'nearest_1'] as const;
 const VALID_NEGATIVE_STOCK_POLICIES = ['BLOCK', 'ALLOW'] as const;
 const VALID_REGISTER_STATUS = ['ACTIVE', 'INACTIVE'] as const;
-const VALID_MANAGER_OVERRIDE_ACTIONS = ['VOID_LINE', 'PRICE_OVERRIDE', 'DISCOUNT_OVERRIDE', 'TAX_OVERRIDE', 'RETURN', 'REPRINT'] as const;
+const VALID_MANAGER_OVERRIDE_ACTIONS = ['VOID_LINE', 'PRICE_OVERRIDE', 'DISCOUNT_OVERRIDE', 'TAX_OVERRIDE', 'RETURN', 'REPRINT', 'CREDIT_SALE'] as const;
 
 function requireString(value: any, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {

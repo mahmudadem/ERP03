@@ -70,6 +70,7 @@ export interface PostPosSaleInput {
    * company flag enforced inside the inventory OUT.
    */
   negativeStockPolicy?: PosNegativeStockPolicy;
+  notes?: string;
   createdBy: string;
   transaction?: unknown;
   dryRun?: boolean;

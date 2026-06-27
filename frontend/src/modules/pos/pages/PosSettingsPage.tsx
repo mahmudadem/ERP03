@@ -78,6 +78,8 @@ const PosSettingsPage: React.FC<Props> = () => {
       allowPosDirectSales: false,
       negativeStockPolicy: 'BLOCK',
       paymentMethods: [],
+      allowCreditSales: false,
+      creditSaleManagerOverride: false,
     };
     const existing = new Map(base.paymentMethods.map((m) => [m.code, m]));
     return {
@@ -400,6 +402,38 @@ const PosSettingsPage: React.FC<Props> = () => {
                 {t('pos:settings.allowPosDirectSalesHelp', {
                   defaultValue:
                     'When enabled, the backend creates a form-scoped governance rule allowing the "direct" persona for formType "pos_sale" so cashiers can post direct Sales Invoices. Disabling it removes the rule.',
+                })}
+              </div>
+
+              <label className="flex items-center gap-2 text-sm mt-4">
+                <input
+                  type="checkbox"
+                  checked={settings.allowCreditSales}
+                  onChange={(e) => update('allowCreditSales', e.target.checked)}
+                  className="rounded border-slate-300"
+                />
+                <span className="font-medium">
+                  {t('pos:settings.allowCreditSales', { defaultValue: 'Allow POS Credit Sales (Pay Later)' })}
+                </span>
+              </label>
+
+              <label className="flex items-center gap-2 text-sm mt-4">
+                <input
+                  type="checkbox"
+                  checked={settings.creditSaleManagerOverride}
+                  onChange={(e) => update('creditSaleManagerOverride', e.target.checked)}
+                  disabled={!settings.allowCreditSales}
+                  className="rounded border-slate-300 disabled:opacity-50"
+                />
+                <span className={`font-medium ${!settings.allowCreditSales ? 'text-slate-400' : ''}`}>
+                  {t('pos:settings.creditSaleManagerOverride', { defaultValue: 'Require Manager Override for Credit Sales' })}
+                </span>
+              </label>
+
+              <div className="text-xs text-slate-500 md:col-span-2 mb-4">
+                {t('pos:settings.allowCreditSalesHelp', {
+                  defaultValue:
+                    'When enabled, cashiers can complete a sale without payment by billing it to the selected customer\'s AR account. Walk-in customers cannot be used for credit sales.',
                 })}
               </div>
 
