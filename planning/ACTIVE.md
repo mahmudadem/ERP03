@@ -1,5 +1,29 @@
 # 🎯 Current Focus
 
+## Task 274 — Purchase Invoice native header warehouse, rail focus, and print engine (2026-06-27)
+
+**Status:** ✅ Complete locally on `codex/pi-native-print-rail` (not committed).
+
+- **Why:** Owner asked for native direct Purchase Invoice to match Sales Invoice: warehouse selector belongs in the header, the rail should reflect focused vendor/item/warehouse context, and printing should use the shared print engine instead of page print.
+- **Recommended approach used:** UI/data-entry parity first, plus a read-only print-engine consumer. No AP, tax, stock valuation, settlement, approval, period-lock, or posting behavior was changed.
+- **What changed:**
+  - Direct PI now shows **Main Warehouse** in the compact header.
+  - Direct PI stock lines use the header warehouse fallback when saved/posted.
+  - PO/GRN-linked lines keep their source warehouse for traceability.
+  - PI rail info now switches between vendor, item, and warehouse context.
+  - Print Layout Engine now exposes a `PURCHASE_INVOICE` schema.
+  - Added `GET /tenant/purchase/invoices/:id/print`, returning a read-only PI print payload and saved/default layout.
+  - Native PI page now opens a print window from the returned print-engine layout.
+  - Updated purchases/print architecture docs, Purchases user guide, and completion report.
+- **Verification:** Backend print-layout focused test PASS (4/4), backend build PASS, frontend typecheck PASS.
+- **Estimated/actual time:** 1.5-2.5h / ~2.0h.
+
+### Next action
+
+Run owner manual QA from `planning/done/274-purchase-invoice-native-header-rail-print.md`, then review/commit this branch if accepted.
+
+---
+
 ## Task 272/273 — POS Fixes Batch & Terminal Restructure (2026-06-27)
 
 **Status:** ✅ Complete locally on `codex/pos-fixes-batch` and `codex/pos-terminal-layout`.

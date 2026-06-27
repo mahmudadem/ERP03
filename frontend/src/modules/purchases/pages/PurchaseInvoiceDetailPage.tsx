@@ -14,6 +14,7 @@ import {
 } from '../../../api/purchasesApi';
 import { PartyDTO, TaxCodeDTO, sharedApi } from '../../../api/sharedApi';
 import { FormSettingsRecord, voucherFormApi } from '../../../api/voucherFormApi';
+import type { PrintLayoutSchema } from '../../../api/printLayoutApi';
 import { Card } from '../../../components/ui/Card';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
@@ -46,6 +47,7 @@ import {
   Info,
   Link2,
   Paperclip,
+  Printer,
   ShieldCheck,
   Upload,
 } from 'lucide-react';
@@ -141,9 +143,29 @@ interface EditableForm {
   currency: string;
   exchangeRate: number;
   linePriceSource: LinePriceSource;
+  warehouseId?: string;
   notes: string;
   lines: EditableLine[];
   charges: EditableCharge[];
+}
+
+type PurchaseInvoiceRailFocus =
+  | { kind: 'vendor'; code: string; title: string; subtitle: string; note: string }
+  | { kind: 'item'; code: string; title: string; subtitle: string; note: string }
+  | { kind: 'warehouse'; code: string; title: string; subtitle: string; note: string };
+
+interface PurchaseInvoicePrintTemplateDTO {
+  id?: string;
+  name: string;
+  documentType: 'PURCHASE_INVOICE';
+  isDefault: boolean;
+  source: 'SAVED_TEMPLATE' | 'GENERATED_DEFAULT';
+  layout: PrintLayoutSchema;
+}
+
+interface PurchaseInvoicePrintResultDTO {
+  payload: Record<string, any>;
+  printTemplate: PurchaseInvoicePrintTemplateDTO;
 }
 
 let piChargeUidSeq = 0;
@@ -171,10 +193,114 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = '', linePriceSource: L
   currency: 'USD',
   exchangeRate: 1,
   linePriceSource,
+  warehouseId: undefined,
   notes: '',
   lines: [createEmptyLine()],
   charges: [],
 });
+
+const escapePrintHtml = (value: unknown): string =>
+  String(value ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+
+const readPrintPath = (source: Record<string, any>, path?: string): unknown => {
+  if (!path) return '';
+  return path.split('.').reduce<unknown>((current, part) => {
+    if (current && typeof current === 'object') return (current as Record<string, unknown>)[part];
+    return undefined;
+  }, source);
+};
+
+const renderPrintValue = (value: unknown): string => {
+  if (typeof value === 'number') return value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  return String(value ?? '');
+};
+
+const openPrintLayoutWindow = (payload: Record<string, any>, template: PurchaseInvoicePrintTemplateDTO) => {
+  const layout = template.layout;
+  const paper = layout.paper;
+  const unit = paper.unit || 'mm';
+  const pageWidth = `${paper.width}${unit}`;
+  const pageHeight = `${paper.height}${unit}`;
+  const margin = `${paper.marginTop}${unit} ${paper.marginRight}${unit} ${paper.marginBottom}${unit} ${paper.marginLeft}${unit}`;
+  const components = layout.components.map((component) => {
+    const style = component.style || {};
+    const baseStyle = [
+      `position:absolute`,
+      `left:${component.x}${unit}`,
+      `top:${component.y}${unit}`,
+      `width:${component.width}${unit}`,
+      `height:${component.height}${unit}`,
+      `font-family:${style.fontFamily || 'Arial, sans-serif'}`,
+      `font-size:${style.fontSize || 10}pt`,
+      `font-weight:${style.fontWeight || 'normal'}`,
+      `font-style:${style.fontStyle || 'normal'}`,
+      `color:${style.color || '#111827'}`,
+      `background:${style.backgroundColor || 'transparent'}`,
+      `text-align:${style.textAlign || 'left'}`,
+      `border:${style.borderWidth ? `${style.borderWidth}px solid ${style.borderColor || '#d4d4d8'}` : '0'}`,
+      `box-sizing:border-box`,
+      `overflow:hidden`,
+    ].join(';');
+
+    if (component.type === 'field') {
+      const value = renderPrintValue(readPrintPath(payload, component.fieldPath));
+      const label = component.label ? `<span class="print-label">${escapePrintHtml(component.label)}: </span>` : '';
+      return `<div style="${baseStyle}">${label}${escapePrintHtml(value)}</div>`;
+    }
+    if (component.type === 'table') {
+      const rows = Array.isArray(readPrintPath(payload, component.tablePath)) ? readPrintPath(payload, component.tablePath) as Record<string, any>[] : [];
+      const options = component.tableOptions || {};
+      const columns = component.columns || [];
+      return `<div style="${baseStyle};overflow:visible">
+        <table style="width:100%;border-collapse:collapse;table-layout:fixed;font-size:inherit">
+          <thead style="${options.repeatHeaderOnPageBreak ? 'display:table-header-group' : ''}">
+            <tr>
+              ${columns.map((column) => `<th style="width:${column.width}%;border:1px solid ${style.borderColor || '#d4d4d8'};background:${options.headerBackgroundColor || '#e4e4e7'};color:${options.headerTextColor || '#18181b'};padding:2px;text-align:left">${escapePrintHtml(column.label)}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map((row) => `<tr>${columns.map((column) => `<td style="border:1px solid ${style.borderColor || '#d4d4d8'};padding:2px;vertical-align:top">${escapePrintHtml(renderPrintValue(row[column.fieldPath]))}</td>`).join('')}</tr>`).join('')}
+          </tbody>
+        </table>
+      </div>`;
+    }
+    if (component.type === 'text') return `<div style="${baseStyle}">${escapePrintHtml(component.value || '')}</div>`;
+    if (component.type === 'line') return `<div style="${baseStyle};border-top:1px solid ${style.borderColor || '#111827'}"></div>`;
+    if (component.type === 'box') return `<div style="${baseStyle};border:1px solid ${style.borderColor || '#111827'}"></div>`;
+    return `<div style="${baseStyle}">${escapePrintHtml(component.label || component.value || '')}</div>`;
+  }).join('\n');
+
+  const printWindow = window.open('', '_blank');
+  if (!printWindow) throw new Error('Print popup was blocked.');
+  printWindow.document.write(`<!doctype html>
+    <html>
+      <head>
+        <title>${escapePrintHtml(String(readPrintPath(payload, 'invoice.number') || template.name))}</title>
+        <style>
+          @page { size: ${pageWidth} ${pageHeight}; margin: ${margin}; }
+          html, body { margin: 0; padding: 0; background: white; color: #111827; }
+          .print-page { position: relative; width: ${pageWidth}; min-height: ${pageHeight}; box-sizing: border-box; }
+          .print-label { color: #6b7280; font-weight: 700; }
+          table, tr, td, th { break-inside: avoid; }
+        </style>
+      </head>
+      <body>
+        <main class="print-page">${components}</main>
+        <script>
+          window.onload = function () {
+            window.focus();
+            window.print();
+          };
+        </script>
+      </body>
+    </html>`);
+  printWindow.document.close();
+};
 
 const PurchaseInvoiceDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
@@ -229,6 +355,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [recordPaymentBusy, setRecordPaymentBusy] = useState(false);
   const [paymentHistoryOpen, setPaymentHistoryOpen] = useState(false);
   const [glImpactOpen, setGlImpactOpen] = useState(false);
+  const [printBusy, setPrintBusy] = useState(false);
+  const [railFocus, setRailFocus] = useState<PurchaseInvoiceRailFocus>(() => ({
+    kind: 'vendor',
+    code: 'AP',
+    title: t('purchases.invoiceDetail.rail.vendorFocusTitle', 'Vendor'),
+    subtitle: t('purchases.invoiceDetail.rail.vendorFocusSubtitle', 'Select a vendor to review AP context.'),
+    note: t('purchases.invoiceDetail.rail.vendorFocusNote', 'Vendor focus controls AP settlement, payment terms, currency, and purchase history.'),
+  }));
 
   const vendorNameById = useMemo(
     () =>
@@ -257,6 +391,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     [items]
   );
 
+  const warehouseById = useMemo(
+    () =>
+      warehouses.reduce<Record<string, InventoryWarehouseDTO>>((acc, warehouse) => {
+        acc[warehouse.id] = warehouse;
+        return acc;
+      }, {}),
+    [warehouses]
+  );
+
   const taxById = useMemo(
     () =>
       taxCodes.reduce<Record<string, TaxCodeDTO>>((acc, taxCode) => {
@@ -265,6 +408,45 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       }, {}),
     [taxCodes]
   );
+
+  const focusVendor = (vendorId = form.vendorId, vendorName = form.vendorName) => {
+    const vendor = vendorId ? vendors.find((candidate) => candidate.id === vendorId) : undefined;
+    const title = vendor?.displayName || vendorName || t('purchases.invoiceDetail.rail.vendorFocusTitle', 'Vendor');
+    setRailFocus({
+      kind: 'vendor',
+      code: vendorId || 'AP',
+      title,
+      subtitle: form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorFocusSubtitle', 'Vendor bill and AP account context'),
+      note: t('purchases.invoiceDetail.rail.vendorFocusNote', 'Vendor focus controls AP settlement, payment terms, currency, and purchase history.'),
+    });
+  };
+
+  const focusWarehouse = (warehouseId?: string) => {
+    const effectiveWarehouseId = warehouseId || form.warehouseId || settings?.defaultWarehouseId;
+    const warehouse = effectiveWarehouseId ? warehouseById[effectiveWarehouseId] : undefined;
+    setRailFocus({
+      kind: 'warehouse',
+      code: effectiveWarehouseId || 'WH',
+      title: warehouse?.name || t('purchases.invoiceDetail.rail.warehouseFocusTitle', 'Warehouse'),
+      subtitle: warehouse?.code || t('purchases.invoiceDetail.rail.warehouseFocusSubtitle', 'Direct PI stock receipt location'),
+      note: t('purchases.invoiceDetail.rail.warehouseFocusNote', 'For direct purchase invoices, this header warehouse is applied to stock lines that do not come from a purchase order.'),
+    });
+  };
+
+  const focusItem = (line: Pick<EditableLine, 'itemId' | 'itemCode' | 'itemName' | 'warehouseId' | 'invoicedQty' | 'uom'>) => {
+    const item = line.itemId ? itemById[line.itemId] : undefined;
+    const effectiveWarehouseId = line.warehouseId || form.warehouseId || settings?.defaultWarehouseId;
+    const warehouse = effectiveWarehouseId ? warehouseById[effectiveWarehouseId] : undefined;
+    setRailFocus({
+      kind: 'item',
+      code: line.itemCode || item?.code || line.itemId || 'ITEM',
+      title: line.itemName || item?.name || t('purchases.invoiceDetail.rail.itemFocusTitle', 'Item line'),
+      subtitle: `${line.invoicedQty || 0} ${line.uom || item?.purchaseUom || item?.baseUom || ''}`.trim(),
+      note: warehouse
+        ? t('purchases.invoiceDetail.rail.itemFocusNoteWithWarehouse', 'This line receives into {{warehouse}} unless the source document already fixed the warehouse.', { warehouse: warehouse.name })
+        : t('purchases.invoiceDetail.rail.itemFocusNote', 'Select a header warehouse before posting stock items on a direct purchase invoice.'),
+    });
+  };
 
   const purchaseTaxCodes = useMemo(
     () => taxCodes.filter((taxCode) => taxCode.scope === 'PURCHASE' || taxCode.scope === 'BOTH'),
@@ -466,6 +648,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         vendorId: po.vendorId,
         currency: po.currency,
         exchangeRate: po.exchangeRate,
+        warehouseId: undefined,
         lines: nextLines.length ? nextLines : [createEmptyLine()],
       }));
     } catch (err: any) {
@@ -664,8 +847,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           next.itemName = item.name;
           next.uomId = next.uomId || defaultUom?.uomId;
           next.uom = next.uom || defaultUom?.code || item.purchaseUom || item.baseUom;
-          if (!next.warehouseId && settings?.defaultWarehouseId) {
-            next.warehouseId = settings.defaultWarehouseId;
+          if (!next.warehouseId && (prev.warehouseId || settings?.defaultWarehouseId)) {
+            next.warehouseId = prev.warehouseId || settings?.defaultWarehouseId;
           }
           if (!next.taxCodeId && item.defaultPurchaseTaxCodeId) {
             const defaultTax = purchaseTaxCodes.find((taxCode) => taxCode.id === item.defaultPurchaseTaxCodeId);
@@ -811,7 +994,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   );
 
   const isFilledLine = (line: EditableLine): boolean =>
-    Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId);
+    Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue);
 
   const validateBeforeSave = (): string | null => {
     if (!form.vendorId) return t('purchases.invoiceDetail.validation.vendorRequired', 'Vendor is required.');
@@ -832,7 +1015,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       }
       // Warehouse is mandatory for stock items when direct invoicing is enabled
       const isStockItem = item?.trackInventory ?? true; // Default to true if unsure
-      if (isStockItem && !line.warehouseId) {
+      if (isStockItem && !(line.warehouseId || (!line.poLineId && form.warehouseId))) {
         return t('purchases.invoiceDetail.validation.lineWarehouseRequired', 'Line {{n}}: Warehouse is required for stock item "{{name}}".', { n: i + 1, name: item?.name || line.itemId });
       }
     }
@@ -862,7 +1045,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       discountValue: line.discountValue,
       taxCodeId: line.taxCodeId || undefined,
       priceIsInclusive: effectiveInclusive,
-      warehouseId: line.warehouseId || undefined,
+      warehouseId: line.warehouseId || (!line.poLineId ? form.warehouseId : undefined) || undefined,
       description: line.description || undefined,
     };
   };
@@ -1035,6 +1218,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       currency: invoice.currency,
       exchangeRate: invoice.exchangeRate,
       linePriceSource: 'LAST_PARTY_PRICE',
+      warehouseId: invoice.lines.find((line) => !line.poLineId && line.warehouseId)?.warehouseId || undefined,
       notes: invoice.notes || '',
       lines: invoice.lines.map((l) => ({
         lineId: l.lineId,
@@ -1235,6 +1419,28 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     }
   };
 
+  const printInvoice = async () => {
+    if (!invoice?.id) return;
+    try {
+      setPrintBusy(true);
+      setError(null);
+      const result = await purchasesApi.printPI(invoice.id);
+      const payload = unwrap<PurchaseInvoicePrintResultDTO>(result);
+      openPrintLayoutWindow(payload.payload, payload.printTemplate);
+      errorHandler.showSuccess(t('purchases.invoiceDetail.printStarted', 'Print preview opened.'));
+    } catch (err: any) {
+      const message =
+        err?.response?.data?.error?.message ||
+        err?.response?.data?.message ||
+        err?.message ||
+        t('purchases.invoiceDetail.printFailed', 'Failed to print purchase invoice.');
+      setError(message);
+      errorHandler.showError(message);
+    } finally {
+      setPrintBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-4 p-4">
@@ -1247,7 +1453,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const hasUnsavedDocumentChanges = (() => {
     if (!(isCreateMode || isEditMode)) return false;
     const hasLines = form.lines.some((line) =>
-      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId || line.invoicedQty || line.unitPriceDoc || line.discountValue)
+      Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue)
     );
     const hasSettlement = settlementMode !== 'DEFERRED' || apAccountId.trim() || settlementRows.some((row) =>
       Boolean(row.settlementAccountId || row.amountBase || row.paymentMethod || row.reference.trim() || row.notes.trim())
@@ -1257,6 +1463,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       form.vendorId ||
       form.vendorInvoiceNumber.trim() ||
       form.dueDate ||
+      form.warehouseId ||
       form.notes.trim() ||
       hasLines ||
       hasSettlement ||
@@ -1289,6 +1496,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       vendorNameById[form.vendorId] ||
       form.vendorName ||
       '-';
+    const selectedWarehouseName =
+      form.warehouseId ? warehouseById[form.warehouseId]?.name || form.warehouseId : '-';
     const filledDraftLines = form.lines.filter((line) => line.itemId && line.invoicedQty > 0);
     const draftHasVendor = !!form.vendorId;
     const draftHasLines = filledDraftLines.length > 0;
@@ -1313,13 +1522,21 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     const draftRailSections: DocumentScaffoldRailSections = {
       info: {
         title: t('purchases.invoiceDetail.rail.info', 'Info'),
-        action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>,
+        action: (
+          <DocumentPill tone={railFocus.kind === 'item' ? 'blue' : railFocus.kind === 'warehouse' ? 'amber' : 'slate'}>
+            {railFocus.kind === 'item'
+              ? t('purchases.invoiceDetail.rail.item', 'Item')
+              : railFocus.kind === 'warehouse'
+                ? t('purchases.invoiceDetail.rail.warehouse', 'Warehouse')
+                : t('purchases.invoiceDetail.rail.vendor', 'Vendor')}
+          </DocumentPill>
+        ),
         content: (
           <DocumentRailFocus
-            code={form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : t('purchases.invoiceDetail.rail.directBill', 'Direct bill')}
-            title={selectedVendorName}
-            subtitle={form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
-            note={t('purchases.invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
+            code={railFocus.code || (form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : t('purchases.invoiceDetail.rail.directBill', 'Direct bill'))}
+            title={railFocus.title || selectedVendorName}
+            subtitle={railFocus.subtitle || selectedWarehouseName || form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
+            note={railFocus.note || t('purchases.invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
           />
         ),
       },
@@ -1571,7 +1788,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 <DocumentField label={t('purchases.invoiceDetail.header.vendor', 'Vendor')} value={selectedVendorName} locked />
               </>
             ) : (
-              <div className={headerFieldWrapperClass}>
+              <div className={headerFieldWrapperClass} onFocus={() => focusVendor()} onMouseEnter={() => focusVendor()}>
                 <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.vendor', 'Vendor')}</label>
                 <PartySelector
                   role="VENDOR"
@@ -1585,6 +1802,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                       vendorName: party?.displayName || '',
                       currency: party?.defaultCurrency || prev.currency,
                     }));
+                    focusVendor(party?.id || '', party?.displayName || '');
                   }}
                 />
               </div>
@@ -1644,6 +1862,30 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               </div>
             </div>
 
+            {activeSourceMode === 'direct' && (
+              <div className={headerFieldWrapperClass} onFocus={() => focusWarehouse()} onMouseEnter={() => focusWarehouse()}>
+                <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.mainWarehouse', 'Main Warehouse')}</label>
+                <WarehouseSelector
+                  className={headerSelectorClass}
+                  value={form.warehouseId || settings?.defaultWarehouseId}
+                  onChange={(warehouse) => {
+                    const warehouseId = warehouse?.id || undefined;
+                    setForm((prev) => ({
+                      ...prev,
+                      warehouseId,
+                      lines: prev.lines.map((line) =>
+                        line.poLineId || line.grnLineId
+                          ? line
+                          : { ...line, warehouseId: line.warehouseId || warehouseId }
+                      ),
+                    }));
+                    focusWarehouse(warehouseId);
+                  }}
+                  disabled={busy}
+                />
+              </div>
+            )}
+
             <LinePriceSourceSelector
               className={headerFieldWrapperClass}
               labelClassName={headerLabelClass}
@@ -1678,7 +1920,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             onRowRemove={(index) => removeLine(index)}
             onRowsChange={(lines) => setForm((prev) => ({ ...prev, lines }))}
             createEmptyRow={createEmptyLine}
-            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId)}
+            isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue)}
             onRowAdd={addLine}
             addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
             columns={[
@@ -1688,11 +1930,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 kind: 'custom',
                 width: '240px',
                 render: (row, index) => (
+                  <div onFocus={() => focusItem(row)} onMouseEnter={() => focusItem(row)}>
                   <ItemSelector
                     value={row.itemId}
                     onChange={(item) => {
                       if (item) {
                         setLine(index, { itemId: item.id, itemCode: item.code, itemName: item.name });
+                        focusItem({ ...row, itemId: item.id, itemCode: item.code, itemName: item.name });
                       } else {
                         // Clearing item resets the whole row.
                         const empty = createEmptyLine();
@@ -1716,6 +1960,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                     noBorder
                     disabled={busy}
                   />
+                  </div>
                 ),
               },
               {
@@ -1836,20 +2081,6 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                       'No purchase tax codes set up. Create one with scope PURCHASE or BOTH to use it here.',
                     )}
                     onChange={(option) => setLine(index, { taxCodeId: option?.id })}
-                  />
-                ),
-              },
-              {
-                id: 'warehouse',
-                label: t('purchases.invoiceDetail.columns.warehouse', 'Warehouse'),
-                kind: 'custom',
-                width: '180px',
-                render: (row, index) => (
-                  <WarehouseSelector
-                    value={row.warehouseId}
-                    onChange={(wh) => setLine(index, { warehouseId: wh?.id || undefined })}
-                    noBorder
-                    disabled={busy}
                   />
                 ),
               },
@@ -2069,13 +2300,21 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const viewRailSections: DocumentScaffoldRailSections = {
     info: {
       title: t('purchases.invoiceDetail.rail.info', 'Info'),
-      action: <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('purchases.invoiceDetail.rail.po', 'PO') : t('purchases.invoiceDetail.rail.account', 'Account')}</DocumentPill>,
+      action: (
+        <DocumentPill tone={railFocus.kind === 'item' ? 'blue' : railFocus.kind === 'warehouse' ? 'amber' : 'slate'}>
+          {railFocus.kind === 'item'
+            ? t('purchases.invoiceDetail.rail.item', 'Item')
+            : railFocus.kind === 'warehouse'
+              ? t('purchases.invoiceDetail.rail.warehouse', 'Warehouse')
+              : t('purchases.invoiceDetail.rail.vendor', 'Vendor')}
+        </DocumentPill>
+      ),
       content: (
         <DocumentRailFocus
-          code={invoice.purchaseOrderId || invoice.invoiceNumber}
-          title={viewVendorName}
-          subtitle={invoice.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
-          note={t('purchases.invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
+          code={railFocus.code || invoice.purchaseOrderId || invoice.invoiceNumber}
+          title={railFocus.title || viewVendorName}
+          subtitle={railFocus.subtitle || invoice.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
+          note={railFocus.note || t('purchases.invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
         />
       ),
     },
@@ -2191,6 +2430,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             onClick={() => navigate('/purchases/invoices')}
           >
             {t('purchases.invoiceDetail.backToList', 'Back to List')}
+          </button>
+          <button
+            type="button"
+            className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
+            onClick={printInvoice}
+            disabled={printBusy}
+          >
+            {printBusy ? t('purchases.invoiceDetail.printing', 'Printing...') : t('purchases.invoiceDetail.print', 'Print')}
           </button>
           {invoice.status === 'DRAFT' && (
             <button
@@ -2324,6 +2571,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             <DocumentIconButton title={t('purchases.invoiceDetail.downloadExcel', 'Download Excel')} onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.excelNotConnected', 'Purchase invoice line export is not connected yet.'))}>
               <FileSpreadsheet className="h-3.5 w-3.5" />
             </DocumentIconButton>
+            <DocumentIconButton
+              title={printBusy ? t('purchases.invoiceDetail.printing', 'Printing...') : t('purchases.invoiceDetail.print', 'Print')}
+              onClick={printInvoice}
+              disabled={printBusy}
+            >
+              <Printer className="h-3.5 w-3.5" />
+            </DocumentIconButton>
             <DocumentIconButton title={t('purchases.invoiceDetail.uploadFromFile', 'Upload from file')} onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.importNotConnected', 'Purchase invoice file import is not connected yet.'))}>
               <Upload className="h-3.5 w-3.5" />
             </DocumentIconButton>
@@ -2371,7 +2625,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           rows={invoice.lines}
           disabled
           onRowChange={() => undefined}
-          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId)}
+          isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue)}
           addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
           columns={[
             {
@@ -2380,7 +2634,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               kind: 'custom',
               width: '260px',
               render: (row) => (
-                <div className="flex h-9 items-center truncate px-2 text-xs font-medium text-slate-800 dark:text-slate-100">
+                <div
+                  className="flex h-9 items-center truncate px-2 text-xs font-medium text-slate-800 dark:text-slate-100"
+                  onFocus={() => focusItem(row)}
+                  onMouseEnter={() => focusItem(row)}
+                  tabIndex={0}
+                >
                   {row.itemCode ? `${row.itemCode} - ${row.itemName}` : row.itemName}
                 </div>
               ),

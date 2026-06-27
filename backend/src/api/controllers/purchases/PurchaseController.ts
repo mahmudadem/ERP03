@@ -27,6 +27,7 @@ import {
   UpdatePurchaseInvoiceUseCase,
   UpdateAndPostPurchaseInvoiceUseCase,
 } from '../../../application/purchases/use-cases/PurchaseInvoiceUseCases';
+import { PrintPurchaseInvoiceUseCase } from '../../../application/purchases/use-cases/PurchaseInvoicePrintUseCases';
 import {
   CreatePurchaseReturnUseCase,
   GetPurchaseReturnUseCase,
@@ -70,6 +71,7 @@ import { VoucherValidationService } from '../../../domain/accounting/services/Vo
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { IAccountingBridge } from '../../../application/system-core/contracts/IAccountingBridge';
 import { LegacyAccountingBridgeAdapter } from '../../../application/system-core/adapters/LegacyAccountingBridgeAdapter';
+import { PrintLayoutCore } from '../../../application/system-core/print-layout/PrintLayoutCore';
 import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
 import { EnsureAccountingEngineInitialized } from '../../../application/accounting/use-cases/EnsureAccountingEngineInitialized';
 import {
@@ -143,6 +145,8 @@ const toOptionalPRStatus = (value: any): PRStatus | undefined => {
 };
 
 export class PurchaseController {
+  private static readonly printLayoutCore = new PrintLayoutCore();
+
   private static getCompanyId(req: Request): string {
     const companyId = (req as any).user?.companyId;
     if (!companyId) {
@@ -729,6 +733,30 @@ export class PurchaseController {
       (res as any).json({
         success: true,
         data: PurchaseDTOMapper.toPurchaseInvoiceDTO(pi),
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async printPI(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = PurchaseController.getCompanyId(req);
+      const id = String((req as any).params.id);
+      const company = await diContainer.companyRepository.findById(companyId).catch(() => null);
+      const useCase = new PrintPurchaseInvoiceUseCase(
+        diContainer.purchaseInvoiceRepository,
+        diContainer.printLayoutTemplateRepository,
+        PurchaseController.printLayoutCore
+      );
+      const result = await useCase.execute(companyId, id, {
+        name: company?.name,
+        taxNumber: company?.taxId,
+      });
+
+      (res as any).json({
+        success: true,
+        data: result,
       });
     } catch (error) {
       next(error);

@@ -75,18 +75,54 @@ const SALES_INVOICE_SCHEMA: PrintDataSchema = {
   }],
 };
 
+const PURCHASE_INVOICE_SCHEMA: PrintDataSchema = {
+  documentType: 'PURCHASE_INVOICE',
+  requiredFields: ['invoice.number', 'invoice.date', 'totals.grandTotal'],
+  fields: [
+    { path: 'company.name', label: 'Company Name', type: 'text', required: true },
+    { path: 'invoice.number', label: 'Invoice Number', type: 'text', required: true },
+    { path: 'invoice.vendorReference', label: 'Vendor Invoice / Ref', type: 'text' },
+    { path: 'invoice.date', label: 'Invoice Date', type: 'date', required: true },
+    { path: 'invoice.dueDate', label: 'Due Date', type: 'date' },
+    { path: 'vendor.name', label: 'Vendor', type: 'text', required: true },
+    { path: 'vendor.taxNumber', label: 'Vendor Tax Number', type: 'text' },
+    { path: 'totals.subtotal', label: 'Subtotal', type: 'money' },
+    { path: 'totals.discountTotal', label: 'Discount Total', type: 'money' },
+    { path: 'totals.taxTotal', label: 'Tax Total', type: 'money' },
+    { path: 'totals.grandTotal', label: 'Grand Total', type: 'money', required: true },
+    { path: 'totals.outstanding', label: 'Outstanding', type: 'money' },
+  ],
+  tables: [{
+    path: 'lines',
+    label: 'Purchase Invoice Lines',
+    columns: [
+      { path: 'itemCode', label: 'Code', type: 'text' },
+      { path: 'description', label: 'Description', type: 'text', required: true },
+      { path: 'qty', label: 'Qty', type: 'number', required: true },
+      { path: 'uom', label: 'UOM', type: 'text' },
+      { path: 'unitPrice', label: 'Cost', type: 'money' },
+      { path: 'discount', label: 'Discount', type: 'money' },
+      { path: 'tax', label: 'Tax', type: 'money' },
+      { path: 'warehouse', label: 'Warehouse', type: 'text' },
+      { path: 'lineTotal', label: 'Total', type: 'money', required: true },
+    ],
+  }],
+};
+
 export class PrintLayoutCore implements IPrintLayoutCore {
   getDataSchema(documentType: PrintDocumentType): PrintDataSchema {
     if (documentType === 'SALES_INVOICE') return SALES_INVOICE_SCHEMA;
+    if (documentType === 'PURCHASE_INVOICE') return PURCHASE_INVOICE_SCHEMA;
     return POS_RECEIPT_SCHEMA;
   }
 
   createDefaultLayout(documentType: PrintDocumentType): PrintLayoutSchema {
     const paper = documentType === 'POS_RECEIPT' ? PAPER_PRESETS.RECEIPT_80 : PAPER_PRESETS.A4;
+    const isInvoice = documentType === 'SALES_INVOICE' || documentType === 'PURCHASE_INVOICE';
     const components: PrintLayoutComponent[] = [
       { id: 'title', type: 'field', fieldPath: 'company.name', x: 8, y: 8, width: paper.width - 16, height: 10, style: { fontSize: 16, fontWeight: 'bold', textAlign: 'center' } },
-      { id: 'doc_no', type: 'field', fieldPath: documentType === 'SALES_INVOICE' ? 'invoice.number' : 'receipt.number', label: 'Document No', x: 8, y: 24, width: paper.width - 16, height: 8, style: { fontSize: 10, fontWeight: 'bold' } },
-      { id: 'doc_date', type: 'field', fieldPath: documentType === 'SALES_INVOICE' ? 'invoice.date' : 'receipt.date', label: 'Date', x: 8, y: 34, width: paper.width - 16, height: 8, style: { fontSize: 10 } },
+      { id: 'doc_no', type: 'field', fieldPath: isInvoice ? 'invoice.number' : 'receipt.number', label: 'Document No', x: 8, y: 24, width: paper.width - 16, height: 8, style: { fontSize: 10, fontWeight: 'bold' } },
+      { id: 'doc_date', type: 'field', fieldPath: isInvoice ? 'invoice.date' : 'receipt.date', label: 'Date', x: 8, y: 34, width: paper.width - 16, height: 8, style: { fontSize: 10 } },
       {
         id: 'lines',
         type: 'table',
