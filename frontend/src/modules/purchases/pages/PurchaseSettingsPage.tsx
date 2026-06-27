@@ -21,6 +21,7 @@ import {
   isPersonaAllowedByGovernance,
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
+import i18n from "i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
@@ -317,7 +318,7 @@ const PurchaseSettingsPage: React.FC = () => {
         onSave={handleSave}
         onDiscard={() => {
           setSettings(originalSettings);
-          toast('Changes discarded', { icon: 'ℹ️' });
+          toast(i18n.t('Changes discarded'), { icon: 'ℹ️' });
         }}
         saving={saving}
       >
@@ -340,7 +341,7 @@ const PurchaseSettingsPage: React.FC = () => {
             <div className="grid gap-8 md:grid-cols-2">
               <div className="space-y-4">
                 <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-sm font-bold text-gray-900">Workflow Mode</div>
+                  <div className="mb-3 text-sm font-bold text-gray-900">{t(`Workflow Mode`)}</div>
                   <div className="space-y-3">
                     <label className={`flex items-start gap-3 rounded-lg border p-4 ${simpleWorkflowDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${settings.workflowMode === 'SIMPLE' ? 'border-indigo-500' : 'border-gray-200 hover:border-indigo-200'}`}>
                       <input
@@ -351,8 +352,8 @@ const PurchaseSettingsPage: React.FC = () => {
                         disabled={simpleWorkflowDisabled}
                       />
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Simple</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Show invoices and returns only.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Simple`)}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t(`Show invoices and returns only.`)}</div>
                       </div>
                     </label>
 
@@ -364,8 +365,8 @@ const PurchaseSettingsPage: React.FC = () => {
                         onChange={() => applyWorkflowMode('OPERATIONAL')}
                       />
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Operational</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Expose orders and goods receipts.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Operational`)}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t(`Expose orders and goods receipts.`)}</div>
                       </div>
                     </label>
                   </div>
@@ -381,8 +382,8 @@ const PurchaseSettingsPage: React.FC = () => {
                   <>
                     <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Allow Direct Invoicing</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Invoice vendors without a preceding PO/GRN.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Allow Direct Invoicing`)}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t(`Invoice vendors without a preceding PO/GRN.`)}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -394,8 +395,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
                     <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Require PO For Stock Items</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Force stock-item procurement to start from a Purchase Order.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Require PO For Stock Items`)}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t(`Force stock-item procurement to start from a Purchase Order.`)}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -415,7 +416,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
               <div className="space-y-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Default Payment Terms (Days)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">{t(`Default Payment Terms (Days)`)}</label>
                   <input
                     type="number"
                     min={0}
@@ -427,7 +428,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Over-delivery (%)</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t(`Over-delivery (%)`)}</label>
                     <input
                       type="number"
                       step={0.01}
@@ -437,7 +438,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Over-invoice (%)</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t(`Over-invoice (%)`)}</label>
                     <input
                       type="number"
                       step={0.01}
@@ -450,8 +451,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
                 <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                   <div className="pr-4">
-                    <div className="text-sm font-bold text-gray-900">Allow over-payment</div>
-                    <div className="text-xs text-gray-500">When on, a payment may exceed the invoice total. The extra becomes a credit on the vendor's account (their AP balance goes negative) and offsets their future bills.</div>
+                    <div className="text-sm font-bold text-gray-900">{t(`Allow over-payment`)}</div>
+                    <div className="text-xs text-gray-500">{t(`When on, a payment may exceed the invoice total. The extra becomes a credit on the vendor's account (their AP balance goes negative) and offsets their future bills.`)}</div>
                   </div>
                   <input
                     type="checkbox"
@@ -463,8 +464,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
                 <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                   <div className="pr-4">
-                    <div className="text-sm font-bold text-gray-900">Derive remembered prices across UOM</div>
-                    <div className="text-xs text-gray-500">When on, same-vendor same-currency price memory can convert between item UOMs. It never converts across currencies.</div>
+                    <div className="text-sm font-bold text-gray-900">{t(`Derive remembered prices across UOM`)}</div>
+                    <div className="text-xs text-gray-500">{t(`When on, same-vendor same-currency price memory can convert between item UOMs. It never converts across currencies.`)}</div>
                   </div>
                   <input
                     type="checkbox"
@@ -493,14 +494,14 @@ const PurchaseSettingsPage: React.FC = () => {
               <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-6">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Default Accounts Payable</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t(`Default Accounts Payable`)}</label>
                     <AccountSelector
                       value={settings.defaultAPAccountId || ''}
                       onChange={(account: any) => updateSetting('defaultAPAccountId', account?.id || '')}
                       accounts={liabilityAccounts}
                       placeholder="Select AP account"
                     />
-                    <p className="mt-1.5 text-xs italic text-gray-500">Primary vendor liability account.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">{t(`Primary vendor liability account.`)}</p>
                   </div>
 
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
@@ -583,37 +584,37 @@ const PurchaseSettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Default Purchase Expense</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t(`Default Purchase Expense`)}</label>
                     <AccountSelector
                       value={settings.defaultPurchaseExpenseAccountId || ''}
                       onChange={(account: any) => updateSetting('defaultPurchaseExpenseAccountId', account?.id || undefined)}
                       accounts={expenseAccounts}
                       placeholder="Select expense fallback for non-stock items"
                     />
-                    <p className="mt-1.5 text-xs italic text-gray-500">Optional fallback for service and non-stock posting.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">{t(`Optional fallback for service and non-stock posting.`)}</p>
                   </div>
 
                   {accountingMode === 'PERPETUAL' && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700">Default GRNI</label>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">{t(`Default GRNI`)}</label>
                       <AccountSelector
                         value={settings.defaultGRNIAccountId || ''}
                         onChange={(account: any) => updateSetting('defaultGRNIAccountId', account?.id || undefined)}
                         accounts={liabilityAccounts}
                         placeholder="Select GRNI account"
                       />
-                      <p className="mt-1.5 text-xs italic text-gray-500">Required for perpetual receipt accrual posting.</p>
+                      <p className="mt-1.5 text-xs italic text-gray-500">{t(`Required for perpetual receipt accrual posting.`)}</p>
                     </div>
                   )}
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">FX Gain/Loss Account</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t(`FX Gain/Loss Account`)}</label>
                     <AccountSelector
                       value={settings.exchangeGainLossAccountId || ''}
                       onChange={(account: any) => updateSetting('exchangeGainLossAccountId', account?.id || undefined)}
                       placeholder="Select FX account"
                     />
-                    <p className="mt-1.5 text-xs italic text-gray-500">Used for posting supplier exchange differences.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">{t(`Used for posting supplier exchange differences.`)}</p>
                   </div>
                 </div>
 
@@ -622,15 +623,15 @@ const PurchaseSettingsPage: React.FC = () => {
                     <div className="rounded-lg bg-indigo-50 p-1.5">
                       <Settings size={14} className="text-indigo-600" />
                     </div>
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-800">Linked Inventory Context</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-800">{t(`Linked Inventory Context`)}</h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Mode:</span>
+                      <span className="text-slate-500">{t(`Mode:`)}</span>
                       <span className="font-bold text-indigo-700">{getAccountingModeLabel(accountingMode)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Inventory Asset:</span>
+                      <span className="text-slate-500">{t(`Inventory Asset:`)}</span>
                       <span className="font-medium text-slate-700">
                         {invSettings?.defaultInventoryAssetAccountId
                           ? getAccountById(invSettings.defaultInventoryAssetAccountId)?.name || 'Account Assigned'
@@ -638,7 +639,7 @@ const PurchaseSettingsPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Workflow:</span>
+                      <span className="text-slate-500">{t(`Workflow:`)}</span>
                       <span className="font-medium text-slate-700">{getWorkflowModeLabel(settings.workflowMode)}</span>
                     </div>
                   </div>
@@ -668,7 +669,7 @@ const PurchaseSettingsPage: React.FC = () => {
         >
           <Card className="p-6">
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              Workflow mode: <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
+              {t(`Workflow mode:`)} <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
               {[
@@ -682,7 +683,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     {doc.label}
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Prefix</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Prefix`)}</label>
                     <input
                       type="text"
                       className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold uppercase focus:ring-1 focus:ring-indigo-500"
@@ -691,7 +692,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Next Number</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Next Number`)}</label>
                     <input
                       type="number"
                       min={1}
@@ -721,7 +722,7 @@ const PurchaseSettingsPage: React.FC = () => {
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="h-5 w-5 text-indigo-600" />
                 <h3 className="text-sm font-bold text-gray-900">
-                  Base Policy (Workflow: {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
+                  {t(`Base Policy (Workflow:`)} {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
                 </h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -735,12 +736,12 @@ const PurchaseSettingsPage: React.FC = () => {
                     {p.allowed ? (
                       <div className="flex items-center gap-1.5 text-green-600">
                         <CheckCircle2 className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase">Allow</span>
+                        <span className="text-xs font-bold uppercase">{t(`Allow`)}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 text-red-600">
                         <XCircle className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase">Block</span>
+                        <span className="text-xs font-bold uppercase">{t(`Block`)}</span>
                       </div>
                     )}
                   </div>
@@ -754,8 +755,8 @@ const PurchaseSettingsPage: React.FC = () => {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Active Overrides</h3>
-                  <p className="text-xs text-gray-500">Specific rules that change the base policy behavior.</p>
+                  <h3 className="text-sm font-bold text-gray-900">{t(`Active Overrides`)}</h3>
+                  <p className="text-xs text-gray-500">{t(`Specific rules that change the base policy behavior.`)}</p>
                 </div>
                 {!showAddRule && (
                   <button
@@ -772,38 +773,38 @@ const PurchaseSettingsPage: React.FC = () => {
                 <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Persona</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Persona`)}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.persona}
                         onChange={(e) => setNewRule({ ...newRule, persona: e.target.value as any })}
                       >
-                        <option value="direct">Direct</option>
-                        <option value="linked">Linked</option>
-                        <option value="service">Service</option>
+                        <option value="direct">{t(`Direct`)}</option>
+                        <option value="linked">{t(`Linked`)}</option>
+                        <option value="service">{t(`Service`)}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Action</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Action`)}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.action}
                         onChange={(e) => setNewRule({ ...newRule, action: e.target.value as any })}
                       >
-                        <option value="allow">Allow</option>
-                        <option value="block">Block</option>
+                        <option value="allow">{t(`Allow`)}</option>
+                        <option value="block">{t(`Block`)}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Scope</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Scope`)}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.scope}
                         onChange={(e) => setNewRule({ ...newRule, scope: e.target.value as any })}
                       >
-                        <option value="company">Company</option>
-                        <option value="branch">Branch</option>
-                        <option value="form">Form</option>
+                        <option value="company">{t(`Company`)}</option>
+                        <option value="branch">{t(`Branch`)}</option>
+                        <option value="form">{t(`Form`)}</option>
                       </select>
                     </div>
                   </div>
@@ -811,7 +812,7 @@ const PurchaseSettingsPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {newRule.scope === 'branch' && (
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Branch ID</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Branch ID`)}</label>
                         <input
                           type="text"
                           placeholder="e.g. branch-001"
@@ -823,7 +824,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     )}
                     {newRule.scope === 'form' && (
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Form Type</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Form Type`)}</label>
                         <input
                           type="text"
                           placeholder="e.g. purchase_invoice_direct"
@@ -856,11 +857,11 @@ const PurchaseSettingsPage: React.FC = () => {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     <tr>
-                      <th className="px-4 py-3">Persona</th>
-                      <th className="px-4 py-3">Scope</th>
-                      <th className="px-4 py-3">Target</th>
-                      <th className="px-4 py-3">Action</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3">{t(`Persona`)}</th>
+                      <th className="px-4 py-3">{t(`Scope`)}</th>
+                      <th className="px-4 py-3">{t(`Target`)}</th>
+                      <th className="px-4 py-3">{t(`Action`)}</th>
+                      <th className="px-4 py-3 text-right">{t(`Actions`)}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">

@@ -7,6 +7,7 @@ import {
 } from '../../../api/salesMasterDataApi';
 import { Users, Search, Plus, Edit3, ChevronLeft, Save, X } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -30,6 +31,7 @@ type FormState = {
 };
 
 const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }) => {
+    const { t } = useTranslation('common');
   const [form, setForm] = useState<FormState>(() => ({
     name: initial?.name ?? '',
     description: initial?.description ?? '',
@@ -88,7 +90,7 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                 {initial ? 'Edit Customer Group' : 'New Customer Group'}
               </h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Group Configuration</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Group Configuration`)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -118,11 +120,11 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
           )}
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Group Details</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Group Details`)}</p>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Name</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Name`)}</label>
                 <input
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.name}
@@ -131,7 +133,7 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
                 />
               </div>
               <div className="col-span-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Description</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Description`)}</label>
                 <textarea
                   rows={2}
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 resize-none"
@@ -141,31 +143,31 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Status</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Status`)}</label>
                 <select
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.status}
                   onChange={e => set({ status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
                 >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
+                  <option value="ACTIVE">{t(`Active`)}</option>
+                  <option value="INACTIVE">{t(`Inactive`)}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Default Price List</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Default Price List`)}</label>
                 <select
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.defaultPriceListId}
                   onChange={e => set({ defaultPriceListId: e.target.value })}
                 >
-                  <option value="">— none —</option>
+                  <option value="">{t(`— none —`)}</option>
                   {priceLists.map(pl => (
                     <option key={pl.id} value={pl.id}>{pl.name} ({pl.currency})</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Payment Terms (days)</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Payment Terms (days)`)}</label>
                 <input
                   type="number"
                   min={0}
@@ -176,7 +178,7 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Credit Limit</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Credit Limit`)}</label>
                 <input
                   type="number"
                   min={0}
@@ -210,6 +212,7 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
 // ─── List Page ────────────────────────────────────────────────────────────────
 
 const CustomerGroupsPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [groups, setGroups] = useState<CustomerGroupDTO[]>([]);
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -264,8 +267,8 @@ const CustomerGroupsPage: React.FC = () => {
               <Users size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Customer Groups</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Segmentation & Default Terms</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t(`Customer Groups`)}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Segmentation & Default Terms`)}</p>
             </div>
           </div>
           <button
@@ -284,7 +287,7 @@ const CustomerGroupsPage: React.FC = () => {
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
                 <Search size={14} /> Group Directory
               </div>
-              {loading && <div className="text-[10px] text-violet-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
+              {loading && <div className="text-[10px] text-violet-500 font-black animate-pulse uppercase tracking-tighter">{t(`Loading...`)}</div>}
             </div>
 
             <div className="p-6">
@@ -294,8 +297,8 @@ const CustomerGroupsPage: React.FC = () => {
                     <Users size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Customer Groups</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Create your first customer group to segment customers by default terms.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t(`No Customer Groups`)}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t(`Create your first customer group to segment customers by default terms.`)}</p>
                   </div>
                 </div>
               ) : (
@@ -313,14 +316,14 @@ const CustomerGroupsPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{g.name}</span>
                             {g.taxExempt && (
-                              <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">Tax Exempt</span>
+                              <span className="text-[9px] font-black text-amber-600 uppercase tracking-widest">{t(`Tax Exempt`)}</span>
                             )}
                           </div>
                           <div className="text-[11px] text-slate-400 space-x-2">
                             {g.description && <span>{g.description}</span>}
                             {g.defaultPriceListId && <span>· {priceListName(g.defaultPriceListId)}</span>}
-                            {g.defaultPaymentTermsDays != null && <span>· {g.defaultPaymentTermsDays}d terms</span>}
-                            {g.defaultCreditLimit != null && <span>· Limit {g.defaultCreditLimit.toLocaleString()}</span>}
+                            {g.defaultPaymentTermsDays != null && <span>· {g.defaultPaymentTermsDays}{t(`d terms`)}</span>}
+                            {g.defaultCreditLimit != null && <span>{t(`· Limit`)} {g.defaultCreditLimit.toLocaleString()}</span>}
                           </div>
                         </div>
                       </div>

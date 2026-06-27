@@ -6,8 +6,10 @@ import { WizardNavigation } from '../WizardNavigation';
 import { Card } from '../../../../components/ui/Card';
 import { Button } from '../../../../components/ui/Button';
 import { errorHandler } from '../../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
 
 const WizardRunner: React.FC = () => {
+    const { t } = useTranslation('common');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const sessionIdFromUrl = searchParams.get('sessionId');
@@ -58,7 +60,7 @@ const WizardRunner: React.FC = () => {
   if (!sessionIdFromUrl) {
     return (
       <Card className="p-6">
-        <p className="text-gray-600">Missing session. Please start the wizard again.</p>
+        <p className="text-gray-600">{t(`Missing session. Please start the wizard again.`)}</p>
       <Button className="mt-4" onClick={() => navigate('/company-wizard')}>
           Go to Wizard Start
         </Button>
@@ -68,7 +70,7 @@ const WizardRunner: React.FC = () => {
 
   return (
     <div className="space-y-4">
-      {loading && !currentStep && <Card className="p-4 text-gray-500">Loading wizard step...</Card>}
+      {loading && !currentStep && <Card className="p-4 text-gray-500">{t(`Loading wizard step...`)}</Card>}
 
       {error && (
         <Card className="p-4 bg-red-50 border border-red-200 text-red-800 text-sm">

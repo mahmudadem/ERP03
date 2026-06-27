@@ -239,7 +239,7 @@ export const SuperAdminShell: React.FC = () => {
             
             <div className="ml-4 hidden max-w-md flex-1 items-center gap-2 rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface-muted)] px-3 py-2 text-sm text-[var(--sa-muted)] md:flex">
               <Search className="h-4 w-4" />
-              <span>System owner workspace</span>
+              <span>{t(`System owner workspace`)}</span>
             </div>
 
             <div className="ml-auto flex items-center gap-2">

@@ -132,7 +132,7 @@ export const AiUsageDashboardPage: React.FC = () => {
           onClick={() => navigate('/ai-assistant/settings')}
           className="text-sm text-indigo-600 hover:text-indigo-800"
         >
-          &larr; {t('usageDashboard.backToSettings', 'Back to Settings')}
+          {t(`&larr;`)} {t('usageDashboard.backToSettings', 'Back to Settings')}
         </button>
       </div>
     </div>

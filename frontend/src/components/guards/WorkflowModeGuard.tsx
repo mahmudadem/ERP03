@@ -3,6 +3,7 @@ import { Settings, Workflow } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
 import { Link } from 'react-router-dom';
 import { useDocumentPolicies } from '../../hooks/useDocumentPolicies';
+import { useTranslation } from "react-i18next";
 
 interface WorkflowModeGuardProps {
   module: 'sales' | 'purchase';
@@ -14,6 +15,7 @@ export const WorkflowModeGuard: React.FC<WorkflowModeGuardProps> = ({
   module,
   children,
 }) => {
+    const { t } = useTranslation('common');
   const { loading, showSalesOperationalDocs, showPurchaseOperationalDocs } = useDocumentPolicies();
 
   if (loading) {
@@ -38,19 +40,19 @@ export const WorkflowModeGuard: React.FC<WorkflowModeGuardProps> = ({
             This page is hidden in Simple workflow
           </h2>
           <p className="mb-4 text-sm text-slate-700 dark:text-slate-300">
-            {moduleLabel} Orders and Delivery Notes are part of the <strong>Operational</strong>{' '}
-            workflow. Your company is currently in <strong>Simple</strong> mode, which uses direct
+            {moduleLabel} {t(`Orders and Delivery Notes are part of the`)} <strong>{t(`Operational`)}</strong>{' '}
+            {t(`workflow. Your company is currently in`)} <strong>{t(`Simple`)}</strong> mode, which uses direct
             invoicing only.
           </p>
           <p className="mb-5 text-xs text-slate-600 dark:text-slate-400">
-            Switch the workflow mode in {moduleLabel} Settings to enable Quotations → Orders →
+            {t(`Switch the workflow mode in`)} {moduleLabel} Settings to enable Quotations → Orders →
             Delivery Notes → Invoices.
           </p>
           <Link
             to={settingsPath}
             className="inline-flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-amber-700"
           >
-            <Settings size={14} /> Open {moduleLabel} Settings
+            <Settings size={14} /> {t(`Open`)} {moduleLabel} Settings
           </Link>
         </div>
       </div>

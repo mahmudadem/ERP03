@@ -29,6 +29,7 @@ import {
   PrintPaperProfile,
   printLayoutApi,
 } from '../../../api/printLayoutApi';
+import { useTranslation } from "react-i18next";
 
 const DOCUMENT_TYPES: Array<{ value: PrintDocumentType; label: string }> = [
   { value: 'POS_RECEIPT', label: 'POS Receipt' },
@@ -79,6 +80,7 @@ const clamp = (value: number, min: number, max: number) => Math.max(min, Math.mi
 const scaleForPaper = (paper: PrintPaperProfile) => paper.type.startsWith('RECEIPT') ? 4 : 3;
 
 export default function PrintLayoutDesignerPage() {
+    const { t } = useTranslation('common');
   const [documentType, setDocumentType] = useState<PrintDocumentType>('POS_RECEIPT');
   const [templates, setTemplates] = useState<PrintLayoutTemplateDTO[]>([]);
   const [schema, setSchema] = useState<PrintDataSchema | null>(null);
@@ -110,7 +112,7 @@ export default function PrintLayoutDesignerPage() {
       setLayout(defaultTemplate.layout);
       setSelectedId(defaultTemplate.layout.components[0]?.id || '');
     } catch (error) {
-      toast.error('Failed to load print layouts');
+      toast.error(t('Failed to load print layouts'));
     } finally {
       setIsLoading(false);
     }
@@ -202,14 +204,14 @@ export default function PrintLayoutDesignerPage() {
     setIsSaving(true);
     try {
       const saved = await printLayoutApi.save({ id: selectedTemplateId, name, documentType, layout, isDefault });
-      toast.success('Print layout saved');
+      toast.success(t('Print layout saved'));
       const next = templates.some((template) => template.id === saved.id)
         ? templates.map((template) => template.id === saved.id ? saved : { ...template, isDefault: saved.isDefault ? false : template.isDefault })
         : [...templates, saved];
       setTemplates(next);
       setSelectedTemplateId(saved.id);
     } catch (error) {
-      toast.error('Failed to save print layout');
+      toast.error(t('Failed to save print layout'));
     } finally {
       setIsSaving(false);
     }
@@ -224,7 +226,7 @@ export default function PrintLayoutDesignerPage() {
     link.download = `${documentType.toLowerCase()}-print-layout.json`;
     link.click();
     URL.revokeObjectURL(url);
-    toast.success('Layout exported');
+    toast.success(t('Layout exported'));
   };
 
   const importLayout = async (file?: File) => {
@@ -236,14 +238,14 @@ export default function PrintLayoutDesignerPage() {
       setLayout(parsed.layout);
       setSelectedTemplateId('');
       setSelectedId(parsed.layout.components[0]?.id || '');
-      toast.success('Layout imported');
+      toast.success(t('Layout imported'));
     } catch {
-      toast.error('Invalid print layout file');
+      toast.error(t('Invalid print layout file'));
     }
   };
 
   if (isLoading) {
-    return <div className="flex h-full items-center justify-center text-sm text-zinc-600">Loading print designer...</div>;
+    return <div className="flex h-full items-center justify-center text-sm text-zinc-600">{t(`Loading print designer...`)}</div>;
   }
 
   return (
@@ -251,38 +253,38 @@ export default function PrintLayoutDesignerPage() {
       <div className="border-b border-zinc-200 bg-white">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3">
           <div>
-            <h1 className="text-lg font-semibold">Print Layout Designer</h1>
-            <p className="text-sm text-zinc-600">Shared company engine for POS, Sales, Purchases, Inventory, and Accounting print layouts.</p>
+            <h1 className="text-lg font-semibold">{t(`Print Layout Designer`)}</h1>
+            <p className="text-sm text-zinc-600">{t(`Shared company engine for POS, Sales, Purchases, Inventory, and Accounting print layouts.`)}</p>
           </div>
           <div className="flex flex-wrap items-center gap-2">
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('text')}><Type size={16} />Text</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('field')}><FileText size={16} />Field</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('table')}><Table size={16} />Bill Table</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('box')}><Box size={16} />Box</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('qr')}><QrCode size={16} />QR</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('image')}><Image size={16} />Logo</button>
-            <button className="inline-flex h-9 items-center gap-2 rounded-md bg-zinc-900 px-3 text-sm text-white hover:bg-zinc-700 disabled:opacity-60" disabled={isSaving} onClick={save}><Save size={16} />Save</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('text')}><Type size={16} />{t(`Text`)}</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('field')}><FileText size={16} />{t(`Field`)}</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('table')}><Table size={16} />{t(`Bill Table`)}</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('box')}><Box size={16} />{t(`Box`)}</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('qr')}><QrCode size={16} />{t(`QR`)}</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md border border-zinc-300 px-3 text-sm hover:bg-zinc-100" onClick={() => addComponent('image')}><Image size={16} />{t(`Logo`)}</button>
+            <button className="inline-flex h-9 items-center gap-2 rounded-md bg-zinc-900 px-3 text-sm text-white hover:bg-zinc-700 disabled:opacity-60" disabled={isSaving} onClick={save}><Save size={16} />{t(`Save`)}</button>
           </div>
         </div>
       </div>
 
       <div className="grid min-h-[calc(100vh-74px)] grid-cols-[280px_minmax(480px,1fr)_320px]">
         <aside className="border-r border-zinc-200 bg-white p-4">
-          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">Document</label>
+          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">{t(`Document`)}</label>
           <select className="mb-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm" value={documentType} onChange={(event) => setDocumentType(event.target.value)}>
             {DOCUMENT_TYPES.map((type) => <option key={type.value} value={type.value}>{type.label}</option>)}
           </select>
 
-          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">Layout</label>
+          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">{t(`Layout`)}</label>
           <select className="mb-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm" value={selectedTemplateId} onChange={(event) => handleTemplateChange(event.target.value)}>
-            <option value="">Unsaved imported layout</option>
+            <option value="">{t(`Unsaved imported layout`)}</option>
             {templates.map((template) => <option key={template.id} value={template.id}>{template.name}{template.isDefault ? ' (default)' : ''}</option>)}
           </select>
 
-          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">Name</label>
+          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">{t(`Name`)}</label>
           <input className="mb-3 h-9 w-full rounded-md border border-zinc-300 px-2 text-sm" value={name} onChange={(event) => setName(event.target.value)} />
 
-          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">Paper</label>
+          <label className="mb-1 block text-xs font-semibold uppercase text-zinc-500">{t(`Paper`)}</label>
           <select className="mb-3 h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm" value={layout.paper.type} onChange={(event) => changePaper(event.target.value)}>
             {Object.keys(PAPER_PRESETS).map((paper) => <option key={paper} value={paper}>{paper.replace('_', ' ')}</option>)}
           </select>
@@ -293,13 +295,13 @@ export default function PrintLayoutDesignerPage() {
           </label>
 
           <div className="mb-4 grid grid-cols-2 gap-2">
-            <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-2 text-sm hover:bg-zinc-100" onClick={exportLayout}><Download size={16} />Export</button>
-            <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-2 text-sm hover:bg-zinc-100" onClick={() => importInputRef.current?.click()}><Upload size={16} />Import</button>
+            <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-2 text-sm hover:bg-zinc-100" onClick={exportLayout}><Download size={16} />{t(`Export`)}</button>
+            <button className="inline-flex h-9 items-center justify-center gap-2 rounded-md border border-zinc-300 px-2 text-sm hover:bg-zinc-100" onClick={() => importInputRef.current?.click()}><Upload size={16} />{t(`Import`)}</button>
             <input ref={importInputRef} className="hidden" type="file" accept="application/json" onChange={(event) => void importLayout(event.target.files?.[0])} />
           </div>
 
           <div className="rounded-md border border-zinc-200">
-            <div className="border-b border-zinc-200 px-3 py-2 text-xs font-semibold uppercase text-zinc-500">Components</div>
+            <div className="border-b border-zinc-200 px-3 py-2 text-xs font-semibold uppercase text-zinc-500">{t(`Components`)}</div>
             <div className="max-h-[42vh] overflow-auto">
               {layout.components.map((component) => (
                 <button key={component.id} className={`flex w-full items-center gap-2 border-b border-zinc-100 px-3 py-2 text-left text-sm hover:bg-zinc-50 ${selectedId === component.id ? 'bg-zinc-100' : ''}`} onClick={() => setSelectedId(component.id)}>
@@ -312,8 +314,8 @@ export default function PrintLayoutDesignerPage() {
 
         <main className="overflow-auto bg-zinc-100 p-6">
           <div className="mb-3 flex items-center justify-center gap-4 text-xs text-zinc-600">
-            <span className="inline-flex items-center gap-1"><Ruler size={14} />{layout.paper.width} x {layout.paper.height} {layout.paper.unit}</span>
-            <span>Safe area {safeBounds.width} x {safeBounds.height} {layout.paper.unit}</span>
+            <span className="inline-flex items-center gap-1"><Ruler size={14} />{layout.paper.width} {t(`x`)} {layout.paper.height} {layout.paper.unit}</span>
+            <span>{t(`Safe area`)} {safeBounds.width} {t(`x`)} {safeBounds.height} {layout.paper.unit}</span>
           </div>
           <div
             className="relative mx-auto bg-white shadow-sm"
@@ -423,6 +425,7 @@ function CanvasComponent(props: {
 }
 
 function ComponentPreview({ component, scale }: { component: PrintLayoutComponent; scale: number }) {
+    const { t } = useTranslation('common');
   if (component.type === 'table') {
     const options = component.tableOptions || {};
     const rowHeight = options.rowHeight || 7;
@@ -475,7 +478,7 @@ function ComponentPreview({ component, scale }: { component: PrintLayoutComponen
     const value = component.fieldPath ? SAMPLE_VALUES[component.fieldPath] || `{${component.fieldPath}}` : 'Field';
     return <div className="p-1">{component.label ? `${component.label}: ` : ''}{value}</div>;
   }
-  if (component.type === 'image') return <div className="flex h-full items-center justify-center border border-dashed border-zinc-300 text-zinc-500">Logo</div>;
+  if (component.type === 'image') return <div className="flex h-full items-center justify-center border border-dashed border-zinc-300 text-zinc-500">{t(`Logo`)}</div>;
   if (component.type === 'qr') return <div className="flex h-full items-center justify-center"><QrCode className="h-10 w-10 text-zinc-700" /></div>;
   if (component.type === 'line') return <div className="mt-2 border-t border-zinc-700" />;
   if (component.type === 'box') return null;
@@ -488,8 +491,9 @@ function PropertyPanel(props: {
   onChange: (patch: Partial<PrintLayoutComponent>) => void;
   onDelete: () => void;
 }) {
+    const { t } = useTranslation('common');
   const { component, schema, onChange, onDelete } = props;
-  if (!component) return <div className="text-sm text-zinc-500">Select a component to edit its size, binding, and styling.</div>;
+  if (!component) return <div className="text-sm text-zinc-500">{t(`Select a component to edit its size, binding, and styling.`)}</div>;
   const style = component.style || {};
   const updateStyle = (patch: Record<string, any>) => onChange({ style: { ...style, ...patch } });
   const tableOptions = component.tableOptions || {};
@@ -500,7 +504,7 @@ function PropertyPanel(props: {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-sm font-semibold uppercase text-zinc-500">{component.type}</h2>
-        <button className="inline-flex h-8 items-center gap-2 rounded-md border border-red-200 px-2 text-sm text-red-700 hover:bg-red-50" onClick={onDelete}><Trash2 size={15} />Delete</button>
+        <button className="inline-flex h-8 items-center gap-2 rounded-md border border-red-200 px-2 text-sm text-red-700 hover:bg-red-50" onClick={onDelete}><Trash2 size={15} />{t(`Delete`)}</button>
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -549,7 +553,7 @@ function PropertyPanel(props: {
                   columns[index] = { ...column, width: Number(event.target.value) };
                   onChange({ columns });
                 }} />
-                <button className="rounded-md border border-zinc-300 text-zinc-500 hover:bg-zinc-100" onClick={() => onChange({ columns: (component.columns || []).filter((_, i) => i !== index) })}>x</button>
+                <button className="rounded-md border border-zinc-300 text-zinc-500 hover:bg-zinc-100" onClick={() => onChange({ columns: (component.columns || []).filter((_, i) => i !== index) })}>{t(`x`)}</button>
               </div>
             ))}
             <select className="h-9 w-full rounded-md border border-zinc-300 bg-white px-2 text-sm" value="" onChange={(event) => {
@@ -557,12 +561,12 @@ function PropertyPanel(props: {
               if (!found) return;
               onChange({ columns: [...(component.columns || []), { id: found.path, label: found.label, fieldPath: found.path, width: 22 }] });
             }}>
-              <option value="">Add table column</option>
+              <option value="">{t(`Add table column`)}</option>
               {tableSchema.columns.map((column) => <option key={column.path} value={column.path}>{column.label}</option>)}
             </select>
           </div>
           <div className="mt-4 rounded-md border border-zinc-200 p-3">
-            <div className="mb-2 text-xs font-semibold uppercase text-zinc-500">Long bill behavior</div>
+            <div className="mb-2 text-xs font-semibold uppercase text-zinc-500">{t(`Long bill behavior`)}</div>
             <label className="block text-xs font-medium text-zinc-600">
               Overflow
               <select
@@ -570,9 +574,9 @@ function PropertyPanel(props: {
                 value={tableOptions.overflowMode || 'continue'}
                 onChange={(event) => updateTableOptions({ overflowMode: event.target.value })}
               >
-                <option value="continue">Continue to next page / extend receipt</option>
-                <option value="clip">Clip extra rows</option>
-                <option value="shrink">Shrink rows to fit frame</option>
+                <option value="continue">{t(`Continue to next page / extend receipt`)}</option>
+                <option value="clip">{t(`Clip extra rows`)}</option>
+                <option value="shrink">{t(`Shrink rows to fit frame`)}</option>
               </select>
             </label>
             <div className="mt-2 grid grid-cols-2 gap-2">
@@ -604,10 +608,10 @@ function PropertyPanel(props: {
       )}
 
       <div className="grid grid-cols-2 gap-2">
-        <label className="text-xs font-medium text-zinc-600">Font size<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-2 text-sm" type="number" value={style.fontSize || 10} onChange={(event) => updateStyle({ fontSize: Number(event.target.value) })} /></label>
-        <label className="text-xs font-medium text-zinc-600">Text color<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-1" type="color" value={style.color || '#18181B'} onChange={(event) => updateStyle({ color: event.target.value })} /></label>
-        <label className="text-xs font-medium text-zinc-600">Background<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-1" type="color" value={style.backgroundColor || '#FFFFFF'} onChange={(event) => updateStyle({ backgroundColor: event.target.value })} /></label>
-        <label className="text-xs font-medium text-zinc-600">Border<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-2 text-sm" type="number" value={style.borderWidth || 0} onChange={(event) => updateStyle({ borderWidth: Number(event.target.value) })} /></label>
+        <label className="text-xs font-medium text-zinc-600">{t(`Font size`)}<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-2 text-sm" type="number" value={style.fontSize || 10} onChange={(event) => updateStyle({ fontSize: Number(event.target.value) })} /></label>
+        <label className="text-xs font-medium text-zinc-600">{t(`Text color`)}<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-1" type="color" value={style.color || '#18181B'} onChange={(event) => updateStyle({ color: event.target.value })} /></label>
+        <label className="text-xs font-medium text-zinc-600">{t(`Background`)}<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-1" type="color" value={style.backgroundColor || '#FFFFFF'} onChange={(event) => updateStyle({ backgroundColor: event.target.value })} /></label>
+        <label className="text-xs font-medium text-zinc-600">{t(`Border`)}<input className="mt-1 h-8 w-full rounded-md border border-zinc-300 px-2 text-sm" type="number" value={style.borderWidth || 0} onChange={(event) => updateStyle({ borderWidth: Number(event.target.value) })} /></label>
       </div>
 
       <div className="flex gap-2">

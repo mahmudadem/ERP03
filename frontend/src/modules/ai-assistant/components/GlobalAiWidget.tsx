@@ -379,8 +379,8 @@ export const GlobalAiWidget: React.FC = () => {
             <Bot className="w-6 h-6" />
           </div>
           <div>
-            <h3 className="font-bold text-sm">Global AI Assistant</h3>
-            <p className="text-[10px] opacity-80">Online & Ready</p>
+            <h3 className="font-bold text-sm">{t(`Global AI Assistant`)}</h3>
+            <p className="text-[10px] opacity-80">{t(`Online & Ready`)}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -399,7 +399,7 @@ export const GlobalAiWidget: React.FC = () => {
       {/* History View */}
       {view === 'history' && (
         <div className="flex-1 overflow-y-auto bg-white p-2">
-          <h4 className="text-xs font-bold text-gray-400 px-3 py-2 uppercase tracking-wider">Recent Conversations</h4>
+          <h4 className="text-xs font-bold text-gray-400 px-3 py-2 uppercase tracking-wider">{t(`Recent Conversations`)}</h4>
           <div className="space-y-1">
             {conversations.map(c => (
               <button
@@ -464,7 +464,7 @@ export const GlobalAiWidget: React.FC = () => {
               {msg.role === 'assistant' && (
                 <div className="flex items-center gap-1.5 mb-2 text-indigo-600">
                   <Bot className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{t(`AI Assistant`)}</span>
                 </div>
               )}
               <MarkdownRenderer content={msg.content} />
@@ -486,7 +486,7 @@ export const GlobalAiWidget: React.FC = () => {
             <div className="max-w-[90%] p-4 rounded-2xl text-sm bg-white text-gray-800 rounded-tl-none shadow-sm border border-indigo-100 ring-1 ring-indigo-500/10">
                 <div className="flex items-center gap-1.5 mb-2 text-indigo-600">
                   <Bot className="w-3.5 h-3.5" />
-                  <span className="text-[10px] font-bold uppercase tracking-wider">AI Assistant is typing...</span>
+                  <span className="text-[10px] font-bold uppercase tracking-wider">{t(`AI Assistant is typing...`)}</span>
                 </div>
               <div className="text-sm leading-relaxed whitespace-pre-wrap text-gray-800 font-sans">
                 {streamingContent}
@@ -504,7 +504,7 @@ export const GlobalAiWidget: React.FC = () => {
         {isLoading && !streamingContent && (
           <div className="flex items-center gap-2 text-indigo-500 animate-pulse text-xs">
             <Bot className="w-4 h-4" />
-            <span>AI is thinking...</span>
+            <span>{t(`AI is thinking...`)}</span>
           </div>
         )}
         <div ref={messagesEndRef} />

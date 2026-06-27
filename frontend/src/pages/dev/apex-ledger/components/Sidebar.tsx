@@ -508,7 +508,7 @@ export default function Sidebar({ setActiveTab }: SidebarProps) {
             <Icons.ShieldCheck className="w-5 h-5 text-white" />
           </div>
           <div>
-            <span className="font-sans font-bold text-sm tracking-tight text-slate-800 block leading-tight">APEX LEDGER</span>
+            <span className="font-sans font-bold text-sm tracking-tight text-slate-800 block leading-tight">{t(`APEX LEDGER`)}</span>
             <span className="text-[10px] font-mono text-slate-400 font-semibold block uppercase tracking-wider leading-tight">
               {t('sidebar.enterpriseOS', { defaultValue: 'Enterprise OS' })}
             </span>

@@ -8,6 +8,7 @@
 import React from 'react';
 import { AlertTriangle, Shield, CheckCircle, XCircle, AlertCircle, Info, ChevronDown } from 'lucide-react';
 import { DocumentFormConfig } from '../types';
+import { useTranslation } from "react-i18next";
 
 export interface BusinessRuleState {
   requirePositiveTotal?: {
@@ -47,6 +48,7 @@ const outcomeOptions = [
 ] as const;
 
 export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) => {
+    const { t } = useTranslation('common');
   const handleRuleChange = (
     ruleKey: keyof BusinessRuleState,
     updates: Partial<NonNullable<BusinessRuleState[keyof BusinessRuleState]>>
@@ -64,6 +66,7 @@ export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) =
     description: string;
     showMinCount?: boolean;
   }> = ({ ruleKey, title, description, showMinCount }) => {
+      const { t } = useTranslation('common');
     const rule = rules[ruleKey] || { enabled: false, outcome: 'BLOCK' as const };
     const IconComponent = outcomeOptions.find(o => o.value === rule.outcome)?.icon || AlertCircle;
 
@@ -89,7 +92,7 @@ export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) =
             
             {showMinCount && rule.enabled && (
               <div className="mt-3 flex items-center gap-2">
-                <label className="text-xs text-gray-600">Minimum lines:</label>
+                <label className="text-xs text-gray-600">{t(`Minimum lines:`)}</label>
                 <input
                   type="number"
                   min="1"
@@ -110,7 +113,7 @@ export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) =
                 onChange={(e) => handleRuleChange(ruleKey, { enabled: e.target.checked })}
                 className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
               />
-              <span className="text-xs font-medium text-gray-700">Enabled</span>
+              <span className="text-xs font-medium text-gray-700">{t(`Enabled`)}</span>
             </label>
 
             {/* Outcome Dropdown */}
@@ -145,14 +148,14 @@ export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) =
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-semibold text-gray-900">Business Rules</h3>
+          <h3 className="text-base font-semibold text-gray-900">{t(`Business Rules`)}</h3>
           <p className="text-sm text-gray-500 mt-1">
             Configure validation rules for this form. Rules can block save or show warnings.
           </p>
         </div>
         <div className="flex items-center gap-2 text-xs text-gray-500">
           <Info className="w-4 h-4" />
-          <span>Rules apply after structural validation passes</span>
+          <span>{t(`Rules apply after structural validation passes`)}</span>
         </div>
       </div>
 
@@ -195,12 +198,12 @@ export const BusinessRulesPanel: React.FC<Props> = ({ form, rules, onChange }) =
         <div className="flex items-start gap-3">
           <Info className="w-5 h-5 text-blue-600 mt-0.5" />
           <div className="text-sm text-blue-800">
-            <p className="font-medium mb-1">Rule Outcomes</p>
+            <p className="font-medium mb-1">{t(`Rule Outcomes`)}</p>
             <ul className="space-y-1 text-blue-700">
-              <li><strong>Block:</strong> Save button disabled until rule passes</li>
-              <li><strong>Warn Only:</strong> Save enabled, warning shown with amber indicator</li>
-              <li><strong>Block + Warn:</strong> Save disabled with detailed warning message</li>
-              <li><strong>Allow:</strong> No validation (rule effectively disabled)</li>
+              <li><strong>{t(`Block:`)}</strong> {t(`Save button disabled until rule passes`)}</li>
+              <li><strong>{t(`Warn Only:`)}</strong> {t(`Save enabled, warning shown with amber indicator`)}</li>
+              <li><strong>{t(`Block + Warn:`)}</strong> {t(`Save disabled with detailed warning message`)}</li>
+              <li><strong>{t(`Allow:`)}</strong> {t(`No validation (rule effectively disabled)`)}</li>
             </ul>
           </div>
         </div>

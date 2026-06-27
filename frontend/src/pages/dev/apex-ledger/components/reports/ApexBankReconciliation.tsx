@@ -17,6 +17,7 @@ import {
   BankStatementDTO,
   BankStatementLineDTO,
 } from '../../../../../api/accountingApi';
+import { useTranslation } from "react-i18next";
 
 // ─── helpers ────────────────────────────────────────────────────────────────
 
@@ -73,6 +74,7 @@ function StatusBadge({ status }: { status: string }) {
 // ─── Main component ──────────────────────────────────────────────────────────
 
 export default function ApexBankReconciliation() {
+    const { t } = useTranslation('common');
   // Filter state
   const [accounts, setAccounts] = useState<AccountDTO[]>([]);
   const [accountsLoading, setAccountsLoading] = useState(true);
@@ -93,7 +95,7 @@ export default function ApexBankReconciliation() {
     accountingApi
       .getAccounts()
       .then((data) => setAccounts(data || []))
-      .catch(() => toast.error('Failed to load accounts'))
+      .catch(() => toast.error(t('Failed to load accounts')))
       .finally(() => setAccountsLoading(false));
   }, []);
 
@@ -116,7 +118,7 @@ export default function ApexBankReconciliation() {
       setStatement(data.statement || null);
       setUnreconciled(data.unreconciledLedger || []);
     } catch {
-      toast.error('Failed to load reconciliation data');
+      toast.error(t('Failed to load reconciliation data'));
     } finally {
       setDataLoading(false);
     }
@@ -145,11 +147,11 @@ export default function ApexBankReconciliation() {
         content: text,
       });
       setStatement(imported);
-      toast.success('Bank statement imported successfully');
+      toast.success(t('Bank statement imported successfully'));
       await loadReconciliation(selectedAccountId);
       setFile(null);
     } catch {
-      toast.error('Failed to import bank statement');
+      toast.error(t('Failed to import bank statement'));
     } finally {
       setIsProcessing(false);
     }
@@ -161,10 +163,10 @@ export default function ApexBankReconciliation() {
     setIsProcessing(true);
     try {
       await accountingApi.manualMatch({ statementId: statement.id, lineId: line.id, ledgerEntryId });
-      toast.success('Entry matched');
+      toast.success(t('Entry matched'));
       await loadReconciliation(selectedAccountId);
     } catch {
-      toast.error('Failed to match entry');
+      toast.error(t('Failed to match entry'));
     } finally {
       setIsProcessing(false);
     }
@@ -179,10 +181,10 @@ export default function ApexBankReconciliation() {
         statementId: statement.id,
         adjustments: [],
       });
-      toast.success('Reconciliation completed successfully');
+      toast.success(t('Reconciliation completed successfully'));
       await loadReconciliation(selectedAccountId);
     } catch {
-      toast.error('Failed to complete reconciliation');
+      toast.error(t('Failed to complete reconciliation'));
     } finally {
       setIsProcessing(false);
     }
@@ -226,7 +228,7 @@ export default function ApexBankReconciliation() {
               disabled={accountsLoading}
               className="w-full bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none text-slate-800 disabled:opacity-60"
             >
-              <option value="">Select bank account…</option>
+              <option value="">{t(`Select bank account…`)}</option>
               {bankAccounts.map((a) => (
                 <option key={a.id} value={a.id}>
                   {a.userCode} — {a.name}
@@ -263,7 +265,7 @@ export default function ApexBankReconciliation() {
                 </p>
                 {statement && (
                   <p className="text-[10px] text-slate-400 font-mono">
-                    Statement: {statement.bankName} · {statement.statementDate}
+                    {t(`Statement:`)} {statement.bankName} · {statement.statementDate}
                   </p>
                 )}
               </div>
@@ -336,15 +338,15 @@ export default function ApexBankReconciliation() {
                 <Upload className="w-7 h-7 text-blue-600" />
               </div>
               <div className="text-center">
-                <p className="text-sm font-bold text-slate-800 mb-1">Import Bank Statement</p>
+                <p className="text-sm font-bold text-slate-800 mb-1">{t(`Import Bank Statement`)}</p>
                 <p className="text-xs text-slate-500">
                   Upload a bank statement file (OFX, QFX, or CSV) to begin reconciliation.
                 </p>
               </div>
               <div className="w-full bg-[#FAFAFB] border border-[#E2E8F0] rounded-lg p-4 text-[10px] font-mono text-slate-500 space-y-1">
-                <p className="font-bold text-slate-600">Supported formats:</p>
-                <p>• .OFX or .QFX — bank export</p>
-                <p>• .CSV — date, description, amount, reference, balance</p>
+                <p className="font-bold text-slate-600">{t(`Supported formats:`)}</p>
+                <p>{t(`• .OFX or .QFX — bank export`)}</p>
+                <p>{t(`• .CSV — date, description, amount, reference, balance`)}</p>
               </div>
             </div>
           ) : (
@@ -413,7 +415,7 @@ export default function ApexBankReconciliation() {
                               {line.description}
                               {line.reference && (
                                 <div className="text-[9px] text-slate-400 font-mono mt-0.5">
-                                  Ref: {line.reference}
+                                  {t(`Ref:`)} {line.reference}
                                 </div>
                               )}
                             </td>
@@ -438,7 +440,7 @@ export default function ApexBankReconciliation() {
                                       Match with ledger…
                                     </option>
                                     {unreconciled.length === 0 && (
-                                      <option disabled>No unreconciled entries</option>
+                                      <option disabled>{t(`No unreconciled entries`)}</option>
                                     )}
                                     {unreconciled.map((entry) => (
                                       <option key={entry.id} value={entry.id}>
@@ -479,7 +481,7 @@ export default function ApexBankReconciliation() {
                       Unreconciled Ledger Entries
                     </span>
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">{unreconciled.length} items</span>
+                  <span className="text-[10px] font-mono text-slate-400">{unreconciled.length} {t(`items`)}</span>
                 </div>
 
                 {/* Table */}
@@ -525,7 +527,7 @@ export default function ApexBankReconciliation() {
                               </td>
                               <td className="px-4 py-2 text-slate-700">
                                 {entry.notes || entry.description || (
-                                  <span className="text-slate-400 italic">No description</span>
+                                  <span className="text-slate-400 italic">{t(`No description`)}</span>
                                 )}
                                 {entry.voucherId && (
                                   <div className="text-[9px] text-slate-400 font-mono mt-0.5">
@@ -568,7 +570,7 @@ export default function ApexBankReconciliation() {
       {!generated && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-16 flex flex-col items-center justify-center gap-3 text-center">
           <Landmark className="w-10 h-10 text-slate-200" />
-          <p className="text-sm font-bold text-slate-400">Select a bank account and click Load</p>
+          <p className="text-sm font-bold text-slate-400">{t(`Select a bank account and click Load`)}</p>
           <p className="text-xs text-slate-400">
             You can then import a bank statement and match it against ledger entries.
           </p>

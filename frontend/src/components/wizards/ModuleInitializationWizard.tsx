@@ -8,6 +8,7 @@ import { Button } from '../ui/Button';
 import { Card } from '../ui/Card';
 import { CheckCircle } from 'lucide-react';
 import { Spinner } from '../ui/Spinner';
+import { useTranslation } from "react-i18next";
 
 interface ModuleInitializationWizardProps {
   moduleCode: string;
@@ -30,6 +31,7 @@ export const ModuleInitializationWizard: React.FC<ModuleInitializationWizardProp
   onComplete,
   redirectPath,
 }) => {
+    const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   const navigate = useNavigate();
   const { isModuleInitialized, loading: modulesLoading } = useCompanyModules();
@@ -92,7 +94,7 @@ export const ModuleInitializationWizard: React.FC<ModuleInitializationWizardProp
             <CheckCircle className="w-8 h-8 text-primary-600" />
           </div>
           <h1 className="text-3xl font-bold text-gray-900 mb-2">
-            Welcome to {moduleName}
+            {t(`Welcome to`)} {moduleName}
           </h1>
           <p className="text-gray-600">{description}</p>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { clsx } from 'clsx';
 import { BulkAction } from './types';
+import { useTranslation } from "react-i18next";
 
 interface DataTableToolbarProps<T = any> {
   selectedCount: number;
@@ -29,6 +30,7 @@ export function DataTableToolbar<T = any>({
   getRowId,
   onClearSelection,
 }: DataTableToolbarProps<T>) {
+    const { t } = useTranslation('common');
   if (selectedCount === 0) return null;
 
   const selectedRows = data.filter(row => selectedIds.has(getRowId(row)));
@@ -37,7 +39,7 @@ export function DataTableToolbar<T = any>({
     <div className="flex items-center justify-between px-4 py-2 bg-primary-50 dark:bg-primary-900/20 border-b border-primary-200 dark:border-primary-800">
       <div className="flex items-center gap-3">
         <span className="text-sm font-medium text-primary-700 dark:text-primary-300">
-          {selectedCount} of {totalCount} selected
+          {selectedCount} {t(`of`)} {totalCount} selected
         </span>
         <button
           onClick={onClearSelection}

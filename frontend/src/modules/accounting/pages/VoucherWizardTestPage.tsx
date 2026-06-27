@@ -8,8 +8,10 @@
 import React from 'react';
 import { VoucherFormDesigner, WizardProvider, VoucherFormConfig } from '../voucher-wizard';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
 
 const VoucherWizardTestPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const handleVoucherSaved = (config: VoucherFormConfig) => {
     console.log('✅ Wizard completed! Output:', config);
     
@@ -28,7 +30,7 @@ const VoucherWizardTestPage: React.FC = () => {
     <div className="h-screen flex flex-col bg-gray-50">
       {/* Test Page Header */}
       <div className="bg-blue-600 text-white p-4 shadow-lg">
-        <h1 className="text-2xl font-bold">🧪 Voucher Wizard Test Page</h1>
+        <h1 className="text-2xl font-bold">{t(`🧪 Voucher Wizard Test Page`)}</h1>
         <p className="text-blue-100 text-sm mt-1">
           This is a test page to verify the extracted Voucher Wizard UI.
         </p>
@@ -37,13 +39,13 @@ const VoucherWizardTestPage: React.FC = () => {
       {/* Info Banner */}
       <div className="bg-yellow-50 border-b border-yellow-200 p-4">
         <div className="max-w-6xl mx-auto">
-          <h2 className="text-yellow-900 font-semibold mb-2">📝 Testing Instructions:</h2>
+          <h2 className="text-yellow-900 font-semibold mb-2">{t(`📝 Testing Instructions:`)}</h2>
           <ul className="text-yellow-800 text-sm space-y-1 list-disc list-inside">
-            <li>Click "Create New Type" to open the wizard</li>
-            <li>Go through all 6 steps (Basic Info → Rules → Fields → Actions → Visual Editor → Review)</li>
-            <li>Try the drag-and-drop editor in Step 5</li>
-            <li>Click "Save & Close" to see the output</li>
-            <li>Check browser console for the full <code>VoucherFormConfig</code> object</li>
+            <li>{t(`Click "Create New Type" to open the wizard`)}</li>
+            <li>{t(`Go through all 6 steps (Basic Info → Rules → Fields → Actions → Visual Editor → Review)`)}</li>
+            <li>{t(`Try the drag-and-drop editor in Step 5`)}</li>
+            <li>{t(`Click "Save & Close" to see the output`)}</li>
+            <li>{t(`Check browser console for the full`)} <code>{t(`VoucherFormConfig`)}</code> {t(`object`)}</li>
           </ul>
         </div>
       </div>
@@ -61,8 +63,8 @@ const VoucherWizardTestPage: React.FC = () => {
       {/* Footer */}
       <div className="bg-gray-800 text-gray-300 p-3 text-center text-sm">
         <p>
-          ✅ Wizard extracted from <code>Voucher-Wizard/</code> folder • 
-          📍 Location: <code>frontend/src/modules/accounting/voucher-wizard/</code>
+          {t(`✅ Wizard extracted from`)} <code>{t(`Voucher-Wizard/`)}</code> folder • 
+          📍 Location: <code>{t(`frontend/src/modules/accounting/voucher-wizard/`)}</code>
         </p>
       </div>
     </div>

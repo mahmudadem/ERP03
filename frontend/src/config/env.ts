@@ -24,6 +24,13 @@ const getEnvVar = (key: string): string => {
   return value;
 };
 
+const resolveHost = (url: string): string => {
+  if (typeof window !== 'undefined' && (url.includes('127.0.0.1') || url.includes('localhost'))) {
+    return url.replace(/127\.0\.0\.1|localhost/, window.location.hostname);
+  }
+  return url;
+};
+
 export const env: EnvConfig = {
   firebase: {
     apiKey: getEnvVar('VITE_FIREBASE_API_KEY'),
@@ -33,5 +40,5 @@ export const env: EnvConfig = {
     messagingSenderId: getEnvVar('VITE_FIREBASE_MESSAGING_SENDER_ID'),
     appId: getEnvVar('VITE_FIREBASE_APP_ID'),
   },
-  apiBaseUrl: getEnvVar('VITE_API_BASE_URL'),
+  apiBaseUrl: resolveHost(getEnvVar('VITE_API_BASE_URL')),
 };

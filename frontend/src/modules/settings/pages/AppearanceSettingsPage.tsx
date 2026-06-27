@@ -145,16 +145,16 @@ const AppearanceSettingsPage: React.FC = () => {
       {/* Header */}
       <div className="flex flex-col gap-4 border-b border-[var(--color-border)] pb-5 lg:flex-row lg:items-end lg:justify-between">
         <div>
-          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">User Preferences</div>
-          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">Appearance Lab</h1>
+          <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--color-primary)]">{t(`User Preferences`)}</div>
+          <h1 className="text-3xl font-bold tracking-tight text-[var(--color-text-primary)]">{t(`Appearance Lab`)}</h1>
           <p className="mt-2 max-w-3xl text-sm text-[var(--color-text-secondary)]">
             Design your personal workspace. Choose from beautiful presets, generate an auto-theme, or fine-tune every detail.
           </p>
         </div>
         {!hasChanges && (
           <div className="flex flex-wrap gap-3">
-            <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="h-4 w-4" />}>Reset to Default</Button>
-            <Button onClick={save} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>Save Preferences</Button>
+            <Button variant="secondary" onClick={reset} leftIcon={<RotateCcw className="h-4 w-4" />}>{t(`Reset to Default`)}</Button>
+            <Button onClick={save} isLoading={saving} leftIcon={<Save className="h-4 w-4" />}>{t(`Save Preferences`)}</Button>
           </div>
         )}
       </div>
@@ -181,8 +181,8 @@ const AppearanceSettingsPage: React.FC = () => {
                 <Wand2 className="h-5 w-5 text-[var(--color-primary)]" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Auto-Theme Generator</h2>
-                <p className="text-xs text-[var(--color-text-secondary)]">AI-powered color harmony</p>
+                <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t(`Auto-Theme Generator`)}</h2>
+                <p className="text-xs text-[var(--color-text-secondary)]">{t(`AI-powered color harmony`)}</p>
               </div>
             </div>
             <p className="mb-5 text-sm text-[var(--color-text-secondary)] relative z-10 max-w-md">
@@ -190,7 +190,7 @@ const AppearanceSettingsPage: React.FC = () => {
             </p>
             <div className="flex gap-3 relative z-10 items-end max-w-sm">
               <label className="flex-1">
-                <span className={labelClass}>Base Color</span>
+                <span className={labelClass}>{t(`Base Color`)}</span>
                 <div className="flex gap-2">
                   <input
                     type="color"
@@ -215,7 +215,7 @@ const AppearanceSettingsPage: React.FC = () => {
           <div>
             <div className="mb-4 flex items-center gap-2">
               <Palette className="h-5 w-5 text-[var(--color-text-primary)]" />
-              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">Curated Presets</h2>
+              <h2 className="text-lg font-bold text-[var(--color-text-primary)]">{t(`Curated Presets`)}</h2>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {USER_APPEARANCE_PRESETS.map(preset => (
@@ -250,31 +250,31 @@ const AppearanceSettingsPage: React.FC = () => {
                 <div className="p-1.5 bg-[var(--color-bg-tertiary)] rounded-md">
                   <Type className="h-4 w-4 text-[var(--color-text-primary)]" />
                 </div>
-                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">Typography & Depth</h2>
+                <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">{t(`Typography & Depth`)}</h2>
               </div>
               <div className="space-y-4">
                 <label>
-                  <span className={labelClass}>Font Family</span>
+                  <span className={labelClass}>{t(`Font Family`)}</span>
                   <select className={fieldClass} value={draft.fontFamily} onChange={event => updateRoot('fontFamily', event.target.value as any)}>
-                    <option value="system">System Default</option>
-                    <option value="inter">Inter (Modern & Clean)</option>
-                    <option value="roboto">Roboto (Classic UI)</option>
-                    <option value="outfit">Outfit (Geometric & Bold)</option>
-                    <option value="cairo">Cairo (Arabic & Modern)</option>
-                    <option value="mono">Monospace (Technical)</option>
+                    <option value="system">{t(`System Default`)}</option>
+                    <option value="inter">{t(`Inter (Modern & Clean)`)}</option>
+                    <option value="roboto">{t(`Roboto (Classic UI)`)}</option>
+                    <option value="outfit">{t(`Outfit (Geometric & Bold)`)}</option>
+                    <option value="cairo">{t(`Cairo (Arabic & Modern)`)}</option>
+                    <option value="mono">{t(`Monospace (Technical)`)}</option>
                   </select>
                 </label>
                 <label>
-                  <span className={labelClass}>Shadow Intensity</span>
+                  <span className={labelClass}>{t(`Shadow Intensity`)}</span>
                   <select className={fieldClass} value={draft.shadowIntensity} onChange={event => updateRoot('shadowIntensity', event.target.value as any)}>
-                    <option value="flat">Flat (Minimalist, no shadows)</option>
-                    <option value="subtle">Subtle (Elegant depth)</option>
-                    <option value="pronounced">Pronounced (Deep floating)</option>
-                    <option value="glass">Glassmorphism (Soft glow)</option>
+                    <option value="flat">{t(`Flat (Minimalist, no shadows)`)}</option>
+                    <option value="subtle">{t(`Subtle (Elegant depth)`)}</option>
+                    <option value="pronounced">{t(`Pronounced (Deep floating)`)}</option>
+                    <option value="glass">{t(`Glassmorphism (Soft glow)`)}</option>
                   </select>
                 </label>
                 <label>
-                  <span className={labelClass}>Corner Radius ({draft.radius}px)</span>
+                  <span className={labelClass}>{t(`Corner Radius (`)}{draft.radius}{t(`px)`)}</span>
                   <input
                     type="range"
                     min={0}
@@ -284,8 +284,8 @@ const AppearanceSettingsPage: React.FC = () => {
                     className="w-full h-2 bg-[var(--color-bg-tertiary)] rounded-lg appearance-none cursor-pointer accent-[var(--color-primary)]"
                   />
                   <div className="flex justify-between text-xs text-[var(--color-text-muted)] mt-1">
-                    <span>Sharp</span>
-                    <span>Rounded</span>
+                    <span>{t(`Sharp`)}</span>
+                    <span>{t(`Rounded`)}</span>
                   </div>
                 </label>
               </div>
@@ -348,15 +348,15 @@ const AppearanceSettingsPage: React.FC = () => {
                       window.dispatchEvent(new CustomEvent('topbar-widget-style-changed', { detail: { style: val } }));
                     }}
                   >
-                    <option value="1">1: العرض المزدوج الرأسي المتكدس (Double Decker)</option>
-                    <option value="2">2: النظام الهندسي البرمجي (Tech Terminal)</option>
-                    <option value="3">3: خطوط الفاصل العمودي (Pipeline Separators)</option>
-                    <option value="5">5: الكبسولة الفقاعية الموحدة (Bubble Pill)</option>
-                    <option value="10">10: الأشكال الهندسية المائلة (Slanted Angles)</option>
-                    <option value="11">11: الإطارات المنقطة التقنية (Dotted Matrix)</option>
-                    <option value="16">16: بطاقة الكوبون المثقوبة (Coupon Tag)</option>
-                    <option value="17">17: المخطط الهندسي المتقطع (Dashed Blueprint)</option>
-                    <option value="18">18: مؤشرات النقاط الملونة (State Indicator)</option>
+                    <option value="1">{t(`1: العرض المزدوج الرأسي المتكدس (Double Decker)`)}</option>
+                    <option value="2">{t(`2: النظام الهندسي البرمجي (Tech Terminal)`)}</option>
+                    <option value="3">{t(`3: خطوط الفاصل العمودي (Pipeline Separators)`)}</option>
+                    <option value="5">{t(`5: الكبسولة الفقاعية الموحدة (Bubble Pill)`)}</option>
+                    <option value="10">{t(`10: الأشكال الهندسية المائلة (Slanted Angles)`)}</option>
+                    <option value="11">{t(`11: الإطارات المنقطة التقنية (Dotted Matrix)`)}</option>
+                    <option value="16">{t(`16: بطاقة الكوبون المثقوبة (Coupon Tag)`)}</option>
+                    <option value="17">{t(`17: المخطط الهندسي المتقطع (Dashed Blueprint)`)}</option>
+                    <option value="18">{t(`18: مؤشرات النقاط الملونة (State Indicator)`)}</option>
                   </select>
                 </label>
               </div>
@@ -368,14 +368,14 @@ const AppearanceSettingsPage: React.FC = () => {
             <summary className="flex cursor-pointer items-center justify-between p-5 font-bold text-[var(--color-text-primary)] marker:content-none focus:outline-none">
               <div className="flex items-center gap-3">
                 <Settings2 className="h-5 w-5 text-[var(--color-text-muted)]" />
-                <span>Advanced Colors</span>
+                <span>{t(`Advanced Colors`)}</span>
               </div>
               <span className="text-[var(--color-text-muted)] transition-transform group-open:rotate-180">▼</span>
             </summary>
             
             <div className="px-5 border-t border-[var(--color-border)] pt-5">
               <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between pb-4 gap-4">
-                <p className="text-sm text-[var(--color-text-secondary)]">Absolute control over every token</p>
+                <p className="text-sm text-[var(--color-text-secondary)]">{t(`Absolute control over every token`)}</p>
                 <div className="flex gap-1 bg-[var(--color-bg-tertiary)] p-1 rounded-lg">
                   {['brand', 'light', 'dark'].map((tab) => (
                     <button
@@ -455,7 +455,7 @@ const AppearanceSettingsPage: React.FC = () => {
 
         {/* Right Column: Live Preview (Sticky) */}
         <div className="xl:sticky xl:top-6 space-y-6 self-start">
-          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-1">Live Preview</h2>
+          <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2 px-1">{t(`Live Preview`)}</h2>
           
           <div className="grid grid-cols-2 gap-4">
             <PreviewCard title="Font" value={draft.fontFamily} />
@@ -464,22 +464,22 @@ const AppearanceSettingsPage: React.FC = () => {
 
           <Card className="p-[var(--app-panel-padding,1.25rem)] shadow-sm border border-[var(--color-border)]">
             <div className="mb-4 flex items-center justify-between border-b border-[var(--color-border)] pb-3">
-              <h3 className="text-sm font-bold text-[var(--color-text-primary)]">UI Components</h3>
-              <Button size="sm">Action</Button>
+              <h3 className="text-sm font-bold text-[var(--color-text-primary)]">{t(`UI Components`)}</h3>
+              <Button size="sm">{t(`Action`)}</Button>
             </div>
 
             <div className="space-y-6">
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Badges</p>
+                <p className="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">{t(`Badges`)}</p>
                 <div className="flex flex-wrap gap-2">
-                  <span className="rounded bg-[var(--color-success)]/10 border border-[var(--color-success)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-success)]">Approved</span>
-                  <span className="rounded bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-warning)]">Pending</span>
-                  <span className="rounded bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-danger)]">Failed</span>
+                  <span className="rounded bg-[var(--color-success)]/10 border border-[var(--color-success)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-success)]">{t(`Approved`)}</span>
+                  <span className="rounded bg-[var(--color-warning)]/10 border border-[var(--color-warning)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-warning)]">{t(`Pending`)}</span>
+                  <span className="rounded bg-[var(--color-danger)]/10 border border-[var(--color-danger)]/20 px-2.5 py-1 text-xs font-bold text-[var(--color-danger)]">{t(`Failed`)}</span>
                 </div>
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">Form Inputs</p>
+                <p className="mb-2 text-xs font-semibold uppercase text-[var(--color-text-muted)]">{t(`Form Inputs`)}</p>
                 <div className="space-y-3">
                   <input className={fieldClass} value="Focus me" readOnly />
                   <div className="flex gap-2">
@@ -498,18 +498,18 @@ const AppearanceSettingsPage: React.FC = () => {
               <table className="min-w-full divide-y divide-[var(--color-border)] text-sm">
                 <thead className="bg-[var(--color-bg-tertiary)]">
                   <tr>
-                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Doc</th>
-                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">Status</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t(`Doc`)}</th>
+                    <th className="px-4 py-2 text-left text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)]">{t(`Status`)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[var(--color-border)]">
                   <tr className="hover:bg-[var(--color-bg-tertiary)]/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">INV-001</td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">Draft</td>
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">{t(`INV-001`)}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{t(`Draft`)}</td>
                   </tr>
                   <tr className="hover:bg-[var(--color-bg-tertiary)]/50 transition-colors">
-                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">INV-002</td>
-                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">Paid</td>
+                    <td className="px-4 py-3 font-medium text-[var(--color-text-primary)]">{t(`INV-002`)}</td>
+                    <td className="px-4 py-3 text-[var(--color-text-secondary)]">{t(`Paid`)}</td>
                   </tr>
                 </tbody>
               </table>
@@ -519,7 +519,7 @@ const AppearanceSettingsPage: React.FC = () => {
           <Card className="p-[var(--app-panel-padding,1.25rem)] shadow-sm">
             <div className="mb-4 flex items-center gap-2">
               <Code className="h-4 w-4 text-[var(--color-text-muted)]" />
-              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">JSON Export</h2>
+              <h2 className="text-sm font-bold uppercase tracking-wider text-[var(--color-text-primary)]">{t(`JSON Export`)}</h2>
             </div>
             <textarea
               className="h-40 w-full rounded-md border border-[var(--color-border)] bg-[var(--color-bg-tertiary)] p-4 font-mono text-xs text-[var(--color-text-primary)] focus:outline-none focus:ring-1 focus:ring-[var(--color-primary)] shadow-inner resize-none"

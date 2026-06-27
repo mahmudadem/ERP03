@@ -7,12 +7,14 @@ import {
 } from '../../../api/salesMasterDataApi';
 import { UserCheck, Search, Plus, Edit3, ChevronLeft, Save, X, TrendingUp } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 // ─── Commission Summary Panel ─────────────────────────────────────────────────
 
 const CommissionSummary: React.FC<{ salespersonId: string }> = ({ salespersonId }) => {
+    const { t } = useTranslation('common');
   const [totals, setTotals] = useState<CommissionTotalsDTO | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -31,28 +33,28 @@ const CommissionSummary: React.FC<{ salespersonId: string }> = ({ salespersonId 
     <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
       <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center gap-2">
         <TrendingUp size={14} className="text-slate-400" />
-        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Commission Summary</p>
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Commission Summary`)}</p>
       </div>
       <div className="p-6">
         {loading ? (
-          <div className="text-xs text-slate-400 animate-pulse">Loading totals...</div>
+          <div className="text-xs text-slate-400 animate-pulse">{t(`Loading totals...`)}</div>
         ) : totals ? (
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-100 dark:border-amber-800 rounded-lg p-4">
-              <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">Accrued</p>
+              <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest mb-1">{t(`Accrued`)}</p>
               <p className="text-xl font-black text-slate-900 dark:text-slate-100">{fmt(totals.accrued)}</p>
             </div>
             <div className="bg-green-50 dark:bg-green-900/20 border border-green-100 dark:border-green-800 rounded-lg p-4">
-              <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">Paid</p>
+              <p className="text-[10px] font-black text-green-600 uppercase tracking-widest mb-1">{t(`Paid`)}</p>
               <p className="text-xl font-black text-slate-900 dark:text-slate-100">{fmt(totals.paid)}</p>
             </div>
             <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700 rounded-lg p-4">
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Cancelled</p>
+              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{t(`Cancelled`)}</p>
               <p className="text-xl font-black text-slate-900 dark:text-slate-100">{fmt(totals.cancelled)}</p>
             </div>
           </div>
         ) : (
-          <p className="text-xs text-slate-400">Could not load commission totals.</p>
+          <p className="text-xs text-slate-400">{t(`Could not load commission totals.`)}</p>
         )}
       </div>
     </Card>
@@ -76,6 +78,7 @@ type FormState = {
 };
 
 const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
+    const { t } = useTranslation('common');
   const [form, setForm] = useState<FormState>(() => ({
     code: initial?.code ?? '',
     name: initial?.name ?? '',
@@ -130,7 +133,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                 {initial ? 'Edit Salesperson' : 'New Salesperson'}
               </h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Salesperson Profile</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Salesperson Profile`)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -161,11 +164,11 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
 
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Profile</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Profile`)}</p>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Code</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Code`)}</label>
                 <input
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100 font-mono uppercase"
                   value={form.code}
@@ -174,7 +177,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Full Name</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Full Name`)}</label>
                 <input
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.name}
@@ -183,7 +186,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Email</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Email`)}</label>
                 <input
                   type="email"
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
@@ -193,7 +196,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Default Commission %</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Default Commission %`)}</label>
                 <input
                   type="number"
                   min={0}
@@ -205,14 +208,14 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Status</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Status`)}</label>
                 <select
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.status}
                   onChange={e => set({ status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
                 >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
+                  <option value="ACTIVE">{t(`Active`)}</option>
+                  <option value="INACTIVE">{t(`Inactive`)}</option>
                 </select>
               </div>
             </div>
@@ -229,6 +232,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
 // ─── List Page ────────────────────────────────────────────────────────────────
 
 const SalespersonsPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [salespersons, setSalespersons] = useState<SalespersonDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -274,8 +278,8 @@ const SalespersonsPage: React.FC = () => {
               <UserCheck size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Salespersons</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Sales Team & Commission Rates</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t(`Salespersons`)}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Sales Team & Commission Rates`)}</p>
             </div>
           </div>
           <button
@@ -294,7 +298,7 @@ const SalespersonsPage: React.FC = () => {
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
                 <Search size={14} /> Sales Team Directory
               </div>
-              {loading && <div className="text-[10px] text-sky-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
+              {loading && <div className="text-[10px] text-sky-500 font-black animate-pulse uppercase tracking-tighter">{t(`Loading...`)}</div>}
             </div>
 
             <div className="p-6">
@@ -304,8 +308,8 @@ const SalespersonsPage: React.FC = () => {
                     <UserCheck size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Salespersons Registered</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Add salespersons to track commissions and assignments.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t(`No Salespersons Registered`)}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t(`Add salespersons to track commissions and assignments.`)}</p>
                   </div>
                 </div>
               ) : (
@@ -326,7 +330,7 @@ const SalespersonsPage: React.FC = () => {
                           </div>
                           <div className="text-[11px] text-slate-400 space-x-2">
                             {sp.email && <span>{sp.email}</span>}
-                            <span>· {sp.defaultCommissionPct}% commission</span>
+                            <span>· {sp.defaultCommissionPct}{t(`% commission`)}</span>
                           </div>
                         </div>
                       </div>

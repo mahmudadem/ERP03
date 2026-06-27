@@ -18,6 +18,7 @@ import {
   loadSystemVoucherTypeGroups,
   SystemVoucherTypeGroup,
 } from '../../accounting/services/voucherTypesService';
+import { useTranslation } from "react-i18next";
 
 interface PurchaseInitializationWizardProps {
   onComplete: () => void;
@@ -27,6 +28,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
 
 const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => {
+    const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
@@ -216,25 +218,25 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-primary-100">
             <ShoppingCart className="h-10 w-10 text-primary-600" />
           </div>
-          <h2 className="mb-4 text-3xl font-bold text-gray-900">Welcome to Purchases Setup</h2>
+          <h2 className="mb-4 text-3xl font-bold text-gray-900">{t(`Welcome to Purchases Setup`)}</h2>
           <p className="mx-auto mb-8 max-w-2xl text-lg text-gray-600">
             Configure your purchasing workflow and accounting defaults before creating supplier transactions.
           </p>
           <div className="mx-auto grid max-w-3xl gap-6 text-left md:grid-cols-3">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <Calculator className="mb-3 h-8 w-8 text-primary-600" />
-              <h3 className="mb-1 font-semibold text-gray-900">Workflow</h3>
-              <p className="text-sm text-gray-600">Choose between invoice-only simplicity and a full operational flow.</p>
+              <h3 className="mb-1 font-semibold text-gray-900">{t(`Workflow`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Choose between invoice-only simplicity and a full operational flow.`)}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <DollarSign className="mb-3 h-8 w-8 text-primary-600" />
-              <h3 className="mb-1 font-semibold text-gray-900">Default Accounts</h3>
-              <p className="text-sm text-gray-600">Set AP, optional expense fallback, and GRNI when perpetual accounting is enabled.</p>
+              <h3 className="mb-1 font-semibold text-gray-900">{t(`Default Accounts`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Set AP, optional expense fallback, and GRNI when perpetual accounting is enabled.`)}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <Settings className="mb-3 h-8 w-8 text-primary-600" />
-              <h3 className="mb-1 font-semibold text-gray-900">Numbering</h3>
-              <p className="text-sm text-gray-600">Configure prefixes and default payment terms for purchase documents.</p>
+              <h3 className="mb-1 font-semibold text-gray-900">{t(`Numbering`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Configure prefixes and default payment terms for purchase documents.`)}</p>
             </div>
           </div>
         </div>
@@ -244,13 +246,13 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     if (currentStep === 1) {
       return (
         <div className="mx-auto max-w-3xl space-y-4 py-8">
-          <h2 className="text-center text-2xl font-bold text-gray-900">Choose Purchasing Workflow</h2>
+          <h2 className="text-center text-2xl font-bold text-gray-900">{t(`Choose Purchasing Workflow`)}</h2>
           <p className="mb-6 text-center text-gray-600">
             Workflow controls which purchase documents users see. Accounting mode is inherited from Inventory.
           </p>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            Inventory accounting mode: <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
+            {t(`Inventory accounting mode:`)} <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
           </div>
 
           <label className={`flex items-start gap-3 rounded-lg border bg-white p-5 ${simpleWorkflowDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${workflowMode === 'SIMPLE' ? 'border-primary-500' : 'border-gray-200 hover:border-primary-500'}`}>
@@ -262,8 +264,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
               disabled={simpleWorkflowDisabled}
             />
             <div>
-              <div className="font-semibold text-gray-900">Simple</div>
-              <div className="text-sm text-gray-600">Show invoices and returns only. Purchase Orders and Goods Receipts stay hidden.</div>
+              <div className="font-semibold text-gray-900">{t(`Simple`)}</div>
+              <div className="text-sm text-gray-600">{t(`Show invoices and returns only. Purchase Orders and Goods Receipts stay hidden.`)}</div>
             </div>
           </label>
 
@@ -275,8 +277,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
               onChange={() => setWorkflowMode('OPERATIONAL')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Operational</div>
-              <div className="text-sm text-gray-600">Expose Purchase Orders and Goods Receipts alongside invoices and returns.</div>
+              <div className="font-semibold text-gray-900">{t(`Operational`)}</div>
+              <div className="text-sm text-gray-600">{t(`Expose Purchase Orders and Goods Receipts alongside invoices and returns.`)}</div>
             </div>
           </label>
 
@@ -295,8 +297,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                   onChange={(e) => setAllowDirectInvoicing(e.target.checked)}
                 />
                 <div>
-                  <div className="font-semibold text-gray-900">Allow Direct Invoicing</div>
-                  <div className="text-sm text-gray-600">Allow vendor invoices without a Purchase Order or Goods Receipt path.</div>
+                  <div className="font-semibold text-gray-900">{t(`Allow Direct Invoicing`)}</div>
+                  <div className="text-sm text-gray-600">{t(`Allow vendor invoices without a Purchase Order or Goods Receipt path.`)}</div>
                 </div>
               </label>
 
@@ -307,8 +309,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                   onChange={(e) => setRequirePOForStockItems(e.target.checked)}
                 />
                 <div>
-                  <div className="font-semibold text-gray-900">Require Purchase Orders for Stock Items</div>
-                  <div className="text-sm text-gray-600">Force stock-item procurement to start from a Purchase Order.</div>
+                  <div className="font-semibold text-gray-900">{t(`Require Purchase Orders for Stock Items`)}</div>
+                  <div className="text-sm text-gray-600">{t(`Force stock-item procurement to start from a Purchase Order.`)}</div>
                 </div>
               </label>
             </div>
@@ -325,32 +327,32 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
       if (!accountingEnabled) {
         return (
           <div className="py-6 max-w-2xl mx-auto space-y-5">
-            <h2 className="text-2xl font-bold text-gray-900">Account Mapping</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t(`Account Mapping`)}</h2>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div className="font-semibold text-amber-900">Accounting Not Enabled</div>
-                  <div className="text-sm text-amber-800 mt-1">Purchase operations will track documents and quantities but will NOT create financial/GL postings.</div>
-                  <div className="text-sm text-amber-700 mt-2">To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.</div>
+                  <div className="font-semibold text-amber-900">{t(`Accounting Not Enabled`)}</div>
+                  <div className="text-sm text-amber-800 mt-1">{t(`Purchase operations will track documents and quantities but will NOT create financial/GL postings.`)}</div>
+                  <div className="text-sm text-amber-700 mt-2">{t(`To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.`)}</div>
                 </div>
               </div>
             </div>
-            <p className="text-sm text-gray-600">Account mapping (AP, GRNI, expense accounts) will be configured when Accounting is enabled. You can set these later from Purchase Settings.</p>
+            <p className="text-sm text-gray-600">{t(`Account mapping (AP, GRNI, expense accounts) will be configured when Accounting is enabled. You can set these later from Purchase Settings.`)}</p>
           </div>
         );
       }
 
       return (
         <div className="mx-auto max-w-3xl space-y-5 py-8">
-          <h2 className="text-center text-2xl font-bold text-gray-900">Default Accounts</h2>
+          <h2 className="text-center text-2xl font-bold text-gray-900">{t(`Default Accounts`)}</h2>
           <p className="mb-4 text-center text-sm text-gray-600">
             Required purchase posting accounts must be configured before initialization.
           </p>
 
           <div className="space-y-6">
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <label className="mb-2 block text-sm font-bold text-gray-700">Default Accounts Payable</label>
+              <label className="mb-2 block text-sm font-bold text-gray-700">{t(`Default Accounts Payable`)}</label>
               <AccountSelector
                 value={defaultAPAccountId}
                 onChange={(account: any) => setDefaultAPAccountId(account?.id || '')}
@@ -358,11 +360,11 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 placeholder="Select AP liability account"
                 disabled={isLoading}
               />
-              <p className="mt-2 text-xs text-gray-500">Primary vendor liability account. Usually Accounts Payable.</p>
+              <p className="mt-2 text-xs text-gray-500">{t(`Primary vendor liability account. Usually Accounts Payable.`)}</p>
             </div>
 
             <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-              <label className="mb-2 block text-sm font-bold text-gray-700">Default Purchase Expense</label>
+              <label className="mb-2 block text-sm font-bold text-gray-700">{t(`Default Purchase Expense`)}</label>
               <AccountSelector
                 value={defaultPurchaseExpenseAccountId}
                 onChange={(account: any) => setDefaultPurchaseExpenseAccountId(account?.id || '')}
@@ -377,7 +379,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
             {accountingMode === 'PERPETUAL' ? (
               <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-                <label className="mb-2 block text-sm font-bold text-gray-700">Default GRNI Account</label>
+                <label className="mb-2 block text-sm font-bold text-gray-700">{t(`Default GRNI Account`)}</label>
                 <AccountSelector
                   value={defaultGRNIAccountId}
                   onChange={(account: any) => setDefaultGRNIAccountId(account?.id || '')}
@@ -391,7 +393,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
               </div>
             ) : (
               <div className="rounded-lg border border-blue-200 bg-blue-50 p-6">
-                <p className="mb-1 text-sm font-medium text-blue-700">Invoice-driven purchase accounting</p>
+                <p className="mb-1 text-sm font-medium text-blue-700">{t(`Invoice-driven purchase accounting`)}</p>
                 <p className="text-sm text-blue-600/80">
                   Goods Receipts stay operational only. Purchase Invoices create the accounting effect.
                 </p>
@@ -404,10 +406,10 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                 Related Inventory Accounts
               </h4>
               <div className="mb-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
-                Accounting mode: <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
+                {t(`Accounting mode:`)} <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
               </div>
               <div>
-                <span className="block text-[10px] font-bold uppercase tracking-tight text-gray-400">Default Inventory Asset</span>
+                <span className="block text-[10px] font-bold uppercase tracking-tight text-gray-400">{t(`Default Inventory Asset`)}</span>
                 <span className="mt-1 block truncate rounded border border-gray-100 bg-white px-2 py-1 text-sm font-medium text-gray-600">
                   {getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}
                 </span>
@@ -421,11 +423,11 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     if (currentStep === 3) {
       return (
         <div className="mx-auto max-w-3xl space-y-6 py-8">
-          <h2 className="text-center text-2xl font-bold text-gray-900">Defaults & Numbering</h2>
-          <p className="mb-4 text-center text-gray-600">Set default payment terms and document prefixes.</p>
+          <h2 className="text-center text-2xl font-bold text-gray-900">{t(`Defaults & Numbering`)}</h2>
+          <p className="mb-4 text-center text-gray-600">{t(`Set default payment terms and document prefixes.`)}</p>
 
           <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-            <label className="mb-2 block text-sm font-semibold text-gray-700">Default Payment Terms (Days)</label>
+            <label className="mb-2 block text-sm font-semibold text-gray-700">{t(`Default Payment Terms (Days)`)}</label>
             <input
               type="number"
               min={0}
@@ -438,7 +440,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">PO Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">{t(`PO Prefix`)}</label>
               <input
                 type="text"
                 value={poNumberPrefix}
@@ -447,7 +449,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">GRN Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">{t(`GRN Prefix`)}</label>
               <input
                 type="text"
                 value={grnNumberPrefix}
@@ -456,7 +458,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">PI Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">{t(`PI Prefix`)}</label>
               <input
                 type="text"
                 value={piNumberPrefix}
@@ -465,7 +467,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
               />
             </div>
             <div>
-              <label className="mb-2 block text-sm font-semibold text-gray-700">PR Prefix</label>
+              <label className="mb-2 block text-sm font-semibold text-gray-700">{t(`PR Prefix`)}</label>
               <input
                 type="text"
                 value={prNumberPrefix}
@@ -489,14 +491,14 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
 
       return (
         <div className="py-8 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Voucher Types</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t(`Select Voucher Types`)}</h2>
           <p className="text-gray-600 mb-6 text-center">
             Pick which purchase document types to install. Each type comes with one or more default form variants &mdash; you'll activate or customize them next.
           </p>
 
           <div className="flex justify-between items-center mb-6">
             <p className="text-sm text-gray-600">
-              {selectedTypeKeys.length} of {voucherTypeGroups.length} types selected
+              {selectedTypeKeys.length} {t(`of`)} {voucherTypeGroups.length} types selected
             </p>
             <div className="flex gap-2">
               <button
@@ -520,7 +522,7 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
             {voucherTypeGroups.length === 0 ? (
               <div className="col-span-2 text-center py-12">
                 <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 font-medium">No Purchase voucher types available</p>
+                <p className="text-gray-600 font-medium">{t(`No Purchase voucher types available`)}</p>
                 <p className="text-sm text-gray-500 mt-1">
                   The system catalog has no Purchase templates yet. Contact your administrator.
                 </p>
@@ -557,12 +559,12 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                             </span>
                           )}
                           <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-                            {formCount} default form{formCount !== 1 ? 's' : ''}
+                            {formCount} {t(`default form`)}{formCount !== 1 ? 's' : ''}
                           </span>
                         </div>
                         {variantLabels.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">
-                            Variants: {variantLabels.join(' · ')}
+                            {t(`Variants:`)} {variantLabels.join(' · ')}
                           </p>
                         )}
                       </div>
@@ -580,14 +582,14 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
             <div className="flex items-start gap-2">
               <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800 space-y-1">
-                <p className="font-semibold">These install as locked, inactive default templates.</p>
+                <p className="font-semibold">{t(`These install as locked, inactive default templates.`)}</p>
                 <p>
                   The schemas are available immediately, but no sidebar entries appear until you open
-                  <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
+                  <span className="font-semibold"> {t(`Tools &rarr; Forms Designer`)}</span> and either:
                 </p>
                 <ul className="list-disc list-inside ml-1 space-y-0.5">
-                  <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
-                  <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                  <li><span className="font-semibold">{t(`Activate`)}</span> {t(`a default form to use it as-is, or`)}</li>
+                  <li><span className="font-semibold">{t(`Clone`)}</span> {t(`it to create an editable variant.`)}</li>
                 </ul>
               </div>
             </div>
@@ -602,15 +604,15 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
           <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
             <CheckCircle className="h-8 w-8 text-green-600" />
           </div>
-          <h2 className="mb-2 text-2xl font-bold text-gray-900">Review & Initialize</h2>
-          <p className="text-gray-600">Review the configuration below and initialize the Purchases module.</p>
+          <h2 className="mb-2 text-2xl font-bold text-gray-900">{t(`Review & Initialize`)}</h2>
+          <p className="text-gray-600">{t(`Review the configuration below and initialize the Purchases module.`)}</p>
         </div>
 
         {!accountingEnabled && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>Accounting is not enabled. This initialization will set up purchase operations only — no financial/GL postings will be created.</span>
+              <span>{t(`Accounting is not enabled. This initialization will set up purchase operations only — no financial/GL postings will be created.`)}</span>
             </div>
           </div>
         )}
@@ -618,43 +620,43 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
         <div className="space-y-4 rounded-xl border border-gray-200 bg-white p-6 shadow-sm">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Workflow Mode</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Workflow Mode`)}</div>
               <div className="mt-1 font-semibold text-gray-900">{getWorkflowModeLabel(workflowMode)}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Accounting Mode</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Accounting Mode`)}</div>
               <div className="mt-1 font-semibold text-gray-900">{getAccountingModeLabel(accountingMode)}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Allow Direct Invoicing</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Allow Direct Invoicing`)}</div>
               <div className="mt-1 font-semibold text-gray-900">{workflowMode === 'SIMPLE' ? 'Yes' : allowDirectInvoicing ? 'Yes' : 'No'}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Require PO For Stock Items</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Require PO For Stock Items`)}</div>
               <div className="mt-1 font-semibold text-gray-900">{workflowMode === 'SIMPLE' ? 'No' : requirePOForStockItems ? 'Yes' : 'No'}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Default AP Account</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Default AP Account`)}</div>
               <div className="mt-1 font-semibold text-gray-900">{getAccountLabel(defaultAPAccountId)}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Default Purchase Expense</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Default Purchase Expense`)}</div>
               <div className="mt-1 font-semibold text-gray-900">{getAccountLabel(defaultPurchaseExpenseAccountId)}</div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Default GRNI Account</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Default GRNI Account`)}</div>
               <div className="mt-1 font-semibold text-gray-900">
                 {accountingMode === 'PERPETUAL' ? getAccountLabel(defaultGRNIAccountId) : 'Not Required'}
               </div>
             </div>
             <div>
-              <div className="text-xs uppercase tracking-wide text-gray-500">Default Payment Terms</div>
-              <div className="mt-1 font-semibold text-gray-900">{defaultPaymentTermsDays} days</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Default Payment Terms`)}</div>
+              <div className="mt-1 font-semibold text-gray-900">{defaultPaymentTermsDays} {t(`days`)}</div>
             </div>
             <div className="md:col-span-2">
-              <div className="text-xs uppercase tracking-wide text-gray-500">Selected Voucher Types</div>
+              <div className="text-xs uppercase tracking-wide text-gray-500">{t(`Selected Voucher Types`)}</div>
               {selectedTypeKeys.length === 0 ? (
-                <div className="mt-1 text-sm text-gray-500">None selected. You can add them later from Settings.</div>
+                <div className="mt-1 text-sm text-gray-500">{t(`None selected. You can add them later from Settings.`)}</div>
               ) : (
                 <ul className="mt-1 space-y-1">
                   {selectedTypeKeys.map((typeKey) => {
@@ -664,17 +666,17 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
                         <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />
                         <span className="font-medium">{group.name}</span>
                         <span className="text-xs text-gray-500">
-                          ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                          ({group.forms.length} {t(`default form`)}{group.forms.length !== 1 ? 's' : ''})
                         </span>
                       </li>
                     ) : null;
                   })}
                   <li className="text-xs text-gray-600 mt-1">
-                    Total: {selectedTypeKeys.length} type{selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
+                    {t(`Total:`)} {selectedTypeKeys.length} {t(`type`)}{selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
                     {voucherTypeGroups
                       .filter((g) => selectedTypeKeys.includes(g.typeKey))
                       .reduce((sum, g) => sum + g.forms.length, 0)}{' '}
-                    form{' '}variants will install as locked defaults
+                    {t(`form`)}{' '}variants will install as locked defaults
                   </li>
                 </ul>
               )}
@@ -689,8 +691,8 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
     <div className="min-h-screen bg-gray-50 py-10">
       <div className="mx-auto max-w-5xl px-4">
         <div className="mb-8 text-center">
-          <h1 className="mb-2 text-4xl font-bold text-gray-900">Purchases Module Initialization</h1>
-          <p className="text-lg text-gray-600">Set workflow, accounting defaults, and numbering for procurement.</p>
+          <h1 className="mb-2 text-4xl font-bold text-gray-900">{t(`Purchases Module Initialization`)}</h1>
+          <p className="text-lg text-gray-600">{t(`Set workflow, accounting defaults, and numbering for procurement.`)}</p>
         </div>
 
         <div className="mb-8 flex items-center justify-center">

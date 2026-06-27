@@ -10,6 +10,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from "react-i18next";
 
 type ViewMode = 'byItem' | 'byWarehouse';
 
@@ -48,6 +49,7 @@ const Initiator: React.FC<{
   onSubmit: (params: StockLevelParams) => void;
   initialParams?: StockLevelParams | null;
 }> = ({ onSubmit, initialParams }) => {
+    const { t } = useTranslation('common');
   const [itemId, setItemId] = useState(initialParams?.itemId || '');
   const [warehouseId, setWarehouseId] = useState(initialParams?.warehouseId || '');
   const [viewMode, setViewMode] = useState<ViewMode>(initialParams?.viewMode || 'byItem');
@@ -70,7 +72,7 @@ const Initiator: React.FC<{
     >
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
         <div className="md:col-span-6 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Item</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Item`)}</label>
           <ItemSelector
             value={itemId}
             trackInventoryOnly
@@ -79,7 +81,7 @@ const Initiator: React.FC<{
           />
         </div>
         <div className="md:col-span-6 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Warehouse</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Warehouse`)}</label>
           <WarehouseSelector
             value={warehouseId}
             onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
@@ -87,14 +89,14 @@ const Initiator: React.FC<{
           />
         </div>
         <div className="md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">View</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`View`)}</label>
           <select
             value={viewMode}
             onChange={(event) => setViewMode(event.target.value as ViewMode)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50"
           >
-            <option value="byItem">By item</option>
-            <option value="byWarehouse">By warehouse</option>
+            <option value="byItem">{t(`By item`)}</option>
+            <option value="byWarehouse">{t(`By warehouse`)}</option>
           </select>
         </div>
         <label className="md:col-span-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-semibold text-slate-700">
@@ -141,6 +143,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, pagination, setTotalItems, density }) => {
+    const { t } = useTranslation('common');
   const [levels, setLevels] = useState<StockLevelDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -247,17 +250,17 @@ const ReportContent: React.FC<{
           </span>
           {negativeCount > 0 && (
             <span className="text-xs font-semibold text-red-700 border border-red-200 bg-red-50 rounded-full px-2 py-1">
-              Negative lines: {negativeCount}
+              {t(`Negative lines:`)} {negativeCount}
             </span>
           )}
           {unvaluedCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
               <TriangleAlert className="h-3 w-3" />
-              Unvalued negatives: {unvaluedCount}
+              {t(`Unvalued negatives:`)} {unvaluedCount}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            Lines: <span className="font-black text-slate-700">{levels.length}</span> ·
+            {t(`Lines:`)} <span className="font-black text-slate-700">{levels.length}</span> ·
             Value: <span className="font-black text-emerald-700">{fmt(totalValue)}</span>
           </span>
         </div>
@@ -269,13 +272,13 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading stock levels...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t(`Loading stock levels...`)}</p>
             </div>
           </div>
         ) : rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 shadow-sm text-center">
             <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-600">No stock levels match the filters.</p>
+            <p className="text-sm font-bold text-slate-600">{t(`No stock levels match the filters.`)}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
@@ -283,12 +286,12 @@ const ReportContent: React.FC<{
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className={`${cellPad} text-left`}>Item</th>
-                    <th className={`${cellPad} text-right`}>Warehouses</th>
-                    <th className={`${cellPad} text-right`}>Total Qty</th>
-                    <th className={`${cellPad} text-right`}>Blended Cost</th>
-                    <th className={`${cellPad} text-right`}>Total Value</th>
-                    <th className={`${cellPad} text-left`}>Status</th>
+                    <th className={`${cellPad} text-left`}>{t(`Item`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Warehouses`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Total Qty`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Blended Cost`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Total Value`)}</th>
+                    <th className={`${cellPad} text-left`}>{t(`Status`)}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -311,13 +314,13 @@ const ReportContent: React.FC<{
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className={`${cellPad} text-left`}>Item</th>
-                    <th className={`${cellPad} text-left`}>Warehouse</th>
-                    <th className={`${cellPad} text-right`}>Qty</th>
-                    <th className={`${cellPad} text-right`}>Report Cost</th>
-                    <th className={`${cellPad} text-left`}>Basis</th>
-                    <th className={`${cellPad} text-right`}>Report Value</th>
-                    <th className={`${cellPad} text-left`}>Warning</th>
+                    <th className={`${cellPad} text-left`}>{t(`Item`)}</th>
+                    <th className={`${cellPad} text-left`}>{t(`Warehouse`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Qty`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Report Cost`)}</th>
+                    <th className={`${cellPad} text-left`}>{t(`Basis`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Report Value`)}</th>
+                    <th className={`${cellPad} text-left`}>{t(`Warning`)}</th>
                   </tr>
                 </thead>
                 <tbody>

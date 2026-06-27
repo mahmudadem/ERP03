@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { DocumentFormDesigner, DocumentFormConfig, AvailableField, loadModuleDocumentForms, loadModuleDocumentDefinitions, loadSystemVoucherTypes, saveDocumentForm, updateFormMetadata, WizardProvider } from '../forms-designer'; import { ModuleStatusBanner } from '../forms-designer/components/ModuleStatusBanner'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { useCompanyModules } from '../../../hooks/useCompanyModules'; import { purchasesApi } from '../../../api/purchasesApi'; import { salesApi } from '../../../api/salesApi'; import { useAuth } from '../../../context/AuthContext'; import { FileText, ShoppingCart, Package, ChevronRight, RefreshCw, FileSpreadsheet, Plus, DownloadCloud } from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
 
 type ERPModule = 'ACCOUNTING' | 'SALES' | 'PURCHASE';
 
@@ -20,6 +21,7 @@ const MODULE_CODE_MAP: Record<ERPModule, string> = {
 };
 
 export default function ToolsFormsDesignerPage() {
+    const { t } = useTranslation('common');
   const { companyId, moduleBundles } = useCompanyAccess();
   const { user } = useAuth();
   const { isModuleInitialized, getModuleStatus, loading: modulesLoading } = useCompanyModules();
@@ -342,7 +344,7 @@ export default function ToolsFormsDesignerPage() {
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
         <Spinner size="xl" variant="indigo" className="mb-4" />
-        <p className="text-slate-500 font-medium animate-pulse">Initializing {activeModule} Designer...</p>
+        <p className="text-slate-500 font-medium animate-pulse">{t(`Initializing`)} {activeModule} {t(`Designer...`)}</p>
       </div>
     );
   }
@@ -360,9 +362,9 @@ export default function ToolsFormsDesignerPage() {
                 Document Form Designer
               </h1>
               <div className="flex items-center gap-1.5 text-xs font-bold text-slate-400">
-                <span className="uppercase">Platform Tools</span>
+                <span className="uppercase">{t(`Platform Tools`)}</span>
                 <ChevronRight size={12} />
-                <span className="text-indigo-500 uppercase">{activeModule} Domain</span>
+                <span className="text-indigo-500 uppercase">{activeModule} {t(`Domain`)}</span>
               </div>
             </div>
           </div>
@@ -405,7 +407,7 @@ export default function ToolsFormsDesignerPage() {
                 title="Synchronize with Platform Catalog"
               >
                 <DownloadCloud size={18} className={isSyncing ? "animate-spin" : ""} />
-                <span className="hidden xl:inline">Sync Catalog</span>
+                <span className="hidden xl:inline">{t(`Sync Catalog`)}</span>
             </button>
             <button 
                 onClick={handleSyncCatalog}
@@ -414,7 +416,7 @@ export default function ToolsFormsDesignerPage() {
                 title="Refresh Data"
               >
                 <RefreshCw size={18} className={isSyncing ? "animate-spin" : ""} />
-                <span className="hidden xl:inline">Refresh</span>
+                <span className="hidden xl:inline">{t(`Refresh`)}</span>
             </button>
             <div className="h-8 w-px bg-slate-200 mx-2"></div>
             <DocumentFormDesignerHeaderActions 
@@ -459,7 +461,7 @@ export default function ToolsFormsDesignerPage() {
             <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] z-[60] flex items-center justify-center">
               <div className="bg-white p-6 rounded-2xl shadow-2xl flex items-center gap-4 border border-slate-100">
                   <Spinner size="lg" variant="indigo" />
-                  <span className="text-lg font-bold text-slate-700">Saving Design Configuration...</span>
+                  <span className="text-lg font-bold text-slate-700">{t(`Saving Design Configuration...`)}</span>
               </div>
             </div>
           )}

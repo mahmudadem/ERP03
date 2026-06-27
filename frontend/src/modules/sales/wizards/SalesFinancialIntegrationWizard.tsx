@@ -8,12 +8,14 @@ import { inventoryApi } from '../../../api/inventoryApi';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { resolveInventoryAccountingMode } from '../../../utils/documentPolicy';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
+import { useTranslation } from "react-i18next";
 
 const stepTitles = ['Impact Assessment', 'Account Mappings', 'Review & Confirm'];
 
 const accountLabel = (account: Account): string => `${account.code} - ${account.name}`;
 
 export const SalesFinancialIntegrationWizard: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { accounts, isLoading: loadingAccounts } = useAccounts();
   const { isModuleInitialized, loading: modulesLoading } = useCompanyModules();
@@ -139,7 +141,7 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
           <div className="w-20 h-20 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center mx-auto mb-6">
             <TrendingUp className="w-10 h-10" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Sales Financial Integration</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">{t(`Sales Financial Integration`)}</h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-8">
             Configure how sales transactions post to your General Ledger. This setup links your revenue and receivables workflows to the appropriate GL accounts.
           </p>
@@ -147,8 +149,8 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800">
-                <div className="font-semibold">Important</div>
-                <div className="mt-1">Account mappings can be changed later from Sales Settings, but all sales transactions will use whatever mappings are active at posting time.</div>
+                <div className="font-semibold">{t(`Important`)}</div>
+                <div className="mt-1">{t(`Account mappings can be changed later from Sales Settings, but all sales transactions will use whatever mappings are active at posting time.`)}</div>
               </div>
             </div>
           </div>
@@ -157,8 +159,8 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
               <div className="flex items-start gap-2">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <div className="text-sm text-amber-800">
-                  <div className="font-semibold">Perpetual Inventory Active</div>
-                  <div className="mt-1">Your inventory is running in perpetual mode. Delivery Notes will create inventory accounting entries. Sales invoices post to the revenue account you configure here.</div>
+                  <div className="font-semibold">{t(`Perpetual Inventory Active`)}</div>
+                  <div className="mt-1">{t(`Your inventory is running in perpetual mode. Delivery Notes will create inventory accounting entries. Sales invoices post to the revenue account you configure here.`)}</div>
                 </div>
               </div>
             </div>
@@ -170,11 +172,11 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
     if (currentStep === 1) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900">Account Mappings</h2>
-          <p className="text-sm text-gray-600">Select the GL accounts that sales transactions will post to.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Account Mappings`)}</h2>
+          <p className="text-sm text-gray-600">{t(`Select the GL accounts that sales transactions will post to.`)}</p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Revenue Account <span className="text-red-500">*</span></label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Revenue Account`)} <span className="text-red-500">*</span></label>
             <AccountSelector
               value={defaultRevenueAccountId}
               onChange={(account: any) => setDefaultRevenueAccountId(account?.id || '')}
@@ -182,11 +184,11 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
               disabled={loadingAccounts}
               accounts={revenueAccounts as any}
             />
-            <p className="mt-1 text-xs text-gray-500">Primary revenue account used for all sales invoicing.</p>
+            <p className="mt-1 text-xs text-gray-500">{t(`Primary revenue account used for all sales invoicing.`)}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Accounts Receivable</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Accounts Receivable`)}</label>
             <AccountSelector
               value={defaultARAccountId}
               onChange={(account: any) => setDefaultARAccountId(account?.id || '')}
@@ -194,11 +196,11 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
               disabled={loadingAccounts}
               accounts={assetAccounts as any}
             />
-            <p className="mt-1 text-xs text-gray-500">Customer receivables account. If not set, you will need to specify it per invoice or customer.</p>
+            <p className="mt-1 text-xs text-gray-500">{t(`Customer receivables account. If not set, you will need to specify it per invoice or customer.`)}</p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Sales Expense Account</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Sales Expense Account`)}</label>
             <AccountSelector
               value={defaultSalesExpenseAccountId}
               onChange={(account: any) => setDefaultSalesExpenseAccountId(account?.id || '')}
@@ -206,7 +208,7 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
               disabled={loadingAccounts}
               accounts={expenseAccounts as any}
             />
-            <p className="mt-1 text-xs text-gray-500">Optional fallback for sales-related expense postings.</p>
+            <p className="mt-1 text-xs text-gray-500">{t(`Optional fallback for sales-related expense postings.`)}</p>
           </div>
         </div>
       );
@@ -214,20 +216,20 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
 
     return (
       <div className="py-6 max-w-2xl mx-auto space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Review & Confirm</h2>
-        <p className="text-sm text-gray-600">Review your financial integration settings.</p>
+        <h2 className="text-2xl font-bold text-gray-900">{t(`Review & Confirm`)}</h2>
+        <p className="text-sm text-gray-600">{t(`Review your financial integration settings.`)}</p>
 
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Revenue Account:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Revenue Account:`)}</span>{' '}
             <span className="text-gray-700">{defaultRevenueAccountId ? accountLabel(allAccounts.find(a => a.id === defaultRevenueAccountId)!) : 'Not selected'}</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Accounts Receivable:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Accounts Receivable:`)}</span>{' '}
             <span className="text-gray-700">{defaultARAccountId ? accountLabel(allAccounts.find(a => a.id === defaultARAccountId)!) : 'Not selected'}</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Sales Expense:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Sales Expense:`)}</span>{' '}
             <span className="text-gray-700">{defaultSalesExpenseAccountId ? accountLabel(allAccounts.find(a => a.id === defaultSalesExpenseAccountId)!) : 'Not selected'}</span>
           </div>
         </div>
@@ -235,7 +237,7 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
         <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>These mappings take effect immediately for all future sales transactions.</span>
+            <span>{t(`These mappings take effect immediately for all future sales transactions.`)}</span>
           </div>
         </div>
       </div>
@@ -275,7 +277,7 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-white/90">Step {currentStep + 1} of {stepTitles.length}</span>
+            <span className="text-xs font-medium text-white/90">{t(`Step`)} {currentStep + 1} {t(`of`)} {stepTitles.length}</span>
             <span className="text-xs font-semibold text-white">{stepTitles[currentStep]}</span>
           </div>
         </div>
@@ -295,11 +297,11 @@ export const SalesFinancialIntegrationWizard: React.FC = () => {
           <div className="flex items-center gap-3">
             {currentStep < stepTitles.length - 1 ? (
               <button type="button" onClick={goNext} className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 transition">
-                Next Step <ChevronRight className="w-4 h-4" />
+                {t(`Next Step`)} <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
               <button type="button" onClick={submit} disabled={submitting} className="flex items-center gap-2 rounded-lg bg-primary-600 px-8 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50 transition">
-                {submitting ? (<><Spinner size="sm" /> Configuring...</>) : (<><CheckCircle2 className="w-4 h-4" /> Enable Integration</>)}
+                {submitting ? (<><Spinner size="sm" /> {t(`Configuring...`)}</>) : (<><CheckCircle2 className="w-4 h-4" /> {t(`Enable Integration`)}</>)}
               </button>
             )}
           </div>

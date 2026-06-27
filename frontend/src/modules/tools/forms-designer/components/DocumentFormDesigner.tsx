@@ -23,6 +23,7 @@ import { designerApi } from '../../../../api/designerApi';
 import { useCompanyAccess } from '../../../../context/CompanyAccessContext';
 import { useAuth } from '../../../../hooks/useAuth';
 import { useConfirm } from '../../../../hooks/useConfirm';
+import { useTranslation } from "react-i18next";
 
 interface Props { // Renamed from DocumentFormDesignerProps as per the snippet
   templates?: DocumentFormConfig[]; // System-wide templates for Step 1
@@ -40,6 +41,7 @@ interface Props { // Renamed from DocumentFormDesignerProps as per the snippet
 }
 
 export const DocumentFormDesigner: React.FC<Props> = (props) => {
+    const { t } = useTranslation('common');
   const { 
     templates = [], 
     onExit,
@@ -394,8 +396,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                   <FileSpreadsheet size={20} />
                   </div>
                   <div>
-                  <h1 className="text-lg font-bold text-slate-800 leading-tight">Document Form Designer</h1>
-                  <p className="text-xs text-slate-500">Manage your accounting document layouts</p>
+                  <h1 className="text-lg font-bold text-slate-800 leading-tight">{t(`Document Form Designer`)}</h1>
+                  <p className="text-xs text-slate-500">{t(`Manage your accounting document layouts`)}</p>
                   </div>
               </div>
            </div>
@@ -441,8 +443,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
             {allForms.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
                 <FileSpreadsheet size={64} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-bold text-gray-600 mb-2">No Document Forms Yet</h3>
-                <p className="text-gray-500 mb-6">Get started by designing your first document form</p>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">{t(`No Document Forms Yet`)}</h3>
+                <p className="text-gray-500 mb-6">{t(`Get started by designing your first document form`)}</p>
                 <RequirePermission permission="accounting.designer.create">
                   <button 
                     onClick={handleCreateNew}
@@ -455,8 +457,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
             ) : forms.length === 0 ? (
               <div className="text-center py-20 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
                 <Search size={48} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-bold text-gray-600 mb-2">No Matches Found</h3>
-                <p className="text-gray-500 mb-4">No forms match your search "{searchQuery}"</p>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">{t(`No Matches Found`)}</h3>
+                <p className="text-gray-500 mb-4">{t(`No forms match your search "`)}{searchQuery}"</p>
                 <button 
                   onClick={() => setSearchQuery('')}
                   className="text-indigo-600 font-bold hover:underline"
@@ -478,8 +480,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                           <Shield size={20} />
                         </div>
                         <div className="text-left">
-                          <h2 className="text-lg font-bold text-slate-800">Default Forms</h2>
-                          <p className="text-xs text-slate-500">System templates adopted by your company</p>
+                          <h2 className="text-lg font-bold text-slate-800">{t(`Default Forms`)}</h2>
+                          <p className="text-xs text-slate-500">{t(`System templates adopted by your company`)}</p>
                         </div>
                         <span className="ml-2 bg-indigo-100 text-indigo-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
                           {forms.filter(f => isProtected(f)).length}
@@ -523,8 +525,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                           <DownloadCloud size={20} />
                         </div>
                         <div className="text-left">
-                          <h2 className="text-lg font-bold text-slate-800">Available in Catalog</h2>
-                          <p className="text-xs text-slate-500">Document types from the platform catalog — adopt to customize</p>
+                          <h2 className="text-lg font-bold text-slate-800">{t(`Available in Catalog`)}</h2>
+                          <p className="text-xs text-slate-500">{t(`Document types from the platform catalog — adopt to customize`)}</p>
                         </div>
                         <span className="ml-2 bg-blue-100 text-blue-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
                           {catalogTemplates.length}
@@ -554,7 +556,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                               </div>
                               
                               <h3 className="text-lg font-bold text-gray-900 mb-1">{template.name}</h3>
-                              <p className="text-xs text-gray-500 truncate">Code: {template.code}</p>
+                              <p className="text-xs text-gray-500 truncate">{t(`Code:`)} {template.code}</p>
                               
                               <div className="mt-4 flex gap-2 flex-wrap">
                                 {template.adoptionStatus === 'active' ? (
@@ -601,8 +603,8 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                           <User size={20} />
                         </div>
                         <div className="text-left">
-                          <h2 className="text-lg font-bold text-slate-800">Your Custom Forms</h2>
-                          <p className="text-xs text-slate-500">Document configurations tailored for your company</p>
+                          <h2 className="text-lg font-bold text-slate-800">{t(`Your Custom Forms`)}</h2>
+                          <p className="text-xs text-slate-500">{t(`Document configurations tailored for your company`)}</p>
                         </div>
                         <span className="ml-2 bg-green-100 text-green-700 text-[10px] font-black px-2 py-0.5 rounded-full uppercase tracking-widest">
                           {forms.filter(f => !isProtected(f)).length}
@@ -632,7 +634,7 @@ export const DocumentFormDesigner: React.FC<Props> = (props) => {
                         </div>
                       ) : (
                         <div className="py-12 text-center">
-                           <p className="text-gray-400 text-sm italic">No custom forms created yet. Clone a system template or adopt from the catalog to get started.</p>
+                           <p className="text-gray-400 text-sm italic">{t(`No custom forms created yet. Clone a system template or adopt from the catalog to get started.`)}</p>
                         </div>
                       )}
                     </div>

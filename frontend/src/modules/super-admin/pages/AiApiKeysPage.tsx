@@ -17,10 +17,12 @@ import {
 } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(value: any): T => (value?.data !== undefined ? value.data : value) as T;
 
 export const AiApiKeysPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [keys, setKeys] = useState<AiPlatformApiKey[]>([]);
   const [providers, setProviders] = useState<AiProvider[]>([]);
   const [loading, setLoading] = useState(true);
@@ -169,10 +171,10 @@ export const AiApiKeysPage: React.FC = () => {
       {/* Create form */}
       {showCreate && (
         <div className="rounded-xl border border-slate-200 bg-white p-5 space-y-3">
-          <h2 className="text-base font-semibold text-slate-900">Add a new API key</h2>
+          <h2 className="text-base font-semibold text-slate-900">{t(`Add a new API key`)}</h2>
           <div className="grid gap-3 sm:grid-cols-2">
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Label</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Label`)}</label>
               <input
                 type="text"
                 value={form.label}
@@ -182,13 +184,13 @@ export const AiApiKeysPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Provider</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Provider`)}</label>
               <select
                 value={form.providerId}
                 onChange={e => setForm(f => ({ ...f, providerId: e.target.value }))}
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
               >
-                <option value="">— pick a provider —</option>
+                <option value="">{t(`— pick a provider —`)}</option>
                 {providers.map(p => (
                   <option key={p.id} value={p.id}>{p.name} ({p.type})</option>
                 ))}
@@ -196,7 +198,7 @@ export const AiApiKeysPage: React.FC = () => {
             </div>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">API key</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">{t(`API key`)}</label>
             <input
               type="password"
               value={form.apiKey}
@@ -205,10 +207,10 @@ export const AiApiKeysPage: React.FC = () => {
               className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-mono"
               autoComplete="off"
             />
-            <p className="mt-1 text-xs text-slate-500">Encrypted at rest. Never displayed back to anyone after save.</p>
+            <p className="mt-1 text-xs text-slate-500">{t(`Encrypted at rest. Never displayed back to anyone after save.`)}</p>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-700 mb-1">Notes (optional)</label>
+            <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Notes (optional)`)}</label>
             <input
               type="text"
               value={form.notes}
@@ -247,7 +249,7 @@ export const AiApiKeysPage: React.FC = () => {
       ) : keys.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-10 text-center">
           <Key className="mx-auto h-10 w-10 text-slate-400" />
-          <h3 className="mt-3 text-base font-semibold text-slate-700">No keys saved yet</h3>
+          <h3 className="mt-3 text-base font-semibold text-slate-700">{t(`No keys saved yet`)}</h3>
           <p className="mt-1 text-sm text-slate-500">
             Add your first key — typically one per provider (OpenRouter, OpenAI, Anthropic).
           </p>
@@ -263,7 +265,7 @@ export const AiApiKeysPage: React.FC = () => {
                   <Server className="h-4 w-4 text-slate-500" />
                   <span className="text-sm font-semibold text-slate-900">{provider.name}</span>
                   <span className="text-xs text-slate-500">· {provider.type}</span>
-                  <span className="text-xs text-slate-400 ml-auto">{providerKeys.length} key{providerKeys.length > 1 ? 's' : ''}</span>
+                  <span className="text-xs text-slate-400 ml-auto">{providerKeys.length} {t(`key`)}{providerKeys.length > 1 ? 's' : ''}</span>
                 </div>
                 <ul className="divide-y divide-slate-100">
                   {providerKeys.map(k => (
@@ -332,7 +334,7 @@ export const AiApiKeysPage: React.FC = () => {
                             {k.notes && <p className="mt-1 text-xs text-slate-500 italic">{k.notes}</p>}
                             {k.lastValidatedAt && (
                               <p className="mt-1 text-xs text-slate-400">
-                                Last validated {new Date(k.lastValidatedAt).toLocaleString()}
+                                {t(`Last validated`)} {new Date(k.lastValidatedAt).toLocaleString()}
                               </p>
                             )}
                           </div>

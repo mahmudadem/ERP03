@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Scale,
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -56,6 +57,7 @@ const BalanceSheetSection: React.FC<SectionProps> = ({
   collapsed,
   onToggle,
 }) => {
+    const { t } = useTranslation('common');
   const accent = ACCENT[accentColor];
 
   const lineMap = useMemo(
@@ -95,7 +97,7 @@ const BalanceSheetSection: React.FC<SectionProps> = ({
           </span>
         </div>
         <div className="text-right">
-          <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Total</p>
+          <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Total`)}</p>
           <p className={`font-mono text-sm font-bold ${accent.total}`}>
             {fmt(section.total, currency)}
           </p>
@@ -105,7 +107,7 @@ const BalanceSheetSection: React.FC<SectionProps> = ({
       {/* Lines */}
       <div className="divide-y divide-[#F1F5F9] flex-1">
         {visibleLines.length === 0 ? (
-          <div className="px-4 py-6 text-center text-slate-400 text-xs">No accounts</div>
+          <div className="px-4 py-6 text-center text-slate-400 text-xs">{t(`No accounts`)}</div>
         ) : (
           visibleLines.map((line, idx) => {
             const hasChildren = parentIds.has(line.accountId);
@@ -154,6 +156,7 @@ const BalanceSheetSection: React.FC<SectionProps> = ({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ApexBalanceSheet() {
+    const { t } = useTranslation('common');
   const today = new Date().toISOString().slice(0, 10);
   const [asOfDate, setAsOfDate] = useState(today);
   const [data, setData] = useState<BalanceSheetData | null>(null);
@@ -236,7 +239,7 @@ export default function ApexBalanceSheet() {
       {loading && !data && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 text-center">
           <RefreshCw size={18} className="animate-spin text-slate-400 mx-auto mb-2" />
-          <p className="text-xs text-slate-400">Loading Balance Sheet…</p>
+          <p className="text-xs text-slate-400">{t(`Loading Balance Sheet…`)}</p>
         </div>
       )}
 
@@ -356,7 +359,7 @@ export default function ApexBalanceSheet() {
               ) : (
                 <div className="flex items-center gap-2 bg-amber-50 border border-amber-100 rounded px-3 py-2 text-amber-700 text-xs font-semibold">
                   <AlertTriangle size={13} />
-                  Out of balance by{' '}
+                  {t(`Out of balance by`)}{' '}
                   <span className="font-mono">{fmt(difference, currency)}</span>
                 </div>
               )}
@@ -369,9 +372,9 @@ export default function ApexBalanceSheet() {
       {!generated && !loading && !error && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
           <Scale size={28} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-500">Balance Sheet</p>
+          <p className="text-sm font-semibold text-slate-500">{t(`Balance Sheet`)}</p>
           <p className="text-xs text-slate-400 mt-1">
-            Select a date and click <strong>Generate</strong> to view the report.
+            {t(`Select a date and click`)} <strong>{t(`Generate`)}</strong> to view the report.
           </p>
         </div>
       )}

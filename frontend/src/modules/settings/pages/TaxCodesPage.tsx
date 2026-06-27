@@ -4,6 +4,8 @@ import { Edit2, Lock, Plus, RefreshCw, X } from 'lucide-react';
 import { Card } from '../../../components/ui/Card';
 import { PurchaseTaxTreatment, TaxCodeDTO, TaxScope, TaxType, sharedApi } from '../../../api/sharedApi';
 import { AccountSelector } from '../../accounting/components/shared/AccountSelector';
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 type TaxPriceBasis = '' | 'EXCLUSIVE' | 'INCLUSIVE';
 
@@ -66,6 +68,7 @@ const errorMessage = (error: unknown): string => {
 };
 
 const TaxCodesPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [taxCodes, setTaxCodes] = useState<TaxCodeDTO[]>([]);
   const [form, setForm] = useState<TaxCodeFormState>(emptyForm);
   const [loading, setLoading] = useState(false);
@@ -85,7 +88,7 @@ const TaxCodesPage: React.FC = () => {
       setTaxCodes(result || []);
     } catch (error) {
       console.error('Failed to load tax codes', error);
-      toast.error('Failed to load tax codes.');
+      toast.error(i18n.t('Failed to load tax codes.'));
       setTaxCodes([]);
     } finally {
       setLoading(false);
@@ -161,10 +164,10 @@ const TaxCodesPage: React.FC = () => {
 
       if (editing) {
         await sharedApi.updateTaxCode(editing.id, payload);
-        toast.success('Tax code updated.');
+        toast.success(i18n.t('Tax code updated.'));
       } else {
         await sharedApi.createTaxCode(payload);
-        toast.success('Tax code created.');
+        toast.success(i18n.t('Tax code created.'));
       }
 
       closeModal();
@@ -187,8 +190,8 @@ const TaxCodesPage: React.FC = () => {
     <div className="space-y-4 p-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Tax Codes</h1>
-          <p className="text-sm text-slate-500">Manage tax rates, account routing, price basis, and purchase tax cost treatment.</p>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Tax Codes`)}</h1>
+          <p className="text-sm text-slate-500">{t(`Manage tax rates, account routing, price basis, and purchase tax cost treatment.`)}</p>
         </div>
         <div className="flex gap-2">
           <button
@@ -213,22 +216,22 @@ const TaxCodesPage: React.FC = () => {
 
       <Card className="p-0">
         {loading ? (
-          <div className="p-6 text-sm text-slate-500">Loading tax codes...</div>
+          <div className="p-6 text-sm text-slate-500">{t(`Loading tax codes...`)}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                 <tr className="border-b border-slate-200">
-                  <th className="px-4 py-3 text-left">Code</th>
-                  <th className="px-4 py-3 text-left">Name</th>
-                  <th className="px-4 py-3 text-right">Rate</th>
-                  <th className="px-4 py-3 text-left">Type</th>
-                  <th className="px-4 py-3 text-left">Scope</th>
-                  <th className="px-4 py-3 text-left">Price Basis</th>
-                  <th className="px-4 py-3 text-left">Purchase Treatment</th>
-                  <th className="px-4 py-3 text-left">Status</th>
-                  <th className="px-4 py-3 text-left">Usage</th>
-                  <th className="px-4 py-3 text-right">Actions</th>
+                  <th className="px-4 py-3 text-left">{t(`Code`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Name`)}</th>
+                  <th className="px-4 py-3 text-right">{t(`Rate`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Type`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Scope`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Price Basis`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Purchase Treatment`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Status`)}</th>
+                  <th className="px-4 py-3 text-left">{t(`Usage`)}</th>
+                  <th className="px-4 py-3 text-right">{t(`Actions`)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -269,7 +272,7 @@ const TaxCodesPage: React.FC = () => {
                           Locked
                         </span>
                       ) : (
-                        <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">Editable</span>
+                        <span className="rounded bg-emerald-50 px-2 py-1 text-xs font-semibold text-emerald-700">{t(`Editable`)}</span>
                       )}
                     </td>
                     <td className="px-4 py-3 text-right">
@@ -317,7 +320,7 @@ const TaxCodesPage: React.FC = () => {
 
             <form className="grid gap-4 p-5 md:grid-cols-2" onSubmit={handleSubmit}>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Code</div>
+                <div className="mb-1 font-medium">{t(`Code`)}</div>
                 <input
                   className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
                   disabled={isLocked('code')}
@@ -327,7 +330,7 @@ const TaxCodesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Name</div>
+                <div className="mb-1 font-medium">{t(`Name`)}</div>
                 <input
                   className="w-full rounded border border-slate-300 px-3 py-2"
                   value={form.name}
@@ -336,7 +339,7 @@ const TaxCodesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Rate %</div>
+                <div className="mb-1 font-medium">{t(`Rate %`)}</div>
                 <input
                   className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
                   disabled={isLocked('rate')}
@@ -350,45 +353,45 @@ const TaxCodesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Type</div>
+                <div className="mb-1 font-medium">{t(`Type`)}</div>
                 <select
                   className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
                   disabled={isLocked('taxType')}
                   value={form.taxType}
                   onChange={(e) => setForm((prev) => ({ ...prev, taxType: e.target.value as TaxType }))}
                 >
-                  <option value="VAT">VAT</option>
-                  <option value="GST">GST</option>
-                  <option value="EXEMPT">EXEMPT</option>
-                  <option value="ZERO_RATED">ZERO_RATED</option>
+                  <option value="VAT">{t(`VAT`)}</option>
+                  <option value="GST">{t(`GST`)}</option>
+                  <option value="EXEMPT">{t(`EXEMPT`)}</option>
+                  <option value="ZERO_RATED">{t(`ZERO_RATED`)}</option>
                 </select>
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Scope</div>
+                <div className="mb-1 font-medium">{t(`Scope`)}</div>
                 <select
                   className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
                   disabled={isLocked('scope')}
                   value={form.scope}
                   onChange={(e) => setForm((prev) => ({ ...prev, scope: e.target.value as TaxScope }))}
                 >
-                  <option value="PURCHASE">PURCHASE</option>
-                  <option value="SALES">SALES</option>
-                  <option value="BOTH">BOTH</option>
+                  <option value="PURCHASE">{t(`PURCHASE`)}</option>
+                  <option value="SALES">{t(`SALES`)}</option>
+                  <option value="BOTH">{t(`BOTH`)}</option>
                 </select>
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Active</div>
+                <div className="mb-1 font-medium">{t(`Active`)}</div>
                 <select
                   className="w-full rounded border border-slate-300 px-3 py-2"
                   value={String(form.active)}
                   onChange={(e) => setForm((prev) => ({ ...prev, active: e.target.value === 'true' }))}
                 >
-                  <option value="true">Active</option>
-                  <option value="false">Inactive</option>
+                  <option value="true">{t(`Active`)}</option>
+                  <option value="false">{t(`Inactive`)}</option>
                 </select>
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Purchase Tax Account</div>
+                <div className="mb-1 font-medium">{t(`Purchase Tax Account`)}</div>
                 <AccountSelector
                   disabled={isLocked('purchaseTaxAccountId')}
                   value={form.purchaseTaxAccountId}
@@ -397,7 +400,7 @@ const TaxCodesPage: React.FC = () => {
                 />
               </label>
               <label className="text-sm">
-                <div className="mb-1 font-medium">Sales Tax Account</div>
+                <div className="mb-1 font-medium">{t(`Sales Tax Account`)}</div>
                 <AccountSelector
                   disabled={isLocked('salesTaxAccountId')}
                   value={form.salesTaxAccountId}
@@ -407,7 +410,7 @@ const TaxCodesPage: React.FC = () => {
               </label>
               <label className="text-sm md:col-span-2">
                 <div className="mb-1 font-medium">
-                  Price Basis <span className="text-red-600">*</span>
+                  {t(`Price Basis`)} <span className="text-red-600">*</span>
                 </div>
                 <select
                   className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
@@ -419,9 +422,9 @@ const TaxCodesPage: React.FC = () => {
                   }}
                   required
                 >
-                  <option value="">Select price basis...</option>
-                  <option value="EXCLUSIVE">Exclusive - tax is added on top</option>
-                  <option value="INCLUSIVE">Inclusive - entered price already includes tax</option>
+                  <option value="">{t(`Select price basis...`)}</option>
+                  <option value="EXCLUSIVE">{t(`Exclusive - tax is added on top`)}</option>
+                  <option value="INCLUSIVE">{t(`Inclusive - entered price already includes tax`)}</option>
                 </select>
                 <div className="mt-1 text-xs text-slate-500">
                   With 10% tax and price 100, Exclusive totals 110; Inclusive splits 100 into net 90.91 and tax 9.09.
@@ -429,7 +432,7 @@ const TaxCodesPage: React.FC = () => {
               </label>
               <label className="text-sm md:col-span-2">
                 <div className="mb-1 font-medium">
-                  Purchase Tax Treatment <span className="text-red-600">*</span>
+                  {t(`Purchase Tax Treatment`)} <span className="text-red-600">*</span>
                 </div>
                 <select
                   className="w-full rounded border border-slate-300 px-3 py-2 disabled:bg-slate-100"
@@ -441,8 +444,8 @@ const TaxCodesPage: React.FC = () => {
                   }}
                   required
                 >
-                  <option value="RECOVERABLE">Recoverable - post purchase tax separately</option>
-                  <option value="NON_RECOVERABLE">Non-recoverable - include purchase tax in item/expense cost</option>
+                  <option value="RECOVERABLE">{t(`Recoverable - post purchase tax separately`)}</option>
+                  <option value="NON_RECOVERABLE">{t(`Non-recoverable - include purchase tax in item/expense cost`)}</option>
                 </select>
                 <div className="mt-1 text-xs text-slate-500">
                   Recoverable tax debits the purchase tax account. Non-recoverable tax is capitalized into inventory or expense cost.

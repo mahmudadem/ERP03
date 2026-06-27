@@ -178,7 +178,7 @@ const CustomersListPage: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse">Syncing Master Records...</div>
+          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse">{t(`Syncing Master Records...`)}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs">

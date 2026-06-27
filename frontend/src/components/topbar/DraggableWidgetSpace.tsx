@@ -417,7 +417,7 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <div className="flex h-7 items-center border-x border-slate-200 bg-white px-1.5">
-                <span className="mr-1 text-[10px] font-bold text-slate-400">W</span>
+                <span className="mr-1 text-[10px] font-bold text-slate-400">{t(`W`)}</span>
                 <input
                   type="text"
                   value={editSpan}

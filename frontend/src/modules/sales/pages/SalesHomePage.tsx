@@ -343,6 +343,7 @@ const SettingsSummary = ({
   loading: boolean;
   onNavigate: () => void;
 }) => {
+    const { t } = useTranslation('common');
   const rows: { label: string; value: string }[] = settings
     ? [
         { label: 'Workflow', value: settings.workflowMode },
@@ -379,7 +380,7 @@ const SettingsSummary = ({
             onClick={onNavigate}
             className="flex items-center gap-1 text-xs font-medium text-primary-600 hover:underline dark:text-primary-400"
           >
-            Edit <ArrowRight size={11} />
+            {t(`Edit`)} <ArrowRight size={11} />
           </button>
         }
       />
@@ -393,7 +394,7 @@ const SettingsSummary = ({
           ))}
         </div>
       ) : !settings ? (
-        <div className="text-sm text-slate-400">Not configured</div>
+        <div className="text-sm text-slate-400">{t(`Not configured`)}</div>
       ) : (
         <div className="divide-y divide-slate-100 dark:divide-slate-700">
           {rows.map((r) => (
@@ -762,7 +763,7 @@ const SalesHomePage: React.FC = () => {
   if (loadError && initialized === null) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Hub</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Sales Hub`)}</h1>
         <Card className="flex items-center gap-3 p-5 text-sm text-red-700 dark:text-red-400">
           <AlertCircle size={18} className="flex-shrink-0" />
           {loadError}
@@ -919,15 +920,15 @@ const SalesHomePage: React.FC = () => {
                   <table className="w-full text-[11px] text-left border-collapse">
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">SO Number</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Customer / Client</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">Currency</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Raw Total</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">Created By</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Created At</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Approved At</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">Status</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`SO Number`)}</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Date`)}</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Customer / Client`)}</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">{t(`Currency`)}</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Raw Total`)}</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">{t(`Created By`)}</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t(`Created At`)}</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t(`Approved At`)}</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">{t(`Status`)}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -1004,15 +1005,15 @@ const SalesHomePage: React.FC = () => {
                 <table className="w-full text-[11px] text-left border-collapse">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Invoice ID</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Debtor Customer</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">Currency</th>
-                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Raw Total</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">Created By</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Created At</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Approved At</th>
-                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">Status</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Invoice ID`)}</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Date`)}</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Debtor Customer`)}</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">{t(`Currency`)}</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t(`Raw Total`)}</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">{t(`Created By`)}</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t(`Created At`)}</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t(`Approved At`)}</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">{t(`Status`)}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -1161,7 +1162,7 @@ const SalesHomePage: React.FC = () => {
                 <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-655 dark:bg-slate-700 dark:text-slate-400">
                   <Settings size={13} />
                 </div>
-                <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Settings</div>
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">{t(`Settings`)}</div>
               </button>
             </div>
           </Card>
@@ -1195,7 +1196,7 @@ const SalesHomePage: React.FC = () => {
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 rounded" />)}
               </div>
             ) : recentActivity.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-400">No activity yet.</div>
+              <div className="py-4 text-center text-xs text-slate-400">{t(`No activity yet.`)}</div>
             ) : (
               <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
                 {recentActivity.map((item) => {
@@ -1225,7 +1226,7 @@ const SalesHomePage: React.FC = () => {
                         </div>
                         <div className="mt-1 flex items-center justify-between gap-1 text-[9px] text-slate-400">
                           <span className="truncate max-w-[120px]" title={creatorName}>
-                            By {creatorName}
+                            {t(`By`)} {creatorName}
                           </span>
                           <span className="font-semibold text-slate-650 dark:text-slate-300 font-mono">
                             {item.amount !== null ? `${formatCurrency(item.amount)} ${item.currency}` : '—'}

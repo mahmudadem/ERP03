@@ -83,10 +83,10 @@ export const ErrorModal: React.FC = () => {
           {/* Show error code for debugging */}
           {process.env.NODE_ENV === 'development' && (
             <div className="mt-4 p-3 bg-gray-100 dark:bg-[var(--color-bg-tertiary)] rounded text-xs font-mono text-gray-600 dark:text-[var(--color-text-secondary)]">
-              <div>Code: {error.code}</div>
-              {error.field && <div>Field: {error.field}</div>}
+              <div>{t(`Code:`)} {error.code}</div>
+              {error.field && <div>{t(`Field:`)} {error.field}</div>}
               {error.context && (
-                <div>Context: {JSON.stringify(error.context, null, 2)}</div>
+                <div>{t(`Context:`)} {JSON.stringify(error.context, null, 2)}</div>
               )}
             </div>
           )}

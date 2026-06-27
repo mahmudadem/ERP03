@@ -1,9 +1,11 @@
+import i18n from 'i18next';
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { History, User, Clock } from 'lucide-react';
 import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { formatCompanyDate, formatCompanyTime } from '../../../../../utils/dateUtils';
 import { useCompanySettings } from '../../../../../hooks/useCompanySettings';
+import { useTranslation } from "react-i18next";
 
 export interface ExchangeRateHistoryRef {
   refresh: () => void;
@@ -52,7 +54,7 @@ export const ExchangeRateHistory = forwardRef<ExchangeRateHistoryRef>((_, ref) =
         {rates.length === 0 ? (
           <div className="px-4 py-12 text-center text-gray-500">
             <Clock size={32} className="mx-auto mb-2 opacity-20" />
-            <p className="text-sm">No pricing operations recorded</p>
+            <p className="text-sm">{i18n.t(`No pricing operations recorded`)}</p>
           </div>
         ) : (
           rates.map((rate, i) => (
@@ -73,9 +75,9 @@ export const ExchangeRateHistory = forwardRef<ExchangeRateHistoryRef>((_, ref) =
               </div>
               <div className="flex items-center justify-between text-[10px] text-gray-500">
                 <div className="flex items-center gap-2">
-                  <span className="opacity-70">Effective: {formatCompanyDate(rate.date, settings)}</span>
+                  <span className="opacity-70">{i18n.t(`Effective:`)} {formatCompanyDate(rate.date, settings)}</span>
                   {rate.source === 'REFERENCE' && (
-                    <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[9px] font-medium uppercase tracking-tight">Reference</span>
+                    <span className="px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded text-[9px] font-medium uppercase tracking-tight">{i18n.t(`Reference`)}</span>
                   )}
                 </div>
                 <span className="opacity-40">

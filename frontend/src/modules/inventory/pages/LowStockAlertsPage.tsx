@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { LowStockAlertDTO, inventoryApi } from '../../../api/inventoryApi';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const LowStockAlertsPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [alerts, setAlerts] = useState<LowStockAlertDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,7 +28,7 @@ const LowStockAlertsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Low Stock Alerts</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Low Stock Alerts`)}</h1>
 
       <Card className="p-6">
         <div className="mb-3">
@@ -39,11 +41,11 @@ const LowStockAlertsPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-left">Warehouse</th>
-                <th className="py-2 text-right">Current Qty</th>
-                <th className="py-2 text-right">Min Level</th>
-                <th className="py-2 text-right">Deficit</th>
+                <th className="py-2 text-left">{t(`Item`)}</th>
+                <th className="py-2 text-left">{t(`Warehouse`)}</th>
+                <th className="py-2 text-right">{t(`Current Qty`)}</th>
+                <th className="py-2 text-right">{t(`Min Level`)}</th>
+                <th className="py-2 text-right">{t(`Deficit`)}</th>
               </tr>
             </thead>
             <tbody>

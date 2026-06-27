@@ -83,7 +83,7 @@ export const VoucherTotalsDisplay: React.FC<VoucherTotalsDisplayProps> = ({
   const isForeignVoucher = baseCurrency && currency && baseCurrency.toUpperCase() !== currency.toUpperCase();
 
   const renderLineBreakdown = (lineList: TotalsLine[], side: 'debit' | 'credit') => {
-    if (lineList.length === 0) return <span className="text-[var(--color-text-muted)] italic text-[10px]">No lines</span>;
+    if (lineList.length === 0) return <span className="text-[var(--color-text-muted)] italic text-[10px]">{t(`No lines`)}</span>;
 
     return lineList.map((line, idx) => {
       const amount = side === 'debit' ? (parseFloat(line.debit as string) || 0) : (parseFloat(line.credit as string) || 0);

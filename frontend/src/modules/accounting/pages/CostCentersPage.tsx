@@ -390,7 +390,7 @@ export const CostCentersPage: React.FC = () => {
                          </p>
                        </div>
                        <button onClick={closeModal} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
-                           <span className="text-xl leading-none">&times;</span>
+                           <span className="text-xl leading-none">{t(`&times;`)}</span>
                        </button>
                   </div>
                   

@@ -6,6 +6,7 @@ import { OperationalListLayout } from '../../../components/shared/OperationalLis
 import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/types';
 import { formatMoney } from '../../../utils/formatMoney';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -36,6 +37,7 @@ const statusChipClasses = (status: PRStatus): string => {
 };
 
 const PurchaseReturnsListPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<PRStatus | 'ALL'>('ALL');
   const [contextFilter, setContextFilter] = useState<ReturnContext | 'ALL'>('ALL');
@@ -207,7 +209,7 @@ const PurchaseReturnsListPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
-              <span>Apply</span>
+              <span>{t(`Apply`)}</span>
             </button>
             <button
               type="button"

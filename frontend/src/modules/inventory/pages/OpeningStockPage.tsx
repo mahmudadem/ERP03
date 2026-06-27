@@ -39,6 +39,8 @@ import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { useAccounts } from '../../../context/AccountsContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 interface OpeningStockLineDraft {
   id: string;
@@ -77,6 +79,7 @@ const getErrorMessage = (error: any) =>
   'Failed to process Opening Stock Document.';
 
 const OpeningStockPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const { company } = useCompanyAccess();
@@ -353,7 +356,7 @@ const OpeningStockPage: React.FC = () => {
     try {
       setPostingExistingId(documentId);
       await inventoryApi.postOpeningStockDocument(documentId);
-      toast.success('Opening Stock Document posted.');
+      toast.success(i18n.t('Opening Stock Document posted.'));
       await loadPageData();
       navigate('/inventory/opening-stock');
     } catch (postError) {
@@ -372,7 +375,7 @@ const OpeningStockPage: React.FC = () => {
     try {
       setDeletingDraftId(documentId);
       await inventoryApi.deleteOpeningStockDocument(documentId);
-      toast.success('Opening Stock Document draft deleted.');
+      toast.success(i18n.t('Opening Stock Document draft deleted.'));
       await loadPageData();
       navigate('/inventory/opening-stock');
     } catch (deleteError) {
@@ -430,7 +433,7 @@ const OpeningStockPage: React.FC = () => {
     if (confirmState.kind === 'delete-draft') {
       return {
         title: 'Delete Draft?',
-        message: <>Delete <span className="font-black">{getOpeningStockDocumentRef(confirmState.documentId)}</span>? This removes the draft only.</>,
+        message: <>{t(`Delete`)} <span className="font-black">{getOpeningStockDocumentRef(confirmState.documentId)}</span>{t(`? This removes the draft only.`)}</>,
         confirmLabel: 'Delete Draft',
         cancelLabel: 'Keep Draft',
         tone: 'danger' as const,
@@ -538,7 +541,7 @@ const OpeningStockPage: React.FC = () => {
             banner: {
               show: notFound || duplicateWarnings.length > 0,
               content: notFound ? (
-                <DocumentNoticeBanner tone="amber">Opening Stock Document not found.</DocumentNoticeBanner>
+                <DocumentNoticeBanner tone="amber">{t(`Opening Stock Document not found.`)}</DocumentNoticeBanner>
               ) : (
                 <DocumentNoticeBanner tone="amber">
                   Existing documents contain overlapping items for the same warehouse/date. Review before saving or posting.
@@ -857,7 +860,7 @@ const OpeningStockPage: React.FC = () => {
               }}
               className="min-w-[180px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              <option value="ALL">All warehouses</option>
+              <option value="ALL">{t(`All warehouses`)}</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.code} - {warehouse.name}
@@ -892,11 +895,11 @@ const OpeningStockPage: React.FC = () => {
               }}
               className="min-w-[185px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              <option value="ALL">All accounting modes</option>
-              <option value="WITH_ACCOUNTING">Inventory + Accounting</option>
-              <option value="INVENTORY_ONLY">Inventory only</option>
-              <option value="WITH_VOUCHER">With voucher</option>
-              <option value="NO_VOUCHER">No voucher</option>
+              <option value="ALL">{t(`All accounting modes`)}</option>
+              <option value="WITH_ACCOUNTING">{t(`Inventory + Accounting`)}</option>
+              <option value="INVENTORY_ONLY">{t(`Inventory only`)}</option>
+              <option value="WITH_VOUCHER">{t(`With voucher`)}</option>
+              <option value="NO_VOUCHER">{t(`No voucher`)}</option>
             </select>
             <input
               type="number"

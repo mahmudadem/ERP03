@@ -472,8 +472,8 @@ const AccountStatementReportContent: React.FC<{
         <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-3 flex items-start gap-3">
           <Info className="w-4 h-4 text-amber-700 mt-0.5 shrink-0" />
           <div className="text-xs text-amber-900 leading-relaxed">
-            <span className="font-bold uppercase tracking-wide">Control account</span> — this account is a shared GL bucket for every {partyStatement.party}. The lines below mix all {partyStatement.party}s together.
-            {' '}For a per-{partyStatement.party} statement (opening balance, invoices, payments, running balance) use the{' '}
+            <span className="font-bold uppercase tracking-wide">{t(`Control account`)}</span> {t(`— this account is a shared GL bucket for every`)} {partyStatement.party}{t(`. The lines below mix all`)} {partyStatement.party}s together.
+            {' '}{t(`For a per-`)}{partyStatement.party} {t(`statement (opening balance, invoices, payments, running balance) use the`)}{' '}
             <Link to={partyStatement.path} className="font-semibold underline decoration-amber-400 hover:text-amber-700">
               {partyStatement.label}
             </Link>

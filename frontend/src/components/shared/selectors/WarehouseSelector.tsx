@@ -420,11 +420,11 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
               </div>
               <div className="overflow-y-auto p-1">
                 {isLoading ? (
-                  <div className="p-8 text-center text-sm text-slate-500">Loading warehouses...</div>
+                  <div className="p-8 text-center text-sm text-slate-500">{t(`Loading warehouses...`)}</div>
                 ) : filtered.length === 0 ? (
                   <div className="flex flex-col items-center p-8 text-center">
                     <WarehouseIcon size={32} className="mb-2 text-slate-200" />
-                    <p className="text-sm text-slate-500">No warehouses found matching "{modalSearch}"</p>
+                    <p className="text-sm text-slate-500">{t(`No warehouses found matching "`)}{modalSearch}"</p>
                     {canCreate && (
                       <button
                         type="button"
@@ -449,7 +449,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                         <span className="text-xs text-slate-500 font-mono">{w.code}</span>
                         {w.address && <span className="text-[11px] text-slate-400">{w.address}</span>}
                       </div>
-                      {w.isDefault && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
+                      {w.isDefault && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">{t(`Default`)}</span>}
                     </div>
                   ))
                 )}

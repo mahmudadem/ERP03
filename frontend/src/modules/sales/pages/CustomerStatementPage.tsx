@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ChevronRight, CalendarDays, FileText, ExternalLink, ReceiptText } from 'lucide-react';
@@ -11,6 +12,7 @@ import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 type Mode = 'STATEMENT' | 'LEDGER';
 
@@ -78,14 +80,14 @@ const LedgerTable: React.FC<{
           ))}
         </tr>
         <tr className="bg-slate-50/40 border-b border-slate-100">
-          <td className={`${cellPad} text-[11px] font-bold text-slate-700 uppercase tracking-widest`} colSpan={6}>Opening Balance</td>
+          <td className={`${cellPad} text-[11px] font-bold text-slate-700 uppercase tracking-widest`} colSpan={6}>{i18n.t(`Opening Balance`)}</td>
           <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmt(openingBalance)}</td>
         </tr>
       </thead>
       <tbody>
         {lines.length === 0 ? (
           <tr>
-            <td colSpan={7} className="py-10 text-center text-sm text-slate-400">No transactions in this period.</td>
+            <td colSpan={7} className="py-10 text-center text-sm text-slate-400">{i18n.t(`No transactions in this period.`)}</td>
           </tr>
         ) : (
           lines.map((line, idx) => {
@@ -144,7 +146,7 @@ const LedgerTable: React.FC<{
       </tbody>
       <tfoot>
         <tr className="bg-slate-100 border-t-2 border-slate-200">
-          <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`} colSpan={6}>Closing Balance</td>
+          <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`} colSpan={6}>{i18n.t(`Closing Balance`)}</td>
           <td className={`${cellPad} text-xs tabular-nums text-right font-black text-slate-900`}>{fmt(closingBalance)}</td>
         </tr>
       </tfoot>
@@ -158,6 +160,7 @@ const Initiator: React.FC<{
   onSubmit: (p: StatementParams) => void;
   initialParams?: StatementParams | null;
 }> = ({ onSubmit, initialParams }) => {
+    const { t } = useTranslation('common');
   const [mode, setMode]                   = useState<Mode>(initialParams?.mode || 'STATEMENT');
   const [customerId, setCustomerId]       = useState(initialParams?.customerId || '');
   const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
@@ -187,15 +190,15 @@ const Initiator: React.FC<{
             onChange={(e) => setMode(e.target.value as Mode)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-indigo-300 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
           >
-            <option value="STATEMENT">Statement (period summary)</option>
-            <option value="LEDGER">Full Ledger (all events)</option>
+            <option value="STATEMENT">{i18n.t(`Statement (period summary)`)}</option>
+            <option value="LEDGER">{i18n.t(`Full Ledger (all events)`)}</option>
           </select>
         </div>
 
         <div className="md:col-span-8 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Customer <span className="text-rose-500">*</span>
+            {i18n.t(`Customer`)} <span className="text-rose-500">*</span>
           </label>
           <PartySelector
             value={customerId}
@@ -266,6 +269,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [statement, setStatement] = useState<CustomerStatementDTO | null>(null);
   const [loading, setLoading] = useState(false);
@@ -326,7 +330,7 @@ const ReportContent: React.FC<{
           {statement && (
             <>
               <span className="text-xs font-bold text-slate-500 ml-auto">
-                Invoiced: <span className="font-black text-blue-700">{fmt(statement.totalInvoiced)}</span> ·
+                {i18n.t(`Invoiced:`)} <span className="font-black text-blue-700">{fmt(statement.totalInvoiced)}</span> ·
                 Paid: <span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span> ·
                 Credits: <span className="font-black text-amber-700">{fmt(statement.totalCredited ?? 0)}</span> ·
                 Closing: <span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
@@ -343,7 +347,7 @@ const ReportContent: React.FC<{
           )}
 
           {loading && (
-            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">Loading report...</div>
+            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">{i18n.t(`Loading report...`)}</div>
           )}
 
           {!loading && statement && (
@@ -362,7 +366,7 @@ const ReportContent: React.FC<{
                 <div className="bg-white border rounded-xl shadow-sm overflow-auto">
                   <div className="bg-slate-50/50 px-6 py-3 border-b">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      Open Invoices ({statement.openInvoices.length})
+                      {i18n.t(`Open Invoices (`)}{statement.openInvoices.length})
                     </p>
                   </div>
                   <table className="min-w-full text-sm">
@@ -392,7 +396,7 @@ const ReportContent: React.FC<{
                 <div className="bg-white border rounded-xl shadow-sm overflow-auto">
                   <div className="bg-slate-50/50 px-6 py-3 border-b">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      Open Commitments ({statement.openCommitments.length}) · Not included in balance
+                      {i18n.t(`Open Commitments (`)}{statement.openCommitments.length}) · Not included in balance
                     </p>
                   </div>
                   <table className="min-w-full text-sm">
@@ -434,7 +438,7 @@ const ReportContent: React.FC<{
               <div className="inline-flex p-6 bg-slate-50 rounded-full text-slate-300">
                 <FileText size={48} />
               </div>
-              <p className="text-sm font-bold text-slate-600">No data.</p>
+              <p className="text-sm font-bold text-slate-600">{i18n.t(`No data.`)}</p>
             </div>
           )}
         </div>

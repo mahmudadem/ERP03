@@ -342,13 +342,13 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.generalTitle', 'General Information')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Configure identity and structural properties</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t(`Configure identity and structural properties`)}</p>
                                 </div>
 
                                 <div className="group space-y-2 mb-4">
                                     <label className="flex items-center justify-between">
-                                        <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-500 uppercase tracking-widest leading-none">Parent Account (Start Here)</span>
-                                        {!parentId && <span className="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-bold">Root Level</span>}
+                                        <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-500 uppercase tracking-widest leading-none">{t(`Parent Account (Start Here)`)}</span>
+                                        {!parentId && <span className="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-bold">{t(`Root Level`)}</span>}
                                     </label>
                                     <select
                                         value={parentId}
@@ -357,7 +357,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                             ${parentId ? 'bg-blue-50/10 border-blue-200 text-blue-900' : 'bg-gray-50 border-gray-100 text-gray-500'}`}
                                         disabled={isLocked || isUsed}
                                     >
-                                        <option value="">(No Parent - Declare as Root Account)</option>
+                                        <option value="">{t(`(No Parent - Declare as Root Account)`)}</option>
                                         {(() => {
                                             const getDescendantIds = (parentId: string, visited = new Set<string>()): string[] => {
                                                 if (visited.has(parentId)) return [];
@@ -408,15 +408,15 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                         </div>
                                     </div>
                                     <div className="group space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t(`Status`)}</label>
                                         <select 
                                             value={status} 
                                             onChange={(e) => setStatus(e.target.value as AccountStatus)}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm"
                                             disabled={isLocked}
                                         >
-                                            <option value="ACTIVE">Active</option>
-                                            <option value="INACTIVE">Inactive</option>
+                                            <option value="ACTIVE">{t(`Active`)}</option>
+                                            <option value="INACTIVE">{t(`Inactive`)}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -435,7 +435,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                                 <div className="space-y-6">
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Account Classification</label>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t(`Account Classification`)}</label>
                                         <select
                                             value={classification}
                                             onChange={(e) => setClassification(e.target.value as AccountClassification)}
@@ -448,19 +448,19 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                         {parentId && (
                                             <div className="flex items-center gap-1.5 mt-1.5 px-1">
                                                 <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                                                <p className="text-[10px] text-amber-600 font-extrabold uppercase tracking-tight">Inherited from Parent Header</p>
+                                                <p className="text-[10px] text-amber-600 font-extrabold uppercase tracking-tight">{t(`Inherited from Parent Header`)}</p>
                                             </div>
                                         )}
                                         {!parentId && hasClassificationConstraint && (
                                             <div className="flex items-center gap-1.5 mt-1.5 px-1">
                                                 <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
-                                                <p className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-tight">Set by the field you're adding from</p>
+                                                <p className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-tight">{t(`Set by the field you're adding from`)}</p>
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Account Role</label>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t(`Account Role`)}</label>
                                          <select
                                             value={accountRole}
                                             onChange={(e) => setAccountRole(e.target.value as AccountRole)}
@@ -480,12 +480,12 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.accountingTitle', 'Accounting Semantics')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Rule enforcement and financial classification</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t(`Rule enforcement and financial classification`)}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Balance Nature</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t(`Balance Nature`)}</label>
                                         <select
                                             value={balanceNature}
                                             onChange={(e) => setBalanceNature(e.target.value as BalanceNature)}
@@ -496,7 +496,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                         </select>
                                     </div>
                                     <div className="group space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Validation Rule</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t(`Validation Rule`)}</label>
                                         <select
                                             value={balanceEnforcement}
                                             onChange={(e) => setBalanceEnforcement(e.target.value as BalanceEnforcement)}
@@ -518,7 +518,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                                     {(classification === 'REVENUE' || classification === 'EXPENSE') && (
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">P&L Subgroup</label>
+                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t(`P&L Subgroup`)}</label>
                                             <select
                                                 value={plSubgroup}
                                                 onChange={(e) => setPlSubgroup(e.target.value as PlSubgroup | '')}
@@ -531,7 +531,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                                     {classification === 'EQUITY' && (
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Equity Subgroup</label>
+                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t(`Equity Subgroup`)}</label>
                                             <select
                                                 value={equitySubgroup}
                                                 onChange={(e) => setEquitySubgroup(e.target.value as EquitySubgroup | '')}
@@ -543,7 +543,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     )}
 
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Cash Flow Category</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t(`Cash Flow Category`)}</label>
                                         <select
                                             value={cashFlowCategory}
                                             onChange={(e) => setCashFlowCategory(e.target.value as CashFlowCategory | '')}
@@ -562,7 +562,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.currencyTitle', 'Currency Policy')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Define multi-currency behavior for this account</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t(`Define multi-currency behavior for this account`)}</p>
                                 </div>
 
                                 <div className="bg-amber-50/50 dark:bg-amber-900/5 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
@@ -572,7 +572,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                         </div>
                                         <div className="flex-1 space-y-4">
                                             <div className="space-y-1.5">
-                                                <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">Policy Selection</label>
+                                                <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">{t(`Policy Selection`)}</label>
                                                 <select
                                                     value={currencyPolicy}
                                                     onChange={(e) => setCurrencyPolicy(e.target.value as CurrencyPolicy)}
@@ -585,7 +585,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                                             {(currencyPolicy === 'FIXED' || isParentForeign) && (
                                                 <div className="group space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">Fixed Currency</label>
+                                                    <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">{t(`Fixed Currency`)}</label>
                                                     <CurrencySelector
                                                         value={fixedCurrencyCode}
                                                         onChange={setFixedCurrencyCode}
@@ -601,13 +601,13 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                 {(!parentId) && currencyPolicy === 'FIXED' && (
                                     <div className="p-3 bg-blue-50/50 text-blue-600 dark:bg-blue-900/10 dark:text-blue-400 rounded-xl text-xs font-medium flex items-center gap-2">
                                         <Info className="w-4 h-4 shrink-0" />
-                                        <span>Root level accounts are locked to the company base currency ({baseCurrency}).</span>
+                                        <span>{t(`Root level accounts are locked to the company base currency (`)}{baseCurrency}).</span>
                                     </div>
                                 )}
                                 {isParentForeign && (
                                     <div className="p-3 bg-indigo-50/50 text-indigo-600 dark:bg-indigo-900/10 dark:text-indigo-400 rounded-xl text-xs font-medium flex items-center gap-2">
                                         <Info className="w-4 h-4 shrink-0" />
-                                        <span>This account resides in a foreign parent context ({parentAccount?.fixedCurrencyCode}). Parent's currency policy is enforced.</span>
+                                        <span>{t(`This account resides in a foreign parent context (`)}{parentAccount?.fixedCurrencyCode}{t(`). Parent's currency policy is enforced.`)}</span>
                                     </div>
                                 )}
                             </div>
@@ -619,7 +619,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.governanceTitle', 'Governance Gates')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Approval workflows and custody confirmation</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t(`Approval workflows and custody confirmation`)}</p>
                                 </div>
 
                                 <div className="space-y-4">
@@ -661,14 +661,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                                         className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30 animate-in zoom-in-95 duration-300"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">Assign Custodian User</label>
+                                                        <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">{t(`Assign Custodian User`)}</label>
                                                         <select
                                                             value={custodianUserId}
                                                             onChange={(e) => setCustodianUserId(e.target.value)}
                                                             required={requiresCustodyConfirmation}
                                                             className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                                         >
-                                                            <option value="">(Select Custodian...)</option>
+                                                            <option value="">{t(`(Select Custodian...)`)}</option>
                                                             {!isLoadingUsers && companyUsers?.map((u: any) => (
                                                                 <option key={u.id} value={u.id}>
                                                                     {u.displayName || u.email || u.id}
@@ -711,17 +711,17 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                         {isSubmitting ? (
                             <>
                                 <Spinner size="sm" variant="white" />
-                                <span>Securing Data...</span>
+                                <span>{t(`Securing Data...`)}</span>
                             </>
                         ) : (mode === 'create' ? (
                             <>
                                 <CheckCircle2 size={16} className="group-hover:text-indigo-500 transition-colors" />
-                                <span>Commit Creation</span>
+                                <span>{t(`Commit Creation`)}</span>
                             </>
                         ) : (
                             <>
                                 <CheckCircle2 size={16} className="group-hover:text-indigo-500 transition-colors" />
-                                <span>Update Authority</span>
+                                <span>{t(`Update Authority`)}</span>
                             </>
                         ))}
                     </button>

@@ -3,6 +3,7 @@ import { VoucherFormConfig } from '../types';
 import { useFormUsageCheck } from '../../../../hooks/useFormUsageCheck';
 import { Plus, Edit3, Trash2, MoreVertical, Download, FileJson } from 'lucide-react';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
+import { useTranslation } from "react-i18next";
 
 interface FormCardProps {
   form: VoucherFormConfig;
@@ -23,6 +24,7 @@ export const FormCard: React.FC<FormCardProps> = ({
   onToggleEnabled,
   onExport
 }) => {
+    const { t } = useTranslation('common');
   const { isInUse, voucherCount, isChecking } = useFormUsageCheck(form.id);
   const isEnabled = form.enabled !== false; // Default to enabled
   const [showMenu, setShowMenu] = useState(false);
@@ -117,7 +119,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         </div>
         
         <h3 className="text-lg font-bold text-gray-900 mb-1">{form.name}</h3>
-        <p className="text-xs text-gray-500 truncate">ID: {form.id}</p>
+        <p className="text-xs text-gray-500 truncate">{t(`ID:`)} {form.id}</p>
         
         <div className="mt-6 flex gap-2 flex-wrap">
           {isProtected ? (
@@ -138,12 +140,12 @@ export const FormCard: React.FC<FormCardProps> = ({
           
           {isInUse && (
             <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded uppercase tracking-wider">
-              📊 {voucherCount} voucher{voucherCount !== 1 ? 's' : ''}
+              📊 {voucherCount} {t(`voucher`)}{voucherCount !== 1 ? 's' : ''}
             </span>
           )}
           
           <span className="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded uppercase tracking-wider">
-            Start #: {form.startNumber}
+            {t(`Start #:`)} {form.startNumber}
           </span>
         </div>
       </div>
@@ -152,7 +154,7 @@ export const FormCard: React.FC<FormCardProps> = ({
         <span>{isProtected ? 'System Template' : 'User Created'}</span>
         
         <div className="flex items-center gap-2">
-           {isChecking && <span className="text-blue-600 mr-2">Checking...</span>}
+           {isChecking && <span className="text-blue-600 mr-2">{t(`Checking...`)}</span>}
            
            <div className="relative" ref={menuRef}>
               <button 

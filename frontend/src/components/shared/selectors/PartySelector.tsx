@@ -441,7 +441,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                 {searchResults.length === 0 && !isLoading && (
                   <div className="flex flex-col items-center p-10 text-center">
                     <User size={40} className="mb-3 text-slate-200" />
-                    <p className="text-sm font-medium text-slate-500">No parties found matching "{modalSearch}"</p>
+                    <p className="text-sm font-medium text-slate-500">{t(`No parties found matching "`)}{modalSearch}"</p>
                     <button
                       type="button"
                       onClick={handleOpenCreateModal}

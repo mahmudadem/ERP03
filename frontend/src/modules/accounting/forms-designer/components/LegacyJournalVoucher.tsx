@@ -196,12 +196,12 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
           <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{t('transactionCurrency')}</label>
           <div className="relative">
             <select className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs text-slate-900 focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all shadow-sm appearance-none pr-6">
-                <option>US Dollar (USD)</option>
-                <option>Turkish Lira (TRY)</option>
+                <option>{t(`US Dollar (USD)`)}</option>
+                <option>{t(`Turkish Lira (TRY)`)}</option>
             </select>
             <ChevronDown className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} text-gray-400 pointer-events-none`} size={14} />
           </div>
-          <p className="text-[9px] text-gray-400 text-end leading-none mt-0.5">USD = 1 USD</p>
+          <p className="text-[9px] text-gray-400 text-end leading-none mt-0.5">{t(`USD = 1 USD`)}</p>
         </div>
 
         <div className="space-y-0.5">
@@ -244,10 +244,10 @@ export const LegacyJournalVoucher: React.FC<LegacyJournalVoucherProps> = React.m
           <label className="text-[10px] font-bold text-gray-400 uppercase tracking-wide">{t('paymentMethod')}</label>
           <div className="relative">
             <select className="w-full p-1.5 border border-gray-200 rounded bg-white text-xs text-slate-900 focus:ring-1 focus:ring-indigo-500 outline-none shadow-sm appearance-none pr-6">
-                <option>N/A</option>
-                <option>Cash</option>
-                <option>Bank Transfer</option>
-                <option>Check</option>
+                <option>{t(`N/A`)}</option>
+                <option>{t(`Cash`)}</option>
+                <option>{t(`Bank Transfer`)}</option>
+                <option>{t(`Check`)}</option>
             </select>
              <ChevronDown className={`absolute top-2 ${isRTL ? 'left-2' : 'right-2'} text-gray-400 pointer-events-none`} size={14} />
           </div>

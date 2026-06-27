@@ -20,6 +20,7 @@ import { WarningModal } from './WarningModal';
 import { RequirePermission } from '../../../../components/auth/RequirePermission';
 import { errorHandler } from '../../../../services/errorHandler';
 import { useConfirm } from '../../../../hooks/useConfirm';
+import { useTranslation } from "react-i18next";
 
 interface Props { // Renamed from VoucherFormDesignerProps as per the snippet
   templates?: VoucherFormConfig[]; // System-wide templates for Step 1
@@ -30,6 +31,7 @@ interface Props { // Renamed from VoucherFormDesignerProps as per the snippet
 }
 
 export const VoucherFormDesigner: React.FC<Props> = (props) => {
+    const { t } = useTranslation('common');
   const { 
     templates = [], 
     onExit,
@@ -320,8 +322,8 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                 <FileSpreadsheet size={20} />
                 </div>
                 <div>
-                <h1 className="text-lg font-bold text-slate-800 leading-tight">Voucher Form Designer</h1>
-                <p className="text-xs text-slate-500">Manage your accounting document layouts</p>
+                <h1 className="text-lg font-bold text-slate-800 leading-tight">{t(`Voucher Form Designer`)}</h1>
+                <p className="text-xs text-slate-500">{t(`Manage your accounting document layouts`)}</p>
                 </div>
             </div>
          </div>
@@ -366,8 +368,8 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
             {allForms.length === 0 ? (
               <div className="text-center py-20 bg-white rounded-2xl border border-gray-100 shadow-sm">
                 <FileSpreadsheet size={64} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-bold text-gray-600 mb-2">No Voucher Forms Yet</h3>
-                <p className="text-gray-500 mb-6">Get started by designing your first voucher form</p>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">{t(`No Voucher Forms Yet`)}</h3>
+                <p className="text-gray-500 mb-6">{t(`Get started by designing your first voucher form`)}</p>
                 <RequirePermission permission="accounting.designer.create">
                   <button 
                     onClick={handleCreateNew}
@@ -380,8 +382,8 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
             ) : forms.length === 0 ? (
               <div className="text-center py-20 bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200">
                 <Search size={48} className="mx-auto text-gray-300 mb-4" />
-                <h3 className="text-xl font-bold text-gray-600 mb-2">No Matches Found</h3>
-                <p className="text-gray-500 mb-4">No forms match your search "{searchQuery}"</p>
+                <h3 className="text-xl font-bold text-gray-600 mb-2">{t(`No Matches Found`)}</h3>
+                <p className="text-gray-500 mb-4">{t(`No forms match your search "`)}{searchQuery}"</p>
                 <button 
                   onClick={() => setSearchQuery('')}
                   className="text-indigo-600 font-bold hover:underline"
@@ -396,8 +398,8 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                   <div>
                     <div className="flex items-center gap-3 mb-6">
                       <div className="h-8 w-1 bg-indigo-500 rounded-full"></div>
-                      <h2 className="text-xl font-bold text-slate-800">System Voucher Templates</h2>
-                      <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-medium">Read-Only</span>
+                      <h2 className="text-xl font-bold text-slate-800">{t(`System Voucher Templates`)}</h2>
+                      <span className="text-xs bg-indigo-50 text-indigo-600 px-2 py-1 rounded-full font-medium">{t(`Read-Only`)}</span>
                     </div>
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -427,12 +429,12 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                   <div className="flex items-center justify-between mb-6">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-1 bg-green-500 rounded-full"></div>
-                      <h2 className="text-xl font-bold text-slate-800">Your Custom Forms</h2>
-                      <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full font-medium">Editable</span>
+                      <h2 className="text-xl font-bold text-slate-800">{t(`Your Custom Forms`)}</h2>
+                      <span className="text-xs bg-green-50 text-green-600 px-2 py-1 rounded-full font-medium">{t(`Editable`)}</span>
                     </div>
                     
                     {forms.filter(f => !isProtected(f)).length === 0 && (
-                      <p className="text-sm text-gray-400">No custom forms created yet</p>
+                      <p className="text-sm text-gray-400">{t(`No custom forms created yet`)}</p>
                     )}
                   </div>
                   
@@ -453,7 +455,7 @@ export const VoucherFormDesigner: React.FC<Props> = (props) => {
                     </div>
                   ) : (
                     <div className="bg-gray-50/50 rounded-2xl border-2 border-dashed border-gray-200 p-12 text-center">
-                       <p className="text-gray-500">Clones or new forms will appear here.</p>
+                       <p className="text-gray-500">{t(`Clones or new forms will appear here.`)}</p>
                     </div>
                   )}
                 </div>

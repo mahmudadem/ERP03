@@ -487,8 +487,8 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                 {searchResults.length === 0 && !isSearchingServer && (
                   <div className="flex flex-col items-center p-8 text-center">
                     <Box size={32} className="mb-2 text-slate-200" />
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">No items found in local cache</p>
-                    <p className="mt-1 text-xs text-slate-500">Matching "{modalSearch}"</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{t(`No items found in local cache`)}</p>
+                    <p className="mt-1 text-xs text-slate-500">{t(`Matching "`)}{modalSearch}"</p>
                     
                     <div className="mt-6 flex flex-col gap-2">
                       <button
@@ -504,7 +504,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                         onClick={handleOpenCreateModal}
                         className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                       >
-                        <Plus size={14} /> Create "{modalSearch}"
+                        <Plus size={14} /> {t(`Create "`)}{modalSearch}"
                       </button>
                     </div>
                   </div>
@@ -513,8 +513,8 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                 {isSearchingServer && (
                   <div className="flex flex-col items-center p-12 text-center">
                     <RefreshCw size={32} className="mb-3 animate-spin text-indigo-500" />
-                    <p className="text-sm font-bold text-slate-700">Searching server...</p>
-                    <p className="text-xs text-slate-400">Scanning full item registry</p>
+                    <p className="text-sm font-bold text-slate-700">{t(`Searching server...`)}</p>
+                    <p className="text-xs text-slate-400">{t(`Scanning full item registry`)}</p>
                   </div>
                 )}
 
@@ -532,12 +532,12 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:bg-slate-800">
                           {item.code}
                         </span>
-                        {item.barcode && <span className="text-[10px] text-slate-400">Scan: {item.barcode}</span>}
+                        {item.barcode && <span className="text-[10px] text-slate-400">{t(`Scan:`)} {item.barcode}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-500">{item.type}</span>
-                      <span className="text-[9px] text-slate-400">Unit: {item.baseUom}</span>
+                      <span className="text-[9px] text-slate-400">{t(`Unit:`)} {item.baseUom}</span>
                     </div>
                   </div>
                 ))}

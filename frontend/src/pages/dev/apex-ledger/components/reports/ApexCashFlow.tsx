@@ -1,6 +1,8 @@
+import i18n from 'i18next';
 import React, { useState, useCallback } from 'react';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { TrendingUp, TrendingDown, Minus, RefreshCw, BarChart3, AlertTriangle } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 /* ── Types ─────────────────────────────────────────────── */
 
@@ -72,8 +74,8 @@ const CashFlowSectionCard: React.FC<SectionProps> = ({
     <table className="w-full">
       <thead>
         <tr className="bg-[#F8FAFC]">
-          <th className="text-left px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Item</th>
-          <th className="text-right px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Amount</th>
+          <th className="text-left px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{i18n.t(`Item`)}</th>
+          <th className="text-right px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{i18n.t(`Amount`)}</th>
         </tr>
       </thead>
       <tbody>
@@ -101,7 +103,7 @@ const CashFlowSectionCard: React.FC<SectionProps> = ({
       {items.length > 0 && (
         <tfoot>
           <tr className="border-t border-[#E2E8F0] bg-[#F8FAFC]">
-            <td className="px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Total</td>
+            <td className="px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{i18n.t(`Total`)}</td>
             <td className={`px-4 py-2 text-right font-mono text-xs font-bold ${totalAccentClass}`}>
               {fmt(total, currency)}
             </td>
@@ -115,6 +117,7 @@ const CashFlowSectionCard: React.FC<SectionProps> = ({
 /* ── Main Component ─────────────────────────────────────── */
 
 export default function ApexCashFlow() {
+    const { t } = useTranslation('common');
   const [fromDate, setFromDate] = useState(yearStart());
   const [toDate, setToDate] = useState(today());
   const [data, setData] = useState<CashFlowResponse | null>(null);
@@ -150,8 +153,8 @@ export default function ApexCashFlow() {
       <div className="bg-white border border-[#E2E8F0] rounded-lg">
         <div className="px-4 py-3 border-b border-[#E2E8F0] flex items-center space-x-2">
           <BarChart3 className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-bold text-slate-800">Cash Flow Statement</span>
-          <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest ml-2">Indirect Method</span>
+          <span className="text-sm font-bold text-slate-800">{i18n.t(`Cash Flow Statement`)}</span>
+          <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest ml-2">{i18n.t(`Indirect Method`)}</span>
         </div>
         <div className="px-4 py-3 flex items-end space-x-4 flex-wrap gap-y-3">
           <div>
@@ -231,7 +234,7 @@ export default function ApexCashFlow() {
           {/* Summary card */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg overflow-hidden">
             <div className="px-4 py-3 bg-[#F8FAFC] border-b border-[#E2E8F0]">
-              <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Summary</p>
+              <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{i18n.t(`Summary`)}</p>
             </div>
             <div className="divide-y divide-[#E2E8F0]">
               {[
@@ -291,8 +294,8 @@ export default function ApexCashFlow() {
                 <Minus className="w-5 h-5 text-slate-400" />
               )}
               <div>
-                <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Net Change in Cash</p>
-                <p className="text-xs text-slate-600 mt-0.5">Operating + Investing + Financing</p>
+                <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{i18n.t(`Net Change in Cash`)}</p>
+                <p className="text-xs text-slate-600 mt-0.5">{i18n.t(`Operating + Investing + Financing`)}</p>
               </div>
             </div>
             <span className={`font-mono text-xl font-bold ${netChangePositive ? 'text-emerald-700' : 'text-red-700'}`}>
@@ -307,7 +310,7 @@ export default function ApexCashFlow() {
       {!generated && !loading && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg flex flex-col items-center justify-center py-16 space-y-3">
           <BarChart3 className="w-8 h-8 text-slate-300" />
-          <p className="text-xs font-semibold text-slate-400">Set a date range and click Generate</p>
+          <p className="text-xs font-semibold text-slate-400">{i18n.t(`Set a date range and click Generate`)}</p>
         </div>
       )}
 

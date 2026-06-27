@@ -10,6 +10,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from "react-i18next";
 
 type CostBasisFilter = 'ALL' | 'AVG' | 'LAST_KNOWN' | 'MISSING';
 
@@ -35,6 +36,7 @@ const Initiator: React.FC<{
   onSubmit: (p: UnsettledCostsParams) => void;
   initialParams?: UnsettledCostsParams | null;
 }> = ({ onSubmit, initialParams }) => {
+    const { t } = useTranslation('common');
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
 
@@ -97,7 +99,7 @@ const Initiator: React.FC<{
             onChange={(e) => setItemId(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-amber-300 focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all"
           >
-            <option value="">All items</option>
+            <option value="">{t(`All items`)}</option>
             {items.map(it => (
               <option key={it.id} value={it.id}>{it.code} — {it.name}</option>
             ))}
@@ -114,7 +116,7 @@ const Initiator: React.FC<{
             onChange={(e) => setWarehouseId(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-emerald-300 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
           >
-            <option value="">All warehouses</option>
+            <option value="">{t(`All warehouses`)}</option>
             {warehouses.map(wh => (
               <option key={wh.id} value={wh.id}>{wh.name}</option>
             ))}
@@ -131,10 +133,10 @@ const Initiator: React.FC<{
             onChange={(e) => setCostBasis(e.target.value as CostBasisFilter)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-purple-300 focus:bg-white focus:border-purple-500 focus:ring-4 focus:ring-purple-500/10 outline-none transition-all"
           >
-            <option value="ALL">All</option>
-            <option value="AVG">Moving Average</option>
-            <option value="LAST_KNOWN">Last Known</option>
-            <option value="MISSING">Missing (no cost)</option>
+            <option value="ALL">{t(`All`)}</option>
+            <option value="AVG">{t(`Moving Average`)}</option>
+            <option value="LAST_KNOWN">{t(`Last Known`)}</option>
+            <option value="MISSING">{t(`Missing (no cost)`)}</option>
           </select>
         </div>
       </div>
@@ -168,6 +170,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, pagination, setTotalItems, density }) => {
+    const { t } = useTranslation('common');
   const [report, setReport] = useState<UnsettledCostReportDTO | null>(null);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -234,21 +237,21 @@ const ReportContent: React.FC<{
           )}
           {params.itemId && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
-              Item: {itemMap.get(params.itemId)?.code ?? params.itemId}
+              {t(`Item:`)} {itemMap.get(params.itemId)?.code ?? params.itemId}
             </span>
           )}
           {params.warehouseId && (
             <span className="text-xs font-semibold text-slate-700 border border-emerald-200 bg-emerald-50 rounded-full px-2 py-1">
-              WH: {warehouseMap.get(params.warehouseId)?.name ?? params.warehouseId}
+              {t(`WH:`)} {warehouseMap.get(params.warehouseId)?.name ?? params.warehouseId}
             </span>
           )}
           {params.costBasis !== 'ALL' && (
             <span className="text-xs font-semibold text-slate-700 border border-purple-200 bg-purple-50 rounded-full px-2 py-1">
-              Basis: {params.costBasis}
+              {t(`Basis:`)} {params.costBasis}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            {report?.total ?? 0} row{(report?.total ?? 0) === 1 ? '' : 's'} ·
+            {report?.total ?? 0} {t(`row`)}{(report?.total ?? 0) === 1 ? '' : 's'} ·
             Unsettled qty: <span className="font-black text-slate-700">{fmtQty(totalUnsettledQty)}</span> ·
             Cost basis (base): <span className="font-black text-red-700">{fmt(totalCostBase)}</span>
           </span>
@@ -264,7 +267,7 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t(`Loading...`)}</p>
             </div>
           </div>
         ) : (
@@ -272,14 +275,14 @@ const ReportContent: React.FC<{
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                 <tr>
-                  <th className={`${cellPad} text-left`}>Date</th>
-                  <th className={`${cellPad} text-left`}>Item</th>
-                  <th className={`${cellPad} text-left`}>Warehouse</th>
-                  <th className={`${cellPad} text-left`}>Movement Type</th>
-                  <th className={`${cellPad} text-right`}>Qty</th>
-                  <th className={`${cellPad} text-right`}>Unsettled Qty</th>
-                  <th className={`${cellPad} text-left`}>Cost Basis</th>
-                  <th className={`${cellPad} text-right`}>Total Cost (Base)</th>
+                  <th className={`${cellPad} text-left`}>{t(`Date`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Item`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Warehouse`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Movement Type`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Qty`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Unsettled Qty`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Cost Basis`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Total Cost (Base)`)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -311,7 +314,7 @@ const ReportContent: React.FC<{
               {(report?.total ?? 0) > 0 && (
                 <tfoot>
                   <tr className="bg-slate-100 font-bold text-slate-900">
-                    <td colSpan={5} className={`${cellPad} text-right`}>Totals</td>
+                    <td colSpan={5} className={`${cellPad} text-right`}>{t(`Totals`)}</td>
                     <td className={`${cellPad} text-right tabular-nums text-red-800`}>{fmtQty(totalUnsettledQty)}</td>
                     <td className={cellPad}></td>
                     <td className={`${cellPad} text-right tabular-nums`}>{fmt(totalCostBase)}</td>

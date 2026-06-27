@@ -107,6 +107,7 @@ const StatementInitiator: React.FC<{
   initialParams?: AccountStatementParams | null;
   isModal?: boolean;
 }> = ({ onSubmit, initialParams, isModal }) => {
+    const { t } = useTranslation('common');
   const [params, setParams] = React.useState<AccountStatementParams>(initialParams || {
     accountId: '1010-CASH',
     fromDate: '2026-06-01',
@@ -122,7 +123,7 @@ const StatementInitiator: React.FC<{
     <form onSubmit={handleSubmit} className={`flex flex-col gap-4 ${!isModal ? 'max-w-md' : ''}`}>
       <div className="grid grid-cols-1 gap-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Account</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t(`Account`)}</label>
           <Input 
             value={params.accountId}
             onChange={(e) => setParams({ ...params, accountId: e.target.value })}
@@ -131,7 +132,7 @@ const StatementInitiator: React.FC<{
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">From Date</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t(`From Date`)}</label>
             <Input 
               type="date"
               value={params.fromDate}
@@ -139,7 +140,7 @@ const StatementInitiator: React.FC<{
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">To Date</label>
+            <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t(`To Date`)}</label>
             <Input 
               type="date"
               value={params.toDate}
@@ -181,13 +182,13 @@ export default function ReportTableDemoPage() {
     actions.push({
       label: 'Account Card',
       icon: <CreditCard size={16} />,
-      onClick: () => toast.success('Opening Account Card...')
+      onClick: () => toast.success(t('Opening Account Card...'))
     });
 
     actions.push({
       label: 'Account Statement',
       icon: <Activity size={16} />,
-      onClick: () => toast.success('Filtering statement to this account...')
+      onClick: () => toast.success(t('Filtering statement to this account...'))
     });
 
     return actions;

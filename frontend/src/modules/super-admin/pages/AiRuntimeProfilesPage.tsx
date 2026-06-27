@@ -294,7 +294,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
       {viewState.mode === 'list' && (
         <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
           <span>
-            <strong>Setting up a new AI model?</strong> Use the guided wizard — it handles provider, model,
+            <strong>{t(`Setting up a new AI model?`)}</strong> Use the guided wizard — it handles provider, model,
             key, test, and certification in one linear flow.
           </span>
           <button
@@ -431,7 +431,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
                   : t('superAdmin.aiRuntimeProfiles.form.createTitle')}
               </h2>
             </div>
-            <button onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</button>
+            <button onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-700">{t(`Cancel`)}</button>
           </div>
 
           <div className="space-y-4">
@@ -492,7 +492,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
                       providerVaultKeys.length === 0 && 'opacity-50 cursor-not-allowed',
                     )}
                   >
-                    Pick from vault ({providerVaultKeys.length})
+                    {t(`Pick from vault (`)}{providerVaultKeys.length})
                   </button>
                   <button
                     type="button"
@@ -537,7 +537,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
                             </span>
                           )}
                           {k.lastValidationStatus === 'unknown' && (
-                            <span className="text-xs text-slate-400">Not tested</span>
+                            <span className="text-xs text-slate-400">{t(`Not tested`)}</span>
                           )}
                         </div>
                         {k.notes && <div className="text-xs text-slate-500 mt-0.5 italic">{k.notes}</div>}
@@ -548,7 +548,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
                     </button>
                   ))}
                   <p className="text-xs text-slate-500">
-                    Manage saved keys at{' '}
+                    {t(`Manage saved keys at`)}{' '}
                     <a href="/super-admin/ai-api-keys" target="_blank" rel="noreferrer" className="text-indigo-700 underline">
                       API Key Vault
                     </a>
@@ -575,7 +575,7 @@ export const AiRuntimeProfilesPage: React.FC = () => {
                       : t('superAdmin.aiRuntimeProfiles.form.apiKeyHint', 'Encrypted at rest. Never displayed back to anyone after save.')}
                     {' '}
                     {providerVaultKeys.length === 0 && (
-                      <>Tip: save this key to the{' '}
+                      <>{t(`Tip: save this key to the`)}{' '}
                         <a href="/super-admin/ai-api-keys" target="_blank" rel="noreferrer" className="text-indigo-700 underline">
                           API Key Vault
                         </a>{' '}to reuse it on other models.

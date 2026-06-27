@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, CheckCircle, ArrowRight } from 'lucide-react';
 import { Spinner } from '../../../../components/ui/Spinner';
+import { useTranslation } from "react-i18next";
 
 type ModuleInitStatus = 'loading' | 'not_installed' | 'not_initialized' | 'initializing' | 'ready';
 
@@ -17,6 +18,7 @@ const MODULE_LABELS: Record<string, string> = {
 };
 
 export const ModuleStatusBanner: React.FC<Props> = ({ moduleName, status }) => {
+    const { t } = useTranslation('common');
   const label = MODULE_LABELS[moduleName] || moduleName;
   const setupPath = `/${moduleName.toLowerCase()}/setup`;
 
@@ -33,8 +35,8 @@ export const ModuleStatusBanner: React.FC<Props> = ({ moduleName, status }) => {
       <div className="flex items-center gap-3 px-4 py-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700">
         <Spinner size="sm" />
         <div>
-          <p className="font-bold">Setting up {label}...</p>
-          <p className="text-sm text-blue-600">The module is being configured. Forms will be available once setup is complete.</p>
+          <p className="font-bold">{t(`Setting up`)} {label}...</p>
+          <p className="text-sm text-blue-600">{t(`The module is being configured. Forms will be available once setup is complete.`)}</p>
         </div>
       </div>
     );
@@ -46,9 +48,9 @@ export const ModuleStatusBanner: React.FC<Props> = ({ moduleName, status }) => {
         <div className="flex items-start gap-3 flex-1">
           <AlertTriangle className="text-amber-600 mt-0.5 shrink-0" size={20} />
           <div>
-            <p className="font-bold text-amber-800">{label} Module Not Configured</p>
+            <p className="font-bold text-amber-800">{label} {t(`Module Not Configured`)}</p>
             <p className="text-sm text-amber-700 mt-1">
-              The {label} module is enabled but has not been set up yet. You need to complete the initial configuration before you can customize document forms.
+              {t(`The`)} {label} module is enabled but has not been set up yet. You need to complete the initial configuration before you can customize document forms.
             </p>
           </div>
         </div>
@@ -56,7 +58,7 @@ export const ModuleStatusBanner: React.FC<Props> = ({ moduleName, status }) => {
           href={setupPath}
           className="shrink-0 inline-flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg font-bold text-sm hover:bg-amber-700 transition-colors"
         >
-          Initialize {label}
+          {t(`Initialize`)} {label}
           <ArrowRight size={14} />
         </a>
       </div>
@@ -68,9 +70,9 @@ export const ModuleStatusBanner: React.FC<Props> = ({ moduleName, status }) => {
       <div className="flex items-center gap-3 px-5 py-4 bg-slate-50 border border-slate-200 rounded-xl">
         <AlertTriangle className="text-slate-500 shrink-0" size={20} />
         <div>
-          <p className="font-bold text-slate-700">{label} Module Not Enabled</p>
+          <p className="font-bold text-slate-700">{label} {t(`Module Not Enabled`)}</p>
           <p className="text-sm text-slate-500 mt-1">
-            The {label} module is not enabled for this company. Enable it from Company Admin settings to access document forms.
+            {t(`The`)} {label} module is not enabled for this company. Enable it from Company Admin settings to access document forms.
           </p>
         </div>
       </div>

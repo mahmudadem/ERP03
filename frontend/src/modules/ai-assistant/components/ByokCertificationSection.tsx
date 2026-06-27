@@ -381,18 +381,18 @@ export const ByokCertificationSection: React.FC<ByokCertificationSectionProps> =
                     </div>
                   </div>
                   <div>
-                    <span className="text-xs text-gray-500">Score</span>
+                    <span className="text-xs text-gray-500">{t(`Score`)}</span>
                     <div className="font-medium text-gray-800">{registeredCertResult.score}/{registeredCertResult.maxScore}</div>
                   </div>
                   {registeredCertResult.summary && (
                     <div className="sm:col-span-2">
-                      <span className="text-xs text-gray-500">Summary</span>
+                      <span className="text-xs text-gray-500">{t(`Summary`)}</span>
                       <div className="text-gray-700">{registeredCertResult.summary}</div>
                     </div>
                   )}
                   {registeredCertResult.failureReasons && registeredCertResult.failureReasons.length > 0 && (
                     <div className="sm:col-span-2">
-                      <span className="text-xs text-gray-500">Failure Reasons</span>
+                      <span className="text-xs text-gray-500">{t(`Failure Reasons`)}</span>
                       <ul className="mt-1 list-disc list-inside text-sm text-red-700">
                         {registeredCertResult.failureReasons.map((reason, idx) => (
                           <li key={idx}>{reason}</li>

@@ -2,6 +2,7 @@ import React, { useState, useMemo, useCallback } from 'react';
 import { DataTable, ColumnDefinition, RowAction, BulkAction, ActiveFilters } from '../../components/ui/DataTable';
 import { Badge } from '../../components/ui/Badge';
 import { Eye, Edit, Trash2, Printer, Download, CheckCircle, XCircle, FileText, Filter } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface DemoVoucher {
   id: string;
@@ -106,6 +107,7 @@ const bulkActions: BulkAction<DemoVoucher>[] = [
 ];
 
 const DataTableDemoPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [allData] = useState(() => generateDemoData(127));
   const [filteredData, setFilteredData] = useState<DemoVoucher[]>(allData);
   const [sortField, setSortField] = useState<string>('date');
@@ -219,7 +221,7 @@ const DataTableDemoPage: React.FC = () => {
   return (
     <div className="flex flex-col h-full bg-[var(--color-bg-secondary)] p-4 space-y-4">
       <div>
-        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">DataTable Demo</h1>
+        <h1 className="text-2xl font-bold text-[var(--color-text-primary)]">{t(`DataTable Demo`)}</h1>
         <p className="text-sm text-[var(--color-text-secondary)] mt-1">
           Universal data table — selection, actions, filters, resizing, expandable rows, density, badges.
         </p>
@@ -262,19 +264,19 @@ const DataTableDemoPage: React.FC = () => {
         renderExpanded={(row) => (
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-[var(--color-text-muted)]">Debit: </span>
+              <span className="text-[var(--color-text-muted)]">{t(`Debit:`)} </span>
               <span className="text-[var(--color-text-primary)]">{row.debitAccount}</span>
             </div>
             <div>
-              <span className="text-[var(--color-text-muted)]">Credit: </span>
+              <span className="text-[var(--color-text-muted)]">{t(`Credit:`)} </span>
               <span className="text-[var(--color-text-primary)]">{row.creditAccount}</span>
             </div>
             <div>
-              <span className="text-[var(--color-text-muted)]">Reference: </span>
+              <span className="text-[var(--color-text-muted)]">{t(`Reference:`)} </span>
               <span className="text-[var(--color-text-primary)] font-mono">{row.reference}</span>
             </div>
             <div>
-              <span className="text-[var(--color-text-muted)]">Mode: </span>
+              <span className="text-[var(--color-text-muted)]">{t(`Mode:`)} </span>
               <span className="text-[var(--color-text-primary)]">{row.creationMode}</span>
             </div>
           </div>

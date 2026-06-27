@@ -1,6 +1,7 @@
 import React from 'react';
 import { errorHandler } from '../services/errorHandler';
 import { ErrorCode, ErrorSeverity } from '../types/errors';
+import { useTranslation } from "react-i18next";
 
 /**
  * Error Handling Test Page
@@ -8,6 +9,7 @@ import { ErrorCode, ErrorSeverity } from '../types/errors';
  * Tests all error types and display methods
  */
 export const ErrorTestPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const testToastError = () => {
     errorHandler.showError({
       code: ErrorCode.VOUCH_ALREADY_APPROVED,
@@ -72,12 +74,12 @@ export const ErrorTestPage: React.FC = () => {
 
   return (
     <div className="p-8 max-w-4xl mx-auto">
-      <h1 className="text-3xl font-bold mb-8">Error Handling System Test</h1>
+      <h1 className="text-3xl font-bold mb-8">{t(`Error Handling System Test`)}</h1>
       
       <div className="space-y-6">
         {/* Toast Tests */}
         <section className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Toast Notifications</h2>
+          <h2 className="text-xl font-semibold mb-4">{t(`Toast Notifications`)}</h2>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={testToastError}
@@ -102,7 +104,7 @@ export const ErrorTestPage: React.FC = () => {
 
         {/* Modal Tests */}
         <section className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Modal Dialogs</h2>
+          <h2 className="text-xl font-semibold mb-4">{t(`Modal Dialogs`)}</h2>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={testModalError}
@@ -121,7 +123,7 @@ export const ErrorTestPage: React.FC = () => {
 
         {/* API Error Test */}
         <section className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">API Error Handling</h2>
+          <h2 className="text-xl font-semibold mb-4">{t(`API Error Handling`)}</h2>
           <div className="flex flex-wrap gap-3">
             <button
               onClick={testAPIError}
@@ -138,38 +140,38 @@ export const ErrorTestPage: React.FC = () => {
 
         {/* Error Codes Reference */}
         <section className="bg-white p-6 rounded-lg shadow">
-          <h2 className="text-xl font-semibold mb-4">Error Codes Reference</h2>
+          <h2 className="text-xl font-semibold mb-4">{t(`Error Codes Reference`)}</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <h3 className="font-semibold mb-2">Authentication</h3>
+              <h3 className="font-semibold mb-2">{t(`Authentication`)}</h3>
               <ul className="space-y-1 text-gray-600">
-                <li>AUTH_001: Invalid credentials</li>
-                <li>AUTH_002: Token expired</li>
-                <li>AUTH_004: Insufficient permissions</li>
+                <li>{t(`AUTH_001: Invalid credentials`)}</li>
+                <li>{t(`AUTH_002: Token expired`)}</li>
+                <li>{t(`AUTH_004: Insufficient permissions`)}</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Validation</h3>
+              <h3 className="font-semibold mb-2">{t(`Validation`)}</h3>
               <ul className="space-y-1 text-gray-600">
-                <li>VAL_001: Required field</li>
-                <li>VAL_002: Invalid format</li>
-                <li>VAL_003: Duplicate entry</li>
+                <li>{t(`VAL_001: Required field`)}</li>
+                <li>{t(`VAL_002: Invalid format`)}</li>
+                <li>{t(`VAL_003: Duplicate entry`)}</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Voucher</h3>
+              <h3 className="font-semibold mb-2">{t(`Voucher`)}</h3>
               <ul className="space-y-1 text-gray-600">
-                <li>VOUCH_001: Already approved</li>
-                <li>VOUCH_003: Not found</li>
-                <li>VOUCH_005: Unbalanced</li>
+                <li>{t(`VOUCH_001: Already approved`)}</li>
+                <li>{t(`VOUCH_003: Not found`)}</li>
+                <li>{t(`VOUCH_005: Unbalanced`)}</li>
               </ul>
             </div>
             <div>
-              <h3 className="font-semibold mb-2">Infrastructure</h3>
+              <h3 className="font-semibold mb-2">{t(`Infrastructure`)}</h3>
               <ul className="space-y-1 text-gray-600">
-                <li>INFRA_001: Database error</li>
-                <li>INFRA_002: Network error</li>
-                <li>INFRA_999: Unknown error</li>
+                <li>{t(`INFRA_001: Database error`)}</li>
+                <li>{t(`INFRA_002: Network error`)}</li>
+                <li>{t(`INFRA_999: Unknown error`)}</li>
               </ul>
             </div>
           </div>

@@ -35,6 +35,7 @@ import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../co
 import { generateNextCode, CODE_PATTERNS } from '../../../utils/codeGenerator';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
+import i18n from "i18next";
 
 interface ItemMasterCardProps {
   itemId?: string;
@@ -250,7 +251,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       if (savedItemId) {
         await loadConversions(savedItemId);
       }
-      toast.success('Unused UOM conversion deleted.');
+      toast.success(i18n.t('Unused UOM conversion deleted.'));
     } catch (err: any) {
       const message = err.response?.data?.message || 'Failed to delete conversion';
       setError(message);
@@ -787,8 +788,8 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                               <td className="px-4 py-2">
                                 {impact ? (
                                   <div className="text-[11px] leading-4 text-slate-600">
-                                    <div>Usage: {impact.usageCount}</div>
-                                    <div>P: {impact.purchaseUsageCount} / S: {impact.salesUsageCount}</div>
+                                    <div>{t(`Usage:`)} {impact.usageCount}</div>
+                                    <div>{t(`P:`)} {impact.purchaseUsageCount} {t(`/ S:`)} {impact.salesUsageCount}</div>
                                   </div>
                                 ) : (
                                   <span className="text-[11px] text-slate-400">{t('Not analyzed', 'Not analyzed')}</span>

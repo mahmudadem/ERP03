@@ -58,7 +58,7 @@ export const AiManagementOverviewPage: React.FC = () => {
             <Rocket className="w-6 h-6 text-indigo-700" />
           </div>
           <div className="flex-1">
-            <h2 className="text-base font-semibold text-indigo-900">Set up a new AI model</h2>
+            <h2 className="text-base font-semibold text-indigo-900">{t(`Set up a new AI model`)}</h2>
             <p className="mt-1 text-sm text-indigo-800">
               Guided 5-step wizard: pick a provider → choose a model → save the platform key → run live tests → certify for ERP categories. Each step saves immediately — leave anytime.
             </p>
@@ -77,8 +77,8 @@ export const AiManagementOverviewPage: React.FC = () => {
             <span className="text-2xl font-bold text-[var(--sa-text)]">{providers.length}</span>
           </div>
           <div>
-            <h3 className="font-semibold text-[var(--sa-text)]">Providers</h3>
-            <p className="text-xs text-[var(--sa-muted)]">{activeProviders} active connections</p>
+            <h3 className="font-semibold text-[var(--sa-text)]">{t(`Providers`)}</h3>
+            <p className="text-xs text-[var(--sa-muted)]">{activeProviders} {t(`active connections`)}</p>
           </div>
         </div>
 
@@ -91,8 +91,8 @@ export const AiManagementOverviewPage: React.FC = () => {
             <span className="text-2xl font-bold text-[var(--sa-text)]">{modelList.length}</span>
           </div>
           <div>
-            <h3 className="font-semibold text-[var(--sa-text)]">Model Profiles</h3>
-            <p className="text-xs text-[var(--sa-muted)]">{activeModels} enabled system-wide</p>
+            <h3 className="font-semibold text-[var(--sa-text)]">{t(`Model Profiles`)}</h3>
+            <p className="text-xs text-[var(--sa-muted)]">{activeModels} {t(`enabled system-wide`)}</p>
           </div>
         </div>
 
@@ -105,8 +105,8 @@ export const AiManagementOverviewPage: React.FC = () => {
             <span className="text-2xl font-bold text-[var(--sa-text)]">{runtimes.length}</span>
           </div>
           <div>
-            <h3 className="font-semibold text-[var(--sa-text)]">Runtime Profiles</h3>
-            <p className="text-xs text-[var(--sa-muted)]">{activeRuntimes} actively serving</p>
+            <h3 className="font-semibold text-[var(--sa-text)]">{t(`Runtime Profiles`)}</h3>
+            <p className="text-xs text-[var(--sa-muted)]">{activeRuntimes} {t(`actively serving`)}</p>
           </div>
         </div>
 
@@ -119,8 +119,8 @@ export const AiManagementOverviewPage: React.FC = () => {
             <span className="text-2xl font-bold text-[var(--sa-text)]">{toolsList.length}</span>
           </div>
           <div>
-            <h3 className="font-semibold text-[var(--sa-text)]">Tools & Skills</h3>
-            <p className="text-xs text-[var(--sa-muted)]">{activeTools} active tools</p>
+            <h3 className="font-semibold text-[var(--sa-text)]">{t(`Tools & Skills`)}</h3>
+            <p className="text-xs text-[var(--sa-muted)]">{activeTools} {t(`active tools`)}</p>
           </div>
         </div>
       </div>
@@ -136,43 +136,43 @@ export const AiManagementOverviewPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 <div>
-                  <p className="font-medium text-[var(--sa-text)] text-sm">Proposal Engine</p>
-                  <p className="text-xs text-[var(--sa-muted)]">Active</p>
+                  <p className="font-medium text-[var(--sa-text)] text-sm">{t(`Proposal Engine`)}</p>
+                  <p className="text-xs text-[var(--sa-muted)]">{t(`Active`)}</p>
                 </div>
               </div>
-              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-medium rounded-full">Healthy</span>
+              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-medium rounded-full">{t(`Healthy`)}</span>
             </div>
             <div className="flex items-center justify-between p-3 bg-[var(--sa-surface-muted)] rounded-lg border border-[var(--sa-border)]">
               <div className="flex items-center gap-3">
                 <CheckCircle2 className="w-5 h-5 text-emerald-500" />
                 <div>
-                  <p className="font-medium text-[var(--sa-text)] text-sm">Tool Certifications</p>
-                  <p className="text-xs text-[var(--sa-muted)]">Up to date</p>
+                  <p className="font-medium text-[var(--sa-text)] text-sm">{t(`Tool Certifications`)}</p>
+                  <p className="text-xs text-[var(--sa-muted)]">{t(`Up to date`)}</p>
                 </div>
               </div>
-              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-medium rounded-full">Healthy</span>
+              <span className="px-2 py-1 bg-emerald-500/10 text-emerald-500 text-xs font-medium rounded-full">{t(`Healthy`)}</span>
             </div>
           </div>
         </div>
 
         <div className="bg-[var(--sa-surface)] rounded-[var(--sa-radius)] border border-[var(--sa-border)] p-5">
-          <h2 className="font-semibold text-[var(--sa-text)] mb-4">Quick Actions</h2>
+          <h2 className="font-semibold text-[var(--sa-text)] mb-4">{t(`Quick Actions`)}</h2>
           <div className="grid grid-cols-2 gap-3">
             <Link to="/super-admin/ai-providers" className="block p-3 text-left bg-[var(--sa-surface-muted)] hover:bg-[var(--sa-sidebar-hover)] rounded-lg border border-[var(--sa-border)] transition-colors">
-              <p className="font-medium text-[var(--sa-text)] text-sm">Manage Providers</p>
-              <p className="text-xs text-[var(--sa-muted)]">Configure API connections</p>
+              <p className="font-medium text-[var(--sa-text)] text-sm">{t(`Manage Providers`)}</p>
+              <p className="text-xs text-[var(--sa-muted)]">{t(`Configure API connections`)}</p>
             </Link>
             <Link to="/super-admin/ai-models" className="block p-3 text-left bg-[var(--sa-surface-muted)] hover:bg-[var(--sa-sidebar-hover)] rounded-lg border border-[var(--sa-border)] transition-colors">
-              <p className="font-medium text-[var(--sa-text)] text-sm">Manage Models</p>
-              <p className="text-xs text-[var(--sa-muted)]">Enable or sync models</p>
+              <p className="font-medium text-[var(--sa-text)] text-sm">{t(`Manage Models`)}</p>
+              <p className="text-xs text-[var(--sa-muted)]">{t(`Enable or sync models`)}</p>
             </Link>
             <Link to="/super-admin/ai-tools" className="block p-3 text-left bg-[var(--sa-surface-muted)] hover:bg-[var(--sa-sidebar-hover)] rounded-lg border border-[var(--sa-border)] transition-colors">
-              <p className="font-medium text-[var(--sa-text)] text-sm">Tool Catalog</p>
-              <p className="text-xs text-[var(--sa-muted)]">View all AI tools</p>
+              <p className="font-medium text-[var(--sa-text)] text-sm">{t(`Tool Catalog`)}</p>
+              <p className="text-xs text-[var(--sa-muted)]">{t(`View all AI tools`)}</p>
             </Link>
             <Link to="/super-admin/ai-proposal-policies" className="block p-3 text-left bg-[var(--sa-surface-muted)] hover:bg-[var(--sa-sidebar-hover)] rounded-lg border border-[var(--sa-border)] transition-colors">
-              <p className="font-medium text-[var(--sa-text)] text-sm">Proposal Policies</p>
-              <p className="text-xs text-[var(--sa-muted)]">Manage AI write rules</p>
+              <p className="font-medium text-[var(--sa-text)] text-sm">{t(`Proposal Policies`)}</p>
+              <p className="text-xs text-[var(--sa-muted)]">{t(`Manage AI write rules`)}</p>
             </Link>
           </div>
         </div>

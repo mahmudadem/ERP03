@@ -6,6 +6,7 @@
 import { useQuery, useMutation, useQueryClient, UseQueryResult, UseMutationResult } from '@tanstack/react-query';
 import { toast } from 'react-hot-toast';
 import * as companyAdminApi from '../api/companyAdmin';
+import i18n from "i18next";
 
 // ============================================================================
 // QUERY KEYS
@@ -43,7 +44,7 @@ export const useCompanyProfile = () => {
     mutationFn: companyAdminApi.updateCompanyProfile,
     onSuccess: (data) => {
       queryClient.setQueryData(companyAdminKeys.profile(), data);
-      toast.success('Company profile updated successfully');
+      toast.success(i18n.t('Company profile updated successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update company profile');
@@ -78,7 +79,7 @@ export const useCompanyUsers = () => {
     mutationFn: companyAdminApi.inviteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
-      toast.success('User added successfully');
+      toast.success(i18n.t('User added successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to add user');
@@ -90,7 +91,7 @@ export const useCompanyUsers = () => {
       companyAdminApi.updateUserRole(userId, { roleId }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
-      toast.success('User role updated successfully');
+      toast.success(i18n.t('User role updated successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update user role');
@@ -101,7 +102,7 @@ export const useCompanyUsers = () => {
     mutationFn: companyAdminApi.disableUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
-      toast.success('User disabled successfully');
+      toast.success(i18n.t('User disabled successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to disable user');
@@ -112,7 +113,7 @@ export const useCompanyUsers = () => {
     mutationFn: companyAdminApi.enableUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
-      toast.success('User enabled successfully');
+      toast.success(i18n.t('User enabled successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to enable user');
@@ -123,7 +124,7 @@ export const useCompanyUsers = () => {
     mutationFn: companyAdminApi.deleteUser,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.users() });
-      toast.success('User removed successfully');
+      toast.success(i18n.t('User removed successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to remove user');
@@ -166,7 +167,7 @@ export const useCompanyRoles = () => {
     mutationFn: companyAdminApi.createRole,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
-      toast.success('Role created successfully');
+      toast.success(i18n.t('Role created successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to create role');
@@ -178,7 +179,7 @@ export const useCompanyRoles = () => {
       companyAdminApi.updateRole(roleId, data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
-      toast.success('Role updated successfully');
+      toast.success(i18n.t('Role updated successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to update role');
@@ -189,7 +190,7 @@ export const useCompanyRoles = () => {
     mutationFn: companyAdminApi.deleteRole,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.roles() });
-      toast.success('Role deleted successfully');
+      toast.success(i18n.t('Role deleted successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to delete role');
@@ -244,7 +245,7 @@ export const useCompanyModules = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.modules() });
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.activeModules() });
-      toast.success('Module enabled successfully');
+      toast.success(i18n.t('Module enabled successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to enable module');
@@ -256,7 +257,7 @@ export const useCompanyModules = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.modules() });
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.activeModules() });
-      toast.success('Module disabled successfully');
+      toast.success(i18n.t('Module disabled successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to disable module');
@@ -306,7 +307,7 @@ export const useCompanyBundles = () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.profile() });
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.modules() });
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.features() });
-      toast.success('Bundle upgraded successfully');
+      toast.success(i18n.t('Bundle upgraded successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to upgrade bundle');
@@ -352,7 +353,7 @@ export const useCompanyFeatures = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.features() });
       queryClient.invalidateQueries({ queryKey: companyAdminKeys.activeFeatures() });
-      toast.success('Feature toggled successfully');
+      toast.success(i18n.t('Feature toggled successfully'));
     },
     onError: (error: any) => {
       toast.error(error?.response?.data?.message || 'Failed to toggle feature');

@@ -8,6 +8,7 @@ import { AccountSelector } from '../../accounting/components/shared/AccountSelec
 import { getAccountingModeLabel } from '../../../utils/documentPolicy';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
+import { useTranslation } from "react-i18next";
 
 interface InventoryInitializationWizardProps {
   onComplete: () => void;
@@ -19,6 +20,7 @@ const accountLabel = (account: Account): string =>
   `${account.code} - ${account.name}`;
 
 export const InventoryInitializationWizard: React.FC<InventoryInitializationWizardProps> = ({ onComplete }) => {
+    const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
@@ -165,25 +167,25 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           <div className="w-20 h-20 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center mx-auto mb-6">
             <Box className="w-10 h-10" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Welcome to Inventory Setup</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">{t(`Welcome to Inventory Setup`)}</h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-8">
             Complete this guided wizard to create your first warehouse and baseline inventory settings.
           </p>
           <div className="grid md:grid-cols-3 gap-4 max-w-3xl mx-auto text-left">
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <Warehouse className="w-7 h-7 text-primary-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Warehouse</h3>
-              <p className="text-sm text-gray-600">Define your default warehouse for stock operations.</p>
+              <h3 className="font-semibold text-gray-900">{t(`Warehouse`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Define your default warehouse for stock operations.`)}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <Settings className="w-7 h-7 text-primary-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Inventory Settings</h3>
-              <p className="text-sm text-gray-600">Set cost currency and negative stock policy.</p>
+              <h3 className="font-semibold text-gray-900">{t(`Inventory Settings`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Set cost currency and negative stock policy.`)}</p>
             </div>
             <div className="rounded-lg border border-gray-200 bg-gray-50 p-4">
               <Wand2 className="w-7 h-7 text-primary-600 mb-2" />
-              <h3 className="font-semibold text-gray-900">Item Code Rules</h3>
-              <p className="text-sm text-gray-600">Optionally auto-generate item codes.</p>
+              <h3 className="font-semibold text-gray-900">{t(`Item Code Rules`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Optionally auto-generate item codes.`)}</p>
             </div>
           </div>
         </div>
@@ -194,26 +196,26 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
       if (!accountingEnabled) {
         return (
           <div className="py-6 max-w-2xl mx-auto space-y-5">
-            <h2 className="text-2xl font-bold text-gray-900">Accounting Integration</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t(`Accounting Integration`)}</h2>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div className="font-semibold text-amber-900">Accounting Not Enabled</div>
-                  <div className="text-sm text-amber-800 mt-1">Inventory operations will track quantities and costs but will NOT create financial/GL postings.</div>
-                  <div className="text-sm text-amber-700 mt-2">To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.</div>
+                  <div className="font-semibold text-amber-900">{t(`Accounting Not Enabled`)}</div>
+                  <div className="text-sm text-amber-800 mt-1">{t(`Inventory operations will track quantities and costs but will NOT create financial/GL postings.`)}</div>
+                  <div className="text-sm text-amber-700 mt-2">{t(`To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.`)}</div>
                 </div>
               </div>
             </div>
-            <p className="text-sm text-gray-600">The accounting mode selection is available once Accounting is enabled. You can configure it later from Inventory Settings.</p>
+            <p className="text-sm text-gray-600">{t(`The accounting mode selection is available once Accounting is enabled. You can configure it later from Inventory Settings.`)}</p>
           </div>
         );
       }
 
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900">Inventory Accounting Mode</h2>
-          <p className="text-sm text-gray-600">Choose when stock-related accounting should be recognized.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Inventory Accounting Mode`)}</h2>
+          <p className="text-sm text-gray-600">{t(`Choose when stock-related accounting should be recognized.`)}</p>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input
@@ -223,8 +225,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
               onChange={() => setAccountingMode('PERIODIC')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Periodic</div>
-              <div className="text-sm text-gray-600">Invoices post Sales and Purchases only. Stock quantities still move, but inventory and COGS stay out of the ledger until reporting time.</div>
+              <div className="font-semibold text-gray-900">{t(`Periodic`)}</div>
+              <div className="text-sm text-gray-600">{t(`Invoices post Sales and Purchases only. Stock quantities still move, but inventory and COGS stay out of the ledger until reporting time.`)}</div>
             </div>
           </label>
 
@@ -236,8 +238,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
               onChange={() => setAccountingMode('INVOICE_DRIVEN')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Invoice-driven</div>
-              <div className="text-sm text-gray-600">Operational stock documents stay non-financial. Sales and purchase invoices create the accounting effect.</div>
+              <div className="font-semibold text-gray-900">{t(`Invoice-driven`)}</div>
+              <div className="text-sm text-gray-600">{t(`Operational stock documents stay non-financial. Sales and purchase invoices create the accounting effect.`)}</div>
             </div>
           </label>
 
@@ -249,8 +251,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
               onChange={() => setAccountingMode('PERPETUAL')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Perpetual</div>
-              <div className="text-sm text-gray-600">Delivery and receipt posting can create real-time inventory and COGS accounting.</div>
+              <div className="font-semibold text-gray-900">{t(`Perpetual`)}</div>
+              <div className="text-sm text-gray-600">{t(`Delivery and receipt posting can create real-time inventory and COGS accounting.`)}</div>
             </div>
           </label>
         </div>
@@ -260,11 +262,11 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     if (currentStep === 2) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900">Default Warehouse</h2>
-          <p className="text-sm text-gray-600">Create the default warehouse used for opening stock and movements.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Default Warehouse`)}</h2>
+          <p className="text-sm text-gray-600">{t(`Create the default warehouse used for opening stock and movements.`)}</p>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Name`)}</label>
             <input
               type="text"
               value={defaultWarehouseName}
@@ -276,7 +278,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Code</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Code`)}</label>
             <input
               type="text"
               value={defaultWarehouseCode}
@@ -288,7 +290,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Address (Optional)</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Address (Optional)`)}</label>
             <textarea
               value={defaultWarehouseAddress}
               onChange={(e) => setDefaultWarehouseAddress(e.target.value)}
@@ -304,10 +306,10 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
     if (currentStep === 3) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900">Inventory Settings</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Inventory Settings`)}</h2>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Default Cost Currency</label>
+            <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Cost Currency`)}</label>
             <input
               type="text"
               value={defaultCostCurrency}
@@ -322,15 +324,15 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
               <div className="flex items-start gap-2">
                 <Info className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div className="text-sm font-medium text-gray-700">Account Mapping</div>
-                  <div className="text-xs text-gray-500 mt-1">Account mapping will be configured when Accounting is enabled. You can set Inventory Asset and COGS accounts later from Inventory Settings.</div>
+                  <div className="text-sm font-medium text-gray-700">{t(`Account Mapping`)}</div>
+                  <div className="text-xs text-gray-500 mt-1">{t(`Account mapping will be configured when Accounting is enabled. You can set Inventory Asset and COGS accounts later from Inventory Settings.`)}</div>
                 </div>
               </div>
             </div>
           ) : (
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Inventory Asset Account`)}</label>
                 <AccountSelector
                   value={defaultInventoryAssetAccountId}
                   onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
@@ -350,7 +352,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
                 </p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default COGS Account`)}</label>
                 <AccountSelector
                   value={defaultCOGSAccountId}
                   onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
@@ -370,8 +372,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
 
           <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
             <div>
-              <div className="text-sm font-semibold text-gray-900">Allow Negative Stock</div>
-              <div className="text-xs text-gray-600">When enabled, stock can go below zero.</div>
+              <div className="text-sm font-semibold text-gray-900">{t(`Allow Negative Stock`)}</div>
+              <div className="text-xs text-gray-600">{t(`When enabled, stock can go below zero.`)}</div>
             </div>
             <input
               type="checkbox"
@@ -383,8 +385,8 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
 
           <label className="flex items-center justify-between rounded-lg border border-gray-200 bg-gray-50 px-4 py-3 cursor-pointer">
             <div>
-              <div className="text-sm font-semibold text-gray-900">Auto-generate Item Codes</div>
-              <div className="text-xs text-gray-600">Generate item codes based on prefix and sequence.</div>
+              <div className="text-sm font-semibold text-gray-900">{t(`Auto-generate Item Codes`)}</div>
+              <div className="text-xs text-gray-600">{t(`Generate item codes based on prefix and sequence.`)}</div>
             </div>
             <input
               type="checkbox"
@@ -397,7 +399,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
           {autoGenerateItemCode && (
             <div className="grid gap-4 md:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Prefix`)}</label>
                 <input
                   type="text"
                   value={itemCodePrefix}
@@ -407,7 +409,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Starting Number</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Starting Number`)}</label>
                 <input
                   type="number"
                   min={1}
@@ -425,59 +427,59 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
 
     return (
       <div className="py-6 max-w-2xl mx-auto space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Confirm & Initialize</h2>
-        <p className="text-sm text-gray-600">Review your setup before creating inventory defaults.</p>
+        <h2 className="text-2xl font-bold text-gray-900">{t(`Confirm & Initialize`)}</h2>
+        <p className="text-sm text-gray-600">{t(`Review your setup before creating inventory defaults.`)}</p>
 
         {!accountingEnabled && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>Accounting is not enabled. This initialization will set up inventory operations only — no financial/GL postings will be created.</span>
+              <span>{t(`Accounting is not enabled. This initialization will set up inventory operations only — no financial/GL postings will be created.`)}</span>
             </div>
           </div>
         )}
 
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Accounting Method:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Accounting Method:`)}</span>{' '}
             <span className="text-gray-700">{getAccountingModeLabel(accountingMode)}</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Warehouse:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Warehouse:`)}</span>{' '}
             <span className="text-gray-700">{defaultWarehouseName} ({defaultWarehouseCode})</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Address:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Address:`)}</span>{' '}
             <span className="text-gray-700">{defaultWarehouseAddress || 'Not provided'}</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Default Cost Currency:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Default Cost Currency:`)}</span>{' '}
             <span className="text-gray-700">{defaultCostCurrency || 'Company base currency'}</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Default Inventory Asset Account:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Default Inventory Asset Account:`)}</span>{' '}
             <span className="text-gray-700">
               {selectedInventoryAssetAccount ? accountLabel(selectedInventoryAssetAccount) : (accountingMode === 'PERPETUAL' ? 'Not selected' : 'Not selected (recommended)')}
             </span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Default COGS Account:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Default COGS Account:`)}</span>{' '}
             <span className="text-gray-700">
               {selectedCOGSAccount ? accountLabel(selectedCOGSAccount) : 'Not selected (optional)'}
             </span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Allow Negative Stock:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Allow Negative Stock:`)}</span>{' '}
             <span className="text-gray-700">{allowNegativeStock ? 'Yes' : 'No'}</span>
           </div>
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Auto-generate Item Codes:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Auto-generate Item Codes:`)}</span>{' '}
             <span className="text-gray-700">{autoGenerateItemCode ? 'Yes' : 'No'}</span>
           </div>
           {autoGenerateItemCode && (
             <div className="text-sm">
-              <span className="font-semibold text-gray-900">Item Code Rule:</span>{' '}
-              <span className="text-gray-700">{itemCodePrefix || '(no prefix)'} / next #{itemCodeNextSeq}</span>
+              <span className="font-semibold text-gray-900">{t(`Item Code Rule:`)}</span>{' '}
+              <span className="text-gray-700">{itemCodePrefix || '(no prefix)'} {t(`/ next #`)}{itemCodeNextSeq}</span>
             </div>
           )}
         </div>
@@ -517,7 +519,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
 
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs font-medium text-white/90">
-              Step {currentStep + 1} of {stepTitles.length}
+              {t(`Step`)} {currentStep + 1} {t(`of`)} {stepTitles.length}
             </span>
             <span className="text-xs font-semibold text-white">{stepTitles[currentStep]}</span>
           </div>

@@ -315,15 +315,15 @@ const ProfitAndLossReportContent: React.FC<{ params: ProfitAndLossParams }> = ({
                     {data.structured.periodicTrading && (
                       <div className="pl-4 mt-2 space-y-1 text-sm">
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-600">Opening Inventory</span>
+                          <span className="text-slate-600">{t(`Opening Inventory`)}</span>
                           <span className="font-mono text-slate-800">{moneyFmt(data.structured.periodicTrading.openingInventory, currency)}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-600">Net Purchases</span>
+                          <span className="text-slate-600">{t(`Net Purchases`)}</span>
                           <span className="font-mono text-slate-800">{moneyFmt(data.structured.periodicTrading.netPurchases, currency)}</span>
                         </div>
                         <div className="flex items-center justify-between">
-                          <span className="text-slate-600">Closing Inventory</span>
+                          <span className="text-slate-600">{t(`Closing Inventory`)}</span>
                           <span className="font-mono text-slate-800">({moneyFmt(data.structured.periodicTrading.closingInventory, currency)})</span>
                         </div>
                       </div>

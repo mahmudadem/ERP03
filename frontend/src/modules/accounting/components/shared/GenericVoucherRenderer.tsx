@@ -2824,7 +2824,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
             onBlur={() => onBlurRef.current?.()}
             className={fieldControlClass}
           >
-            <option value="">Select sales order...</option>
+            <option value="">{t(`Select sales order...`)}</option>
             {salesOrders.map((order) => (
               <option key={order.id} value={order.id}>
                 {order.orderNumber} · {order.customerName}
@@ -3264,7 +3264,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                           onBlur={() => onBlurRef.current?.()}
                                                           className={`w-full h-8 px-2 border border-[var(--color-border)] rounded bg-[var(--color-bg-primary)] text-xs text-[var(--color-text-primary)] focus:ring-1 focus:ring-primary-500 outline-none ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                                                         >
-                                                          <option value="">Select...</option>
+                                                          <option value="">{t(`Select...`)}</option>
                                                           {selectOptions.map((option) => (
                                                             <option key={option.value} value={option.value}>
                                                               {option.label}
@@ -3321,11 +3321,11 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                        {false && (rateDeviations[row.id]?.showWarning) && (
                                                          <div className="absolute left-0 top-full z-50 mt-1 p-2 bg-amber-50 dark:bg-amber-900/30 border border-amber-300 dark:border-amber-600 rounded-md shadow-lg min-w-[200px] text-xs">
                                                            <div className="flex items-center gap-1 text-amber-700 dark:text-amber-300 font-medium mb-1">
-                                                             <span>⚠️ Rate differs by {rateDeviations[row.id]?.deviation}%</span>
+                                                             <span>{t(`⚠️ Rate differs by`)} {rateDeviations[row.id]?.deviation}%</span>
                                                            </div>
                                                            <div className="text-amber-600 dark:text-amber-400 mb-2">
-                                                             <div>Your rate: {row.parity}</div>
-                                                             <div>System rate: {rateDeviations[row.id]?.systemRate}</div>
+                                                             <div>{t(`Your rate:`)} {row.parity}</div>
+                                                             <div>{t(`System rate:`)} {rateDeviations[row.id]?.systemRate}</div>
                                                            </div>
                                                            <button
                                                              onClick={() => handleSaveRateToSystem(row.id)}
@@ -3358,7 +3358,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                         />
                                                        {getAccountByCode(row.account)?.currencyPolicy === 'FIXED' && (
                                                          <div className="absolute -top-1 -right-1 opacity-0 group-hover/curr:opacity-100 transition-opacity">
-                                                           <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">FIXED</span>
+                                                           <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">{t(`FIXED`)}</span>
                                                          </div>
                                                        )}
                                                      </div>
@@ -3643,7 +3643,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                               />
                                                {getAccountByCode(row.account)?.currencyPolicy === 'FIXED' && (
                                                  <div className="absolute -top-1 -right-1 opacity-0 group-hover/curr:opacity-100 transition-opacity">
-                                                   <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">FIXED</span>
+                                                   <span className="bg-primary-500 text-white text-[8px] px-1 rounded-sm shadow-sm">{t(`FIXED`)}</span>
                                                  </div>
                                                )}
                                              </div>
@@ -3657,7 +3657,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                                onBlur={() => onBlurRef.current?.()}
                                                className={`w-full h-8 p-1.5 border border-[var(--color-border)] rounded text-xs focus:ring-1 focus:ring-primary-500 outline-none bg-[var(--color-bg-primary)] text-[var(--color-text-primary)] ${readOnly || col.readOnly ? 'bg-[var(--color-bg-secondary)] cursor-not-allowed opacity-80' : ''}`}
                                              >
-                                               <option value="">Select...</option>
+                                               <option value="">{t(`Select...`)}</option>
                                                {selectOptions.map((option) => (
                                                  <option key={option.value} value={option.value}>
                                                    {option.label}
@@ -3760,11 +3760,11 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                                     <td key={`total-${col.id}`} className="p-2 text-end">
                                       <div className="flex flex-col items-end">
                                         <div className="flex gap-2 text-[10px] text-[var(--color-text-muted)] font-bold uppercase">
-                                          <span>D: {equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCode}</span>
-                                          <span>C: {equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCode}</span>
+                                          <span>{t(`D:`)} {equivDebit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCode}</span>
+                                          <span>{t(`C:`)} {equivCredit.toLocaleString(undefined, { minimumFractionDigits: 2 })} {baseCode}</span>
                                         </div>
                                         <div className={`text-xs font-mono font-bold ${balanced ? 'text-success-600' : 'text-danger-600'}`}>
-                                          Diff: {(equivDebit - equivCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                          {t(`Diff:`)} {(equivDebit - equivCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </div>
                                       </div>
                                     </td>
@@ -3931,7 +3931,7 @@ const _GenericVoucherRenderer = React.forwardRef<GenericVoucherRendererRef, Gene
                    onBlur={() => onBlurRef.current?.()}
                    className={fieldControlClass}
                  >
-                   <option value="">Select...</option>
+                   <option value="">{t(`Select...`)}</option>
                    {selectOptions.map((option: any) => (
                      <option key={String(option.value)} value={String(option.value)}>
                        {option.label}

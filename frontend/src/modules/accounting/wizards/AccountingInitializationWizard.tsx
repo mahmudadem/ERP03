@@ -7,6 +7,7 @@ import {
   SystemVoucherTypeGroup,
 } from '../services/voucherTypesService';
 import { getCountryDefaults } from '../utils/countryDefaults';
+import { useTranslation } from "react-i18next";
 
 interface AccountingSetupData {
   fiscalYearStart: string; // MM-DD format
@@ -49,6 +50,7 @@ interface CoaTemplate {
  * Multi-step wizard to configure accounting module
  */
 export const AccountingInitializationWizard: React.FC = () => {
+    const { t } = useTranslation('common');
   const { companyId, company, refreshCompany } = useCompanyAccess();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -224,18 +226,18 @@ export const AccountingInitializationWizard: React.FC = () => {
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Calendar className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Fiscal Year</h3>
-              <p className="text-sm text-gray-600">Define your accounting period</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t(`Fiscal Year`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Define your accounting period`)}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <DollarSign className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Base Currency</h3>
-              <p className="text-sm text-gray-600">Set your default currency</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t(`Base Currency`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Set your default currency`)}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <BookOpen className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Chart of Accounts</h3>
-              <p className="text-sm text-gray-600">Choose your account template</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t(`Chart of Accounts`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Choose your account template`)}</p>
             </div>
           </div>
         </div>
@@ -246,7 +248,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       icon: Calendar,
       content: (
         <div className="py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Set Your Fiscal Year</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t(`Set Your Fiscal Year`)}</h2>
           <p className="text-gray-600 mb-8 text-center">
             Choose the start and end dates for your accounting year
           </p>
@@ -263,7 +265,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 placeholder="MM-DD (e.g., 01-01)"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Format: MM-DD (e.g., 01-01 for January 1st)</p>
+              <p className="text-xs text-gray-500 mt-1">{t(`Format: MM-DD (e.g., 01-01 for January 1st)`)}</p>
             </div>
 
             <div>
@@ -277,7 +279,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 placeholder="MM-DD (e.g., 12-31)"
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Format: MM-DD (e.g., 12-31 for December 31st)</p>
+              <p className="text-xs text-gray-500 mt-1">{t(`Format: MM-DD (e.g., 12-31 for December 31st)`)}</p>
             </div>
 
             <div>
@@ -289,18 +291,18 @@ export const AccountingInitializationWizard: React.FC = () => {
                 onChange={(e) => setSetupData({ ...setupData, periodScheme: e.target.value as any })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
-                <option value="MONTHLY">Monthly (12 periods)</option>
-                <option value="QUARTERLY">Quarterly (4 periods)</option>
-                <option value="SEMI_ANNUAL">Semi-Annual (2 periods)</option>
+                <option value="MONTHLY">{t(`Monthly (12 periods)`)}</option>
+                <option value="QUARTERLY">{t(`Quarterly (4 periods)`)}</option>
+                <option value="SEMI_ANNUAL">{t(`Semi-Annual (2 periods)`)}</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">Defines how your accounting periods will be generated</p>
+              <p className="text-xs text-gray-500 mt-1">{t(`Defines how your accounting periods will be generated`)}</p>
             </div>
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Common Options:</strong><br />
-                • Calendar Year: 01-01 to 12-31<br />
-                • Fiscal Year (US): 10-01 to 09-30<br />
+                <strong>{t(`Common Options:`)}</strong><br />
+                {t(`• Calendar Year: 01-01 to 12-31`)}<br />
+                {t(`• Fiscal Year (US): 10-01 to 09-30`)}<br />
                 • Fiscal Year (UK): 04-01 to 03-31
               </p>
             </div>
@@ -313,7 +315,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       icon: DollarSign,
       content: (
         <div className="py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Base Currency</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t(`Select Base Currency`)}</h2>
           <p className="text-gray-600 mb-8 text-center">
             This will be your primary currency for all transactions
           </p>
@@ -335,7 +337,7 @@ export const AccountingInitializationWizard: React.FC = () => {
             {isLoadingData ? (
               <div className="flex items-center justify-center py-12">
                 <Spinner size="lg" />
-                <span className="ml-3 text-gray-600">Loading currencies...</span>
+                <span className="ml-3 text-gray-600">{t(`Loading currencies...`)}</span>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 p-1">
@@ -370,7 +372,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                         </div>
                         <p className="text-xs text-center text-gray-600 truncate w-full">{currency.name}</p>
                         {currency.code === companyCurrency && (
-                          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 rounded-full mt-1">Recommended</span>
+                          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 rounded-full mt-1">{t(`Recommended`)}</span>
                         )}
                       </button>
                     ));
@@ -429,12 +431,12 @@ export const AccountingInitializationWizard: React.FC = () => {
                 {isLoadingData ? (
                   <div className="flex items-center justify-center py-12">
                     <Spinner size="lg" />
-                    <span className="ml-3 text-gray-600">Loading templates...</span>
+                    <span className="ml-3 text-gray-600">{t(`Loading templates...`)}</span>
                   </div>
                 ) : filteredTemplates.length === 0 ? (
                   <div className="text-center py-12">
                     <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 font-medium">No templates found</p>
+                    <p className="text-gray-600 font-medium">{t(`No templates found`)}</p>
                     <p className="text-sm text-gray-500 mt-1">
                       Try adjusting your search criteria
                     </p>
@@ -489,7 +491,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 ) : (
                   <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                     <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 font-medium">Select a template to preview</p>
+                    <p className="text-gray-600 font-medium">{t(`Select a template to preview`)}</p>
                     <p className="text-sm text-gray-500 mt-1">
                       You'll see the account structure here
                     </p>
@@ -545,7 +547,7 @@ export const AccountingInitializationWizard: React.FC = () => {
             {/* Selection Controls */}
             <div className="flex justify-between items-center mb-6 max-w-4xl mx-auto">
               <p className="text-sm text-gray-600">
-                {setupData.selectedTypeKeys?.length || 0} of {voucherTypeGroups.length} types selected
+                {setupData.selectedTypeKeys?.length || 0} {t(`of`)} {voucherTypeGroups.length} types selected
               </p>
               <div className="flex gap-2">
                 <button
@@ -568,12 +570,12 @@ export const AccountingInitializationWizard: React.FC = () => {
               {isLoadingData ? (
                 <div className="col-span-2 flex items-center justify-center py-12">
                   <Spinner size="lg" />
-                  <span className="ml-3 text-gray-600">Loading voucher types...</span>
+                  <span className="ml-3 text-gray-600">{t(`Loading voucher types...`)}</span>
                 </div>
               ) : voucherTypeGroups.length === 0 ? (
                 <div className="col-span-2 text-center py-12">
                   <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600 font-medium">No voucher types available</p>
+                  <p className="text-gray-600 font-medium">{t(`No voucher types available`)}</p>
                   <p className="text-sm text-gray-500 mt-1">
                     Contact your system administrator to configure voucher types
                   </p>
@@ -610,12 +612,12 @@ export const AccountingInitializationWizard: React.FC = () => {
                               </span>
                             )}
                             <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-                              {formCount} default form{formCount !== 1 ? 's' : ''}
+                              {formCount} {t(`default form`)}{formCount !== 1 ? 's' : ''}
                             </span>
                           </div>
                           {variantLabels.length > 0 && (
                             <p className="text-xs text-gray-500 mt-1">
-                              Variants: {variantLabels.join(' · ')}
+                              {t(`Variants:`)} {variantLabels.join(' · ')}
                             </p>
                           )}
                         </div>
@@ -634,14 +636,14 @@ export const AccountingInitializationWizard: React.FC = () => {
               <div className="flex items-start gap-2">
                 <FileCheck className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-amber-800 space-y-1">
-                  <p className="font-semibold">These install as locked, inactive default templates.</p>
+                  <p className="font-semibold">{t(`These install as locked, inactive default templates.`)}</p>
                   <p>
                     The schemas are available immediately, but no sidebar entries appear until you open
-                    <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
+                    <span className="font-semibold"> {t(`Tools &rarr; Forms Designer`)}</span> and either:
                   </p>
                   <ul className="list-disc list-inside ml-1 space-y-0.5">
-                    <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
-                    <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                    <li><span className="font-semibold">{t(`Activate`)}</span> {t(`a default form to use it as-is, or`)}</li>
+                    <li><span className="font-semibold">{t(`Clone`)}</span> {t(`it to create an editable variant.`)}</li>
                   </ul>
                 </div>
               </div>
@@ -671,13 +673,13 @@ export const AccountingInitializationWizard: React.FC = () => {
               <div className="flex">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
                 <div className="ml-3">
-                  <h3 className="text-sm font-semibold text-yellow-800">Important Notice</h3>
+                  <h3 className="text-sm font-semibold text-yellow-800">{t(`Important Notice`)}</h3>
                   <div className="mt-2 text-sm text-yellow-700">
                     <p className="mb-2">
-                      <strong>Initialization is permanent:</strong> Once completed, you cannot run this wizard again.
+                      <strong>{t(`Initialization is permanent:`)}</strong> Once completed, you cannot run this wizard again.
                     </p>
                     <p>
-                      <strong>Changes allowed:</strong> You can modify these settings later from the Accounting Settings page.
+                      <strong>{t(`Changes allowed:`)}</strong> You can modify these settings later from the Accounting Settings page.
                     </p>
                   </div>
                 </div>
@@ -693,16 +695,16 @@ export const AccountingInitializationWizard: React.FC = () => {
                   <div className="flex-1">
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
-                        <p className="text-sm text-gray-600">Start Date</p>
+                        <p className="text-sm text-gray-600">{t(`Start Date`)}</p>
                         <p className="text-base font-medium text-gray-900">{setupData.fiscalYearStart}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">End Date</p>
+                        <p className="text-sm text-gray-600">{t(`End Date`)}</p>
                         <p className="text-base font-medium text-gray-900">{setupData.fiscalYearEnd}</p>
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Period Scheme</p>
+                      <p className="text-sm text-gray-600">{t(`Period Scheme`)}</p>
                       <p className="text-base font-medium text-gray-900">
                         {setupData.periodScheme === 'MONTHLY' ? 'Monthly' : 
                          setupData.periodScheme === 'QUARTERLY' ? 'Quarterly' : 'Semi-Annual'}
@@ -717,14 +719,14 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <div className="flex items-start">
                   <DollarSign className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Base Currency</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t(`Base Currency`)}</h3>
                     {selectedCurrency && (
                       <div>
                         <p className="text-base font-medium text-gray-900">
                           {selectedCurrency.name} ({selectedCurrency.code})
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Symbol: {selectedCurrency.symbol}
+                          {t(`Symbol:`)} {selectedCurrency.symbol}
                         </p>
                       </div>
                     )}
@@ -737,7 +739,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <div className="flex items-start">
                   <BookOpen className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Chart of Accounts Template</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t(`Chart of Accounts Template`)}</h3>
                     {selectedTemplate && (
                       <div>
                         <p className="text-base font-medium text-gray-900 mb-1">{selectedTemplate.name}</p>
@@ -761,7 +763,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <div className="flex items-start">
                   <FileCheck className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Selected Voucher Types</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t(`Selected Voucher Types`)}</h3>
                     {setupData.selectedTypeKeys && setupData.selectedTypeKeys.length > 0 ? (
                       <div className="space-y-2">
                         {setupData.selectedTypeKeys.map(typeKey => {
@@ -771,13 +773,13 @@ export const AccountingInitializationWizard: React.FC = () => {
                               <CheckCircle className="w-4 h-4 text-primary-600" />
                               <span className="font-medium">{group.name}</span>
                               <span className="text-sm text-gray-500">
-                                ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                                ({group.forms.length} {t(`default form`)}{group.forms.length !== 1 ? 's' : ''})
                               </span>
                             </div>
                           ) : null;
                         })}
                         <p className="text-sm text-gray-600 mt-3">
-                          Total: {setupData.selectedTypeKeys.length} type
+                          {t(`Total:`)} {setupData.selectedTypeKeys.length} type
                           {setupData.selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
                           {voucherTypeGroups
                             .filter(g => setupData.selectedTypeKeys?.includes(g.typeKey))
@@ -786,7 +788,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                         </p>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-600">No voucher types selected</p>
+                      <p className="text-sm text-gray-600">{t(`No voucher types selected`)}</p>
                     )}
                   </div>
                 </div>
@@ -799,7 +801,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
                 <div className="ml-3">
                   <p className="text-sm text-blue-700">
-                    Ready to proceed? Click <strong>"Complete Setup"</strong> below to initialize your accounting module with these settings.
+                    {t(`Ready to proceed? Click`)} <strong>{t(`"Complete Setup"`)}</strong> below to initialize your accounting module with these settings.
                   </p>
                 </div>
               </div>
@@ -819,7 +821,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <Spinner size="xl" className="mx-auto mb-4" />
-          <p className="text-gray-600">Loading wizard...</p>
+          <p className="text-gray-600">{t(`Loading wizard...`)}</p>
         </div>
       </div>
     );
@@ -837,8 +839,8 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <CheckCircle className="w-7 h-7" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Already Configured</h1>
-                <p className="text-primary-100 text-sm">Accounting module is ready to use</p>
+                <h1 className="text-2xl font-bold">{t(`Already Configured`)}</h1>
+                <p className="text-primary-100 text-sm">{t(`Accounting module is ready to use`)}</p>
               </div>
             </div>
           </div>
@@ -930,7 +932,7 @@ export const AccountingInitializationWizard: React.FC = () => {
             {/* Step Info */}
             <div className="mt-3 flex items-center justify-between">
               <span className="text-xs font-medium text-white/90">
-                Step {currentStep + 1} of {steps.length}
+                {t(`Step`)} {currentStep + 1} {t(`of`)} {steps.length}
               </span>
               <span className="text-xs font-semibold text-white">
                 {Math.round(((currentStep + 1) / steps.length) * 100)}%

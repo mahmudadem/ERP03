@@ -24,6 +24,7 @@ import { formatCompanyDate, formatCompanyTime, getCompanyToday } from '../../../
 import { accountingApi, FiscalYearDTO } from '../../../api/accountingApi';
 import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
 import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/types';
+import i18n from "i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -659,7 +660,7 @@ const SalesInvoicesListPage: React.FC = () => {
               toast.success(`Deleted invoice ${row.invoiceNumber}`);
               load();
             } catch (err) {
-              toast.error('Failed to delete invoice');
+              toast.error(i18n.t('Failed to delete invoice'));
             }
           }
         },

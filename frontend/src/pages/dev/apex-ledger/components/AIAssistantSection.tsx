@@ -234,7 +234,7 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
               <Bot className="w-5 h-5 text-white animate-pulse" />
             </div>
             <div>
-              <span className="text-xs font-bold text-slate-800 block">Chief Financial Officer (CFO AI Advisor)</span>
+              <span className="text-xs font-bold text-slate-800 block">{t(`Chief Financial Officer (CFO AI Advisor)`)}</span>
               <span className="text-[10px] font-semibold text-emerald-600 flex items-center gap-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-ping"></span> Live Account Context Active
               </span>
@@ -243,7 +243,7 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
 
           <div className="flex items-center space-x-2">
             <span className="text-[10px] font-mono bg-zinc-105 text-zinc-600 px-2 py-0.5 rounded font-black border border-zinc-200 uppercase">
-              Model: {activeModel}
+              {t(`Model:`)} {activeModel}
             </span>
           </div>
         </div>
@@ -343,7 +343,7 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
                 className="w-full text-right text-xs p-3 rounded-lg border border-slate-100 bg-[#F8FAFC] hover:bg-blue-50 hover:border-blue-150 text-slate-700 font-semibold leading-relaxed transition-all block group"
               >
                 <div className="flex items-center justify-between font-bold text-blue-600 mb-1">
-                  <span className="text-[10px] font-mono tracking-widest uppercase">Suggestion 0{idx + 1}</span>
+                  <span className="text-[10px] font-mono tracking-widest uppercase">{t(`Suggestion 0`)}{idx + 1}</span>
                   <ChevronRight className="w-4 h-4 text-blue-400 group-hover:translate-x-1 transition-transform" />
                 </div>
                 {s.label}
@@ -362,8 +362,8 @@ export default function AIAssistantSection({ accounts, invoices, inventory }: AI
             {t('apex.ai.securityStandardsDesc', { defaultValue: 'All calculations and processing are securely performed server-side without exposing API keys to the browser.' })}
           </p>
           <div className="bg-white p-2.5 rounded border border-slate-200 font-mono text-[9px] text-zinc-500 space-y-1">
-            <div>DB_ISOLATION: isolated_aes256</div>
-            <div>COMPLIANCE: standard_ifrs_9</div>
+            <div>{t(`DB_ISOLATION: isolated_aes256`)}</div>
+            <div>{t(`COMPLIANCE: standard_ifrs_9`)}</div>
           </div>
         </div>
       </div>

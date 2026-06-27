@@ -38,6 +38,8 @@ import {
 import { GenericVoucherRenderer } from '../../../accounting/components/shared/GenericVoucherRenderer';
 import { errorHandler } from '../../../../services/errorHandler';
 import { BusinessRulesPanel, BusinessRuleState } from './BusinessRulesPanel';
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 // --- MOCK DATA (UI ONLY) ---
 
@@ -88,6 +90,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
   defaultActions = [],
   hideHeader = false
 }) => {
+    const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   // Pull existing company forms from WizardContext so the uniqueness check
   // runs against an in-memory list rather than hitting Firestore directly.
@@ -1039,9 +1042,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
              </button>
              <div className="p-1.5 bg-gray-50 rounded border border-gray-200"><GripVertical size={12} className="text-gray-400" /></div>
              <div>
-                <span className="text-[10px] font-black text-gray-800 uppercase tracking-widest leading-none block">{sectionName} SECTION</span>
+                <span className="text-[10px] font-black text-gray-800 uppercase tracking-widest leading-none block">{sectionName} {t(`SECTION`)}</span>
                 <p className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter mt-0.5">
-                   {layout.fields.length} Fields {layout.fields.length === 0 && '• EMPTY'}
+                   {layout.fields.length} {t(`Fields`)} {layout.fields.length === 0 && '• EMPTY'}
                 </p>
              </div>
           </div>
@@ -1250,7 +1253,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                       {field.labelOverride || meta?.label || field.fieldId}
                     </span>
                     <span className="text-[9px] text-slate-400 font-semibold mt-1 pointer-events-none select-none">
-                      Width: {field.colSpan}
+                      {t(`Width:`)} {field.colSpan}
                     </span>
                     
                     {/* Edit Pencil Button (visible on hover) */}
@@ -1351,8 +1354,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
          <div className="flex-1 flex flex-col min-w-0">
              <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-50 z-20 py-2">
                 <div>
-                   <h2 className="text-lg font-bold text-gray-800">Visual Layout Editor</h2>
-                   <p className="text-xs text-gray-500">Drag fields to move/resize. Drag table headers to reorder/resize.</p>
+                   <h2 className="text-lg font-bold text-gray-800">{t(`Visual Layout Editor`)}</h2>
+                   <p className="text-xs text-gray-500">{t(`Drag fields to move/resize. Drag table headers to reorder/resize.`)}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <label className={`flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs font-bold transition-colors cursor-pointer ${uniformControlChrome ? 'border-indigo-200 bg-indigo-50 text-indigo-700' : 'border-gray-200 bg-white text-gray-500 hover:text-gray-700'}`}>
@@ -1368,8 +1371,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     Uniform controls
                   </label>
                   <div className="flex bg-gray-100 p-1 rounded-lg">
-                    <button onClick={() => setPreviewMode('classic')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'classic' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Classic</button>
-                    <button onClick={() => setPreviewMode('windows')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'windows' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Windows</button>
+                    <button onClick={() => setPreviewMode('classic')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'classic' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>{t(`Classic`)}</button>
+                    <button onClick={() => setPreviewMode('windows')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'windows' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>{t(`Windows`)}</button>
                   </div>
                   <button 
                     onClick={handleAutoAlign} 
@@ -1394,9 +1397,9 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                           <div className="flex items-center gap-3">
                              <div className="bg-indigo-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20"><Layers size={20} /></div>
                              <div>
-                                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Live Table Designer</h3>
+                                <h3 className="text-sm font-bold text-white uppercase tracking-widest">{t(`Live Table Designer`)}</h3>
                                 <div className="flex items-center gap-3">
-                                   <p className="text-[10px] text-indigo-200 font-medium">Drag headers to reorder. Drag edges to resize. Click to rename.</p>
+                                   <p className="text-[10px] text-indigo-200 font-medium">{t(`Drag headers to reorder. Drag edges to resize. Click to rename.`)}</p>
                                    <button 
                                      onClick={() => setShowColumnPicker(!showColumnPicker)}
                                      className={`text-[10px] font-bold uppercase tracking-wider px-3 py-1 rounded-full border transition-all font-sans flex items-center gap-1.5 ${showColumnPicker ? 'bg-indigo-600 text-white border-indigo-500 shadow-lg shadow-indigo-500/10' : 'text-white/40 hover:text-white bg-white/5 border-white/10'}`}
@@ -1421,8 +1424,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                           <div className="bg-slate-800 border-b border-white/10 p-6 animate-in slide-in-from-top duration-300">
                              <div className="flex items-center justify-between mb-4">
                                 <div>
-                                   <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Available Table Columns</h4>
-                                   <p className="text-[10px] text-white/40 font-medium font-sans">Toggle columns to add or remove them from the table</p>
+                                   <h4 className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">{t(`Available Table Columns`)}</h4>
+                                   <p className="text-[10px] text-white/40 font-medium font-sans">{t(`Toggle columns to add or remove them from the table`)}</p>
                                 </div>
                                 <div className="text-[10px] font-bold text-white/20 bg-white/5 px-2 py-1 rounded font-sans">
                                    {(config.tableColumns || []).length} / {availableTableColumns.length} Active
@@ -1565,7 +1568,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                 {activeColumnId ? (
                                    <div className="flex items-center gap-6 w-full animate-in fade-in slide-in-from-left-2 duration-300">
                                       <div className="shrink-0">
-                                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Editing Column</label>
+                                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t(`Editing Column`)}</label>
                                          <div className="flex items-center gap-2">
                                             <span className="font-bold text-slate-800 font-mono bg-white px-2 py-0.5 rounded border border-gray-200">{activeColumnId}</span>
                                          </div>
@@ -1576,7 +1579,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                       <div className="flex items-center gap-4 flex-1">
                                          {/* Label Editor */}
                                          <div className="flex-1 max-w-[200px]">
-                                             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Header Label</label>
+                                             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t(`Header Label`)}</label>
                                              <input 
                                                 type="text"
                                                 value={(() => {
@@ -1606,7 +1609,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
                                          {/* Width Editor */}
                                          <div>
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Width</label>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t(`Width`)}</label>
                                             <div className="flex items-center gap-2">
                                                <input 
                                                   type="text"
@@ -1697,24 +1700,24 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                                    <div className="flex items-center gap-4 text-gray-400 w-full">
                                       <div className="flex items-center gap-2">
                                          <div className="p-1.5 bg-gray-100 rounded text-gray-400"><MousePointerClick size={16} /></div>
-                                         <span className="text-xs font-medium">Click column header to edit properties</span>
+                                         <span className="text-xs font-medium">{t(`Click column header to edit properties`)}</span>
                                       </div>
                                       <div className="h-4 w-px bg-gray-200"></div>
                                       <div className="flex items-center gap-2">
                                          <div className="p-1.5 bg-gray-100 rounded text-gray-400"><GripVertical size={16} /></div>
-                                         <span className="text-xs font-medium">Drag header to reorder</span>
+                                         <span className="text-xs font-medium">{t(`Drag header to reorder`)}</span>
                                       </div>
                                       <div className="h-4 w-px bg-gray-200"></div>
                                       <div className="flex items-center gap-2">
                                          <div className="p-1.5 bg-gray-100 rounded text-gray-400 flex"><ArrowLeft size={10} /><ArrowRight size={10} /></div>
-                                         <span className="text-xs font-medium">Drag edge to resize</span>
+                                         <span className="text-xs font-medium">{t(`Drag edge to resize`)}</span>
                                       </div>
                                    </div>
                                 )}
                              </div>
 
                           </div>
-                          <p className="mt-4 text-[10px] text-gray-400 italic text-center uppercase tracking-widest font-bold">Live Preview</p>
+                          <p className="mt-4 text-[10px] text-gray-400 italic text-center uppercase tracking-widest font-bold">{t(`Live Preview`)}</p>
                        </div>
                     </div>
                  )}
@@ -1740,12 +1743,12 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                <div className="p-4 flex-1 overflow-y-auto">
                    <div className="space-y-6">
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Field ID</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Field ID`)}</label>
                         <div className="text-sm font-mono bg-gray-100 p-2 rounded text-gray-600">{selectedField.id}</div>
                      </div>
                      
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Custom Label</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Custom Label`)}</label>
                         <input 
                           type="text" 
                           value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.labelOverride || ''}
@@ -1756,7 +1759,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Width (Columns)</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Width (Columns)`)}</label>
                         <div className="flex items-center gap-3">
                            <input 
                              type="range" min="1" max="24"
@@ -1766,11 +1769,11 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                            />
                            <span className="text-sm font-bold w-6 text-center text-slate-900">{config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.colSpan}</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1">Grid has 24 columns total.</p>
+                        <p className="text-[10px] text-gray-400 mt-1">{t(`Grid has 24 columns total.`)}</p>
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Height (Rows)</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Height (Rows)`)}</label>
                         <div className="flex items-center gap-3">
                            <input 
                              type="range" min="1" max="6"
@@ -1783,22 +1786,22 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Component Type</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Component Type`)}</label>
                         <select 
                            value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.typeOverride || ''}
                            onChange={(e) => updateSelectedField('typeOverride', e.target.value)}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                         >
-                           <option value="">Default</option>
-                           <option value="text">Text Input</option>
-                           <option value="textarea">Multi-line Text (Textarea)</option>
-                           <option value="number">Number Input</option>
-                           <option value="date">Date Picker</option>
+                           <option value="">{t(`Default`)}</option>
+                           <option value="text">{t(`Text Input`)}</option>
+                           <option value="textarea">{t(`Multi-line Text (Textarea)`)}</option>
+                           <option value="number">{t(`Number Input`)}</option>
+                           <option value="date">{t(`Date Picker`)}</option>
                         </select>
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase mt-4">Display Mode</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase mt-4">{t(`Display Mode`)}</label>
                         <select 
                            value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.displayMode || 'standard'}
                            onChange={(e) => updateSelectedField('displayMode', e.target.value)}
@@ -1806,48 +1809,48 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         >
                            <option value="standard">{selectedField.id.startsWith('action_') ? 'Standard Button' : 'Standard Input'}</option>
                            {selectedField.id.startsWith('action_') ? (
-                             <option value="compact">Icon Only</option>
+                             <option value="compact">{t(`Icon Only`)}</option>
                            ) : (
                              <>
-                               <option value="compact">Compact Text</option>
-                               <option value="badge">Badge</option>
+                               <option value="compact">{t(`Compact Text`)}</option>
+                               <option value="badge">{t(`Badge`)}</option>
                              </>
                            )}
                         </select>
                         {selectedField.id.startsWith('action_') ? (
-                          <p className="text-[10px] text-gray-400 mt-1">Display this action as a compact icon</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{t(`Display this action as a compact icon`)}</p>
                         ) : (
-                          <p className="text-[10px] text-gray-400 mt-1">Useful to display statuses or compact metadata</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{t(`Useful to display statuses or compact metadata`)}</p>
                         )}
                      </div>
 
                      {selectedField.id.startsWith('action_') && (
                        <div className="mt-4">
-                          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Icon</label>
+                          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Icon`)}</label>
                           <select 
                              value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.iconOverride || ''}
                              onChange={(e) => updateSelectedField('iconOverride', e.target.value)}
                              className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                           >
-                             <option value="">Default Icon</option>
-                             <option value="Printer">Printer</option>
-                             <option value="Save">Save</option>
-                             <option value="Download">Download</option>
-                             <option value="Mail">Mail</option>
-                             <option value="Send">Send</option>
-                             <option value="FileText">Document</option>
-                             <option value="Check">Check</option>
-                             <option value="X">Close (X)</option>
-                             <option value="Upload">Upload</option>
-                             <option value="Image">Image</option>
-                             <option value="Excel">Excel</option>
+                             <option value="">{t(`Default Icon`)}</option>
+                             <option value="Printer">{t(`Printer`)}</option>
+                             <option value="Save">{t(`Save`)}</option>
+                             <option value="Download">{t(`Download`)}</option>
+                             <option value="Mail">{t(`Mail`)}</option>
+                             <option value="Send">{t(`Send`)}</option>
+                             <option value="FileText">{t(`Document`)}</option>
+                             <option value="Check">{t(`Check`)}</option>
+                             <option value="X">{t(`Close (X)`)}</option>
+                             <option value="Upload">{t(`Upload`)}</option>
+                             <option value="Image">{t(`Image`)}</option>
+                             <option value="Excel">{t(`Excel`)}</option>
                           </select>
                        </div>
                      )}
 
                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                        <div>
-                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Row Index</label>
+                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">{t(`Row Index`)}</label>
                          <input 
                            type="number" min="0"
                            value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.row || 0}
@@ -1856,7 +1859,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                          />
                        </div>
                        <div>
-                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Column Start</label>
+                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">{t(`Column Start`)}</label>
                          <input 
                            type="number" min="0" max="23"
                            value={config.uiModeOverrides?.[previewMode]?.sections?.[selectedField.section as SectionType]?.fields?.find((f: FieldLayout) => f.fieldId === selectedField.id)?.col || 0}
@@ -1868,7 +1871,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
                       {selectedField.id === 'lineItems' && (
                         <div className="pt-4 border-t border-gray-100">
-                          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Table Style</label>
+                          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">{t(`Table Style`)}</label>
                           <div className="grid grid-cols-2 gap-2">
                              <button
                                onClick={() => setConfig({...config, tableStyle: 'web'})}
@@ -1904,13 +1907,13 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                              className="w-full mt-4 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg bg-slate-100 text-slate-700 hover:bg-indigo-50 hover:text-indigo-700 hover:border-indigo-200 transition-all border border-slate-200 group"
                            >
                               <Settings size={14} className="group-hover:rotate-90 transition-transform duration-500" />
-                              <span className="text-[10px] font-black uppercase tracking-widest font-sans">Go to Column Designer</span>
+                              <span className="text-[10px] font-black uppercase tracking-widest font-sans">{t(`Go to Column Designer`)}</span>
                            </button>
                         </div>
                       )}
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Move to Section</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Move to Section`)}</label>
                         <select 
                           value={selectedField.section}
                           onChange={(e) => moveSelectedFieldSection(e.target.value)}
@@ -1936,8 +1939,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         return (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose a Starting Template</h2>
-              <p className="text-gray-600">Select a predefined template or start from scratch</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t(`Choose a Starting Template`)}</h2>
+              <p className="text-gray-600">{t(`Select a predefined template or start from scratch`)}</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1973,7 +1976,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         Selected
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-400">Click to select</div>
+                      <div className="text-xs text-gray-400">{t(`Click to select`)}</div>
                     )}
                   </div>
                 </div>
@@ -1994,7 +1997,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
           <div className="max-w-xl mx-auto space-y-6">
              <div className="space-y-4">
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Document Type Name *</span>
+                  <span className="text-sm font-medium text-gray-700">{t(`Document Type Name *`)}</span>
                   <input 
                     type="text" 
                     value={config.name} 
@@ -2014,7 +2017,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">ID Key *</span>
+                    <span className="text-sm font-medium text-gray-700">{t(`ID Key *`)}</span>
                     <input
                       type="text"
                       value={config.id}
@@ -2048,7 +2051,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     )}
                   </label>
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Prefix *</span>
+                    <span className="text-sm font-medium text-gray-700">{t(`Prefix *`)}</span>
                     <input 
                       type="text" 
                       value={config.prefix} 
@@ -2063,7 +2066,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                         validationErrors.prefix ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    <p className="mt-1 text-xs text-gray-500">Short code only (e.g. JE-, PV-). For format templates, use the Number Format field below.</p>
+                    <p className="mt-1 text-xs text-gray-500">{t(`Short code only (e.g. JE-, PV-). For format templates, use the Number Format field below.`)}</p>
                     {validationErrors.prefix && (
                       <p className="mt-1 text-sm text-red-600">❌ {validationErrors.prefix}</p>
                     )}
@@ -2073,7 +2076,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                 {/* Number Format */}
                 <div className="mt-4">
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Number Format <span className="text-gray-400 font-normal">(optional)</span></span>
+                    <span className="text-sm font-medium text-gray-700">{t(`Number Format`)} <span className="text-gray-400 font-normal">{t(`(optional)`)}</span></span>
                     <input 
                       type="text" 
                       value={config.numberFormat || ''} 
@@ -2082,12 +2085,12 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                       className="mt-1 block w-full rounded-md shadow-sm p-2 border border-gray-300 bg-white text-slate-900"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      Leave blank for default format. Placeholders: <code className="bg-gray-100 px-1 rounded">{'{PREFIX}'}</code> <code className="bg-gray-100 px-1 rounded">{'{YYYY}'}</code> <code className="bg-gray-100 px-1 rounded">{'{COUNTER:4}'}</code>
+                      {t(`Leave blank for default format. Placeholders:`)} <code className="bg-gray-100 px-1 rounded">{'{PREFIX}'}</code> <code className="bg-gray-100 px-1 rounded">{'{YYYY}'}</code> <code className="bg-gray-100 px-1 rounded">{'{COUNTER:4}'}</code>
                     </p>
                   </label>
                   {/* Live Preview */}
                   <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Preview</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{t(`Preview`)}</span>
                     <span className="font-mono text-sm font-bold text-indigo-700">
                       {(() => {
                         const prefix = (config.prefix || 'V-').replace(/-$/, '');
@@ -2121,7 +2124,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                          <Layers size={20} />
                       </div>
                       <div>
-                        <h3 className="text-sm font-bold text-gray-900 leading-none mb-1">Enable Line Items Table</h3>
+                        <h3 className="text-sm font-bold text-gray-900 leading-none mb-1">{t(`Enable Line Items Table`)}</h3>
                         <p className="text-[10px] text-gray-500 uppercase tracking-wider font-bold">
                           {config.isMultiLine ? 'Enabled' : 'Disabled'}
                         </p>
@@ -2161,7 +2164,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
             {/* Dynamic Rules (existing) */}
             <div className="border-t border-gray-200 pt-6">
-              <h3 className="text-base font-semibold text-gray-900 mb-4">Dynamic Rules</h3>
+              <h3 className="text-base font-semibold text-gray-900 mb-4">{t(`Dynamic Rules`)}</h3>
               <div className="max-w-2xl mx-auto grid gap-4">
                 {config.rules.map(rule => (
                   <div key={rule.id} onClick={() => setConfig(prev => ({...prev, rules: prev.rules.map(r => r.id === rule.id ? { ...r, enabled: !r.enabled } : r)}))} className={`flex items-start gap-4 p-4 rounded-lg border cursor-pointer ${rule.enabled ? 'border-indigo-500 bg-indigo-50' : 'border-gray-200 bg-white'}`}>
@@ -2217,7 +2220,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                   <div className="flex items-center gap-1 min-w-0">
                     <span className="text-[10px] font-bold truncate">{field.label}</span>
                     {isFieldMandatory(field.id, (config as any).formType || config.baseType, isTableCol ? 'table' : 'field') && (
-                      <span className={`text-[7px] px-1 py-0.5 rounded font-black uppercase tracking-tighter shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Req</span>
+                      <span className={`text-[7px] px-1 py-0.5 rounded font-black uppercase tracking-tighter shrink-0 ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>{t(`Req`)}</span>
                     )}
                   </div>
                   <span className={`text-[8px] leading-none ${isSelected ? 'text-indigo-100' : 'text-gray-400'}`}>
@@ -2281,7 +2284,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
              <div className="mt-8 pt-6 border-t border-gray-100">
                <p className="text-[10px] text-gray-400 text-center uppercase tracking-[0.2em] font-black">
-                 Labels and ordering are managed in the <span className="text-indigo-600 underline underline-offset-4">Visual Editor</span> step.
+                 {t(`Labels and ordering are managed in the`)} <span className="text-indigo-600 underline underline-offset-4">{t(`Visual Editor`)}</span> step.
                </p>
              </div>
           </div>
@@ -2306,7 +2309,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                   
                   {action.enabled && (
                     <div className="pt-3 mt-3 border-t border-indigo-100 flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-700">Display as Icon Only (Compact)</span>
+                      <span className="text-xs font-medium text-slate-700">{t(`Display as Icon Only (Compact)`)}</span>
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -2327,8 +2330,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
           <div className="space-y-6">
             <div className="flex items-center justify-between px-4">
                <div className="flex items-center gap-2">
-                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">Active Step:</span>
-                  <span className="text-xs font-black text-indigo-600 uppercase">Visual Layout Designer</span>
+                  <span className="text-xs font-bold text-gray-400 uppercase tracking-widest">{t(`Active Step:`)}</span>
+                  <span className="text-xs font-black text-indigo-600 uppercase">{t(`Visual Layout Designer`)}</span>
                </div>
             </div>
             {renderVisualEditor()}
@@ -2338,10 +2341,10 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
         return (
            <div className="max-w-2xl mx-auto text-center space-y-8">
               <div className="bg-green-50 border border-green-200 rounded-full w-20 h-20 mx-auto flex items-center justify-center text-green-600 mb-4"><CheckCircle2 size={40} /></div>
-              <h2 className="text-2xl font-bold text-gray-900">Ready to Save</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t(`Ready to Save`)}</h2>
               <div className="bg-white rounded-xl border border-gray-200 p-6 text-start space-y-4 shadow-sm">
-                 <div className="flex justify-between pb-2 border-b"><span className="text-gray-500">Name</span><span className="font-bold text-slate-900">{config.name}</span></div>
-                 <div className="flex justify-between pb-2"><span className="text-gray-500">Total Fields</span><span className="font-bold text-slate-900">{selectedFieldIds.length}</span></div>
+                 <div className="flex justify-between pb-2 border-b"><span className="text-gray-500">{t(`Name`)}</span><span className="font-bold text-slate-900">{config.name}</span></div>
+                 <div className="flex justify-between pb-2"><span className="text-gray-500">{t(`Total Fields`)}</span><span className="font-bold text-slate-900">{selectedFieldIds.length}</span></div>
               </div>
            </div>
         );
@@ -2358,7 +2361,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
               <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
                  <div className="flex items-center gap-2">
                     <PlayCircle size={20} className="text-green-400" />
-                    <h2 className="font-bold">Test Run: {config.name} ({previewMode.toUpperCase()} Mode)</h2>
+                    <h2 className="font-bold">{t(`Test Run:`)} {config.name} ({previewMode.toUpperCase()} {t(`Mode)`)}</h2>
                  </div>
                  <button onClick={() => setIsTesting(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"><X size={20} /></button>
               </div>
@@ -2370,7 +2373,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                       isPreview={true} 
                       onAction={(actionId) => {
                         if (actionId === 'save') {
-                          toast.success('Test Run Success: Document validation passed! This voucher would be Post-Ready.');
+                          toast.success(i18n.t('Test Run Success: Document validation passed! This voucher would be Post-Ready.'));
                         } else {
                           toast(`Preview: Action [${actionId}] triggered.`, { icon: 'ℹ️' });
                         }
@@ -2386,7 +2389,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
       <div className="w-56 bg-white border-r border-gray-200 flex flex-col shrink-0 h-full overflow-y-auto py-8 px-6">
          <div className="mb-8 flex items-center gap-2">
             <div className="bg-indigo-600 text-white p-1.5 rounded-lg"><LayoutTemplate size={16} /></div>
-            <span className="font-bold text-slate-800 text-sm">Form Designer</span>
+            <span className="font-bold text-slate-800 text-sm">{t(`Form Designer`)}</span>
          </div>
 
          <div className="flex-1 flex flex-col gap-6 relative">
@@ -2445,7 +2448,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
                     </h1>
                  </div>
               </div>
-              <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
+              <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">{t(`Cancel`)}</button>
            </div>
          )}
 
@@ -2453,8 +2456,8 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
          {isReadOnly && (
            <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3 shrink-0">
              <div className="flex items-center gap-2 text-yellow-800">
-               <span className="font-semibold">⚠️ Read Only:</span>
-               <span className="text-sm">This is a system default document. Use the Clone button to create a customizable version.</span>
+               <span className="font-semibold">{t(`⚠️ Read Only:`)}</span>
+               <span className="text-sm">{t(`This is a system default document. Use the Clone button to create a customizable version.`)}</span>
              </div>
            </div>
          )}
@@ -2466,7 +2469,7 @@ export const DocumentDesigner: React.FC<DocumentDesignerProps> = ({
 
          {/* Footer */}
          <div className="h-20 bg-white border-t border-gray-200 px-8 flex items-center justify-between shrink-0">
-            <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> Back</button>
+            <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> {t(`Back`)}</button>
             {currentStep === 7 ? (
                <button 
                  onClick={() => onSave?.(normalizeDocumentConfig(config))} 

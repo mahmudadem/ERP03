@@ -2,6 +2,7 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCompanyModules } from '../../hooks/useCompanyModules';
 import { AlertTriangle, CheckCircle2, Settings, ArrowRight, BookOpen } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface AccountingIntegrationStatusProps {
   moduleCode: 'inventory' | 'purchases' | 'sales';
@@ -20,6 +21,7 @@ export const AccountingIntegrationStatus: React.FC<AccountingIntegrationStatusPr
   hasMappings,
   integrationRoute,
 }) => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { isModuleInstalled, isModuleInitialized } = useCompanyModules();
   const installed = isModuleInstalled('accounting');
@@ -45,7 +47,7 @@ export const AccountingIntegrationStatus: React.FC<AccountingIntegrationStatusPr
               onClick={() => navigate('/company-admin/modules')}
               className="inline-flex items-center gap-1 text-sm text-primary-600 hover:text-primary-700 mt-2 font-medium"
             >
-              Enable Accounting <ArrowRight className="w-3 h-3" />
+              {t(`Enable Accounting`)} <ArrowRight className="w-3 h-3" />
             </button>
           </div>
         </div>
@@ -67,13 +69,13 @@ export const AccountingIntegrationStatus: React.FC<AccountingIntegrationStatusPr
               </span>
             </div>
             <p className="text-sm text-blue-700 mt-1">
-              The Accounting module is enabled but has not been set up yet. Complete the Accounting setup first, then configure {moduleLabels[moduleCode].toLowerCase()} financial integration.
+              {t(`The Accounting module is enabled but has not been set up yet. Complete the Accounting setup first, then configure`)} {moduleLabels[moduleCode].toLowerCase()} financial integration.
             </p>
             <button
               onClick={() => navigate('/accounting/setup')}
               className="inline-flex items-center gap-1 text-sm text-blue-700 hover:text-blue-900 mt-2 font-semibold"
             >
-              Complete Accounting Setup <ArrowRight className="w-3 h-3" />
+              {t(`Complete Accounting Setup`)} <ArrowRight className="w-3 h-3" />
             </button>
           </div>
         </div>
@@ -95,14 +97,14 @@ export const AccountingIntegrationStatus: React.FC<AccountingIntegrationStatusPr
               </span>
             </div>
             <p className="text-sm text-amber-700 mt-1">
-              Accounting is set up but {moduleLabels[moduleCode]} account mappings have not been configured. Financial postings will not be created until mappings are set.
+              {t(`Accounting is set up but`)} {moduleLabels[moduleCode]} account mappings have not been configured. Financial postings will not be created until mappings are set.
             </p>
             {integrationRoute && (
               <button
                 onClick={() => navigate(integrationRoute)}
                 className="inline-flex items-center gap-1 text-sm text-amber-700 hover:text-amber-900 mt-2 font-semibold"
               >
-                Configure Integration <ArrowRight className="w-3 h-3" />
+                {t(`Configure Integration`)} <ArrowRight className="w-3 h-3" />
               </button>
             )}
           </div>

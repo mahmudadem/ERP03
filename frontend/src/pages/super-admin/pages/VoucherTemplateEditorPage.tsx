@@ -268,7 +268,7 @@ const FieldListEditor = ({
       <div className="flex items-start gap-3 rounded-md border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
         <AlertTriangle size={18} className="mt-0.5 flex-none" />
         <div>
-          <div className="font-semibold">Superadmin editing is unrestricted.</div>
+          <div className="font-semibold">{t(`Superadmin editing is unrestricted.`)}</div>
           <div className="text-xs leading-5">
             Changing official field names, types, or classes can break backend payloads. Use custom metadata fields for extra informational fields.
           </div>
@@ -278,8 +278,8 @@ const FieldListEditor = ({
       <div className="rounded-md border border-gray-200 bg-white p-4">
         <div className="mb-3 flex items-center justify-between gap-3">
           <div>
-            <div className="text-sm font-semibold text-gray-900">Available Field Library fields</div>
-            <div className="text-xs text-gray-500">Add official fields from Layer 1, then control placement and required status on this template.</div>
+            <div className="text-sm font-semibold text-gray-900">{t(`Available Field Library fields`)}</div>
+            <div className="text-xs text-gray-500">{t(`Add official fields from Layer 1, then control placement and required status on this template.`)}</div>
           </div>
           <Button variant="secondary" onClick={addField}>
             <Plus size={14} className="mr-1" />
@@ -302,7 +302,7 @@ const FieldListEditor = ({
             ))}
           </div>
         ) : (
-          <div className="text-xs text-gray-500">No missing Field Library fields for this scope.</div>
+          <div className="text-xs text-gray-500">{t(`No missing Field Library fields for this scope.`)}</div>
         )}
       </div>
 
@@ -320,7 +320,7 @@ const FieldListEditor = ({
               <div className="flex items-center gap-2">
                 <label className="block text-xs font-medium text-gray-500">{t('superAdmin.voucherTemplatesEditor.fields.label', { defaultValue: 'Label' })}</label>
                 {isOfficialField(field) && (
-                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700">Official</span>
+                  <span className="rounded bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-amber-700">{t(`Official`)}</span>
                 )}
               </div>
               <input
@@ -636,7 +636,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
         {activeTab === 'Table Columns' && (
           <div className="space-y-4">
             <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
-              <div className="font-semibold">Table Columns are the visible line grid.</div>
+              <div className="font-semibold">{t(`Table Columns are the visible line grid.`)}</div>
               <div className="text-xs leading-5">
                 They point to Line Fields by Field ID. Add the line field from the Field Library first, then expose it here when it should appear in the grid.
               </div>
@@ -644,8 +644,8 @@ export const VoucherTemplateEditorPage: React.FC = () => {
 
             <div className="rounded-md border border-gray-200 bg-white p-4">
               <div className="mb-3">
-                <div className="text-sm font-semibold text-gray-900">Available line fields</div>
-                <div className="text-xs text-gray-500">Line fields on this voucher template that are not currently visible in the table.</div>
+                <div className="text-sm font-semibold text-gray-900">{t(`Available line fields`)}</div>
+                <div className="text-xs text-gray-500">{t(`Line fields on this voucher template that are not currently visible in the table.`)}</div>
               </div>
               {missingTableColumns.length > 0 ? (
                 <div className="flex flex-wrap gap-2">
@@ -663,7 +663,7 @@ export const VoucherTemplateEditorPage: React.FC = () => {
                   ))}
                 </div>
               ) : (
-                <div className="text-xs text-gray-500">No missing line fields for this table.</div>
+                <div className="text-xs text-gray-500">{t(`No missing line fields for this table.`)}</div>
               )}
             </div>
 

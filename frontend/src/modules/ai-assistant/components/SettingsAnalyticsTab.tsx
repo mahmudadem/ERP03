@@ -71,7 +71,7 @@ export const SettingsAnalyticsTab: React.FC<SettingsAnalyticsTabProps> = ({
                         </span>
                       </td>
                       <td className="px-3 py-2 text-right">{new Intl.NumberFormat().format(log.totalTokens)}</td>
-                      <td className="px-3 py-2 text-right">{log.latencyMs} ms</td>
+                      <td className="px-3 py-2 text-right">{log.latencyMs} {t(`ms`)}</td>
                     </tr>
                   ))}
                 </tbody>

@@ -3,6 +3,7 @@ import { X, Check, Info } from 'lucide-react';
 import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi, CurrencyDTO } from '../../../../../api/accountingApi';
 import { errorHandler } from '../../../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
 
 interface EnableCurrencyModalProps {
   currency: CurrencyDTO;
@@ -17,6 +18,7 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
   onClose, 
   onEnabled 
 }) => {
+    const { t } = useTranslation('common');
   const [rate, setRate] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
@@ -54,7 +56,7 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
       >
         <div className="px-6 py-4 border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-            Enable {currency.code}
+            {t(`Enable`)} {currency.code}
           </h3>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
             <X size={18} className="text-gray-500" />
@@ -66,7 +68,7 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
             <div className="flex items-start gap-3">
               <Info size={18} className="text-blue-600 dark:text-blue-400 mt-0.5" />
               <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed font-medium">
-                An initial exchange rate is required to enable <span className="font-bold underline">{currency.code}</span>. 
+                {t(`An initial exchange rate is required to enable`)} <span className="font-bold underline">{currency.code}</span>. 
                 This will be used as the reference rate for your accounting operations.
               </p>
             </div>
@@ -113,12 +115,12 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
             {saving ? (
               <>
                 <Spinner size="sm" />
-                <span>Enabling...</span>
+                <span>{t(`Enabling...`)}</span>
               </>
             ) : (
               <>
                 <Check size={16} />
-                <span>Enable Currency</span>
+                <span>{t(`Enable Currency`)}</span>
               </>
             )}
           </button>

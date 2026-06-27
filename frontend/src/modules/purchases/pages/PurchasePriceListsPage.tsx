@@ -35,6 +35,7 @@ interface LineRowProps {
 }
 
 const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) => {
+    const { t } = useTranslation('common');
   const set = (patch: Partial<PurchasePriceListLineDTO>) => onChange({ ...line, ...patch });
   return (
     <tr className="border-b border-slate-100 dark:border-slate-800">
@@ -45,7 +46,7 @@ const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) =>
             value={line.itemId}
             onChange={e => set({ itemId: e.target.value })}
           >
-            <option value="">— select item —</option>
+            <option value="">{t(`— select item —`)}</option>
             {items.map(i => (
               <option key={i.id} value={i.id}>{i.code} – {i.name}</option>
             ))}

@@ -300,7 +300,7 @@ export default function SuperAdminUsersManagementPage() {
                         >
                           <div className="flex-1 min-w-0">
                             <p className="font-medium text-slate-900 text-sm truncate">{company.name}</p>
-                            <p className="text-xs text-slate-500 truncate">ID: {company.id}</p>
+                            <p className="text-xs text-slate-500 truncate">{t(`ID:`)} {company.id}</p>
                           </div>
                           <Button
                             size="sm"
@@ -379,7 +379,7 @@ export default function SuperAdminUsersManagementPage() {
                 >
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 truncate">{company.name}</p>
-                    <p className="text-sm text-slate-500 truncate">ID: {company.id}</p>
+                    <p className="text-sm text-slate-500 truncate">{t(`ID:`)} {company.id}</p>
                     {company.baseCurrency && (
                       <p className="text-xs text-slate-500 mt-1">{t('superAdmin.usersManagement.currencyLabel', { currency: company.baseCurrency })}</p>
                     )}

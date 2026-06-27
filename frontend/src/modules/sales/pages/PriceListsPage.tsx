@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -32,6 +33,7 @@ interface LineRowProps {
 }
 
 const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) => {
+    const { t } = useTranslation('common');
   const set = (patch: Partial<PriceListLineDTO>) => onChange({ ...line, ...patch });
   return (
     <tr className="border-b border-slate-100 dark:border-slate-800">
@@ -42,7 +44,7 @@ const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) =>
             value={line.itemId}
             onChange={e => set({ itemId: e.target.value })}
           >
-            <option value="">— select item —</option>
+            <option value="">{t(`— select item —`)}</option>
             {items.map(i => (
               <option key={i.id} value={i.id}>{i.code} – {i.name}</option>
             ))}
@@ -128,6 +130,7 @@ const emptyForm = (): Omit<PriceListDTO, 'id' | 'companyId' | 'createdBy' | 'cre
 });
 
 const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => {
+    const { t } = useTranslation('common');
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -227,11 +230,11 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">General</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`General`)}</p>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Name</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Name`)}</label>
                 <input
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.name}
@@ -240,7 +243,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Currency</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Currency`)}</label>
                 <CurrencySelector
                   value={form.currency}
                   onChange={code => set({ currency: code })}
@@ -248,18 +251,18 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Status</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Status`)}</label>
                 <select
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.status}
                   onChange={e => set({ status: e.target.value as 'ACTIVE' | 'INACTIVE' })}
                 >
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
+                  <option value="ACTIVE">{t(`Active`)}</option>
+                  <option value="INACTIVE">{t(`Inactive`)}</option>
                 </select>
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Valid From</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Valid From`)}</label>
                 <DatePicker
                   inputClassName="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.validFrom ?? ''}
@@ -267,7 +270,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                 />
               </div>
               <div>
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Valid To</label>
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">{t(`Valid To`)}</label>
                 <DatePicker
                   inputClassName="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.validTo ?? ''}
@@ -291,7 +294,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Price Lines</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Price Lines`)}</p>
               <button
                 onClick={addLine}
                 className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 transition-colors uppercase tracking-widest"
@@ -301,7 +304,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
             </div>
             <div className="p-6 overflow-x-auto">
               {form.lines.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">No lines yet. Click Add Line to begin.</p>
+                <p className="text-xs text-slate-400 text-center py-6">{t(`No lines yet. Click Add Line to begin.`)}</p>
               ) : (
                 <table className="w-full">
                   <thead>
@@ -335,6 +338,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 // ─── List Page ────────────────────────────────────────────────────────────────
 
 const PriceListsPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -387,8 +391,8 @@ const PriceListsPage: React.FC = () => {
               <Tag size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Price Lists</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Pricing Rules & Item Schedules</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t(`Price Lists`)}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Pricing Rules & Item Schedules`)}</p>
             </div>
           </div>
           <button
@@ -407,7 +411,7 @@ const PriceListsPage: React.FC = () => {
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
                 <Search size={14} /> Price List Directory
               </div>
-              {loading && <div className="text-[10px] text-emerald-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
+              {loading && <div className="text-[10px] text-emerald-500 font-black animate-pulse uppercase tracking-tighter">{t(`Loading...`)}</div>}
             </div>
 
             <div className="p-6">
@@ -417,8 +421,8 @@ const PriceListsPage: React.FC = () => {
                     <Tag size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Price Lists Found</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Create your first price list by clicking the button above.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t(`No Price Lists Found`)}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t(`Create your first price list by clicking the button above.`)}</p>
                   </div>
                 </div>
               ) : (
@@ -439,7 +443,7 @@ const PriceListsPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{pl.name}</span>
                             <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500 uppercase">{pl.currency}</span>
-                            {pl.isDefault && <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest pl-1">DEFAULT</span>}
+                            {pl.isDefault && <span className="text-[9px] font-black text-emerald-600 uppercase tracking-widest pl-1">{t(`DEFAULT`)}</span>}
                           </div>
                           <div className="text-[11px] text-slate-400">
                             {pl.lines.length} {pl.lines.length === 1 ? 'line' : 'lines'}

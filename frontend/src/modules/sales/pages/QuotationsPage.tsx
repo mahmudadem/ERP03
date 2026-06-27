@@ -114,7 +114,7 @@ const QuotationsPage: React.FC = () => {
         render: (value, row) => (
           <div className="flex items-center justify-center gap-2">
             <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{value}</span>
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">v{row.version}</span>
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">{t(`v`)}{row.version}</span>
           </div>
         ),
       },

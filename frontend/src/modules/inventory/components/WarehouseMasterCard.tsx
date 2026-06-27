@@ -15,6 +15,7 @@ import { InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
 import { useRBAC } from '../../../api/rbac/useRBAC';
 import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../components/layout/MasterCardLayout';
 import { generateNextCode, CODE_PATTERNS } from '../../../utils/codeGenerator';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -37,6 +38,7 @@ const WarehouseMasterCard: React.FC<WarehouseMasterCardProps> = ({
   onClose, 
   onSaved 
 }) => {
+    const { t } = useTranslation('common');
   const { hasPermission } = useRBAC();
   const [activeTab, setActiveTab] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
@@ -109,7 +111,7 @@ const WarehouseMasterCard: React.FC<WarehouseMasterCardProps> = ({
     return warehouses.filter(w => w.id !== warehouseId);
   }, [warehouses, warehouseId]);
 
-  if (loading) return <div className="p-20 text-center opacity-50 text-[10px] uppercase font-bold tracking-widest">Resolving Supply Chain Node...</div>;
+  if (loading) return <div className="p-20 text-center opacity-50 text-[10px] uppercase font-bold tracking-widest">{t(`Resolving Supply Chain Node...`)}</div>;
 
   return (
     <MasterCardLayout
@@ -158,8 +160,8 @@ const WarehouseMasterCard: React.FC<WarehouseMasterCardProps> = ({
               </Field>
               <Field label="System Default">
                  <select className="form-control" value={String(form.isDefault)} onChange={e => setForm(p => ({ ...p, isDefault: e.target.value === 'true' }))}>
-                    <option value="false">Standard Site</option>
-                    <option value="true">Primary (Default)</option>
+                    <option value="false">{t(`Standard Site`)}</option>
+                    <option value="true">{t(`Primary (Default)`)}</option>
                  </select>
               </Field>
               <div className="col-span-2">
@@ -172,8 +174,8 @@ const WarehouseMasterCard: React.FC<WarehouseMasterCardProps> = ({
           <FormSection title="Operational Status">
              <Field label="Active Status">
                  <select className="form-control" value={String(form.active)} onChange={e => setForm(p => ({ ...p, active: e.target.value === 'true' }))}>
-                    <option value="true">ACTIVE / OPERATIONAL</option>
-                    <option value="false">CLOSED / MAINTENANCE</option>
+                    <option value="true">{t(`ACTIVE / OPERATIONAL`)}</option>
+                    <option value="false">{t(`CLOSED / MAINTENANCE`)}</option>
                  </select>
               </Field>
           </FormSection>
@@ -185,12 +187,12 @@ const WarehouseMasterCard: React.FC<WarehouseMasterCardProps> = ({
            <FormSection title="Parent Connectivity">
               <Field label="Reporting Parent Warehouse">
                  <select className="form-control" value={form.parentId || ''} onChange={e => setForm(p => ({ ...p, parentId: e.target.value || null }))}>
-                    <option value="">(None - Top Level)</option>
+                    <option value="">{t(`(None - Top Level)`)}</option>
                     {parentOptions.map(p => (
                         <option key={p.id} value={p.id}>{p.code} - {p.name}</option>
                     ))}
                  </select>
-                 <p className="text-[9px] text-slate-400 mt-2 italic uppercase">Sub-warehouses are used for site zones, racks, or specific rooms without affecting direct inventory lookup.</p>
+                 <p className="text-[9px] text-slate-400 mt-2 italic uppercase">{t(`Sub-warehouses are used for site zones, racks, or specific rooms without affecting direct inventory lookup.`)}</p>
               </Field>
            </FormSection>
         </div>

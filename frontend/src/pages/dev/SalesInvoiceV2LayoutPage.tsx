@@ -554,7 +554,7 @@ export default function SalesInvoiceV2LayoutPage() {
             simulatedStatus === 'draft' ? 'bg-amber-600/10 text-amber-400 border-amber-500/30' :
             'bg-emerald-600/10 text-emerald-400 border-emerald-500/30'
           }`}>
-            VOUCHER: {simulatedStatus === 'create' ? 'NEW' : simulatedStatus.toUpperCase()}
+            {t(`VOUCHER:`)} {simulatedStatus === 'create' ? 'NEW' : simulatedStatus.toUpperCase()}
           </span>
           <button 
             type="button" 
@@ -627,10 +627,10 @@ export default function SalesInvoiceV2LayoutPage() {
                   disabled={simulatedStatus === 'posted'}
                   onChange={(e) => setForm(prev => ({ ...prev, paymentMethod: e.target.value }))}
                 >
-                  <option value="ON_CREDIT">On Credit (Receivable)</option>
-                  <option value="CASH">Cash Settlement</option>
-                  <option value="BANK">Bank Wire Transfer</option>
-                  <option value="CHECK">Bank Check</option>
+                  <option value="ON_CREDIT">{t(`On Credit (Receivable)`)}</option>
+                  <option value="CASH">{t(`Cash Settlement`)}</option>
+                  <option value="BANK">{t(`Bank Wire Transfer`)}</option>
+                  <option value="CHECK">{t(`Bank Check`)}</option>
                 </select>
               </div>
           </div>
@@ -722,16 +722,16 @@ export default function SalesInvoiceV2LayoutPage() {
                 <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
                   <tr className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-left">
                     <th className="py-1 px-1 text-center w-[30px] border-r border-slate-200 dark:border-slate-800">#</th>
-                    <th className="py-1 px-1.5 min-w-[180px] border-r border-slate-200 dark:border-slate-800">MATERIAL SKU & NAME</th>
-                    <th className="py-1 px-1 w-[110px] border-r border-slate-200 dark:border-slate-800">WAREHOUSE</th>
-                    <th className="py-1 px-1 w-[60px] text-center border-r border-slate-200 dark:border-slate-800">UOM</th>
-                    <th className="py-1 px-1 w-[60px] text-right border-r border-slate-200 dark:border-slate-800">QTY</th>
-                    <th className="py-1 px-1 w-[90px] text-right border-r border-slate-200 dark:border-slate-800">UNIT PRICE</th>
-                    <th className="py-1 px-1 w-[90px] border-r border-slate-200 dark:border-slate-800">DISC TYPE</th>
-                    <th className="py-1 px-1 w-[70px] text-right border-r border-slate-200 dark:border-slate-800">DISCOUNT</th>
-                    <th className="py-1 px-1 w-[90px] border-r border-slate-200 dark:border-slate-800">TAX CODE</th>
-                    <th className="py-1 px-1.5 w-[90px] text-right border-r border-slate-200 dark:border-slate-800">TOTAL</th>
-                    <th className="py-1 px-1.5 border-r border-slate-200 dark:border-slate-800">LINE MEMO</th>
+                    <th className="py-1 px-1.5 min-w-[180px] border-r border-slate-200 dark:border-slate-800">{t(`MATERIAL SKU & NAME`)}</th>
+                    <th className="py-1 px-1 w-[110px] border-r border-slate-200 dark:border-slate-800">{t(`WAREHOUSE`)}</th>
+                    <th className="py-1 px-1 w-[60px] text-center border-r border-slate-200 dark:border-slate-800">{t(`UOM`)}</th>
+                    <th className="py-1 px-1 w-[60px] text-right border-r border-slate-200 dark:border-slate-800">{t(`QTY`)}</th>
+                    <th className="py-1 px-1 w-[90px] text-right border-r border-slate-200 dark:border-slate-800">{t(`UNIT PRICE`)}</th>
+                    <th className="py-1 px-1 w-[90px] border-r border-slate-200 dark:border-slate-800">{t(`DISC TYPE`)}</th>
+                    <th className="py-1 px-1 w-[70px] text-right border-r border-slate-200 dark:border-slate-800">{t(`DISCOUNT`)}</th>
+                    <th className="py-1 px-1 w-[90px] border-r border-slate-200 dark:border-slate-800">{t(`TAX CODE`)}</th>
+                    <th className="py-1 px-1.5 w-[90px] text-right border-r border-slate-200 dark:border-slate-800">{t(`TOTAL`)}</th>
+                    <th className="py-1 px-1.5 border-r border-slate-200 dark:border-slate-800">{t(`LINE MEMO`)}</th>
                     <th className="py-1 px-1 w-[30px]"></th>
                   </tr>
                 </thead>
@@ -788,9 +788,9 @@ export default function SalesInvoiceV2LayoutPage() {
                           disabled={simulatedStatus === 'posted' || !line.itemId}
                           onChange={(e) => updateRow(index, { uom: e.target.value })}
                         >
-                          <option value="PCS">PCS</option>
-                          <option value="BOX">BOX</option>
-                          <option value="KG">KG</option>
+                          <option value="PCS">{t(`PCS`)}</option>
+                          <option value="BOX">{t(`BOX`)}</option>
+                          <option value="KG">{t(`KG`)}</option>
                         </select>
                       </td>
 
@@ -826,9 +826,9 @@ export default function SalesInvoiceV2LayoutPage() {
                           disabled={simulatedStatus === 'posted' || !line.itemId}
                           onChange={(e) => updateRow(index, { discountType: e.target.value as any, discountValue: 0 })}
                         >
-                          <option value="NONE">No Discount</option>
-                          <option value="PERCENT">% Percent</option>
-                          <option value="AMOUNT">Fixed Amt</option>
+                          <option value="NONE">{t(`No Discount`)}</option>
+                          <option value="PERCENT">{t(`% Percent`)}</option>
+                          <option value="AMOUNT">{t(`Fixed Amt`)}</option>
                         </select>
                       </td>
 
@@ -852,7 +852,7 @@ export default function SalesInvoiceV2LayoutPage() {
                           disabled={simulatedStatus === 'posted' || !line.itemId}
                           onChange={(e) => updateRow(index, { taxCodeId: e.target.value })}
                         >
-                          <option value="">No Tax</option>
+                          <option value="">{t(`No Tax`)}</option>
                           {taxCodes.map(tc => (
                             <option key={tc.id} value={tc.id}>{tc.code} ({Math.round(tc.rate * 100)}%)</option>
                           ))}
@@ -907,7 +907,7 @@ export default function SalesInvoiceV2LayoutPage() {
                 className="py-0.5 px-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center gap-1 text-[10px] transition active:scale-[0.98] whitespace-nowrap"
               >
                 <Paperclip className="h-3 w-3 text-slate-500 shrink-0" /> 
-                Files ({mockAttachments.length})
+                {t(`Files (`)}{mockAttachments.length})
               </button>
               <button
                 type="button"
@@ -915,7 +915,7 @@ export default function SalesInvoiceV2LayoutPage() {
                 className="py-0.5 px-2 border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-750 text-slate-700 dark:text-slate-300 font-bold rounded flex items-center gap-1 text-[10px] transition active:scale-[0.98] whitespace-nowrap"
               >
                 <MessageSquare className="h-3 w-3 text-slate-500 shrink-0" /> 
-                Notes {internalNotes.trim() && '🔴'}
+                {t(`Notes`)} {internalNotes.trim() && '🔴'}
               </button>
               <button
                 type="button"
@@ -951,9 +951,9 @@ export default function SalesInvoiceV2LayoutPage() {
                 <table className="min-w-full text-[10px] border-collapse">
                   <thead className="sticky top-0 bg-slate-50 dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 z-10">
                     <tr className="text-[9px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest text-left">
-                      <th className="py-0.5 px-1.5 border-r border-b border-slate-200 dark:border-slate-800">LEDGER ACCOUNT</th>
-                      <th className="py-0.5 px-1.5 text-right w-[75px] border-r border-b border-slate-200 dark:border-slate-800">DEBIT</th>
-                      <th className="py-0.5 px-1.5 text-right w-[75px] border-b border-slate-200 dark:border-slate-800">CREDIT</th>
+                      <th className="py-0.5 px-1.5 border-r border-b border-slate-200 dark:border-slate-800">{t(`LEDGER ACCOUNT`)}</th>
+                      <th className="py-0.5 px-1.5 text-right w-[75px] border-r border-b border-slate-200 dark:border-slate-800">{t(`DEBIT`)}</th>
+                      <th className="py-0.5 px-1.5 text-right w-[75px] border-b border-slate-200 dark:border-slate-800">{t(`CREDIT`)}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-850">
@@ -1022,7 +1022,7 @@ export default function SalesInvoiceV2LayoutPage() {
         {/* LEFT: Totals - 35% */}
         <div className="w-[35%] flex items-center gap-4 pr-4 border-r border-slate-200 dark:border-slate-800">
           <div className="flex flex-col">
-            <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">SUBTOTAL</span>
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">{t(`SUBTOTAL`)}</span>
             <span className="font-mono font-bold text-sm text-slate-800 dark:text-slate-200 leading-none">
               {totals.subtotal.toLocaleString()} {form.currency}
             </span>
@@ -1030,7 +1030,7 @@ export default function SalesInvoiceV2LayoutPage() {
 
           {totals.discountAmount > 0 && (
             <div className="flex flex-col">
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">DISC (2%)</span>
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">{t(`DISC (2%)`)}</span>
               <span className="font-mono font-bold text-xs text-rose-600 leading-none">
                 -{totals.discountAmount.toLocaleString()}
               </span>
@@ -1039,7 +1039,7 @@ export default function SalesInvoiceV2LayoutPage() {
 
           {totals.taxAmount > 0 && (
             <div className="flex flex-col">
-              <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">TAX (5%)</span>
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">{t(`TAX (5%)`)}</span>
               <span className="font-mono font-bold text-xs text-slate-800 dark:text-slate-200 leading-none">
                 +{totals.taxAmount.toLocaleString()}
               </span>
@@ -1047,7 +1047,7 @@ export default function SalesInvoiceV2LayoutPage() {
           )}
 
           <div className="flex flex-col ml-1">
-            <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">GRAND TOTAL</span>
+            <span className="text-[9px] uppercase tracking-wider text-slate-400 dark:text-slate-500 font-black">{t(`GRAND TOTAL`)}</span>
             <span className="font-mono font-black text-2xl text-rose-600 dark:text-rose-400 leading-none">
               {totals.grandTotal.toLocaleString()} <span className="text-sm font-bold">{form.currency}</span>
             </span>
@@ -1065,7 +1065,7 @@ export default function SalesInvoiceV2LayoutPage() {
               </button>
               <button type="button" onClick={triggerPostInvoice}
                 className="rounded-lg bg-primary-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-700 transition-all active:scale-[0.98]">
-                Save {'&'} Post
+                {t(`Save`)} {'&'} Post
               </button>
             </>
           )}
@@ -1121,7 +1121,7 @@ export default function SalesInvoiceV2LayoutPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">📁 Manage Invoice Attachments</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">{t(`📁 Manage Invoice Attachments`)}</h3>
               <button onClick={() => setShowAttachmentsModal(false)} className="text-slate-400 hover:text-slate-650 dark:hover:text-slate-200">
                 <X className="h-5 w-5" />
               </button>
@@ -1132,19 +1132,19 @@ export default function SalesInvoiceV2LayoutPage() {
                 className="border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-xl p-6 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/40 transition"
               >
                 <Upload className="h-8 w-8 text-slate-400 mx-auto mb-2" />
-                <p className="text-xs font-bold text-slate-600 dark:text-slate-350">Drag files here or click to select</p>
-                <p className="text-[10px] text-slate-400 mt-1">PDF, PNG, JPG, XLSX (Max 10MB)</p>
+                <p className="text-xs font-bold text-slate-600 dark:text-slate-350">{t(`Drag files here or click to select`)}</p>
+                <p className="text-[10px] text-slate-400 mt-1">{t(`PDF, PNG, JPG, XLSX (Max 10MB)`)}</p>
               </div>
               <div className="space-y-2">
-                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Attached Files ({mockAttachments.length})</h4>
+                <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{t(`Attached Files (`)}{mockAttachments.length})</h4>
                 {mockAttachments.length === 0 ? (
-                  <p className="text-xs text-slate-400 italic">No files attached to this invoice.</p>
+                  <p className="text-xs text-slate-400 italic">{t(`No files attached to this invoice.`)}</p>
                 ) : (
                   <div className="divide-y divide-slate-150 dark:divide-slate-800 border border-slate-150 dark:border-slate-800 rounded-lg overflow-hidden">
                     {mockAttachments.map((att, idx) => (
                       <div key={idx} className="p-2.5 flex justify-between items-center text-xs bg-slate-50/50 dark:bg-slate-950/20">
                         <span className="font-medium text-slate-700 dark:text-slate-350 truncate max-w-[320px]">{att}</span>
-                        <button onClick={() => removeAttachment(idx)} className="text-rose-500 hover:underline">Delete</button>
+                        <button onClick={() => removeAttachment(idx)} className="text-rose-500 hover:underline">{t(`Delete`)}</button>
                       </div>
                     ))}
                   </div>
@@ -1152,8 +1152,8 @@ export default function SalesInvoiceV2LayoutPage() {
               </div>
             </div>
             <div className="p-4 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-950">
-              <button onClick={addMockAttachment} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">Add Simulated File</button>
-              <button onClick={() => setShowAttachmentsModal(false)} className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-750 dark:text-slate-350">Close</button>
+              <button onClick={addMockAttachment} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">{t(`Add Simulated File`)}</button>
+              <button onClick={() => setShowAttachmentsModal(false)} className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-750 dark:text-slate-350">{t(`Close`)}</button>
             </div>
           </div>
         </div>
@@ -1163,13 +1163,13 @@ export default function SalesInvoiceV2LayoutPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">📝 Internal Audit Notes</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">{t(`📝 Internal Audit Notes`)}</h3>
               <button onClick={() => setShowInternalNotesModal(false)} className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-200">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-6 space-y-4">
-              <p className="text-xs text-slate-400 italic">These notes are strictly for internal audit and credit vetting logs. They will not print on the official customer-facing document.</p>
+              <p className="text-xs text-slate-400 italic">{t(`These notes are strictly for internal audit and credit vetting logs. They will not print on the official customer-facing document.`)}</p>
               <textarea
                 rows={4}
                 className="w-full rounded-lg border border-slate-350 dark:border-slate-750 bg-white dark:bg-slate-800 px-3 py-2 text-xs focus:ring-1 focus:ring-primary-500 outline-none text-slate-900 dark:text-slate-100"
@@ -1179,7 +1179,7 @@ export default function SalesInvoiceV2LayoutPage() {
               />
             </div>
             <div className="p-4 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-950">
-              <button onClick={() => setShowInternalNotesModal(false)} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">Save Notes</button>
+              <button onClick={() => setShowInternalNotesModal(false)} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">{t(`Save Notes`)}</button>
             </div>
           </div>
         </div>
@@ -1189,14 +1189,14 @@ export default function SalesInvoiceV2LayoutPage() {
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl border border-slate-200 dark:border-slate-800 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-950">
-              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">✉️ Dispatch / Send Document</h3>
+              <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 dark:text-slate-200">{t(`✉️ Dispatch / Send Document`)}</h3>
               <button onClick={() => setShowSendModal(false)} className="text-slate-400 hover:text-slate-655 dark:hover:text-slate-200">
                 <X className="h-5 w-5" />
               </button>
             </div>
             <div className="p-6 space-y-4 text-xs">
               <div className="space-y-1">
-                <label className="font-bold text-slate-600 dark:text-slate-400">Communication Channel</label>
+                <label className="font-bold text-slate-600 dark:text-slate-400">{t(`Communication Channel`)}</label>
                 <div className="flex gap-2">
                   {['WhatsApp', 'Telegram', 'Email'].map((c) => (
                     <button
@@ -1211,23 +1211,23 @@ export default function SalesInvoiceV2LayoutPage() {
                 </div>
               </div>
               <div className="space-y-1">
-                <label className="font-bold text-slate-600 dark:text-slate-400">Sender Account</label>
+                <label className="font-bold text-slate-600 dark:text-slate-400">{t(`Sender Account`)}</label>
                 <select className="w-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 rounded-lg px-2.5 py-1.5 outline-none text-slate-800 dark:text-slate-150">
-                  <option>Default Company Sender (Business Line)</option>
-                  <option>CFO Personal Telegram Route</option>
-                  <option>System Auto-Dispatch BOT</option>
+                  <option>{t(`Default Company Sender (Business Line)`)}</option>
+                  <option>{t(`CFO Personal Telegram Route`)}</option>
+                  <option>{t(`System Auto-Dispatch BOT`)}</option>
                 </select>
               </div>
               <div className="space-y-1">
-                <label className="font-bold text-slate-600 dark:text-slate-400">Preview Message Text</label>
+                <label className="font-bold text-slate-600 dark:text-slate-400">{t(`Preview Message Text`)}</label>
                 <div className="p-3 bg-slate-50 dark:bg-slate-950 rounded-lg border border-slate-200 dark:border-slate-800 font-mono text-[10px] leading-relaxed text-slate-600 dark:text-slate-400 whitespace-pre-line">
                   {`Dear ${form.customerName || 'Customer'},\n\nYour Sales Invoice is ready.\nInvoice No: SINV-2026-0001\nGrand Total: ${totals.grandTotal.toLocaleString()} SYP\nDue Date: ${form.dueDate || 'N/A'}\n\nThank you for doing business with us.`}
                 </div>
               </div>
             </div>
             <div className="p-4 border-t border-slate-150 dark:border-slate-800 flex justify-end gap-2 bg-slate-50 dark:bg-slate-950">
-              <button onClick={handleDispatch} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">Dispatch Message</button>
-              <button onClick={() => setShowSendModal(false)} className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-750 dark:text-slate-350">Close</button>
+              <button onClick={handleDispatch} className="px-3.5 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-bold">{t(`Dispatch Message`)}</button>
+              <button onClick={() => setShowSendModal(false)} className="px-3.5 py-1.5 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-bold text-slate-750 dark:text-slate-350">{t(`Close`)}</button>
             </div>
           </div>
         </div>

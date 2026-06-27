@@ -17,8 +17,10 @@ import { ExchangeRateHistory, ExchangeRateHistoryRef } from './components/Exchan
 import { PricingEntryForm } from './components/PricingEntryForm';
 import { AvailableCurrenciesModal } from './components/AvailableCurrenciesModal';
 import { EnableCurrencyModal } from './components/EnableCurrencyModal';
+import { useTranslation } from "react-i18next";
 
 export const CompanyCurrencySettings: React.FC = () => {
+    const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const [globalCurrencies, setGlobalCurrencies] = useState<CurrencyDTO[]>([]);
   const [companyCurrencies, setCompanyCurrencies] = useState<CompanyCurrencyDTO[]>([]);
@@ -105,7 +107,7 @@ export const CompanyCurrencySettings: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95"
         >
           <Plus size={18} />
-          <span>Add New Currency</span>
+          <span>{t(`Add New Currency`)}</span>
         </button>
       </div>
 
@@ -134,7 +136,7 @@ export const CompanyCurrencySettings: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{currency.code}</p>
                           {currency.code === baseCurrency && (
-                            <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-full">Base</span>
+                            <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-full">{t(`Base`)}</span>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{currency.name}</p>
@@ -142,7 +144,7 @@ export const CompanyCurrencySettings: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center gap-4">
-                      <span className="hidden sm:block text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{currency.decimalPlaces} Decimals</span>
+                      <span className="hidden sm:block text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{currency.decimalPlaces} {t(`Decimals`)}</span>
                       {currency.code !== baseCurrency && (
                         <button
                           onClick={() => handleDisable(currency.code)}

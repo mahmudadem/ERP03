@@ -6,6 +6,7 @@ import { errorHandler } from '../../../services/errorHandler';
 import { GenericVoucherRenderer } from '../../accounting/components/shared/GenericVoucherRenderer';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useWindowManager } from '../../../context/WindowManagerContext';
+import { useTranslation } from "react-i18next";
 
 interface DynamicDocumentRow {
   id: string;
@@ -47,6 +48,7 @@ const normalizeModuleCode = (value: any): string => {
 };
 
 export const DynamicDocumentPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const { formCode, id } = useParams<{ formCode: string; id?: string }>();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -425,7 +427,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50">
         <Spinner size="lg" variant="indigo" className="mb-2" />
-        <p className="text-slate-500 font-medium">Loading {formCode}...</p>
+        <p className="text-slate-500 font-medium">{t(`Loading`)} {formCode}...</p>
       </div>
     );
   }
@@ -434,7 +436,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
     return (
       <div className="flex flex-col items-center justify-center h-screen bg-slate-50 p-6 text-center">
         <AlertCircle className="text-red-500 mb-4" size={48} />
-        <h2 className="text-xl font-bold text-slate-800 mb-2">Configuration Error</h2>
+        <h2 className="text-xl font-bold text-slate-800 mb-2">{t(`Configuration Error`)}</h2>
         <p className="text-slate-500 max-w-md mb-6">{error || 'Unknown error'}</p>
         <Button onClick={() => navigate(-1)} variant="outline">
           <ArrowLeft size={16} className="mr-2" /> Go Back
@@ -466,8 +468,8 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
             </div>
           </div>
           <div className="flex items-center gap-3">
-             <Button variant="outline" onClick={() => navigate(-1)}>Cancel</Button>
-             <Button className="bg-indigo-600">Save Document</Button>
+             <Button variant="outline" onClick={() => navigate(-1)}>{t(`Cancel`)}</Button>
+             <Button className="bg-indigo-600">{t(`Save Document`)}</Button>
           </div>
         </header>
 
@@ -492,7 +494,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
         <header className="bg-white border-b border-slate-200 px-6 py-5 flex items-center justify-between shadow-sm z-10">
            <div>
               <h1 className="text-2xl font-black text-slate-900 tracking-tight">{formConfig.name}</h1>
-              <p className="text-sm text-slate-500">Manage your {formConfig.name.toLowerCase()} documents.</p>
+              <p className="text-sm text-slate-500">{t(`Manage your`)} {formConfig.name.toLowerCase()} {t(`documents.`)}</p>
            </div>
            <div className="flex items-center gap-3">
               <Button variant="outline" onClick={() => loadDocumentRows(formConfig)} size="sm">
@@ -502,7 +504,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
                 onClick={() => navigate(`${pathname}/new`)} 
                 className="bg-indigo-600 hover:bg-indigo-700 shadow-md transition-all active:scale-95"
               >
-                <Plus size={18} className="mr-1.5" /> New {formConfig.name}
+                <Plus size={18} className="mr-1.5" /> {t(`New`)} {formConfig.name}
               </Button>
            </div>
         </header>
@@ -512,16 +514,16 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
               {rowsLoading ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
                   <Spinner size="lg" variant="indigo" className="mb-2" />
-                  <p className="text-slate-500 font-medium">Loading documents...</p>
+                  <p className="text-slate-500 font-medium">{t(`Loading documents...`)}</p>
                 </div>
               ) : rows.length === 0 ? (
                 <div className="flex-1 flex flex-col items-center justify-center p-20 text-center">
                    <div className="bg-slate-100 p-6 rounded-full text-slate-300 mb-6">
                       <FileText size={64} />
                    </div>
-                   <h3 className="text-xl font-bold text-slate-800 mb-2">No Documents Found</h3>
+                   <h3 className="text-xl font-bold text-slate-800 mb-2">{t(`No Documents Found`)}</h3>
                    <p className="text-slate-500 max-w-sm mb-8">
-                     You haven't created any {formConfig.name.toLowerCase()} records yet using this layout.
+                     {t(`You haven't created any`)} {formConfig.name.toLowerCase()} records yet using this layout.
                    </p>
                    <Button
                       onClick={() => navigate(`${pathname}/new`)}
@@ -535,11 +537,11 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
                   <table className="min-w-full text-sm">
                     <thead className="sticky top-0 bg-slate-50">
                       <tr className="border-b border-slate-200 text-left text-slate-600">
-                        <th className="px-4 py-3 font-semibold">Number</th>
-                        <th className="px-4 py-3 font-semibold">Party</th>
-                        <th className="px-4 py-3 font-semibold">Date</th>
-                        <th className="px-4 py-3 font-semibold">Status</th>
-                        <th className="px-4 py-3 text-right font-semibold">Amount</th>
+                        <th className="px-4 py-3 font-semibold">{t(`Number`)}</th>
+                        <th className="px-4 py-3 font-semibold">{t(`Party`)}</th>
+                        <th className="px-4 py-3 font-semibold">{t(`Date`)}</th>
+                        <th className="px-4 py-3 font-semibold">{t(`Status`)}</th>
+                        <th className="px-4 py-3 text-right font-semibold">{t(`Amount`)}</th>
                       </tr>
                     </thead>
                     <tbody>

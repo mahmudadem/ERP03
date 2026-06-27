@@ -17,6 +17,7 @@ import {
   loadSystemVoucherTypeGroups,
   SystemVoucherTypeGroup,
 } from '../../accounting/services/voucherTypesService';
+import { useTranslation } from "react-i18next";
 
 interface SalesInitializationWizardProps {
   onComplete: () => void;
@@ -26,6 +27,7 @@ const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
 
 const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ onComplete }) => {
+    const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
@@ -197,25 +199,25 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
           <div className="w-20 h-20 bg-primary-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <ShoppingCart className="w-10 h-10 text-primary-600" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-4">Welcome to Sales Setup</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-4">{t(`Welcome to Sales Setup`)}</h2>
           <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
             Configure your sales workflow and accounting defaults before creating transactions.
           </p>
           <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Calculator className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Workflow</h3>
-              <p className="text-sm text-gray-600">Choose between simple invoicing and full operational flow.</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t(`Workflow`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Choose between simple invoicing and full operational flow.`)}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <DollarSign className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Default Accounts</h3>
-              <p className="text-sm text-gray-600">Set the global revenue fallback and review linked inventory accounts.</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t(`Default Accounts`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Set the global revenue fallback and review linked inventory accounts.`)}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Settings className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Numbering</h3>
-              <p className="text-sm text-gray-600">Configure prefixes and default payment terms.</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t(`Numbering`)}</h3>
+              <p className="text-sm text-gray-600">{t(`Configure prefixes and default payment terms.`)}</p>
             </div>
           </div>
         </div>
@@ -225,13 +227,13 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     if (currentStep === 1) {
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-4">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Choose Sales Workflow</h2>
+          <h2 className="text-2xl font-bold text-gray-900 text-center">{t(`Choose Sales Workflow`)}</h2>
           <p className="text-gray-600 text-center mb-6">
             Workflow controls which sales documents users see. Accounting mode is inherited from Inventory.
           </p>
 
           <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-700">
-            Inventory accounting mode: <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
+            {t(`Inventory accounting mode:`)} <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
           </div>
 
           <label className={`flex items-start gap-3 rounded-lg border bg-white p-5 ${simpleWorkflowDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${workflowMode === 'SIMPLE' ? 'border-primary-500' : 'border-gray-200 hover:border-primary-500'}`}>
@@ -243,8 +245,8 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
               disabled={simpleWorkflowDisabled}
             />
             <div>
-              <div className="font-semibold text-gray-900">Simple</div>
-              <div className="text-sm text-gray-600">Show invoices and returns only. Orders and delivery notes stay hidden.</div>
+              <div className="font-semibold text-gray-900">{t(`Simple`)}</div>
+              <div className="text-sm text-gray-600">{t(`Show invoices and returns only. Orders and delivery notes stay hidden.`)}</div>
             </div>
           </label>
 
@@ -256,8 +258,8 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
               onChange={() => setWorkflowMode('OPERATIONAL')}
             />
             <div>
-              <div className="font-semibold text-gray-900">Operational</div>
-              <div className="text-sm text-gray-600">Expose Sales Orders and Delivery Notes alongside invoices and returns.</div>
+              <div className="font-semibold text-gray-900">{t(`Operational`)}</div>
+              <div className="text-sm text-gray-600">{t(`Expose Sales Orders and Delivery Notes alongside invoices and returns.`)}</div>
             </div>
           </label>
 
@@ -276,8 +278,8 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
                   onChange={(e) => setAllowDirectInvoicing(e.target.checked)}
                 />
                 <div>
-                  <div className="font-semibold text-gray-900">Allow Direct Invoicing</div>
-                  <div className="text-sm text-gray-600">Allow invoices to post directly without a delivery note path.</div>
+                  <div className="font-semibold text-gray-900">{t(`Allow Direct Invoicing`)}</div>
+                  <div className="text-sm text-gray-600">{t(`Allow invoices to post directly without a delivery note path.`)}</div>
                 </div>
               </label>
 
@@ -288,8 +290,8 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
                   onChange={(e) => setRequireSOForStockItems(e.target.checked)}
                 />
                 <div>
-                  <div className="font-semibold text-gray-900">Require Sales Orders for Stock Items</div>
-                  <div className="text-sm text-gray-600">Force stock-item flows to start from a Sales Order.</div>
+                  <div className="font-semibold text-gray-900">{t(`Require Sales Orders for Stock Items`)}</div>
+                  <div className="text-sm text-gray-600">{t(`Force stock-item flows to start from a Sales Order.`)}</div>
                 </div>
               </label>
             </div>
@@ -306,31 +308,31 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
       if (!accountingEnabled) {
         return (
           <div className="py-6 max-w-2xl mx-auto space-y-5">
-            <h2 className="text-2xl font-bold text-gray-900">Account Mapping</h2>
+            <h2 className="text-2xl font-bold text-gray-900">{t(`Account Mapping`)}</h2>
             <div className="rounded-lg border border-amber-200 bg-amber-50 p-5">
               <div className="flex items-start gap-3">
                 <AlertTriangle className="w-5 h-5 text-amber-600 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div className="font-semibold text-amber-900">Accounting Not Enabled</div>
-                  <div className="text-sm text-amber-800 mt-1">Sales operations will track documents and quantities but will NOT create financial/GL postings.</div>
-                  <div className="text-sm text-amber-700 mt-2">To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.</div>
+                  <div className="font-semibold text-amber-900">{t(`Accounting Not Enabled`)}</div>
+                  <div className="text-sm text-amber-800 mt-1">{t(`Sales operations will track documents and quantities but will NOT create financial/GL postings.`)}</div>
+                  <div className="text-sm text-amber-700 mt-2">{t(`To enable financial impact, activate the Accounting module from Company Admin → Modules, then complete the Accounting setup.`)}</div>
                 </div>
               </div>
             </div>
-            <p className="text-sm text-gray-600">Account mapping (Revenue, AR, COGS accounts) will be configured when Accounting is enabled. You can set these later from Sales Settings.</p>
+            <p className="text-sm text-gray-600">{t(`Account mapping (Revenue, AR, COGS accounts) will be configured when Accounting is enabled. You can set these later from Sales Settings.`)}</p>
           </div>
         );
       }
 
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Default Accounts</h2>
+          <h2 className="text-2xl font-bold text-gray-900 text-center">{t(`Default Accounts`)}</h2>
           <p className="text-gray-600 text-center mb-4 text-sm px-6">
-            Pick a <b>Posting</b> Revenue account to serve as the global fallback.
+            {t(`Pick a`)} <b>{t(`Posting`)}</b> Revenue account to serve as the global fallback.
           </p>
 
           <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-            <label className="block text-sm font-bold text-gray-700 mb-2">Default Revenue Account</label>
+            <label className="block text-sm font-bold text-gray-700 mb-2">{t(`Default Revenue Account`)}</label>
             <AccountSelector
               value={defaultRevenueAccountId}
               onChange={(account: any) => setDefaultRevenueAccountId(account?.id || '')}
@@ -349,17 +351,17 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
               Related Inventory Accounts (View Only)
             </h4>
             <div className="mb-4 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs text-slate-700">
-              Accounting mode: <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
+              {t(`Accounting mode:`)} <span className="font-semibold">{getAccountingModeLabel(accountingMode)}</span>
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div>
-                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight">Default Inventory Asset</span>
+                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t(`Default Inventory Asset`)}</span>
                 <span className="text-sm font-medium text-gray-600 truncate block mt-1 py-1 px-2 bg-white rounded border border-gray-100">
                   {getAccountLabel(inventorySettings?.defaultInventoryAssetAccountId)}
                 </span>
               </div>
               <div>
-                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight">Default COGS Account</span>
+                <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-tight">{t(`Default COGS Account`)}</span>
                 <span className="text-sm font-medium text-gray-600 truncate block mt-1 py-1 px-2 bg-white rounded border border-gray-100">
                   {getAccountLabel(inventorySettings?.defaultCOGSAccountId)}
                 </span>
@@ -376,10 +378,10 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
     if (currentStep === 3) {
       return (
         <div className="py-8 max-w-3xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900 text-center">Defaults & Numbering</h2>
+          <h2 className="text-2xl font-bold text-gray-900 text-center">{t(`Defaults & Numbering`)}</h2>
 
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Default Payment Terms (Days)</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">{t(`Default Payment Terms (Days)`)}</label>
             <input
               type="number"
               min={0}
@@ -391,7 +393,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
 
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">SO Prefix</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t(`SO Prefix`)}</label>
               <input
                 type="text"
                 value={soNumberPrefix}
@@ -400,7 +402,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">DN Prefix</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t(`DN Prefix`)}</label>
               <input
                 type="text"
                 value={dnNumberPrefix}
@@ -409,7 +411,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">SI Prefix</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t(`SI Prefix`)}</label>
               <input
                 type="text"
                 value={siNumberPrefix}
@@ -418,7 +420,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
               />
             </div>
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">SR Prefix</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">{t(`SR Prefix`)}</label>
               <input
                 type="text"
                 value={srNumberPrefix}
@@ -442,14 +444,14 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
 
       return (
         <div className="py-8 max-w-4xl mx-auto">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Voucher Types</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t(`Select Voucher Types`)}</h2>
           <p className="text-gray-600 mb-6 text-center">
             Pick which sales document types to install. Each type comes with one or more default form variants &mdash; you'll activate or customize them next.
           </p>
 
           <div className="flex justify-between items-center mb-6">
             <p className="text-sm text-gray-600">
-              {selectedTypeKeys.length} of {voucherTypeGroups.length} types selected
+              {selectedTypeKeys.length} {t(`of`)} {voucherTypeGroups.length} types selected
             </p>
             <div className="flex gap-2">
               <button
@@ -473,7 +475,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
             {voucherTypeGroups.length === 0 ? (
               <div className="col-span-2 text-center py-12">
                 <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                <p className="text-gray-600 font-medium">No Sales voucher types available</p>
+                <p className="text-gray-600 font-medium">{t(`No Sales voucher types available`)}</p>
                 <p className="text-sm text-gray-500 mt-1">
                   The system catalog has no Sales templates yet. Contact your administrator.
                 </p>
@@ -508,12 +510,12 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
                             </span>
                           )}
                           <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-                            {formCount} default form{formCount !== 1 ? 's' : ''}
+                            {formCount} {t(`default form`)}{formCount !== 1 ? 's' : ''}
                           </span>
                         </div>
                         {variantLabels.length > 0 && (
                           <p className="text-xs text-gray-500 mt-1">
-                            Variants: {variantLabels.join(' · ')}
+                            {t(`Variants:`)} {variantLabels.join(' · ')}
                           </p>
                         )}
                       </div>
@@ -531,14 +533,14 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
             <div className="flex items-start gap-2">
               <Info className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
               <div className="text-sm text-amber-800 space-y-1">
-                <p className="font-semibold">These install as locked, inactive default templates.</p>
+                <p className="font-semibold">{t(`These install as locked, inactive default templates.`)}</p>
                 <p>
                   The schemas are available immediately, but no sidebar entries appear until you open
-                  <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
+                  <span className="font-semibold"> {t(`Tools &rarr; Forms Designer`)}</span> and either:
                 </p>
                 <ul className="list-disc list-inside ml-1 space-y-0.5">
-                  <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
-                  <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                  <li><span className="font-semibold">{t(`Activate`)}</span> {t(`a default form to use it as-is, or`)}</li>
+                  <li><span className="font-semibold">{t(`Clone`)}</span> {t(`it to create an editable variant.`)}</li>
                 </ul>
               </div>
             </div>
@@ -549,37 +551,37 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
 
     return (
       <div className="py-8 max-w-3xl mx-auto">
-        <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Review & Confirm</h2>
-        <p className="text-gray-600 mb-6 text-center">Confirm your configuration before initializing Sales.</p>
+        <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t(`Review & Confirm`)}</h2>
+        <p className="text-gray-600 mb-6 text-center">{t(`Confirm your configuration before initializing Sales.`)}</p>
 
         {!accountingEnabled && (
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-700">
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-              <span>Accounting is not enabled. This initialization will set up sales operations only — no financial/GL postings will be created.</span>
+              <span>{t(`Accounting is not enabled. This initialization will set up sales operations only — no financial/GL postings will be created.`)}</span>
             </div>
           </div>
         )}
 
         <div className="space-y-4">
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-1">Workflow</h3>
-            <p className="text-sm text-gray-900">Mode: {getWorkflowModeLabel(workflowMode)}</p>
+            <h3 className="text-sm text-gray-600 mb-1">{t(`Workflow`)}</h3>
+            <p className="text-sm text-gray-900">{t(`Mode:`)} {getWorkflowModeLabel(workflowMode)}</p>
             {workflowMode === 'OPERATIONAL' ? (
               <>
-                <p className="text-sm text-gray-900">Allow Direct Invoicing: {allowDirectInvoicing ? 'Yes' : 'No'}</p>
-                <p className="text-sm text-gray-900">Require SO for Stock Items: {requireSOForStockItems ? 'Yes' : 'No'}</p>
+                <p className="text-sm text-gray-900">{t(`Allow Direct Invoicing:`)} {allowDirectInvoicing ? 'Yes' : 'No'}</p>
+                <p className="text-sm text-gray-900">{t(`Require SO for Stock Items:`)} {requireSOForStockItems ? 'Yes' : 'No'}</p>
               </>
             ) : (
-              <p className="text-sm text-gray-900">Users will see invoices and returns only.</p>
+              <p className="text-sm text-gray-900">{t(`Users will see invoices and returns only.`)}</p>
             )}
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">Finance & Accounts</h3>
+            <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-3">{t(`Finance & Accounts`)}</h3>
             <div className="space-y-3">
               <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2">
-                <span className="text-gray-500">Default Revenue Account</span>
+                <span className="text-gray-500">{t(`Default Revenue Account`)}</span>
                 <span className="font-semibold text-gray-900">{getAccountLabel(defaultRevenueAccountId)}</span>
               </div>
               <div className="flex justify-between items-center text-sm border-b border-gray-50 pb-2 text-gray-400 italic">
@@ -607,17 +609,17 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-2">Defaults</h3>
-            <p className="text-sm text-gray-900">Payment Terms: {defaultPaymentTermsDays} days</p>
+            <h3 className="text-sm text-gray-600 mb-2">{t(`Defaults`)}</h3>
+            <p className="text-sm text-gray-900">{t(`Payment Terms:`)} {defaultPaymentTermsDays} {t(`days`)}</p>
             <p className="text-sm text-gray-900">
-              Prefixes: {soNumberPrefix || 'SO'} / {dnNumberPrefix || 'DN'} / {siNumberPrefix || 'SI'} / {srNumberPrefix || 'SR'}
+              {t(`Prefixes:`)} {soNumberPrefix || 'SO'} / {dnNumberPrefix || 'DN'} / {siNumberPrefix || 'SI'} / {srNumberPrefix || 'SR'}
             </p>
           </div>
 
           <div className="bg-white border border-gray-200 rounded-lg p-5">
-            <h3 className="text-sm text-gray-600 mb-2">Selected Voucher Types</h3>
+            <h3 className="text-sm text-gray-600 mb-2">{t(`Selected Voucher Types`)}</h3>
             {selectedTypeKeys.length === 0 ? (
-              <p className="text-sm text-gray-500">No voucher types selected. You can add them later from Settings.</p>
+              <p className="text-sm text-gray-500">{t(`No voucher types selected. You can add them later from Settings.`)}</p>
             ) : (
               <ul className="space-y-1">
                 {selectedTypeKeys.map((typeKey) => {
@@ -627,13 +629,13 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
                       <CheckCircle className="w-4 h-4 text-primary-600 flex-shrink-0" />
                       <span className="font-medium">{group.name}</span>
                       <span className="text-xs text-gray-500">
-                        ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                        ({group.forms.length} {t(`default form`)}{group.forms.length !== 1 ? 's' : ''})
                       </span>
                     </li>
                   ) : null;
                 })}
                 <li className="text-sm text-gray-600 mt-2">
-                  Total: {selectedTypeKeys.length} type{selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
+                  {t(`Total:`)} {selectedTypeKeys.length} {t(`type`)}{selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
                   {voucherTypeGroups
                     .filter((g) => selectedTypeKeys.includes(g.typeKey))
                     .reduce((sum, g) => sum + g.forms.length, 0)}{' '}
@@ -681,7 +683,7 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
 
           <div className="mt-3 flex items-center justify-between">
             <span className="text-xs font-medium text-white/90">
-              Step {currentStep + 1} of {stepTitles.length}
+              {t(`Step`)} {currentStep + 1} {t(`of`)} {stepTitles.length}
             </span>
             <span className="text-xs font-semibold text-white">{Math.round(((currentStep + 1) / stepTitles.length) * 100)}%</span>
           </div>

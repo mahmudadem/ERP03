@@ -18,7 +18,7 @@ export const Sidebar: React.FC<SidebarProps> = ({ navItems, isOpen }) => {
     >
       <div className="h-16 flex items-center justify-center border-b border-gray-700">
         <span className={`font-bold text-xl ${!isOpen && 'hidden'}`}>{t('appName')}</span>
-        <span className={`font-bold text-xl ${isOpen && 'hidden'}`}>E</span>
+        <span className={`font-bold text-xl ${isOpen && 'hidden'}`}>{t(`E`)}</span>
       </div>
 
       <nav className="mt-4 flex flex-col gap-1 px-2">

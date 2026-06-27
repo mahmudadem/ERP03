@@ -31,6 +31,7 @@ import {
 } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useConfirm } from '../../../hooks/useConfirm';
+import { useTranslation } from "react-i18next";
 
 // ─── Configuration ──────────────────────────────────────────────────────────
 
@@ -70,6 +71,7 @@ interface StepperProps {
 }
 
 const Stepper: React.FC<StepperProps> = ({ currentStep, completedSteps, onStepClick }) => {
+    const { t } = useTranslation('common');
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-4">
       <ol className="flex flex-wrap items-center gap-2 sm:gap-0">
@@ -104,7 +106,7 @@ const Stepper: React.FC<StepperProps> = ({ currentStep, completedSteps, onStepCl
                     {isCompleted ? <Check className="h-4 w-4" /> : <span>{idx + 1}</span>}
                   </span>
                   <span className="hidden sm:flex flex-col items-start text-left">
-                    <span className="text-xs uppercase tracking-wide opacity-75">Step {idx + 1}</span>
+                    <span className="text-xs uppercase tracking-wide opacity-75">{t(`Step`)} {idx + 1}</span>
                     <span className="text-sm leading-tight">{step.label}</span>
                   </span>
                   <Icon className="h-4 w-4 sm:hidden" />
@@ -352,6 +354,7 @@ const StepProvider: React.FC<{
   onSaved: () => Promise<void>;
   onNext: () => void;
 }> = ({ providers, selectedProviderId, onSelect, onSaved, onNext }) => {
+    const { t } = useTranslation('common');
   const [showNewForm, setShowNewForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -402,7 +405,7 @@ const StepProvider: React.FC<{
         {providers.length === 0 && !showNewForm && (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <Server className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm text-slate-600">No providers yet. Register your first one.</p>
+            <p className="mt-2 text-sm text-slate-600">{t(`No providers yet. Register your first one.`)}</p>
           </div>
         )}
 
@@ -427,9 +430,9 @@ const StepProvider: React.FC<{
                   <div className="flex items-center gap-2">
                     <span className="font-medium text-slate-900 truncate">{p.name}</span>
                     {p.enabled ? (
-                      <span className="text-xs text-emerald-700">enabled</span>
+                      <span className="text-xs text-emerald-700">{t(`enabled`)}</span>
                     ) : (
-                      <span className="text-xs text-slate-400">disabled</span>
+                      <span className="text-xs text-slate-400">{t(`disabled`)}</span>
                     )}
                   </div>
                   <div className="text-xs text-slate-500 truncate">{p.type} · {p.defaultBaseUrl}</div>
@@ -453,7 +456,7 @@ const StepProvider: React.FC<{
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 space-y-3">
             <div className="grid gap-3 sm:grid-cols-2">
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Display name</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Display name`)}</label>
                 <input
                   type="text"
                   value={form.name}
@@ -463,7 +466,7 @@ const StepProvider: React.FC<{
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Type</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Type`)}</label>
                 <select
                   value={form.type}
                   onChange={e => {
@@ -480,7 +483,7 @@ const StepProvider: React.FC<{
               </div>
             </div>
             <div>
-              <label className="block text-xs font-medium text-slate-700 mb-1">Base URL</label>
+              <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Base URL`)}</label>
               <input
                 type="text"
                 value={form.defaultBaseUrl}
@@ -512,7 +515,7 @@ const StepProvider: React.FC<{
         <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
           <HelpCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>What gets created:</strong> An <code>AiProvider</code> entry — name, type, and base URL.
+            <strong>{t(`What gets created:`)}</strong> {t(`An`)} <code>{t(`AiProvider`)}</code> entry — name, type, and base URL.
             No API key is saved here; you&apos;ll add the platform key in Step 3.
           </span>
         </div>
@@ -532,6 +535,7 @@ const StepModel: React.FC<{
   onBack: () => void;
   onNext: () => void;
 }> = ({ provider, models, selectedModelId, onSelect, onSaved, onBack, onNext }) => {
+    const { t } = useTranslation('common');
   const [showNewForm, setShowNewForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -599,7 +603,7 @@ const StepModel: React.FC<{
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <Cpu className="mx-auto h-8 w-8 text-slate-400" />
             <p className="mt-2 text-sm text-slate-600">
-              No models registered for {provider?.name || 'this provider'} yet.
+              {t(`No models registered for`)} {provider?.name || 'this provider'} yet.
             </p>
           </div>
         )}
@@ -627,7 +631,7 @@ const StepModel: React.FC<{
                   </div>
                   <div className="text-xs text-slate-500 truncate">
                     <code>{m.modelName}</code>
-                    {' · '}status: {m.status}
+                    {' · '}{t(`status:`)} {m.status}
                     {m.supportsToolCalling ? ' · tools' : ' · text-only'}
                   </div>
                 </div>
@@ -663,7 +667,7 @@ const StepModel: React.FC<{
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Display name</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Display name`)}</label>
                 <input
                   type="text"
                   value={form.displayName}
@@ -673,7 +677,7 @@ const StepModel: React.FC<{
                 />
               </div>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Max context tokens</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Max context tokens`)}</label>
                 <input
                   type="number"
                   value={form.maxContextTokens}
@@ -690,14 +694,14 @@ const StepModel: React.FC<{
                 Supports tool calling
               </label>
               <div>
-                <label className="block text-xs font-medium text-slate-700 mb-1">Scope</label>
+                <label className="block text-xs font-medium text-slate-700 mb-1">{t(`Scope`)}</label>
                 <select
                   value={form.scope}
                   onChange={e => setForm(f => ({ ...f, scope: e.target.value as 'GLOBAL' | 'TENANT' }))}
                   className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
                 >
-                  <option value="GLOBAL">Global (available to all tenants)</option>
-                  <option value="TENANT">Tenant (company-specific)</option>
+                  <option value="GLOBAL">{t(`Global (available to all tenants)`)}</option>
+                  <option value="TENANT">{t(`Tenant (company-specific)`)}</option>
                 </select>
               </div>
             </div>
@@ -725,7 +729,7 @@ const StepModel: React.FC<{
         <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
           <HelpCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>What gets created:</strong> An <code>AiModelProfile</code> tied to the chosen provider.
+            <strong>{t(`What gets created:`)}</strong> {t(`An`)} <code>{t(`AiModelProfile`)}</code> tied to the chosen provider.
             Still no API key — that&apos;s next.
           </span>
         </div>
@@ -746,6 +750,7 @@ const StepPlatformKey: React.FC<{
   onBack: () => void;
   onNext: () => void;
 }> = ({ provider, model, runtimes, vaultKeys, onVaultRefresh, onSaved, onBack, onNext }) => {
+    const { t } = useTranslation('common');
   const existing = runtimes.find(r => r.modelProfileId === model?.id);
   const providerVaultKeys = useMemo(
     () => vaultKeys.filter(k => k.providerId === provider?.id),
@@ -849,8 +854,8 @@ const StepPlatformKey: React.FC<{
     >
       <div className="space-y-4">
         <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-xs space-y-1">
-          <div><span className="text-slate-500">Provider:</span> <span className="font-medium text-slate-900">{provider?.name || '—'}</span></div>
-          <div><span className="text-slate-500">Model:</span> <span className="font-medium text-slate-900">{model?.displayName || model?.modelName || '—'}</span></div>
+          <div><span className="text-slate-500">{t(`Provider:`)}</span> <span className="font-medium text-slate-900">{provider?.name || '—'}</span></div>
+          <div><span className="text-slate-500">{t(`Model:`)}</span> <span className="font-medium text-slate-900">{model?.displayName || model?.modelName || '—'}</span></div>
         </div>
 
         {existing && (
@@ -879,7 +884,7 @@ const StepPlatformKey: React.FC<{
             )}
           >
             <Key className="inline h-3 w-3 mr-1" />
-            Pick from vault ({providerVaultKeys.length})
+            {t(`Pick from vault (`)}{providerVaultKeys.length})
           </button>
           <button
             type="button"
@@ -895,7 +900,7 @@ const StepPlatformKey: React.FC<{
 
         {mode === 'vault' && providerVaultKeys.length > 0 && (
           <div className="space-y-2">
-            <label className="block text-sm font-medium text-slate-700">Choose a saved key</label>
+            <label className="block text-sm font-medium text-slate-700">{t(`Choose a saved key`)}</label>
             <div className="grid gap-2">
               {providerVaultKeys.map(k => (
                 <button
@@ -934,7 +939,7 @@ const StepPlatformKey: React.FC<{
               ))}
             </div>
             <p className="text-xs text-slate-500">
-              Manage your saved keys at{' '}
+              {t(`Manage your saved keys at`)}{' '}
               <a href="/super-admin/ai-api-keys" target="_blank" rel="noreferrer" className="text-indigo-700 underline">
                 API Key Vault
               </a>
@@ -957,7 +962,7 @@ const StepPlatformKey: React.FC<{
                 className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm font-mono"
                 autoComplete="off"
               />
-              <p className="mt-1 text-xs text-slate-500">Encrypted at rest. Never displayed back to anyone after save.</p>
+              <p className="mt-1 text-xs text-slate-500">{t(`Encrypted at rest. Never displayed back to anyone after save.`)}</p>
             </div>
             {!showAddToVault ? (
               <button
@@ -969,7 +974,7 @@ const StepPlatformKey: React.FC<{
               </button>
             ) : (
               <div className="rounded-lg border border-indigo-200 bg-indigo-50 p-3 space-y-2">
-                <div className="text-xs font-medium text-indigo-900">Save to vault</div>
+                <div className="text-xs font-medium text-indigo-900">{t(`Save to vault`)}</div>
                 <div className="grid gap-2 sm:grid-cols-2">
                   <input
                     type="text"
@@ -1012,7 +1017,7 @@ const StepPlatformKey: React.FC<{
 
         <div className="grid gap-3 sm:grid-cols-2">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Max requests per interval</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t(`Max requests per interval`)}</label>
             <input
               type="number"
               value={budget}
@@ -1022,16 +1027,16 @@ const StepPlatformKey: React.FC<{
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Interval</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t(`Interval`)}</label>
             <select
               value={interval}
               onChange={e => setInterval(e.target.value as any)}
               className="w-full rounded-md border border-slate-300 bg-white px-3 py-2 text-sm"
             >
-              <option value="minute">per minute</option>
-              <option value="hour">per hour</option>
-              <option value="day">per day</option>
-              <option value="month">per month</option>
+              <option value="minute">{t(`per minute`)}</option>
+              <option value="hour">{t(`per hour`)}</option>
+              <option value="day">{t(`per day`)}</option>
+              <option value="month">{t(`per month`)}</option>
             </select>
           </div>
         </div>
@@ -1051,7 +1056,7 @@ const StepPlatformKey: React.FC<{
         <div className="flex items-start gap-2 rounded-lg border border-blue-100 bg-blue-50 p-3 text-xs text-blue-800">
           <HelpCircle className="h-4 w-4 flex-shrink-0 mt-0.5" />
           <span>
-            <strong>What gets created:</strong> An active <code>AiPlatformRuntimeProfile</code> linking the
+            <strong>{t(`What gets created:`)}</strong> {t(`An active`)} <code>{t(`AiPlatformRuntimeProfile`)}</code> linking the
             provider + model + the selected key. Picking from the vault reuses a key you&apos;ve already
             saved (and tested) without retyping it.
           </span>
@@ -1069,6 +1074,7 @@ const StepTest: React.FC<{
   onBack: () => void;
   onNext: () => void;
 }> = ({ model, onPassed, onBack, onNext }) => {
+    const { t } = useTranslation('common');
   const [running, setRunning] = useState(false);
   const [result, setResult] = useState<ProviderHealthResponse | null>(null);
 
@@ -1106,7 +1112,7 @@ const StepTest: React.FC<{
       <div className="space-y-4">
         <div className="flex justify-between items-center">
           <div className="text-sm text-slate-600">
-            Model: <span className="font-mono text-slate-900">{model?.modelName || '—'}</span>
+            {t(`Model:`)} <span className="font-mono text-slate-900">{model?.modelName || '—'}</span>
           </div>
           <button
             type="button"
@@ -1128,9 +1134,9 @@ const StepTest: React.FC<{
               )}
             >
               {result.ready ? (
-                <span className="font-medium">All checks passed — the platform key works against this model.</span>
+                <span className="font-medium">{t(`All checks passed — the platform key works against this model.`)}</span>
               ) : (
-                <span className="font-medium">Diagnostics did not pass. Review failures below, fix the issue, then run again.</span>
+                <span className="font-medium">{t(`Diagnostics did not pass. Review failures below, fix the issue, then run again.`)}</span>
               )}
             </div>
 
@@ -1160,7 +1166,7 @@ const StepTest: React.FC<{
         {!result && (
           <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-6 text-center">
             <Sparkles className="mx-auto h-8 w-8 text-slate-400" />
-            <p className="mt-2 text-sm text-slate-600">Click "Run diagnostics" to test the live connection.</p>
+            <p className="mt-2 text-sm text-slate-600">{t(`Click "Run diagnostics" to test the live connection.`)}</p>
           </div>
         )}
       </div>
@@ -1176,6 +1182,7 @@ const StepCertify: React.FC<{
   onBack: () => void;
   onFinish: () => void;
 }> = ({ model, onCertified, onBack, onFinish }) => {
+    const { t } = useTranslation('common');
   const [certs, setCerts] = useState<Record<string, 'idle' | 'running' | 'passed' | 'failed'>>({});
   const [errors, setErrors] = useState<Record<string, string | null>>({});
   const [selectedCategory, setSelectedCategory] = useState<AiCertificationCategory>('GENERAL_CHAT');
@@ -1245,7 +1252,7 @@ const StepCertify: React.FC<{
       <div className="space-y-4">
         <div className="flex flex-col sm:flex-row gap-3 items-start sm:items-end">
           <div className="flex-1 w-full">
-            <label className="block text-sm font-medium text-slate-700 mb-1">Category</label>
+            <label className="block text-sm font-medium text-slate-700 mb-1">{t(`Category`)}</label>
             <select
               value={selectedCategory}
               onChange={e => setSelectedCategory(e.target.value as AiCertificationCategory)}
@@ -1273,7 +1280,7 @@ const StepCertify: React.FC<{
 
         <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 p-3">
           <span className="text-sm text-indigo-900">
-            <strong>Or certify everything:</strong> run all {CERT_CATEGORIES.length} categories sequentially.
+            <strong>{t(`Or certify everything:`)}</strong> {t(`run all`)} {CERT_CATEGORIES.length} categories sequentially.
           </span>
           <button
             type="button"

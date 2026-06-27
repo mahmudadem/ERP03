@@ -7,12 +7,14 @@ import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
+import { useTranslation } from "react-i18next";
 
 const stepTitles = ['Impact Assessment', 'Accounting Method', 'Account Mappings', 'Start Behavior', 'Review & Confirm'];
 
 const accountLabel = (account: Account): string => `${account.code} - ${account.name}`;
 
 export const InventoryFinancialIntegrationWizard: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { accounts, isLoading: loadingAccounts } = useAccounts();
   const { isModuleInitialized, loading: modulesLoading } = useCompanyModules();
@@ -113,7 +115,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
           <div className="w-20 h-20 rounded-full bg-primary-100 text-primary-700 flex items-center justify-center mx-auto mb-6">
             <TrendingUp className="w-10 h-10" />
           </div>
-          <h2 className="text-3xl font-bold text-gray-900 mb-3">Inventory Financial Integration</h2>
+          <h2 className="text-3xl font-bold text-gray-900 mb-3">{t(`Inventory Financial Integration`)}</h2>
           <p className="text-gray-600 max-w-2xl mx-auto mb-8">
             Configure how inventory operations integrate with your Chart of Accounts. This setup enables financial/GL postings for inventory transactions.
           </p>
@@ -121,8 +123,8 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
             <div className="flex items-start gap-2">
               <AlertTriangle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
               <div className="text-sm text-blue-800">
-                <div className="font-semibold">Important</div>
-                <div className="mt-1">Once financial integration is configured, the accounting method cannot be changed. Review your choices carefully.</div>
+                <div className="font-semibold">{t(`Important`)}</div>
+                <div className="mt-1">{t(`Once financial integration is configured, the accounting method cannot be changed. Review your choices carefully.`)}</div>
               </div>
             </div>
           </div>
@@ -133,19 +135,19 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
     if (currentStep === 1) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900">Accounting Method</h2>
-          <p className="text-sm text-gray-600">Choose how inventory valuation and cost of goods sold are calculated.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Accounting Method`)}</h2>
+          <p className="text-sm text-gray-600">{t(`Choose how inventory valuation and cost of goods sold are calculated.`)}</p>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input type="radio" name="accounting-method" checked={accountingMethod === 'PERIODIC'} onChange={() => setAccountingMethod('PERIODIC')} />
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">Periodic (Invoice-driven)</span>
+                <span className="font-semibold text-gray-900">{t(`Periodic (Invoice-driven)`)}</span>
                 <button type="button" onClick={(e) => { e.preventDefault(); setModalContent('PERIODIC'); }} className="text-primary-500 hover:text-primary-700 flex-shrink-0">
                   <Info className="w-4 h-4" />
                 </button>
               </div>
-              <div className="text-sm text-gray-600 mt-1">COGS is calculated at period-end based on physical counts. Inventory asset account is updated through invoices.</div>
+              <div className="text-sm text-gray-600 mt-1">{t(`COGS is calculated at period-end based on physical counts. Inventory asset account is updated through invoices.`)}</div>
             </div>
           </label>
 
@@ -153,12 +155,12 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
             <input type="radio" name="accounting-method" checked={accountingMethod === 'PERPETUAL'} onChange={() => setAccountingMethod('PERPETUAL')} />
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <span className="font-semibold text-gray-900">Perpetual</span>
+                <span className="font-semibold text-gray-900">{t(`Perpetual`)}</span>
                 <button type="button" onClick={(e) => { e.preventDefault(); setModalContent('PERPETUAL'); }} className="text-primary-500 hover:text-primary-700 flex-shrink-0">
                   <Info className="w-4 h-4" />
                 </button>
               </div>
-              <div className="text-sm text-gray-600 mt-1">COGS and inventory asset accounts are updated in real-time with every stock movement. Requires account mappings.</div>
+              <div className="text-sm text-gray-600 mt-1">{t(`COGS and inventory asset accounts are updated in real-time with every stock movement. Requires account mappings.`)}</div>
             </div>
           </label>
         </div>
@@ -168,12 +170,12 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
     if (currentStep === 2) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-6">
-          <h2 className="text-2xl font-bold text-gray-900">Account Mappings</h2>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Account Mappings`)}</h2>
 
           {accountingMethod === 'PERPETUAL' ? (
             <>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Inventory Asset Account`)} <span className="text-red-500">*</span></label>
                 <AccountSelector
                   value={defaultInventoryAssetAccountId}
                   onChange={(account: any) => setDefaultInventoryAssetAccountId(account?.id || '')}
@@ -181,10 +183,10 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
                   disabled={loadingAccounts}
                   accounts={inventoryAssetAccounts as any}
                 />
-                <p className="mt-1 text-xs text-gray-500">Balance sheet account that holds the value of stock on hand.</p>
+                <p className="mt-1 text-xs text-gray-500">{t(`Balance sheet account that holds the value of stock on hand.`)}</p>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account <span className="text-red-500">*</span></label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default COGS Account`)} <span className="text-red-500">*</span></label>
                 <AccountSelector
                   value={defaultCOGSAccountId}
                   onChange={(account: any) => setDefaultCOGSAccountId(account?.id || '')}
@@ -192,7 +194,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
                   disabled={loadingAccounts}
                   accounts={cogsAccounts as any}
                 />
-                <p className="mt-1 text-xs text-gray-500">Expense account for cost of goods sold.</p>
+                <p className="mt-1 text-xs text-gray-500">{t(`Expense account for cost of goods sold.`)}</p>
               </div>
             </>
           ) : (
@@ -200,8 +202,8 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
               <div className="flex items-start gap-2">
                 <BookOpen className="w-4 h-4 text-gray-500 mt-0.5 flex-shrink-0" />
                 <div>
-                  <div className="text-sm font-medium text-gray-700">Periodic Method</div>
-                  <div className="text-xs text-gray-500 mt-1">Account mappings are optional for periodic mode. Financial postings occur through invoices using the invoice account mappings.</div>
+                  <div className="text-sm font-medium text-gray-700">{t(`Periodic Method`)}</div>
+                  <div className="text-xs text-gray-500 mt-1">{t(`Account mappings are optional for periodic mode. Financial postings occur through invoices using the invoice account mappings.`)}</div>
                 </div>
               </div>
             </div>
@@ -213,28 +215,28 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
     if (currentStep === 3) {
       return (
         <div className="py-6 max-w-2xl mx-auto space-y-5">
-          <h2 className="text-2xl font-bold text-gray-900">Start Behavior</h2>
-          <p className="text-sm text-gray-600">Choose when financial integration begins.</p>
+          <h2 className="text-2xl font-bold text-gray-900">{t(`Start Behavior`)}</h2>
+          <p className="text-sm text-gray-600">{t(`Choose when financial integration begins.`)}</p>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input type="radio" name="start-behavior" checked={startBehavior === 'FROM_TODAY'} onChange={() => setStartBehavior('FROM_TODAY')} />
             <div>
-              <div className="font-semibold text-gray-900">Start Fresh from Today</div>
-              <div className="text-sm text-gray-600">Only new transactions from today forward will post financially. Historical data stays operational-only.</div>
+              <div className="font-semibold text-gray-900">{t(`Start Fresh from Today`)}</div>
+              <div className="text-sm text-gray-600">{t(`Only new transactions from today forward will post financially. Historical data stays operational-only.`)}</div>
             </div>
           </label>
 
           <label className="flex items-start gap-3 rounded-lg border border-gray-200 bg-white p-5 cursor-pointer hover:border-primary-500">
             <input type="radio" name="start-behavior" checked={startBehavior === 'FROM_DATE'} onChange={() => setStartBehavior('FROM_DATE')} />
             <div>
-              <div className="font-semibold text-gray-900">Set a Start Date</div>
-              <div className="text-sm text-gray-600">Transactions from the chosen date forward will post financially. Before that date: operational only.</div>
+              <div className="font-semibold text-gray-900">{t(`Set a Start Date`)}</div>
+              <div className="text-sm text-gray-600">{t(`Transactions from the chosen date forward will post financially. Before that date: operational only.`)}</div>
             </div>
           </label>
 
           {startBehavior === 'FROM_DATE' && (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Accounting Start Date <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Accounting Start Date`)} <span className="text-red-500">*</span></label>
               <DatePicker
                 value={accountingStartDate}
                 onChange={(val) => setAccountingStartDate(val)}
@@ -247,28 +249,28 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
 
     return (
       <div className="py-6 max-w-2xl mx-auto space-y-4">
-        <h2 className="text-2xl font-bold text-gray-900">Review & Confirm</h2>
-        <p className="text-sm text-gray-600">Review your financial integration settings.</p>
+        <h2 className="text-2xl font-bold text-gray-900">{t(`Review & Confirm`)}</h2>
+        <p className="text-sm text-gray-600">{t(`Review your financial integration settings.`)}</p>
 
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Accounting Method:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Accounting Method:`)}</span>{' '}
             <span className="text-gray-700">{accountingMethod === 'PERPETUAL' ? 'Perpetual — real-time GL posting on every stock movement' : 'Periodic (Invoice-driven) — GL posting only on invoices'}</span>
           </div>
           {accountingMethod === 'PERPETUAL' && (
             <>
               <div className="text-sm">
-                <span className="font-semibold text-gray-900">Inventory Asset Account:</span>{' '}
+                <span className="font-semibold text-gray-900">{t(`Inventory Asset Account:`)}</span>{' '}
                 <span className="text-gray-700">{inventoryAssetAccounts.find(a => a.id === defaultInventoryAssetAccountId) ? accountLabel(inventoryAssetAccounts.find(a => a.id === defaultInventoryAssetAccountId)!) : 'Not selected'}</span>
               </div>
               <div className="text-sm">
-                <span className="font-semibold text-gray-900">COGS Account:</span>{' '}
+                <span className="font-semibold text-gray-900">{t(`COGS Account:`)}</span>{' '}
                 <span className="text-gray-700">{cogsAccounts.find(a => a.id === defaultCOGSAccountId) ? accountLabel(cogsAccounts.find(a => a.id === defaultCOGSAccountId)!) : 'Not selected'}</span>
               </div>
             </>
           )}
           <div className="text-sm">
-            <span className="font-semibold text-gray-900">Start Behavior:</span>{' '}
+            <span className="font-semibold text-gray-900">{t(`Start Behavior:`)}</span>{' '}
             <span className="text-gray-700">{startBehavior === 'FROM_TODAY' ? 'From today' : `From ${accountingStartDate}`}</span>
           </div>
         </div>
@@ -276,7 +278,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
         <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
           <div className="flex items-start gap-2">
             <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
-            <span>The accounting method cannot be changed after confirmation. Make sure your selections are correct.</span>
+            <span>{t(`The accounting method cannot be changed after confirmation. Make sure your selections are correct.`)}</span>
           </div>
         </div>
       </div>
@@ -300,73 +302,73 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
       <div className="fixed inset-0 bg-black/50" />
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h3 className="text-lg font-bold text-gray-900">Periodic (Invoice-driven) — Financial Effects</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t(`Periodic (Invoice-driven) — Financial Effects`)}</h3>
           <button onClick={() => setModalContent(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
         </div>
         <div className="px-6 py-5 space-y-5 text-sm text-gray-700">
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">How It Works</h4>
-            <p>In periodic mode, inventory quantities are tracked in real-time, but <strong>financial (GL) postings only happen when an invoice is posted</strong>. Stock movements like deliveries and receipts do not create accounting entries.</p>
+            <h4 className="font-semibold text-gray-900 mb-2">{t(`How It Works`)}</h4>
+            <p>{t(`In periodic mode, inventory quantities are tracked in real-time, but`)} <strong>{t(`financial (GL) postings only happen when an invoice is posted`)}</strong>{t(`. Stock movements like deliveries and receipts do not create accounting entries.`)}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border border-gray-200 rounded-lg">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Document</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">GL Effect?</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Detail</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">{t(`Document`)}</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">{t(`GL Effect?`)}</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">{t(`Detail`)}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Goods Receipt</td>
-                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
-                  <td className="px-4 py-2">Stock quantity updated, no GL posting</td>
+                  <td className="px-4 py-2 font-medium">{t(`Goods Receipt`)}</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">{t(`No`)}</span></td>
+                  <td className="px-4 py-2">{t(`Stock quantity updated, no GL posting`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Delivery Note</td>
-                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
-                  <td className="px-4 py-2">Stock quantity updated, no GL posting</td>
+                  <td className="px-4 py-2 font-medium">{t(`Delivery Note`)}</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">{t(`No`)}</span></td>
+                  <td className="px-4 py-2">{t(`Stock quantity updated, no GL posting`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Purchase Invoice</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr Expense/COGS, Cr AP — inventory cost recognized at invoice time</td>
+                  <td className="px-4 py-2 font-medium">{t(`Purchase Invoice`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr Expense/COGS, Cr AP — inventory cost recognized at invoice time`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Sales Invoice</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr AR, Cr Revenue — COGS not posted (calculated at period-end)</td>
+                  <td className="px-4 py-2 font-medium">{t(`Sales Invoice`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr AR, Cr Revenue — COGS not posted (calculated at period-end)`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Purchase Return (after invoice)</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Reverses the original invoice posting</td>
+                  <td className="px-4 py-2 font-medium">{t(`Purchase Return (after invoice)`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Reverses the original invoice posting`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Purchase Return (before invoice)</td>
-                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
-                  <td className="px-4 py-2">Only stock quantity adjusted</td>
+                  <td className="px-4 py-2 font-medium">{t(`Purchase Return (before invoice)`)}</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">{t(`No`)}</span></td>
+                  <td className="px-4 py-2">{t(`Only stock quantity adjusted`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Sales Return (after invoice)</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Reverses the original invoice posting and restores stock</td>
+                  <td className="px-4 py-2 font-medium">{t(`Sales Return (after invoice)`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Reverses the original invoice posting and restores stock`)}</td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-2 font-medium">Sales Return (before invoice)</td>
-                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">No</span></td>
-                  <td className="px-4 py-2">Only stock quantity restored</td>
+                  <td className="px-4 py-2 font-medium">{t(`Sales Return (before invoice)`)}</td>
+                  <td className="px-4 py-2"><span className="text-red-600 font-semibold">{t(`No`)}</span></td>
+                  <td className="px-4 py-2">{t(`Only stock quantity restored`)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <h4 className="font-semibold text-amber-900 mb-1">Important</h4>
+            <h4 className="font-semibold text-amber-900 mb-1">{t(`Important`)}</h4>
             <ul className="list-disc list-inside text-amber-800 space-y-1">
-              <li>COGS is <strong>not</strong> posted on every transaction — it is calculated at period-end based on inventory counts.</li>
-              <li>No Inventory Asset or COGS account mappings are required for periodic mode.</li>
-              <li>Account mappings for Purchase/Sales invoices come from their respective module settings.</li>
+              <li>{t(`COGS is`)} <strong>{t(`not`)}</strong> {t(`posted on every transaction — it is calculated at period-end based on inventory counts.`)}</li>
+              <li>{t(`No Inventory Asset or COGS account mappings are required for periodic mode.`)}</li>
+              <li>{t(`Account mappings for Purchase/Sales invoices come from their respective module settings.`)}</li>
             </ul>
           </div>
         </div>
@@ -379,68 +381,68 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
       <div className="fixed inset-0 bg-black/50" />
       <div className="relative bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between rounded-t-2xl">
-          <h3 className="text-lg font-bold text-gray-900">Perpetual — Financial Effects</h3>
+          <h3 className="text-lg font-bold text-gray-900">{t(`Perpetual — Financial Effects`)}</h3>
           <button onClick={() => setModalContent(null)} className="p-1 hover:bg-gray-100 rounded-lg"><X className="w-5 h-5 text-gray-500" /></button>
         </div>
         <div className="px-6 py-5 space-y-5 text-sm text-gray-700">
           <div>
-            <h4 className="font-semibold text-gray-900 mb-2">How It Works</h4>
-            <p>In perpetual mode, <strong>every stock movement creates a financial (GL) posting in real-time</strong>. The Inventory Asset and COGS accounts are updated immediately on each receipt, delivery, or adjustment.</p>
+            <h4 className="font-semibold text-gray-900 mb-2">{t(`How It Works`)}</h4>
+            <p>{t(`In perpetual mode,`)} <strong>{t(`every stock movement creates a financial (GL) posting in real-time`)}</strong>{t(`. The Inventory Asset and COGS accounts are updated immediately on each receipt, delivery, or adjustment.`)}</p>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-sm border border-gray-200 rounded-lg">
               <thead className="bg-gray-50">
                 <tr>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Document</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">GL Effect?</th>
-                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">Detail</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">{t(`Document`)}</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">{t(`GL Effect?`)}</th>
+                  <th className="text-left px-4 py-2 font-semibold text-gray-900 border-b border-gray-200">{t(`Detail`)}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Goods Receipt</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr Inventory Asset, Cr GRNI (Goods Received Not Invoiced)</td>
+                  <td className="px-4 py-2 font-medium">{t(`Goods Receipt`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr Inventory Asset, Cr GRNI (Goods Received Not Invoiced)`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Delivery Note</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr COGS, Cr Inventory Asset — inventory cost recognized immediately</td>
+                  <td className="px-4 py-2 font-medium">{t(`Delivery Note`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr COGS, Cr Inventory Asset — inventory cost recognized immediately`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Purchase Invoice</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Clears GRNI: Cr GRNI, Dr AP. Any cost variance adjusts Inventory Asset.</td>
+                  <td className="px-4 py-2 font-medium">{t(`Purchase Invoice`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Clears GRNI: Cr GRNI, Dr AP. Any cost variance adjusts Inventory Asset.`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Sales Invoice</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr AR, Cr Revenue. COGS already posted by Delivery Note.</td>
+                  <td className="px-4 py-2 font-medium">{t(`Sales Invoice`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr AR, Cr Revenue. COGS already posted by Delivery Note.`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Purchase Return</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Reverses GR entry: Cr Inventory Asset, Cr COGS (or Dr GRNI)</td>
+                  <td className="px-4 py-2 font-medium">{t(`Purchase Return`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Reverses GR entry: Cr Inventory Asset, Cr COGS (or Dr GRNI)`)}</td>
                 </tr>
                 <tr className="border-b border-gray-100">
-                  <td className="px-4 py-2 font-medium">Sales Return</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr Inventory Asset, Cr COGS — reverses the delivery posting</td>
+                  <td className="px-4 py-2 font-medium">{t(`Sales Return`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr Inventory Asset, Cr COGS — reverses the delivery posting`)}</td>
                 </tr>
                 <tr>
-                  <td className="px-4 py-2 font-medium">Stock Adjustment</td>
-                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">Yes</span></td>
-                  <td className="px-4 py-2">Dr/Cr Inventory Asset with offset to COGS or variance account</td>
+                  <td className="px-4 py-2 font-medium">{t(`Stock Adjustment`)}</td>
+                  <td className="px-4 py-2"><span className="text-green-600 font-semibold">{t(`Yes`)}</span></td>
+                  <td className="px-4 py-2">{t(`Dr/Cr Inventory Asset with offset to COGS or variance account`)}</td>
                 </tr>
               </tbody>
             </table>
           </div>
           <div className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-            <h4 className="font-semibold text-amber-900 mb-1">Important</h4>
+            <h4 className="font-semibold text-amber-900 mb-1">{t(`Important`)}</h4>
             <ul className="list-disc list-inside text-amber-800 space-y-1">
-              <li><strong>Inventory Asset and COGS account mappings are required</strong> — every stock movement posts to these accounts.</li>
-              <li>The accounting method <strong>cannot be changed after confirmation</strong> because all historical GL entries are based on this method.</li>
-              <li>GRNI (Goods Received Not Invoiced) is a temporary liability account that tracks received but not yet invoiced goods.</li>
+              <li><strong>{t(`Inventory Asset and COGS account mappings are required`)}</strong> {t(`— every stock movement posts to these accounts.`)}</li>
+              <li>{t(`The accounting method`)} <strong>{t(`cannot be changed after confirmation`)}</strong> {t(`because all historical GL entries are based on this method.`)}</li>
+              <li>{t(`GRNI (Goods Received Not Invoiced) is a temporary liability account that tracks received but not yet invoiced goods.`)}</li>
             </ul>
           </div>
         </div>
@@ -472,7 +474,7 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
             })}
           </div>
           <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-white/90">Step {currentStep + 1} of {stepTitles.length}</span>
+            <span className="text-xs font-medium text-white/90">{t(`Step`)} {currentStep + 1} {t(`of`)} {stepTitles.length}</span>
             <span className="text-xs font-semibold text-white">{stepTitles[currentStep]}</span>
           </div>
         </div>
@@ -492,11 +494,11 @@ export const InventoryFinancialIntegrationWizard: React.FC = () => {
           <div className="flex items-center gap-3">
             {currentStep < stepTitles.length - 1 ? (
               <button type="button" onClick={goNext} className="flex items-center gap-2 rounded-lg bg-primary-600 px-6 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 transition">
-                Next Step <ChevronRight className="w-4 h-4" />
+                {t(`Next Step`)} <ChevronRight className="w-4 h-4" />
               </button>
             ) : (
               <button type="button" onClick={submit} disabled={submitting} className="flex items-center gap-2 rounded-lg bg-primary-600 px-8 py-2 text-sm font-semibold text-white shadow-sm hover:bg-primary-500 disabled:opacity-50 transition">
-                {submitting ? (<><Spinner size="sm" /> Configuring...</>) : (<><CheckCircle2 className="w-4 h-4" /> Enable Integration</>)}
+                {submitting ? (<><Spinner size="sm" /> {t(`Configuring...`)}</>) : (<><CheckCircle2 className="w-4 h-4" /> {t(`Enable Integration`)}</>)}
               </button>
             )}
           </div>

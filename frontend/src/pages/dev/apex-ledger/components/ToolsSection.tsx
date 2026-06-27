@@ -110,7 +110,7 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
               className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white text-xs font-bold rounded-lg hover:bg-blue-700"
             >
               <ArrowUpRight className="w-4 h-4" />
-              <span>Open in Full App</span>
+              <span>{t(`Open in Full App`)}</span>
             </button>
           </div>
         </div>
@@ -126,7 +126,7 @@ export default function ToolsSection({ activeTool }: ToolsSectionProps) {
         </div>
         <div>
           <h2 className="text-sm font-bold text-slate-800">{t('apex.tools.accountingTools', { defaultValue: 'Accounting Tools' })}</h2>
-          <p className="text-[10px] text-slate-500">Configure forms, budgets, and analytical tagging</p>
+          <p className="text-[10px] text-slate-500">{t(`Configure forms, budgets, and analytical tagging`)}</p>
         </div>
       </div>
 

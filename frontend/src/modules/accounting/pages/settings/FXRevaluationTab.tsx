@@ -228,7 +228,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = ({ defaultGainLossAcco
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                Unrealized Gain/Loss Account <span className="text-red-500">*</span>
+                {t(`Unrealized Gain/Loss Account`)} <span className="text-red-500">*</span>
               </label>
               <AccountSelector
                 value={targetGainLossAccountId}

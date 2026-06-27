@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { DatePicker } from '../../../components/shared/selectors';
 import { StockMovementDTO, InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const StockMovementsPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [movements, setMovements] = useState<StockMovementDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -53,7 +55,7 @@ const StockMovementsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Stock Movements</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Stock Movements`)}</h1>
 
       <Card className="p-6">
         <div className="grid gap-3 md:grid-cols-4">
@@ -78,13 +80,13 @@ const StockMovementsPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Date</th>
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-left">Warehouse</th>
-                <th className="py-2 text-left">Type</th>
-                <th className="py-2 text-left">Direction</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-right">Cost Base</th>
+                <th className="py-2 text-left">{t(`Date`)}</th>
+                <th className="py-2 text-left">{t(`Item`)}</th>
+                <th className="py-2 text-left">{t(`Warehouse`)}</th>
+                <th className="py-2 text-left">{t(`Type`)}</th>
+                <th className="py-2 text-left">{t(`Direction`)}</th>
+                <th className="py-2 text-right">{t(`Qty`)}</th>
+                <th className="py-2 text-right">{t(`Cost Base`)}</th>
               </tr>
             </thead>
             <tbody>

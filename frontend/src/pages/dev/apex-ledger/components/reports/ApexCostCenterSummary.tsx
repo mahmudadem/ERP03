@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { accountingApi, CostCenterDTO } from '../../../../../api/accountingApi';
 import { AlertTriangle, RefreshCw, MapPin } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const fmt = (v: number) => v !== 0 ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
 
 export default function ApexCostCenterSummary() {
+    const { t } = useTranslation('common');
   const yearStart = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
   const today = new Date().toISOString().slice(0, 10);
 
@@ -71,22 +73,22 @@ export default function ApexCostCenterSummary() {
       {/* Filter bar */}
       <div className="bg-white border border-[#E2E8F0] rounded-lg p-4 flex flex-wrap items-end gap-4">
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">Cost Center *</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`Cost Center *`)}</label>
           <select value={selectedCC} onChange={e => setSelectedCC(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400 min-w-[200px]">
-            <option value="">— Select Cost Center —</option>
+            <option value="">{t(`— Select Cost Center —`)}</option>
             {costCenters.map(cc => (
               <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">From Date</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`From Date`)}</label>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
         </div>
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">To Date</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`To Date`)}</label>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
         </div>
@@ -133,15 +135,15 @@ export default function ApexCostCenterSummary() {
             <table className="min-w-full">
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Account</th>
-                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Debit</th>
-                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Credit</th>
-                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Net</th>
+                  <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Account`)}</th>
+                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Debit`)}</th>
+                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Credit`)}</th>
+                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Net`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F1F5F9]">
                 {rows.length === 0 ? (
-                  <tr><td colSpan={4} className="py-12 text-center text-xs text-slate-400">No entries found for this cost center and period</td></tr>
+                  <tr><td colSpan={4} className="py-12 text-center text-xs text-slate-400">{t(`No entries found for this cost center and period`)}</td></tr>
                 ) : (
                   rows.map((row, idx) => (
                     <tr key={idx} className={`hover:bg-slate-50/60 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFB]'}`}>
@@ -155,7 +157,7 @@ export default function ApexCostCenterSummary() {
               </tbody>
               <tfoot className="bg-[#F8FAFC] border-t-2 border-[#E2E8F0]">
                 <tr>
-                  <td className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Total</td>
+                  <td className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">{t(`Total`)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs font-bold text-blue-700">{fmt(totDebit)}</td>
                   <td className="px-4 py-2.5 text-right font-mono text-xs font-bold text-emerald-700">{fmt(totCredit)}</td>
                   <td className={`px-4 py-2.5 text-right font-mono text-xs font-bold ${totNet < 0 ? 'text-red-600' : 'text-slate-800'}`}>{fmt(totNet)}</td>
@@ -169,7 +171,7 @@ export default function ApexCostCenterSummary() {
       {!generated && !loading && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
           <MapPin className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-xs text-slate-400 font-mono">Select a cost center and click Generate</p>
+          <p className="text-xs text-slate-400 font-mono">{t(`Select a cost center and click Generate`)}</p>
         </div>
       )}
     </div>

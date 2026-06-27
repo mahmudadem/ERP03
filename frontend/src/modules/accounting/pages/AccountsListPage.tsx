@@ -586,16 +586,16 @@ export default function AccountsListPage() {
                 icon={<AlertCircle size={24} />}
                 message={
                 <div className="space-y-4">
-                    <p>You are attempting to create a new account as a child of <strong className="text-slate-900 italic">"{warningParentName}"</strong>.</p>
+                    <p>{t(`You are attempting to create a new account as a child of`)} <strong className="text-slate-900 italic">"{warningParentName}"</strong>.</p>
                     <div className="bg-amber-100/50 p-4 rounded-xl border border-amber-200">
-                        <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">Accounting Rule Violation</h4>
+                        <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">{t(`Accounting Rule Violation`)}</h4>
                         <p className="text-amber-700 text-xs leading-relaxed">
-                            Account <strong>"{warningParentName}"</strong> is a <span className="underline decoration-2">Posting Account</span> (Transaction level). 
-                            In a professional Chart of Accounts, only <strong>Header Accounts</strong> can have children.
+                            {t(`Account`)} <strong>"{warningParentName}"</strong> {t(`is a`)} <span className="underline decoration-2">{t(`Posting Account`)}</span> (Transaction level). 
+                            In a professional Chart of Accounts, only <strong>{t(`Header Accounts`)}</strong> can have children.
                         </p>
                     </div>
                     <p className="text-slate-500 italic text-[11px]">
-                        <strong>Instruction:</strong> To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.
+                        <strong>{t(`Instruction:`)}</strong> To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.
                     </p>
                 </div>
                 }

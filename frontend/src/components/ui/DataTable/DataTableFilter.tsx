@@ -3,6 +3,7 @@ import { clsx } from 'clsx';
 import { X, Search, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
 import { ColumnFilterConfig, FilterOption, ActiveFilters } from './types';
 import { DatePicker } from '../../shared/selectors';
+import { useTranslation } from "react-i18next";
 
 interface DataTableFilterProps {
   columnKey: string;
@@ -264,6 +265,7 @@ function SingleSelectFilter({ options, value, onChange }: {
   value: string;
   onChange: (val: string) => void;
 }) {
+    const { t } = useTranslation('common');
   return (
     <div className="space-y-0.5">
       <button
@@ -279,7 +281,7 @@ function SingleSelectFilter({ options, value, onChange }: {
           'w-3.5 h-3.5 rounded-full border shrink-0',
           !value ? 'border-primary-600 bg-primary-600' : 'border-[var(--color-border)]'
         )} />
-        <span>All</span>
+        <span>{t(`All`)}</span>
       </button>
       {options.map(opt => {
         const selected = value === opt.value;

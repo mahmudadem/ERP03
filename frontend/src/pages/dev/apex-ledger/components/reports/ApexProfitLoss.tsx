@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { RefreshCw, AlertTriangle, TrendingUp, TrendingDown, BarChart3 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 // ─── Local Types (mirror backend shape) ─────────────────────────────────────
 
@@ -159,6 +160,7 @@ const PLRow: React.FC<PLRowProps> = ({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ApexProfitLoss() {
+    const { t } = useTranslation('common');
   const today = new Date().toISOString().slice(0, 10);
   const firstOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 
@@ -249,7 +251,7 @@ export default function ApexProfitLoss() {
       {loading && !data && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 text-center">
           <RefreshCw size={18} className="animate-spin text-slate-400 mx-auto mb-2" />
-          <p className="text-xs text-slate-400">Loading Profit & Loss…</p>
+          <p className="text-xs text-slate-400">{t(`Loading Profit & Loss…`)}</p>
         </div>
       )}
 
@@ -342,7 +344,7 @@ export default function ApexProfitLoss() {
             </div>
             {!hasStructured && (
               <span className="ml-auto text-xs opacity-70 font-mono">
-                Margin: {isFinite(margin) ? margin.toFixed(2) : '0.00'}%
+                {t(`Margin:`)} {isFinite(margin) ? margin.toFixed(2) : '0.00'}%
               </span>
             )}
           </div>
@@ -485,9 +487,9 @@ export default function ApexProfitLoss() {
       {!generated && !loading && !error && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
           <BarChart3 size={28} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-500">Profit & Loss Statement</p>
+          <p className="text-sm font-semibold text-slate-500">{t(`Profit & Loss Statement`)}</p>
           <p className="text-xs text-slate-400 mt-1">
-            Select a date range and click <strong>Generate</strong> to view the report.
+            {t(`Select a date range and click`)} <strong>{t(`Generate`)}</strong> to view the report.
           </p>
         </div>
       )}

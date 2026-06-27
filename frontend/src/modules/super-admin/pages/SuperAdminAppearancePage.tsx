@@ -20,6 +20,7 @@ import {
   SUPER_ADMIN_THEME_PRESETS,
   SuperAdminThemeSettings,
 } from '../theme/SuperAdminThemeProvider';
+import { useTranslation } from "react-i18next";
 
 const fieldClass = 'h-10 w-full rounded-md border border-[var(--sa-border)] bg-[var(--sa-surface)] px-3 text-sm text-[var(--sa-text)]';
 const labelClass = 'mb-1 block text-xs font-semibold uppercase tracking-wide text-[var(--sa-muted)]';
@@ -36,6 +37,7 @@ const colorFields: Array<{ key: keyof SuperAdminThemeSettings; label: string }> 
 ];
 
 export const SuperAdminAppearancePage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [settings, setSettings] = useState<SuperAdminThemeSettings>(() => loadSuperAdminTheme());
   const [savedAt, setSavedAt] = useState<string | null>(null);
 
@@ -79,7 +81,7 @@ export const SuperAdminAppearancePage: React.FC = () => {
           <SuperAdminPanel className="p-[var(--sa-panel-pad)]">
             <div className="mb-4 flex items-center gap-2">
               <SlidersHorizontal className="h-4 w-4 text-[var(--sa-muted)]" />
-              <h2 className="text-base font-semibold text-[var(--sa-text)]">Presets</h2>
+              <h2 className="text-base font-semibold text-[var(--sa-text)]">{t(`Presets`)}</h2>
             </div>
             <div className="grid grid-cols-1 gap-2">
               {SUPER_ADMIN_THEME_PRESETS.map(preset => (
@@ -100,7 +102,7 @@ export const SuperAdminAppearancePage: React.FC = () => {
           </SuperAdminPanel>
 
           <SuperAdminPanel className="p-[var(--sa-panel-pad)]">
-            <h2 className="mb-4 text-base font-semibold text-[var(--sa-text)]">Controls</h2>
+            <h2 className="mb-4 text-base font-semibold text-[var(--sa-text)]">{t(`Controls`)}</h2>
             <div className="grid grid-cols-1 gap-4">
               {colorFields.map(field => (
                 <label key={field.key}>
@@ -122,7 +124,7 @@ export const SuperAdminAppearancePage: React.FC = () => {
               ))}
 
               <label>
-                <span className={labelClass}>Radius</span>
+                <span className={labelClass}>{t(`Radius`)}</span>
                 <input
                   type="range"
                   min={2}
@@ -131,31 +133,31 @@ export const SuperAdminAppearancePage: React.FC = () => {
                   onChange={event => update('radius', Number(event.target.value))}
                   className="w-full"
                 />
-                <div className="mt-1 text-xs text-[var(--sa-muted)]">{settings.radius}px</div>
+                <div className="mt-1 text-xs text-[var(--sa-muted)]">{settings.radius}{t(`px`)}</div>
               </label>
 
               <label>
-                <span className={labelClass}>Density</span>
+                <span className={labelClass}>{t(`Density`)}</span>
                 <select
                   className={fieldClass}
                   value={settings.density}
                   onChange={event => update('density', event.target.value as any)}
                 >
-                  <option value="compact">Compact</option>
-                  <option value="comfortable">Comfortable</option>
-                  <option value="spacious">Spacious</option>
+                  <option value="compact">{t(`Compact`)}</option>
+                  <option value="comfortable">{t(`Comfortable`)}</option>
+                  <option value="spacious">{t(`Spacious`)}</option>
                 </select>
               </label>
 
               <label>
-                <span className={labelClass}>Sidebar</span>
+                <span className={labelClass}>{t(`Sidebar`)}</span>
                 <select
                   className={fieldClass}
                   value={settings.sidebar}
                   onChange={event => update('sidebar', event.target.value as any)}
                 >
-                  <option value="light">Light</option>
-                  <option value="dark">Dark</option>
+                  <option value="light">{t(`Light`)}</option>
+                  <option value="dark">{t(`Dark`)}</option>
                 </select>
               </label>
             </div>
@@ -172,28 +174,28 @@ export const SuperAdminAppearancePage: React.FC = () => {
           <SuperAdminPanel className="p-[var(--sa-panel-pad)]">
             <div className="mb-4 flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-base font-semibold text-[var(--sa-text)]">Preview</h2>
-                <p className="text-sm text-[var(--sa-muted)]">Representative controls using the same shared Super Admin components.</p>
+                <h2 className="text-base font-semibold text-[var(--sa-text)]">{t(`Preview`)}</h2>
+                <p className="text-sm text-[var(--sa-muted)]">{t(`Representative controls using the same shared Super Admin components.`)}</p>
               </div>
-              <Button>Primary Action</Button>
+              <Button>{t(`Primary Action`)}</Button>
             </div>
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               <SuperAdminPanel className="p-4">
-                <div className="text-sm font-semibold text-[var(--sa-text)]">Template Health</div>
-                <p className="mt-1 text-sm text-[var(--sa-muted)]">Official voucher definitions and initialization metadata.</p>
+                <div className="text-sm font-semibold text-[var(--sa-text)]">{t(`Template Health`)}</div>
+                <p className="mt-1 text-sm text-[var(--sa-muted)]">{t(`Official voucher definitions and initialization metadata.`)}</p>
                 <div className="mt-4 flex flex-wrap gap-2">
-                  <SuperAdminBadge tone="green">Ready</SuperAdminBadge>
-                  <SuperAdminBadge tone="amber">Needs review</SuperAdminBadge>
-                  <SuperAdminBadge tone="blue">System</SuperAdminBadge>
+                  <SuperAdminBadge tone="green">{t(`Ready`)}</SuperAdminBadge>
+                  <SuperAdminBadge tone="amber">{t(`Needs review`)}</SuperAdminBadge>
+                  <SuperAdminBadge tone="blue">{t(`System`)}</SuperAdminBadge>
                 </div>
               </SuperAdminPanel>
 
               <SuperAdminPanel className="p-4">
-                <div className="text-sm font-semibold text-[var(--sa-text)]">Form Sample</div>
+                <div className="text-sm font-semibold text-[var(--sa-text)]">{t(`Form Sample`)}</div>
                 <div className="mt-3 space-y-3">
                   <input className={fieldClass} value="sales_invoice" readOnly />
                   <select className={fieldClass} value="system_core" onChange={() => undefined}>
-                    <option>system_core</option>
+                    <option>{t(`system_core`)}</option>
                   </select>
                 </div>
               </SuperAdminPanel>
@@ -203,9 +205,9 @@ export const SuperAdminAppearancePage: React.FC = () => {
           <SuperAdminTable>
             <thead className="bg-[var(--sa-surface-muted)]">
               <tr>
-                <th className={tableHeadCellClass}>Field</th>
-                <th className={tableHeadCellClass}>Type</th>
-                <th className={tableHeadCellClass}>State</th>
+                <th className={tableHeadCellClass}>{t(`Field`)}</th>
+                <th className={tableHeadCellClass}>{t(`Type`)}</th>
+                <th className={tableHeadCellClass}>{t(`State`)}</th>
               </tr>
             </thead>
             <tbody>
@@ -224,7 +226,7 @@ export const SuperAdminAppearancePage: React.FC = () => {
           </SuperAdminTable>
 
           <SuperAdminPanel className="p-[var(--sa-panel-pad)]">
-            <h2 className="mb-3 text-base font-semibold text-[var(--sa-text)]">Exported Settings</h2>
+            <h2 className="mb-3 text-base font-semibold text-[var(--sa-text)]">{t(`Exported Settings`)}</h2>
             <textarea
               className="h-56 w-full rounded-[var(--sa-radius)] border border-[var(--sa-border)] bg-[var(--sa-surface-muted)] p-3 font-mono text-xs text-[var(--sa-text)]"
               value={serialized}

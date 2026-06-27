@@ -1,6 +1,7 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { Account } from '../../../api/accounting';
+import { useTranslation } from "react-i18next";
 
 interface AccountDrilldownModalProps {
     isOpen: boolean;
@@ -9,6 +10,7 @@ interface AccountDrilldownModalProps {
 }
 
 export function AccountDrilldownModal({ isOpen, onClose, account }: AccountDrilldownModalProps) {
+    const { t } = useTranslation('common');
     if (!isOpen || !account) return null;
 
     return (
@@ -47,25 +49,25 @@ export function AccountDrilldownModal({ isOpen, onClose, account }: AccountDrill
                     <div className="bg-white border border-gray-900 rounded-xl overflow-hidden shadow-sm">
                         <div className="grid grid-cols-2 gap-4 p-5">
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Account Type</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t(`Account Type`)}</p>
                                 <p className="font-semibold text-gray-900 capitalize">
                                     {account.classification?.toLowerCase() || 'Asset'}
                                 </p>
                             </div>
                             <div>
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Classification</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t(`Classification`)}</p>
                                 <p className="font-semibold text-gray-900 capitalize">
                                     {account.accountRole?.toLowerCase() || 'Posting'}
                                 </p>
                             </div>
                             <div className="pt-2">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Operational Value</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t(`Operational Value`)}</p>
                                 <p className="font-bold text-gray-900">
                                     -
                                 </p>
                             </div>
                             <div className="pt-2">
-                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Status</p>
+                                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t(`Status`)}</p>
                                 <div className="flex items-center gap-1.5 font-semibold text-emerald-600 text-sm">
                                     <div className="w-1.5 h-1.5 rounded-full bg-emerald-500"></div>
                                     {account.status === 'ACTIVE' || account.isActive ? 'Active Ledger' : 'Inactive'}
@@ -74,7 +76,7 @@ export function AccountDrilldownModal({ isOpen, onClose, account }: AccountDrill
                         </div>
                         
                         <div className="px-5 py-4 border-t border-gray-100 bg-gray-50/50">
-                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Notes / Description</p>
+                            <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">{t(`Notes / Description`)}</p>
                             <p className="text-sm text-gray-600">
                                 {account.description || 'Main safe vault at corporate headquarters'}
                             </p>
@@ -91,9 +93,9 @@ export function AccountDrilldownModal({ isOpen, onClose, account }: AccountDrill
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-gray-50/80 border-b border-gray-200">
                                     <tr>
-                                        <th className="px-4 py-3 font-semibold text-gray-600">Entry / Date</th>
-                                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">Debit SYP</th>
-                                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">Credit SYP</th>
+                                        <th className="px-4 py-3 font-semibold text-gray-600">{t(`Entry / Date`)}</th>
+                                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">{t(`Debit SYP`)}</th>
+                                        <th className="px-4 py-3 font-semibold text-gray-600 text-right">{t(`Credit SYP`)}</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -105,7 +107,7 @@ export function AccountDrilldownModal({ isOpen, onClose, account }: AccountDrill
                                 </tbody>
                                 <tfoot className="bg-gray-50 border-t border-gray-200">
                                     <tr>
-                                        <td className="px-4 py-3 font-bold text-gray-700">Calculated Ledger<br/>Balance</td>
+                                        <td className="px-4 py-3 font-bold text-gray-700">{t(`Calculated Ledger`)}<br/>{t(`Balance`)}</td>
                                         <td colSpan={2} className="px-4 py-3 text-right font-extrabold text-gray-900">
                                             -
                                         </td>

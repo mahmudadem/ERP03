@@ -1,7 +1,9 @@
+import i18n from 'i18next';
 import React, { useState, useEffect, forwardRef, useImperativeHandle } from 'react';
 import { RefreshCw } from 'lucide-react';
 import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi } from '../../../../../api/accountingApi';
+import { useTranslation } from "react-i18next";
 
 export interface ExchangeRateMatrixRef {
   refresh: () => void;
@@ -55,7 +57,7 @@ export const ExchangeRateMatrix = forwardRef<ExchangeRateMatrixRef, {}>((_, ref)
         <table className="w-full text-sm text-left border-collapse">
           <thead className="text-[10px] uppercase bg-gray-100 dark:bg-gray-900 text-gray-500 font-black">
             <tr>
-              <th className="px-4 py-3 border-r border-gray-200 dark:border-[var(--color-border)] w-24">From \ To</th>
+              <th className="px-4 py-3 border-r border-gray-200 dark:border-[var(--color-border)] w-24">{i18n.t(`From \ To`)}</th>
               {currencies.map(c => (
                 <th key={c} className="px-4 py-3 text-center min-w-[80px] border-b border-gray-200 dark:border-[var(--color-border)]">{c}</th>
               ))}

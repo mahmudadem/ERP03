@@ -61,6 +61,7 @@ import {
   voucherFormApi,
 } from '../../../api/voucherFormApi';
 import { AccountSelectorSimple, WarehouseSelector } from '../../../components/shared/selectors';
+import { useTranslation } from "react-i18next";
 
 interface VoucherDesignerPageProps {
   module: VoucherTypeModule;
@@ -631,6 +632,7 @@ const normalizeFormTemplateForDesigner = (form: DocumentFormConfig | null): Docu
 };
 
 const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, moduleLabel }) => {
+    const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -1077,7 +1079,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
     return (
       <div className="flex items-center justify-center h-screen bg-slate-50">
         <Spinner size="lg" />
-        <span className="ml-3 text-slate-600">Loading {moduleLabel} forms management...</span>
+        <span className="ml-3 text-slate-600">{t(`Loading`)} {moduleLabel} {t(`forms management...`)}</span>
       </div>
     );
   }
@@ -1091,7 +1093,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
             <div className="mb-6 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <h1 className="text-3xl font-bold text-gray-900">
-                  Forms Management &mdash; {moduleLabel}
+                  {t(`Forms Management &mdash;`)} {moduleLabel}
                 </h1>
                 <button
                   type="button"
@@ -1119,7 +1121,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
               <div className="mb-3 flex items-center gap-2">
                 <PackageCheck className="h-5 w-5 text-green-600" />
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Installed Types ({installed.length})
+                  {t(`Installed Types (`)}{installed.length})
                 </h2>
               </div>
               {installed.length === 0 ? (
@@ -1158,7 +1160,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                 <div className="mb-3 flex items-center gap-2">
                   <Layers className="h-5 w-5 text-blue-600" />
                   <h2 className="text-xl font-semibold text-gray-900">
-                    Available Types ({available.length})
+                    {t(`Available Types (`)}{available.length})
                   </h2>
                 </div>
                 <div className="space-y-2">
@@ -1211,7 +1213,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
             <header className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0">
               <div>
                 <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <span className="text-slate-800">Document Wizard</span>
+                  <span className="text-slate-800">{t(`Document Wizard`)}</span>
                   <span className="text-gray-300 font-normal">/</span>
                   <span className="text-indigo-600">
                     {editingForm && (editingForm as any).id
@@ -1221,7 +1223,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
                         : 'New Form'}
                   </span>
                 </h2>
-                <p className="text-xs text-slate-500">{moduleLabel} Forms Management</p>
+                <p className="text-xs text-slate-500">{moduleLabel} {t(`Forms Management`)}</p>
               </div>
               <button
                 type="button"
@@ -1284,6 +1286,7 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
   onOpenSettings,
   getFormSettings,
 }) => {
+    const { t } = useTranslation('common');
   const activeCount = node.forms.filter((f) => f.enabled !== false).length;
   const lockedCount = node.forms.filter((f) => (f as any).isLocked).length;
   const customCount = node.forms.length - lockedCount;
@@ -1306,7 +1309,7 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-semibold text-gray-900">{node.name}</h3>
             <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-              {node.forms.length} form{node.forms.length !== 1 ? 's' : ''}
+              {node.forms.length} {t(`form`)}{node.forms.length !== 1 ? 's' : ''}
             </span>
             {activeCount > 0 && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
@@ -1609,6 +1612,7 @@ const PRICE_SOURCE_OPTIONS: Array<{ value: LinePriceSource; label: string; descr
 ];
 
 const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onClose, onSave }) => {
+    const { t } = useTranslation('common');
   const [activeTab, setActiveTab] = useState<'accountDefaults' | 'pricingBehavior'>('accountDefaults');
   const [saving, setSaving] = useState(false);
   const [settings, setSettings] = useState<FormSettingsValue>(() => ({
@@ -1644,7 +1648,7 @@ const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onC
       <div className="flex h-[620px] w-full max-w-4xl flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-2xl">
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
-            <h2 className="text-lg font-bold text-slate-900">Form Settings</h2>
+            <h2 className="text-lg font-bold text-slate-900">{t(`Form Settings`)}</h2>
             <p className="text-xs text-slate-500">{form.name}</p>
           </div>
           <button
@@ -1682,7 +1686,7 @@ const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onC
             {activeTab === 'accountDefaults' ? (
               <div className="space-y-5">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Account Defaults</h3>
+                  <h3 className="text-base font-bold text-slate-900">{t(`Account Defaults`)}</h3>
                   <p className="mt-1 text-sm text-slate-600">
                     Defaults are visible starting values on documents. They do not bypass posting validation.
                   </p>
@@ -1697,7 +1701,7 @@ const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onC
                     }))}
                   />
                   <label className="block text-sm">
-                    <span className="mb-1 block font-medium text-slate-700">Default warehouse</span>
+                    <span className="mb-1 block font-medium text-slate-700">{t(`Default warehouse`)}</span>
                     <WarehouseSelector
                       value={settings.accountDefaults?.defaultWarehouseId || ''}
                       onChange={(warehouse) => setSettings((prev) => ({
@@ -1714,7 +1718,7 @@ const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onC
             ) : (
               <div className="space-y-5">
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Pricing Behavior</h3>
+                  <h3 className="text-base font-bold text-slate-900">{t(`Pricing Behavior`)}</h3>
                   <p className="mt-1 text-sm text-slate-600">
                     Choose the default line price source for new documents opened through this form.
                   </p>
@@ -1732,8 +1736,8 @@ const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onC
                       className="mt-1"
                     />
                     <span>
-                      <span className="block text-sm font-semibold text-slate-900">Use company default</span>
-                      <span className="block text-xs text-slate-500">Falls back to Inventory Settings line price source.</span>
+                      <span className="block text-sm font-semibold text-slate-900">{t(`Use company default`)}</span>
+                      <span className="block text-xs text-slate-500">{t(`Falls back to Inventory Settings line price source.`)}</span>
                     </span>
                   </label>
                   {PRICE_SOURCE_OPTIONS.map((option) => (
@@ -1793,6 +1797,7 @@ interface AvailableTypeRowProps {
 }
 
 const AvailableTypeRow: React.FC<AvailableTypeRowProps> = ({ node, installing, onInstall }) => {
+    const { t } = useTranslation('common');
   const variants = node.catalogVariants.map(variantLabel).filter((v): v is string => Boolean(v));
   return (
     <div className="rounded-lg border border-gray-200 bg-white p-3 flex items-center gap-3">
@@ -1800,11 +1805,11 @@ const AvailableTypeRow: React.FC<AvailableTypeRowProps> = ({ node, installing, o
         <div className="flex items-center gap-2 flex-wrap">
           <h3 className="text-sm font-semibold text-gray-900">{node.name}</h3>
           <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-            {node.catalogVariants.length} default form{node.catalogVariants.length !== 1 ? 's' : ''}
+            {node.catalogVariants.length} {t(`default form`)}{node.catalogVariants.length !== 1 ? 's' : ''}
           </span>
         </div>
         {variants.length > 0 && (
-          <p className="mt-0.5 text-xs text-gray-500">Variants: {variants.join(' · ')}</p>
+          <p className="mt-0.5 text-xs text-gray-500">{t(`Variants:`)} {variants.join(' · ')}</p>
         )}
       </div>
       <button

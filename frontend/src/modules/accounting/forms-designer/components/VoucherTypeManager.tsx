@@ -162,7 +162,7 @@ export const VoucherTypeManager: React.FC<VoucherTypeManagerProps> = ({ onExit }
                     
                     <div className="mt-6 flex gap-2 flex-wrap">
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
-                        Schema V{definition.schemaVersion}
+                        {t(`Schema V`)}{definition.schemaVersion}
                         </span>
                         <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">
                         {isMultiLine(definition) ? t('voucherTypeManager.multiLine') : t('voucherTypeManager.singleLine')}

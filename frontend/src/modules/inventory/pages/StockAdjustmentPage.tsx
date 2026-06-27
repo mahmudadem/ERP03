@@ -24,6 +24,8 @@ import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/ty
 import { Spinner } from '../../../components/ui/Spinner';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { errorHandler } from '../../../services/errorHandler';
+import i18n from "i18next";
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -55,6 +57,7 @@ const emptyLine = (): AdjLine => ({
 const REASONS = ['CORRECTION', 'LOSS', 'DAMAGE', 'FOUND', 'EXPIRED', 'OTHER'];
 
 const StockAdjustmentPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const { uiMode } = useUserPreferences();
@@ -177,11 +180,11 @@ const StockAdjustmentPage: React.FC = () => {
 
   const handleCreate = async () => {
     if (!warehouseId || !date) {
-      toast.error('Warehouse and date are required.');
+      toast.error(i18n.t('Warehouse and date are required.'));
       return;
     }
     if (filledLines.length === 0) {
-      toast('No stock quantity change to adjust.', { icon: 'ℹ️' });
+      toast(i18n.t('No stock quantity change to adjust.'), { icon: 'ℹ️' });
       return;
     }
     try {
@@ -199,7 +202,7 @@ const StockAdjustmentPage: React.FC = () => {
           unitCostCCY: Number(line.unitCostCCY),
         })),
       }));
-      toast.success('Stock adjustment created.');
+      toast.success(i18n.t('Stock adjustment created.'));
       resetForm();
       await load();
       navigate(`/inventory/adjustments/${adjustment.id}`);
@@ -215,7 +218,7 @@ const StockAdjustmentPage: React.FC = () => {
     try {
       setPostingId(adjustmentId);
       await inventoryApi.postAdjustment(adjustmentId);
-      toast.success('Stock adjustment posted.');
+      toast.success(i18n.t('Stock adjustment posted.'));
       await load();
     } catch (postError) {
       console.error('Failed to post adjustment', postError);
@@ -303,14 +306,14 @@ const StockAdjustmentPage: React.FC = () => {
         sections={{
           banner: {
             show: notFound,
-            content: <DocumentNoticeBanner tone="amber">Stock adjustment not found.</DocumentNoticeBanner>,
+            content: <DocumentNoticeBanner tone="amber">{t(`Stock adjustment not found.`)}</DocumentNoticeBanner>,
           },
           control: {
             content: (
               <DocumentControlPanel>
                 <div className="grid gap-2 md:grid-cols-[220px_1fr]">
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Reason</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Reason`)}</label>
                     <select
                       className={documentHeaderControlClass}
                       value={reason}
@@ -321,7 +324,7 @@ const StockAdjustmentPage: React.FC = () => {
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Posting control</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Posting control`)}</label>
                     <DocumentNoticeBanner tone="blue">
                       Draft adjustments can be posted after review. Posted adjustments are locked by the current API and should be corrected through a new adjustment.
                     </DocumentNoticeBanner>

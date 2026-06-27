@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, Plus, MessageSquare, Sparkles, PanelLeftClose, PanelLeft, Moon, Sun, Copy, Check, Square, ChevronDown } from 'lucide-react';
 import { MarkdownRenderer } from '../components/MarkdownRenderer';
+import { useTranslation } from "react-i18next";
 
 const MOCK_RESPONSES = [
   `That's a great question! Here's what I found in your ERP data:
@@ -120,6 +121,7 @@ function generateId(): string {
 }
 
 export const ChatGptMockPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
@@ -501,9 +503,9 @@ export const ChatGptMockPage: React.FC = () => {
                             }`}
                           >
                             {copiedId === msg.id ? (
-                              <><Check className="w-3 h-3" /> Copied</>
+                              <><Check className="w-3 h-3" /> {t(`Copied`)}</>
                             ) : (
-                              <><Copy className="w-3 h-3" /> Copy</>
+                              <><Copy className="w-3 h-3" /> {t(`Copy`)}</>
                             )}
                           </button>
                         )}

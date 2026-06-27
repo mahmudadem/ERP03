@@ -24,6 +24,7 @@ import {
   Download,
   Filter,
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 // ── Data Types ───────────────────────────────────────────────────────
 
@@ -140,6 +141,7 @@ function buildReversalGroups(vouchers: DemoVoucher[]): {
 // ── Page Component ───────────────────────────────────────────────────
 
 const VoucherListDemoPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [sortField, setSortField] = useState<string>('date');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc' | null>('desc');
   const [page, setPage] = useState(1);
@@ -373,29 +375,29 @@ const VoucherListDemoPage: React.FC = () => {
       return (
         <div className="grid grid-cols-3 gap-4 text-sm">
           <div>
-            <span className="text-[var(--color-text-muted)]">Debit: </span>
+            <span className="text-[var(--color-text-muted)]">{t(`Debit:`)} </span>
             <span className="text-[var(--color-text-primary)]">{row.debitAccount}</span>
           </div>
           <div>
-            <span className="text-[var(--color-text-muted)]">Credit: </span>
+            <span className="text-[var(--color-text-muted)]">{t(`Credit:`)} </span>
             <span className="text-[var(--color-text-primary)]">{row.creditAccount}</span>
           </div>
           <div>
-            <span className="text-[var(--color-text-muted)]">Reference: </span>
+            <span className="text-[var(--color-text-muted)]">{t(`Reference:`)} </span>
             <span className="text-[var(--color-text-primary)] font-mono">{row.ref}</span>
           </div>
           <div>
-            <span className="text-[var(--color-text-muted)]">Mode: </span>
+            <span className="text-[var(--color-text-muted)]">{t(`Mode:`)} </span>
             <span className="text-[var(--color-text-primary)]">{row.creationMode}</span>
           </div>
           <div>
-            <span className="text-[var(--color-text-muted)]">Approved: </span>
+            <span className="text-[var(--color-text-muted)]">{t(`Approved:`)} </span>
             <span className="text-[var(--color-text-primary)]">{row.approvedAt || '—'}</span>
           </div>
           {row.locked && (
             <div className="flex items-center gap-1 text-amber-600">
               <Lock className="w-3.5 h-3.5" />
-              <span className="text-xs font-medium">Audit Locked</span>
+              <span className="text-xs font-medium">{t(`Audit Locked`)}</span>
             </div>
           )}
         </div>
@@ -405,7 +407,7 @@ const VoucherListDemoPage: React.FC = () => {
     return (
       <div>
         <div className="text-xs font-bold uppercase tracking-wider text-[var(--color-text-muted)] mb-2">
-          Reversals ({children.length})
+          {t(`Reversals (`)}{children.length})
         </div>
         <div className="space-y-1">
           {children.map(child => (
@@ -434,20 +436,20 @@ const VoucherListDemoPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)]">Vouchers</h1>
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--color-text-primary)]">{t(`Vouchers`)}</h1>
           <p className="text-xs sm:text-sm text-[var(--color-text-secondary)] mt-0.5">
-            {allVouchers.length} total &middot; {filteredVouchers.length} shown
+            {allVouchers.length} {t(`total &middot;`)} {filteredVouchers.length} shown
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button className="flex items-center gap-1.5 px-3 py-2 text-sm bg-primary-600 text-white rounded-md hover:bg-primary-700 transition-colors font-medium">
             <FilePlus className="w-4 h-4" />
-            <span className="hidden sm:inline">New Voucher</span>
-            <span className="sm:hidden">New</span>
+            <span className="hidden sm:inline">{t(`New Voucher`)}</span>
+            <span className="sm:hidden">{t(`New`)}</span>
           </button>
           <button className="flex items-center gap-1.5 px-3 py-2 text-sm border border-[var(--color-border)] rounded-md hover:bg-[var(--color-bg-tertiary)] transition-colors text-[var(--color-text-primary)]">
             <Download className="w-4 h-4" />
-            <span className="hidden sm:inline">Export</span>
+            <span className="hidden sm:inline">{t(`Export`)}</span>
           </button>
         </div>
       </div>
@@ -482,7 +484,7 @@ const VoucherListDemoPage: React.FC = () => {
       {/* Active Filter Indicators */}
       {Object.keys(activeFilters).length > 0 && (
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-xs text-[var(--color-text-muted)]">Active:</span>
+          <span className="text-xs text-[var(--color-text-muted)]">{t(`Active:`)}</span>
           {Object.entries(activeFilters).map(([key, value]) => {
             let label = `${key}: `;
             if (typeof value === 'string') label += value;

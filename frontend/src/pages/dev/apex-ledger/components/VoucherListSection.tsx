@@ -140,7 +140,7 @@ export default function VoucherListSection() {
 
     const formDefinition = resolveVoucherForm(summary);
     if (!formDefinition) {
-      toast.error('Cannot resolve template form for this voucher.');
+      toast.error(t('Cannot resolve template form for this voucher.'));
       return;
     }
 
@@ -166,7 +166,7 @@ export default function VoucherListSection() {
         setEditingVoucher(fullVoucher);
         setIsModalOpen(true);
       } catch (error) {
-        toast.error('Failed to load voucher details.');
+        toast.error(t('Failed to load voucher details.'));
       }
     }
   };
@@ -235,7 +235,7 @@ export default function VoucherListSection() {
         await performSave(pendingSaveData);
       } catch (error) {
         console.error('Failed to sync rates:', error);
-        toast.error('Sync failed; saving voucher anyway.');
+        toast.error(t('Sync failed; saving voucher anyway.'));
         await performSave(pendingSaveData);
       } finally {
         setPendingSaveData(null);
@@ -261,7 +261,7 @@ export default function VoucherListSection() {
     if (!deleteVoucherId) return;
     try {
       await accountingApi.deleteVoucher(deleteVoucherId);
-      toast.success('Voucher deleted successfully.');
+      toast.success(t('Voucher deleted successfully.'));
       invalidateVouchers();
       setDeleteVoucherId(null);
     } catch (err: any) {
@@ -285,7 +285,7 @@ export default function VoucherListSection() {
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.vouchers.totalValue', { defaultValue: 'Total Value' })}</span>
             <span className="text-xl font-mono font-bold text-emerald-600 mt-1 block">
-              {metrics.totalAmountSum.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs">SYP</span>
+              {metrics.totalAmountSum.toLocaleString('en-US', { minimumFractionDigits: 2 })} <span className="text-xs">{t(`SYP`)}</span>
             </span>
           </div>
           <div className="text-[10px] text-slate-500 font-medium">{t('apex.vouchers.totalValueCurrent', { defaultValue: 'Total value of current movements' })}</div>
@@ -295,7 +295,7 @@ export default function VoucherListSection() {
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.vouchers.draftPending', { defaultValue: 'Draft & Pending' })}</span>
             <span className="text-2xl font-mono font-black text-amber-500 mt-1 block">
-              {metrics.draft} <span className="text-xs font-sans font-bold text-slate-404">/ {metrics.pending} pending</span>
+              {metrics.draft} <span className="text-xs font-sans font-bold text-slate-404">/ {metrics.pending} {t(`pending`)}</span>
             </span>
           </div>
           <div className="text-[10px] text-slate-500 font-medium">{t('apex.vouchers.pendingReviewPosting', { defaultValue: 'Pending review or financial posting' })}</div>
@@ -339,7 +339,7 @@ export default function VoucherListSection() {
 
               {isCreateDropdownOpen && (
                 <div className="absolute right-0 mt-1 w-56 bg-white border border-[#E2E8F0] rounded-lg shadow-lg py-1.5 z-25 text-right font-sans">
-                  <span className="block px-3 py-1 text-[10px] text-slate-400 font-mono tracking-wider font-bold">SELECT VOUCHER TYPE</span>
+                  <span className="block px-3 py-1 text-[10px] text-slate-400 font-mono tracking-wider font-bold">{t(`SELECT VOUCHER TYPE`)}</span>
                   {voucherTypes.map(t => (
                     <button
                       key={t.id}
@@ -530,7 +530,7 @@ export default function VoucherListSection() {
         {pagination && pagination.totalPages > 1 && (
           <div className="p-3 bg-[#F8FAFC] border-t border-[#E2E8F0] flex items-center justify-between text-xs font-sans">
             <span className="text-slate-500 font-semibold">
-              Showing page <strong>{pagination.page}</strong> of <strong>{pagination.totalPages}</strong> ({pagination.totalItems} entries)
+              {t(`Showing page`)} <strong>{pagination.page}</strong> {t(`of`)} <strong>{pagination.totalPages}</strong> ({pagination.totalItems} entries)
             </span>
             <div className="flex items-center space-x-1">
               <button

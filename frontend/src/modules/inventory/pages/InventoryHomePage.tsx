@@ -89,7 +89,7 @@ const InventoryHomePage: React.FC = () => {
         <h1 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-100">
           {t('modulePlaceholders.inventory.title', { defaultValue: 'Inventory Overview' })}
         </h1>
-        <Card className="p-6">Loading inventory module...</Card>
+        <Card className="p-6">{t(`Loading inventory module...`)}</Card>
       </div>
     );
   }
@@ -144,35 +144,35 @@ const InventoryHomePage: React.FC = () => {
 
       <div className="grid gap-4 md:grid-cols-5">
         <Card className={kpiClass}>
-          <div className="text-sm text-slate-500">Total Value (Base)</div>
+          <div className="text-sm text-slate-500">{t(`Total Value (Base)`)}</div>
           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {loading ? '...' : (dashboard?.totalInventoryValueBase ?? 0).toFixed(2)}
           </div>
         </Card>
 
         <Card className={kpiClass}>
-          <div className="text-sm text-slate-500">Items</div>
+          <div className="text-sm text-slate-500">{t(`Items`)}</div>
           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {loading ? '...' : dashboard?.totalTrackedItems ?? 0}
           </div>
         </Card>
 
         <Card className={`${kpiClass} cursor-pointer`} onClick={() => navigate('/inventory/alerts/low-stock')}>
-          <div className="text-sm text-slate-500">Low Stock Alerts</div>
+          <div className="text-sm text-slate-500">{t(`Low Stock Alerts`)}</div>
           <div className="mt-2 text-2xl font-semibold text-amber-700">
             {loading ? '...' : dashboard?.lowStockAlerts ?? 0}
           </div>
         </Card>
 
         <Card className={kpiClass}>
-          <div className="text-sm text-slate-500">Negative Stock</div>
+          <div className="text-sm text-slate-500">{t(`Negative Stock`)}</div>
           <div className="mt-2 text-2xl font-semibold text-red-700">
             {loading ? '...' : dashboard?.negativeStockCount ?? 0}
           </div>
         </Card>
 
         <Card className={`${kpiClass} cursor-pointer`} onClick={() => navigate('/inventory/reports/unsettled-costs')}>
-          <div className="text-sm text-slate-500">Unsettled</div>
+          <div className="text-sm text-slate-500">{t(`Unsettled`)}</div>
           <div className="mt-2 text-2xl font-semibold text-blue-700">
             {loading ? '...' : dashboard?.unsettledMovementsCount ?? 0}
           </div>
@@ -180,18 +180,18 @@ const InventoryHomePage: React.FC = () => {
       </div>
 
       <Card className="p-5">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Movements</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t(`Recent Movements`)}</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left font-semibold">Date</th>
-                <th className="py-2 text-left font-semibold">Item</th>
-                <th className="py-2 text-left font-semibold">Warehouse</th>
-                <th className="py-2 text-left font-semibold">Type</th>
-                <th className="py-2 text-left font-semibold">Dir</th>
-                <th className="py-2 text-right font-semibold">Qty</th>
-                <th className="py-2 text-right font-semibold">Cost Base</th>
+                <th className="py-2 text-left font-semibold">{t(`Date`)}</th>
+                <th className="py-2 text-left font-semibold">{t(`Item`)}</th>
+                <th className="py-2 text-left font-semibold">{t(`Warehouse`)}</th>
+                <th className="py-2 text-left font-semibold">{t(`Type`)}</th>
+                <th className="py-2 text-left font-semibold">{t(`Dir`)}</th>
+                <th className="py-2 text-right font-semibold">{t(`Qty`)}</th>
+                <th className="py-2 text-right font-semibold">{t(`Cost Base`)}</th>
               </tr>
             </thead>
             <tbody>

@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import React, { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Settings2, Check, Search, X } from 'lucide-react';
 import { clsx } from 'clsx';
@@ -491,7 +492,7 @@ export function DataTable<T = any>({
           </table>
         ) : (
           <div className="flex flex-col items-center justify-center h-48 text-[var(--color-text-muted)]">
-            <p className="text-sm mb-3">No columns visible</p>
+            <p className="text-sm mb-3">{i18n.t(`No columns visible`)}</p>
             <button
               onClick={resetColumns}
               className="px-4 py-2 text-sm font-medium text-primary-600 border border-primary-600 rounded-md hover:bg-primary-50 transition-colors"

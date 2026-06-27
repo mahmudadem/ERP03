@@ -1,5 +1,6 @@
 import React from 'react';
 import { Lock, Zap, HelpCircle } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface PolicyGovernanceIndicatorProps {
   isSystemStrict: boolean;
@@ -14,6 +15,7 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
   settingsLoading,
   isNewVoucher = false,
 }) => {
+    const { t } = useTranslation('common');
   return (
     <div className="flex items-center gap-2 px-1.5 py-0.5 bg-black/5 dark:bg-white/5 rounded-md border border-[var(--color-border)] group relative z-50 cursor-help ml-1 transition-all hover:bg-black/[0.08] dark:hover:bg-white/[0.08] scale-95 origin-left">
       {/* System Dot Indicator */}
@@ -24,7 +26,7 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
             (isSystemStrict ? 'bg-indigo-500 shadow-[0_0_8px_rgba(99,102,241,0.5)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]')
           }`} 
         />
-        <span className="text-[8px] font-black uppercase tracking-tighter text-[var(--color-text-muted)] leading-none italic opacity-70">SYS</span>
+        <span className="text-[8px] font-black uppercase tracking-tighter text-[var(--color-text-muted)] leading-none italic opacity-70">{t(`SYS`)}</span>
       </div>
       
       <div className="w-[1px] h-3 bg-[var(--color-border)]" />
@@ -46,15 +48,15 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
       {/* Rich Unified Tooltip */}
       <div className="absolute left-0 top-full mt-2 hidden group-hover:block bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] text-[10px] p-2.5 rounded-lg shadow-2xl z-50 border border-[var(--color-border)] min-w-[220px] backdrop-blur-md">
         <div className="flex justify-between items-center border-b border-[var(--color-border)] shadow-sm pb-1.5 mb-2">
-          <span className="font-black tracking-widest text-[var(--color-text-secondary)] uppercase">Policy Governance</span>
-          <span className="text-[8px] bg-[var(--color-bg-tertiary)] px-1 rounded text-[var(--color-text-muted)]">V2.1</span>
+          <span className="font-black tracking-widest text-[var(--color-text-secondary)] uppercase">{t(`Policy Governance`)}</span>
+          <span className="text-[8px] bg-[var(--color-bg-tertiary)] px-1 rounded text-[var(--color-text-muted)]">{t(`V2.1`)}</span>
         </div>
         <div className="space-y-2">
           <div className="flex items-start gap-2.5">
             <div className={`mt-1 w-2 h-2 rounded-full flex-none ${isSystemStrict ? 'bg-indigo-500' : 'bg-emerald-500'}`} />
             <div className="flex flex-col">
-              <span className="font-bold">System Mode: {isSystemStrict ? 'Strict' : 'Flexible'}</span>
-              <span className="text-[9px] text-[var(--color-text-secondary)] leading-tight">Global policy for new vouchers. Current setting: {isSystemStrict ? 'All require FA.' : 'Auto-post enabled.'}</span>
+              <span className="font-bold">{t(`System Mode:`)} {isSystemStrict ? 'Strict' : 'Flexible'}</span>
+              <span className="text-[9px] text-[var(--color-text-secondary)] leading-tight">{t(`Global policy for new vouchers. Current setting:`)} {isSystemStrict ? 'All require FA.' : 'Auto-post enabled.'}</span>
             </div>
           </div>
           
@@ -70,7 +72,7 @@ export const PolicyGovernanceIndicator: React.FC<PolicyGovernanceIndicatorProps>
             </div>
             <div className="flex flex-col">
               <span className="font-bold">
-                Voucher Policy: {isNewVoucher ? 'Not Defined (New)' : isVoucherStrict ? 'Strict Audit' : 'Flexible Edit'}
+                {t(`Voucher Policy:`)} {isNewVoucher ? 'Not Defined (New)' : isVoucherStrict ? 'Strict Audit' : 'Flexible Edit'}
               </span>
               <span className="text-[9px] text-[var(--color-text-secondary)] leading-tight">
                 {isNewVoucher 

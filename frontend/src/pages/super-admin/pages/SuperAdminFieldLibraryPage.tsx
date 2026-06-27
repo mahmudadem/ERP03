@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 /**
  * SuperAdminFieldLibraryPage.tsx
  *
@@ -39,6 +40,7 @@ import {
   FieldClass,
   FieldSectionHint,
 } from '../../../api/superAdmin/fieldLibrary';
+import { useTranslation } from "react-i18next";
 
 const FIELD_CLASSES: { value: FieldClass; label: string; description: string }[] = [
   { value: 'system_core',     label: 'System Core',     description: 'Always required when included on a voucher type. Cannot be demoted at form level.' },
@@ -81,6 +83,7 @@ interface DeleteBlockedState {
 }
 
 export const SuperAdminFieldLibraryPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [entries, setEntries] = useState<FieldLibraryEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState<FieldLibraryEntry | null>(null);
@@ -257,21 +260,21 @@ export const SuperAdminFieldLibraryPage: React.FC = () => {
               <thead className="bg-slate-50">
                 <tr>
                   <th className={clsx(tableHeadCellClass, tableSortHeaderClass)} onClick={() => handleSort('id')}>
-                    <span className="flex items-center gap-1">ID <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} /></span>
+                    <span className="flex items-center gap-1">{i18n.t(`ID`)} <SortIcon direction={sortConfig.field === 'id' ? sortConfig.direction : null} /></span>
                   </th>
                   <th className={clsx(tableHeadCellClass, tableSortHeaderClass)} onClick={() => handleSort('label')}>
-                    <span className="flex items-center gap-1">Label <SortIcon direction={sortConfig.field === 'label' ? sortConfig.direction : null} /></span>
+                    <span className="flex items-center gap-1">{i18n.t(`Label`)} <SortIcon direction={sortConfig.field === 'label' ? sortConfig.direction : null} /></span>
                   </th>
                   <th className={clsx(tableHeadCellClass, tableSortHeaderClass)} onClick={() => handleSort('type')}>
-                    <span className="flex items-center gap-1">Type <SortIcon direction={sortConfig.field === 'type' ? sortConfig.direction : null} /></span>
+                    <span className="flex items-center gap-1">{i18n.t(`Type`)} <SortIcon direction={sortConfig.field === 'type' ? sortConfig.direction : null} /></span>
                   </th>
                   <th className={clsx(tableHeadCellClass, tableSortHeaderClass)} onClick={() => handleSort('fieldClass')}>
-                    <span className="flex items-center gap-1">Class <SortIcon direction={sortConfig.field === 'fieldClass' ? sortConfig.direction : null} /></span>
+                    <span className="flex items-center gap-1">{i18n.t(`Class`)} <SortIcon direction={sortConfig.field === 'fieldClass' ? sortConfig.direction : null} /></span>
                   </th>
-                  <th className={tableHeadCellClass}>Section</th>
-                  <th className={tableHeadCellClass}>Tags</th>
-                  <th className={tableHeadCellClass}>v</th>
-                  <th className={tableHeadCellClass}>Actions</th>
+                  <th className={tableHeadCellClass}>{i18n.t(`Section`)}</th>
+                  <th className={tableHeadCellClass}>{i18n.t(`Tags`)}</th>
+                  <th className={tableHeadCellClass}>{i18n.t(`v`)}</th>
+                  <th className={tableHeadCellClass}>{i18n.t(`Actions`)}</th>
                 </tr>
               </thead>
               <tbody>
@@ -288,10 +291,10 @@ export const SuperAdminFieldLibraryPage: React.FC = () => {
                     <td className={clsx(tableCellClass, 'text-xs text-slate-600')}>{entry.sectionHint || '—'}</td>
                     <td className={tableCellClass}>
                       <div className="flex flex-wrap gap-1">
-                        {entry.alwaysMandatory && <SuperAdminBadge tone="red">Mandatory</SuperAdminBadge>}
-                        {entry.alwaysShared && <SuperAdminBadge tone="blue">Shared</SuperAdminBadge>}
+                        {entry.alwaysMandatory && <SuperAdminBadge tone="red">{i18n.t(`Mandatory`)}</SuperAdminBadge>}
+                        {entry.alwaysShared && <SuperAdminBadge tone="blue">{i18n.t(`Shared`)}</SuperAdminBadge>}
                         {entry.selectorBinding && <SuperAdminBadge tone="slate">→ {entry.selectorBinding.collection}</SuperAdminBadge>}
-                        {entry.deprecated && <SuperAdminBadge tone="amber">Deprecated</SuperAdminBadge>}
+                        {entry.deprecated && <SuperAdminBadge tone="amber">{i18n.t(`Deprecated`)}</SuperAdminBadge>}
                       </div>
                     </td>
                     <td className={clsx(tableCellClass, 'text-xs tabular-nums')}>{entry.version}</td>
@@ -376,6 +379,7 @@ interface FieldEditorModalProps {
 }
 
 const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ mode, initial, onSave, onClose, existingIds, busy }) => {
+    const { t } = useTranslation('common');
   const [form, setForm] = useState<Partial<FieldLibraryEntry>>(() =>
     initial
       ? { ...initial }
@@ -421,7 +425,7 @@ const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ mode, initial, onSa
               idTaken ? 'border-rose-400' : 'border-slate-300',
             )}
           />
-          {idTaken && <p className="mt-1 text-xs text-rose-600">A field with this ID already exists.</p>}
+          {idTaken && <p className="mt-1 text-xs text-rose-600">{i18n.t(`A field with this ID already exists.`)}</p>}
         </Field>
 
         <div className="grid grid-cols-2 gap-3">
@@ -468,10 +472,10 @@ const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ mode, initial, onSa
               onChange={(e) => update('sectionHint', (e.target.value || undefined) as any)}
               className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm bg-white"
             >
-              <option value="">(none)</option>
+              <option value="">{i18n.t(`(none)`)}</option>
               {SECTION_HINTS.map((s) => <option key={s} value={s}>{s}</option>)}
             </select>
-            <p className="mt-1 text-xs text-slate-500">Voucher types can override per type-binding (Layer 2).</p>
+            <p className="mt-1 text-xs text-slate-500">{i18n.t(`Voucher types can override per type-binding (Layer 2).`)}</p>
           </Field>
         </div>
 
@@ -524,15 +528,15 @@ const FieldEditorModal: React.FC<FieldEditorModalProps> = ({ mode, initial, onSa
 
         {initial && (
           <div className="border-t border-slate-200 pt-3 text-xs text-slate-500 grid grid-cols-2 gap-1">
-            <div>Version: <span className="font-mono">{initial.version}</span></div>
-            <div>Scope: <span className="font-mono">{initial.scope || 'system'}</span></div>
-            <div>Last updated: <span className="font-mono">{initial.updatedAt || '—'}</span></div>
-            <div>By: <span className="font-mono">{initial.updatedBy || '—'}</span></div>
+            <div>{i18n.t(`Version:`)} <span className="font-mono">{initial.version}</span></div>
+            <div>{i18n.t(`Scope:`)} <span className="font-mono">{initial.scope || 'system'}</span></div>
+            <div>{i18n.t(`Last updated:`)} <span className="font-mono">{initial.updatedAt || '—'}</span></div>
+            <div>{i18n.t(`By:`)} <span className="font-mono">{initial.updatedBy || '—'}</span></div>
           </div>
         )}
 
         <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
-          <Button variant="secondary" onClick={onClose} disabled={busy}>Cancel</Button>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>{i18n.t(`Cancel`)}</Button>
           <Button onClick={() => onSave(form)} disabled={!canSubmit}>
             {busy ? 'Saving…' : mode === 'create' ? 'Create' : 'Save changes'}
           </Button>
@@ -552,13 +556,13 @@ const DeleteBlockedModal: React.FC<{ state: DeleteBlockedState; onClose: () => v
         to avoid it.
       </p>
       <div>
-        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">Used by</p>
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500 mb-1">{i18n.t(`Used by`)}</p>
         <ul className="list-disc list-inside text-xs font-mono text-slate-600 bg-slate-50 rounded p-2 max-h-40 overflow-auto">
           {state.usedBy.map((t) => <li key={t}>{t}</li>)}
         </ul>
       </div>
       <div className="flex justify-end pt-2">
-        <Button onClick={onClose}>OK</Button>
+        <Button onClick={onClose}>{i18n.t(`OK`)}</Button>
       </div>
     </div>
   </SuperAdminModal>

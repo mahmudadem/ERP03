@@ -12,6 +12,7 @@ import { Button } from '../../../components/ui/Button';
 import { ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from "react-i18next";
 
 type DirectionFilter = 'ALL' | 'IN' | 'OUT';
 
@@ -65,6 +66,7 @@ const Initiator: React.FC<{
   onSubmit: (params: ItemMovementParams) => void;
   initialParams?: ItemMovementParams | null;
 }> = ({ onSubmit, initialParams }) => {
+    const { t } = useTranslation('common');
   const [itemId, setItemId] = useState(initialParams?.itemId || '');
   const [warehouseId, setWarehouseId] = useState(initialParams?.warehouseId || '');
   const [fromDate, setFromDate] = useState(initialParams?.fromDate || '');
@@ -92,7 +94,7 @@ const Initiator: React.FC<{
     >
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
         <div className="md:col-span-12 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Item</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Item`)}</label>
           <ItemSelector
             value={itemId}
             trackInventoryOnly
@@ -101,7 +103,7 @@ const Initiator: React.FC<{
           />
         </div>
         <div className="md:col-span-6 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Warehouse</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Warehouse`)}</label>
           <WarehouseSelector
             value={warehouseId}
             onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
@@ -109,51 +111,51 @@ const Initiator: React.FC<{
           />
         </div>
         <div className="md:col-span-3 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`From`)}</label>
           <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
         </div>
         <div className="md:col-span-3 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`To`)}</label>
           <DatePicker value={toDate} onChange={setToDate} className="w-full" />
         </div>
         <div className="md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Direction</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Direction`)}</label>
           <select value={direction} onChange={(event) => setDirection(event.target.value as DirectionFilter)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50">
-            <option value="ALL">All</option>
-            <option value="IN">In</option>
-            <option value="OUT">Out</option>
+            <option value="ALL">{t(`All`)}</option>
+            <option value="IN">{t(`In`)}</option>
+            <option value="OUT">{t(`Out`)}</option>
           </select>
         </div>
         <div className="md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Movement Type</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Movement Type`)}</label>
           <select value={movementType} onChange={(event) => setMovementType(event.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50">
-            <option value="">All</option>
-            <option value="OPENING_STOCK">Opening</option>
-            <option value="PURCHASE_RECEIPT">Purchase receipt</option>
-            <option value="SALES_DELIVERY">Sales delivery</option>
-            <option value="ADJUSTMENT_IN">Adjustment in</option>
-            <option value="ADJUSTMENT_OUT">Adjustment out</option>
-            <option value="TRANSFER_IN">Transfer in</option>
-            <option value="TRANSFER_OUT">Transfer out</option>
-            <option value="RETURN_IN">Return in</option>
-            <option value="RETURN_OUT">Return out</option>
+            <option value="">{t(`All`)}</option>
+            <option value="OPENING_STOCK">{t(`Opening`)}</option>
+            <option value="PURCHASE_RECEIPT">{t(`Purchase receipt`)}</option>
+            <option value="SALES_DELIVERY">{t(`Sales delivery`)}</option>
+            <option value="ADJUSTMENT_IN">{t(`Adjustment in`)}</option>
+            <option value="ADJUSTMENT_OUT">{t(`Adjustment out`)}</option>
+            <option value="TRANSFER_IN">{t(`Transfer in`)}</option>
+            <option value="TRANSFER_OUT">{t(`Transfer out`)}</option>
+            <option value="RETURN_IN">{t(`Return in`)}</option>
+            <option value="RETURN_OUT">{t(`Return out`)}</option>
           </select>
         </div>
         <div className="md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Source Type</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t(`Source Type`)}</label>
           <select value={referenceType} onChange={(event) => setReferenceType(event.target.value)} className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50">
-            <option value="">All</option>
-            <option value="PURCHASE_INVOICE">Purchase Invoice</option>
-            <option value="GOODS_RECEIPT">Goods Receipt</option>
-            <option value="PURCHASE_RETURN">Purchase Return</option>
-            <option value="SALES_INVOICE">Sales Invoice</option>
-            <option value="DELIVERY_NOTE">Delivery Note</option>
-            <option value="SALES_RETURN">Sales Return</option>
-            <option value="STOCK_ADJUSTMENT">Stock Adjustment</option>
-            <option value="STOCK_TRANSFER">Stock Transfer</option>
-            <option value="OPENING">Opening</option>
-            <option value="POS_DIRECT_SALE">POS Sale</option>
-            <option value="POS_RETURN">POS Return</option>
+            <option value="">{t(`All`)}</option>
+            <option value="PURCHASE_INVOICE">{t(`Purchase Invoice`)}</option>
+            <option value="GOODS_RECEIPT">{t(`Goods Receipt`)}</option>
+            <option value="PURCHASE_RETURN">{t(`Purchase Return`)}</option>
+            <option value="SALES_INVOICE">{t(`Sales Invoice`)}</option>
+            <option value="DELIVERY_NOTE">{t(`Delivery Note`)}</option>
+            <option value="SALES_RETURN">{t(`Sales Return`)}</option>
+            <option value="STOCK_ADJUSTMENT">{t(`Stock Adjustment`)}</option>
+            <option value="STOCK_TRANSFER">{t(`Stock Transfer`)}</option>
+            <option value="OPENING">{t(`Opening`)}</option>
+            <option value="POS_DIRECT_SALE">{t(`POS Sale`)}</option>
+            <option value="POS_RETURN">{t(`POS Return`)}</option>
           </select>
         </div>
       </div>
@@ -182,6 +184,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, pagination, setTotalItems, density }) => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [movements, setMovements] = useState<StockMovementDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
@@ -272,15 +275,15 @@ const ReportContent: React.FC<{
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
-            Item: {item ? `${item.code} - ${item.name}` : params.itemId}
+            {t(`Item:`)} {item ? `${item.code} - ${item.name}` : params.itemId}
           </span>
           {params.warehouseId && (
             <span className="text-xs font-semibold text-slate-700 border border-emerald-200 bg-emerald-50 rounded-full px-2 py-1">
-              WH: {warehouseMap.get(params.warehouseId)?.name ?? params.warehouseId}
+              {t(`WH:`)} {warehouseMap.get(params.warehouseId)?.name ?? params.warehouseId}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            Movements: <span className="font-black text-slate-700">{rows.length}</span>
+            {t(`Movements:`)} <span className="font-black text-slate-700">{rows.length}</span>
           </span>
         </div>
       </div>
@@ -291,7 +294,7 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading item movement...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t(`Loading item movement...`)}</p>
             </div>
           </div>
         ) : (
@@ -299,18 +302,18 @@ const ReportContent: React.FC<{
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                 <tr>
-                  <th className={`${cellPad} text-left`}>Date</th>
-                  <th className={`${cellPad} text-left`}>Warehouse</th>
-                  <th className={`${cellPad} text-left`}>Movement</th>
-                  <th className={`${cellPad} text-left`}>Source</th>
-                  <th className={`${cellPad} text-right`}>Qty In</th>
-                  <th className={`${cellPad} text-right`}>Qty Out</th>
-                  <th className={`${cellPad} text-right`}>Running Qty</th>
-                  <th className={`${cellPad} text-right`}>Unit Cost</th>
-                  <th className={`${cellPad} text-right`}>Movement Value</th>
-                  <th className={`${cellPad} text-right`}>Running Value</th>
-                  <th className={`${cellPad} text-left`}>Created By</th>
-                  <th className={`${cellPad} text-left`}>Notes</th>
+                  <th className={`${cellPad} text-left`}>{t(`Date`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Warehouse`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Movement`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Source`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Qty In`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Qty Out`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Running Qty`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Unit Cost`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Movement Value`)}</th>
+                  <th className={`${cellPad} text-right`}>{t(`Running Value`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Created By`)}</th>
+                  <th className={`${cellPad} text-left`}>{t(`Notes`)}</th>
                 </tr>
               </thead>
               <tbody>

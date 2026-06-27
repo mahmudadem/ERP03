@@ -305,16 +305,16 @@ export const BundlesManagerPage: React.FC = () => {
               </div>
 
               <div className="mb-4">
-                <label className="block text-sm font-medium mb-2">Lifecycle Status *</label>
+                <label className="block text-sm font-medium mb-2">{t(`Lifecycle Status *`)}</label>
                 <select
                   value={formData.lifecycleStatus}
                   onChange={(e) => setFormData({ ...formData, lifecycleStatus: e.target.value as Bundle['lifecycleStatus'] })}
                   className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
                 >
-                  <option value="draft">Draft - hidden from onboarding</option>
-                  <option value="ready">Ready - visible in onboarding</option>
-                  <option value="deprecated">Deprecated - hidden from onboarding</option>
-                  <option value="inactive">Inactive - hidden from onboarding</option>
+                  <option value="draft">{t(`Draft - hidden from onboarding`)}</option>
+                  <option value="ready">{t(`Ready - visible in onboarding`)}</option>
+                  <option value="deprecated">{t(`Deprecated - hidden from onboarding`)}</option>
+                  <option value="inactive">{t(`Inactive - hidden from onboarding`)}</option>
                 </select>
                 <p className="mt-1 text-xs text-slate-500">
                   Only ready bundles are shown in the company onboarding wizard.

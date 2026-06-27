@@ -671,8 +671,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchase Return</h1>
-        <Card className="p-6">Loading purchase return...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Purchase Return`)}</h1>
+        <Card className="p-6">{t(`Loading purchase return...`)}</Card>
       </div>
     );
   }
@@ -733,7 +733,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
     return (
       <div className="space-y-6 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">New Purchase Return</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`New Purchase Return`)}</h1>
           <button
             type="button"
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
@@ -814,7 +814,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Purchase Order ID (optional)</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Purchase Order ID (optional)`)}</label>
               <input
                 type="text"
                 className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
@@ -823,21 +823,21 @@ const PurchaseReturnDetailPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Return Date</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Return Date`)}</label>
               <DatePicker 
                 value={returnDate}
                 onChange={(val) => setReturnDate(val)}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Warehouse</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Warehouse`)}</label>
               <WarehouseSelector
                 value={warehouseId}
                 onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Context</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Context`)}</label>
               <div className="flex h-9 items-center rounded border border-slate-200 bg-slate-50 px-2 text-xs font-bold">
                 {contextLabel}
               </div>
@@ -882,7 +882,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                         value={line.itemId}
                         onChange={(e) => handleItemSelect(index, e.target.value)}
                       >
-                        <option value="">Select item from source...</option>
+                        <option value="">{t(`Select item from source...`)}</option>
                         {sourceDocument.lines.map((sl: any) => (
                           <option key={sl.lineId} value={sl.itemId}>
                             {sl.itemCode} - {sl.itemName}
@@ -965,17 +965,17 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
 
           <div className="mt-8 border-t border-slate-100 pt-8">
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">Currency & Exchange</h3>
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">{t(`Currency & Exchange`)}</h3>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t(`Currency`)}</label>
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-1 focus:ring-indigo-500 outline-none"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                   disabled={busy}
                 >
-                  <option value="SYP">SYP - Syrian Pound</option>
+                  <option value="SYP">{t(`SYP - Syrian Pound`)}</option>
                   {currencies.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.code} - {c.name}
@@ -984,7 +984,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t(`Exchange Rate`)}</label>
                 <CurrencyExchangeWidget
                   currency={currency}
                   baseCurrency={company?.baseCurrency || 'SYP'}
@@ -997,7 +997,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Reason</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t(`Reason`)}</label>
             <input
               type="text"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
@@ -1007,7 +1007,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             />
           </div>
           <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t(`Notes`)}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
@@ -1016,7 +1016,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             />
           </div>
           <div className="mt-6 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">
-            <p className="font-semibold mb-1 uppercase tracking-wider text-slate-600">Information</p>
+            <p className="font-semibold mb-1 uppercase tracking-wider text-slate-600">{t(`Information`)}</p>
             {selectedLines.length === 0 
               ? "Start by adding items manually or fetch from a source document." 
               : "Items already fetched from source are restricted to source quantities. Manual entries can search from the full catalog."}
@@ -1044,8 +1044,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Select Purchase Invoice</h3>
-                  <p className="text-xs text-slate-500">Latest posted invoices. Choose one to pull lines into this return.</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{t(`Select Purchase Invoice`)}</h3>
+                  <p className="text-xs text-slate-500">{t(`Latest posted invoices. Choose one to pull lines into this return.`)}</p>
                 </div>
                 <button
                   type="button"
@@ -1076,12 +1076,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left">Pick</th>
-                        <th className="px-3 py-2 text-left">Invoice No</th>
-                        <th className="px-3 py-2 text-left">Vendor</th>
-                        <th className="px-3 py-2 text-left">Invoice Date</th>
-                        <th className="px-3 py-2 text-left">Currency</th>
-                        <th className="px-3 py-2 text-right">Grand Total</th>
+                        <th className="px-3 py-2 text-left">{t(`Pick`)}</th>
+                        <th className="px-3 py-2 text-left">{t(`Invoice No`)}</th>
+                        <th className="px-3 py-2 text-left">{t(`Vendor`)}</th>
+                        <th className="px-3 py-2 text-left">{t(`Invoice Date`)}</th>
+                        <th className="px-3 py-2 text-left">{t(`Currency`)}</th>
+                        <th className="px-3 py-2 text-right">{t(`Grand Total`)}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1181,11 +1181,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left">Pick</th>
+                        <th className="px-3 py-2 text-left">{t(`Pick`)}</th>
                         <th className="px-3 py-2 text-left">{t('purchases.returnDetail.grnNo')}</th>
                         <th className="px-3 py-2 text-left">{t('purchases.returnDetail.vendor')}</th>
                         <th className="px-3 py-2 text-left">{t('purchases.returnDetail.receiptDate')}</th>
-                        <th className="px-3 py-2 text-left">Warehouse</th>
+                        <th className="px-3 py-2 text-left">{t(`Warehouse`)}</th>
                         <th className="px-3 py-2 text-right">{t('purchases.returnDetail.lines')}</th>
                       </tr>
                     </thead>
@@ -1244,8 +1244,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
   if (!purchaseReturn) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchase Return</h1>
-        <Card className="p-6 text-sm text-red-700">Purchase return not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Purchase Return`)}</h1>
+        <Card className="p-6 text-sm text-red-700">{t(`Purchase return not found.`)}</Card>
       </div>
     );
   }
@@ -1366,7 +1366,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         <>
           <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>
           <DocumentPill tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'}>{purchaseReturn.status}</DocumentPill>
-          {isEditMode && <DocumentPill tone="amber">Editing</DocumentPill>}
+          {isEditMode && <DocumentPill tone="amber">{t(`Editing`)}</DocumentPill>}
         </>
       }
       newAction={{
@@ -1402,7 +1402,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       <Card className="overflow-visible p-0">
         <DocumentHeaderGrid>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Return Date`)}</div>
             {isEditMode ? (
               <DatePicker 
                 value={editReturnDate}
@@ -1414,7 +1414,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Warehouse`)}</div>
             {isEditMode ? (
               <div className="mt-1">
                 <WarehouseSelector 
@@ -1427,7 +1427,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Reason</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Reason`)}</div>
             {isEditMode ? (
               <input type="text" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editReason} onChange={(e) => setEditReason(e.target.value)} />
             ) : (
@@ -1435,16 +1435,16 @@ const PurchaseReturnDetailPage: React.FC = () => {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Currency</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Currency`)}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.currency}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Exchange Rate</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Exchange Rate`)}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.exchangeRate.toFixed(4)}</div>
           </div>
           {isEditMode && (
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Notes</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Notes`)}</div>
               <textarea rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
             </div>
           )}
@@ -1566,7 +1566,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       <Card className="p-5">
         <div className="grid gap-2 text-sm md:grid-cols-2">
           <div className="flex justify-between">
-            <span className="text-slate-600">Subtotal</span>
+            <span className="text-slate-600">{t(`Subtotal`)}</span>
             <span className="font-medium">
               {purchaseReturn.currency} {isEditMode
                 ? editLines.reduce((s, l) => {
@@ -1583,13 +1583,13 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-600">Tax</span>
+            <span className="text-slate-600">{t(`Tax`)}</span>
             <span className="font-medium">
               {purchaseReturn.currency} {purchaseReturn.taxTotalDoc.toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between border-t border-slate-200 pt-2">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{t(`Grand Total`)}</span>
             <span className="font-semibold text-slate-900 dark:text-slate-100">
               {purchaseReturn.currency} {isEditMode
                 ? editLines.reduce((s, l) => {

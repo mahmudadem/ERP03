@@ -112,7 +112,7 @@ export default function PurchasesSection({ bills, setBills, vendors }: Purchases
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('apex.purchases.apOutstanding', { defaultValue: 'Accounts Payable Outstanding' })}</span>
           <div className="mt-2 flex items-baseline">
             <span className="text-lg font-black text-slate-800 font-mono tracking-tight">{fmt(accountsPayableSum)}</span>
-            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">SYP</span>
+            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">{t(`SYP`)}</span>
           </div>
           <span className="text-[10px] text-zinc-400 mt-1 block">{t('apex.purchases.tradeCreditSettlements', { defaultValue: 'Trade credit settlements queued' })}</span>
         </div>
@@ -121,7 +121,7 @@ export default function PurchasesSection({ bills, setBills, vendors }: Purchases
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t('apex.purchases.settledExpenditures', { defaultValue: 'Settled Expenditures FY' })}</span>
           <div className="mt-2 flex items-baseline">
             <span className="text-lg font-black text-slate-850 font-mono tracking-tight">{fmt(totalPaidBills)}</span>
-            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">SYP</span>
+            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">{t(`SYP`)}</span>
           </div>
           <span className="text-[10px] text-emerald-600 font-semibold block mt-1 flex items-center gap-0.5">
             <CheckCircle className="w-3.5 h-3.5 text-emerald-500 inline" /> {t('apex.purchases.reconcileReceipts', { defaultValue: 'Fully reconcile posted receipts' })}
@@ -295,11 +295,11 @@ export default function PurchasesSection({ bills, setBills, vendors }: Purchases
             <div className="bg-zinc-50 border border-zinc-150 p-4 rounded-md space-y-1 mt-4 mb-4 text-xs">
               <div className="flex justify-between">
                 <span>{t('apex.purchases.valueLabel', { defaultValue: 'Value:' })}</span>
-                <span className="font-mono text-slate-700 font-bold">{fmt(billAmount)} SYP</span>
+                <span className="font-mono text-slate-700 font-bold">{fmt(billAmount)} {t(`SYP`)}</span>
               </div>
               <div className="flex justify-between border-t border-zinc-200 pt-2 font-black text-slate-805">
                 <span>{t('apex.purchases.calcBillSum', { defaultValue: 'Calculated bill sum (inc 5% vat):' })}</span>
-                <span className="font-mono">{fmt(Math.round(billAmount * 1.05))} SYP</span>
+                <span className="font-mono">{fmt(Math.round(billAmount * 1.05))} {t(`SYP`)}</span>
               </div>
             </div>
 

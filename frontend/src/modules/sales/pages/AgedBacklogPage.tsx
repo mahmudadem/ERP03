@@ -4,8 +4,10 @@ import { Card } from '../../../components/ui/Card';
 import { AgedBacklogRowDTO, salesOperationalApi } from '../../../api/salesOperationalApi';
 import { AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 const AgedBacklogPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [rows, setRows] = useState<AgedBacklogRowDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -36,8 +38,8 @@ const AgedBacklogPage: React.FC = () => {
             <AlertTriangle size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Aged Backlog</h1>
-            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Overdue Orders Past Promised Delivery Date</p>
+            <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t(`Aged Backlog`)}</h1>
+            <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Overdue Orders Past Promised Delivery Date`)}</p>
           </div>
         </div>
       </div>
@@ -50,8 +52,8 @@ const AgedBacklogPage: React.FC = () => {
 
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Overdue Orders</div>
-              {loading && <div className="text-[10px] text-rose-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Overdue Orders`)}</div>
+              {loading && <div className="text-[10px] text-rose-500 font-black animate-pulse uppercase tracking-tighter">{t(`Loading...`)}</div>}
             </div>
 
             <div className="p-6">
@@ -61,7 +63,7 @@ const AgedBacklogPage: React.FC = () => {
                     <AlertTriangle size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No overdue orders — all deliveries on schedule.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t(`No overdue orders — all deliveries on schedule.`)}</p>
                   </div>
                 </div>
               ) : (

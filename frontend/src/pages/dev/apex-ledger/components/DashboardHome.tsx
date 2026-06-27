@@ -121,7 +121,7 @@ export default function DashboardHome({ accounts, invoices, bills, setActiveTab 
           </div>
           <div>
             <span className="text-lg font-bold text-slate-800 font-mono tracking-tight block">
-              {fmt(totalCashAndLiquidity)} <span className="text-xs text-slate-400 font-sans font-normal">SYP</span>
+              {fmt(totalCashAndLiquidity)} <span className="text-xs text-slate-400 font-sans font-normal">{t(`SYP`)}</span>
             </span>
             <div className="flex items-center gap-1 mt-1 text-[11px]">
               <ArrowUpRight className="w-3.5 h-3.5 text-emerald-500" />
@@ -143,7 +143,7 @@ export default function DashboardHome({ accounts, invoices, bills, setActiveTab 
           </div>
           <div>
             <span className="text-lg font-bold text-slate-800 font-mono tracking-tight block">
-              {fmt(accountsReceivable)} <span className="text-xs text-slate-400 font-sans font-normal">SYP</span>
+              {fmt(accountsReceivable)} <span className="text-xs text-slate-400 font-sans font-normal">{t(`SYP`)}</span>
             </span>
             <div className="flex items-center gap-1 mt-1 text-[11px]">
               <span className="text-amber-600 font-semibold font-mono">
@@ -166,7 +166,7 @@ export default function DashboardHome({ accounts, invoices, bills, setActiveTab 
           </div>
           <div>
             <span className="text-lg font-bold text-slate-800 font-mono tracking-tight block">
-              {fmt(accountsPayable)} <span className="text-xs text-slate-400 font-sans font-normal">SYP</span>
+              {fmt(accountsPayable)} <span className="text-xs text-slate-400 font-sans font-normal">{t(`SYP`)}</span>
             </span>
             <div className="flex items-center gap-1 mt-1 text-[11px]">
               <span className="text-purple-600 font-semibold font-mono">

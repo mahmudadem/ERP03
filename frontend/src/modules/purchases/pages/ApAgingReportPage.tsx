@@ -11,6 +11,7 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 interface ApAgingParams {
   asOfDate: string;
@@ -163,6 +164,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+    const { t } = useTranslation('common');
   const [report, setReport] = useState<ApAgingReportDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -190,7 +192,7 @@ const ReportContent: React.FC<{
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
             <CalendarDays className="w-3 h-3 text-blue-600" />
-            As of {report?.asOfDate ?? params.asOfDate}
+            {t(`As of`)} {report?.asOfDate ?? params.asOfDate}
           </span>
           {params.vendorLabel && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
@@ -198,7 +200,7 @@ const ReportContent: React.FC<{
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            {report?.rows.length ?? 0} vendor{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
+            {report?.rows.length ?? 0} {t(`vendor`)}{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
             Total AP: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
           </span>
         </div>
@@ -213,12 +215,12 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading aging...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t(`Loading aging...`)}</p>
             </div>
           </div>
         ) : !report || report.rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 text-center">
-            <p className="text-sm font-bold text-slate-600">No outstanding payables as of {report?.asOfDate ?? params.asOfDate}</p>
+            <p className="text-sm font-bold text-slate-600">{t(`No outstanding payables as of`)} {report?.asOfDate ?? params.asOfDate}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
@@ -237,7 +239,7 @@ const ReportContent: React.FC<{
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900">
-                  <td className={cellPad}>Totals</td>
+                  <td className={cellPad}>{t(`Totals`)}</td>
                   <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.current)}</td>
                   <td className={`${cellPad} text-right tabular-nums text-amber-700`}>{fmt(report.totals.days1_30)}</td>
                   <td className={`${cellPad} text-right tabular-nums text-orange-700`}>{fmt(report.totals.days31_60)}</td>

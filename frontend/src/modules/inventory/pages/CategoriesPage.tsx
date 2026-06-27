@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { InventoryCategoryDTO, inventoryApi } from '../../../api/inventoryApi';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const ROOT_KEY = '__ROOT__';
 
 const CategoriesPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [categories, setCategories] = useState<InventoryCategoryDTO[]>([]);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
@@ -72,7 +74,7 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Categories`)}</h1>
 
       <Card className="p-6">
         <form className="grid gap-3 md:grid-cols-3" onSubmit={handleCreate}>
@@ -88,7 +90,7 @@ const CategoriesPage: React.FC = () => {
             value={parentId}
             onChange={(e) => setParentId(e.target.value)}
           >
-            <option value="">Root Category</option>
+            <option value="">{t(`Root Category`)}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -103,9 +105,9 @@ const CategoriesPage: React.FC = () => {
 
       <Card className="p-6">
         <div className="grid grid-cols-12 border-b border-slate-200 pb-2 text-sm font-semibold">
-          <div className="col-span-7">Name</div>
-          <div className="col-span-2">Sort</div>
-          <div className="col-span-3">Status</div>
+          <div className="col-span-7">{t(`Name`)}</div>
+          <div className="col-span-2">{t(`Sort`)}</div>
+          <div className="col-span-3">{t(`Status`)}</div>
         </div>
         <div className="pt-2">{renderTree(ROOT_KEY, 0)}</div>
       </Card>

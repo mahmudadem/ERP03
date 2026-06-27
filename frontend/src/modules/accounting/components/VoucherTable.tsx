@@ -946,7 +946,7 @@ export const VoucherTable: React.FC<Props> = ({
                           <span className="font-medium">{formatCompanyDate(voucher.date, settings)}</span>
                           {voucher.postingPeriodNo && voucher.postingPeriodNo > 12 && (
                              <span className="text-[10px] bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300 px-1 rounded-sm w-fit mt-0.5 font-bold" title={t('voucherTable.tooltips.specialPeriod', { period: voucher.postingPeriodNo })}>
-                                 P{voucher.postingPeriodNo}
+                                 {t(`P`)}{voucher.postingPeriodNo}
                              </span>
                           )}
                           <span className={clsx("text-[var(--color-text-secondary)] opacity-70", fontSize === 'text-xs' ? 'text-[10px]' : 'text-xs')}>

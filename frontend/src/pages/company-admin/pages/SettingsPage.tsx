@@ -471,7 +471,7 @@ export const SettingsPage: React.FC = () => {
                   >
                     {DATE_FORMAT_OPTIONS.map((fmt) => (
                       <option key={fmt.value} value={fmt.value}>
-                        {fmt.value} (e.g. {fmt.example})
+                        {fmt.value} {t(`(e.g.`)} {fmt.example})
                       </option>
                     ))}
                   </select>

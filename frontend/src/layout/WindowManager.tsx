@@ -1,12 +1,14 @@
+import i18n from 'i18next';
 
 import { useState } from 'react';
 import { WindowFrame } from './WindowFrame';
+import { useTranslation } from "react-i18next";
 
 // Mock Component for demonstration
 const MockContent = ({ text }: { text: string }) => (
   <div className="p-4">
     <h2 className="text-xl font-bold mb-4">{text}</h2>
-    <p className="text-gray-600">This is running inside a windowed container.</p>
+    <p className="text-gray-600">{i18n.t(`This is running inside a windowed container.`)}</p>
     <div className="mt-4 grid grid-cols-2 gap-4">
        <input className="border p-2 rounded w-full" placeholder="Input A" />
        <input className="border p-2 rounded w-full" placeholder="Input B" />
@@ -15,6 +17,7 @@ const MockContent = ({ text }: { text: string }) => (
 );
 
 export const WindowManager: React.FC = () => {
+    const { t } = useTranslation('common');
   // Mock State for open windows
   // In a real app, this would be global state (Redux/Zustand) triggered by the Sidebar
   const [windows, setWindows] = useState([
@@ -39,7 +42,7 @@ export const WindowManager: React.FC = () => {
   if (windows.length === 0) {
     return (
       <div className="h-full flex flex-col items-center justify-center text-gray-400">
-        <p className="text-lg">No open windows</p>
+        <p className="text-lg">{i18n.t(`No open windows`)}</p>
         <button 
            onClick={() => setWindows([{ id: 'new', title: 'New Window', component: <MockContent text="New Window" />, z: 1 }])}
            className="mt-4 text-blue-500 hover:underline"

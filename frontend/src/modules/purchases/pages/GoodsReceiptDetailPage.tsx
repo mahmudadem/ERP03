@@ -29,6 +29,7 @@ import {
   documentHeaderControlClass,
   documentHeaderSelectorClass,
 } from '../../../components/shared/DocumentDetailScaffold';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -74,6 +75,7 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = '', warehouseId = ''):
 });
 
 const GoodsReceiptDetailPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -508,8 +510,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Goods Receipt</h1>
-        <Card className="p-6">Loading goods receipt...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Goods Receipt`)}</h1>
+        <Card className="p-6">{t(`Loading goods receipt...`)}</Card>
       </div>
     );
   }
@@ -585,7 +587,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         icon={Truck}
         backLabel={isEditMode ? 'Cancel edit' : 'Back to goods receipts'}
         onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
-        badges={<DocumentPill tone="slate">Draft</DocumentPill>}
+        badges={<DocumentPill tone="slate">{t(`Draft`)}</DocumentPill>}
         railSections={draftRailSections}
         railTitle="Goods receipt side rail"
         newAction={{
@@ -668,7 +670,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </DocumentHeaderGrid>
 
           <div className="px-3 pb-3">
-            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Notes</label>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t(`Notes`)}</label>
             <textarea
               rows={3}
               className="w-full rounded border border-slate-300 bg-white px-2 py-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
@@ -786,8 +788,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
   if (!grn) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Goods Receipt</h1>
-        <Card className="p-6 text-sm text-red-700">Goods receipt not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Goods Receipt`)}</h1>
+        <Card className="p-6 text-sm text-red-700">{t(`Goods receipt not found.`)}</Card>
       </div>
     );
   }
@@ -925,17 +927,17 @@ const GoodsReceiptDetailPage: React.FC = () => {
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Receipt Date</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Receipt Date`)}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{grn.receiptDate}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Warehouse`)}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {warehouseLabelById[grn.warehouseId] || grn.warehouseId}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Created</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t(`Created`)}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {new Date(grn.createdAt).toLocaleString()}
             </div>
@@ -947,16 +949,16 @@ const GoodsReceiptDetailPage: React.FC = () => {
         lines: {
           content: (
       <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t(`Lines`)}</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 pr-4 text-left">Item</th>
-                <th className="py-2 px-4 text-right">Received Qty</th>
-                <th className="py-2 px-4 text-left">UOM</th>
-                <th className="py-2 px-4 text-right">Unit Cost</th>
-                <th className="py-2 pl-4 text-left">Currency</th>
+                <th className="py-2 pr-4 text-left">{t(`Item`)}</th>
+                <th className="py-2 px-4 text-right">{t(`Received Qty`)}</th>
+                <th className="py-2 px-4 text-left">{t(`UOM`)}</th>
+                <th className="py-2 px-4 text-right">{t(`Unit Cost`)}</th>
+                <th className="py-2 pl-4 text-left">{t(`Currency`)}</th>
               </tr>
             </thead>
             <tbody>

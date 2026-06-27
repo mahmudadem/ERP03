@@ -10,6 +10,7 @@ import { WarehouseSelector } from '../../../components/shared/selectors/Warehous
 import { ShieldCheck, DollarSign, Hash, Shield, Settings, Info, Save, RotateCcw, AlertTriangle } from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
+import i18n from "i18next";
 
 export const MockUnifiedSettingsPage: React.FC = () => {
   const { t } = useTranslation();
@@ -50,7 +51,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
       setOriginalSettings(settings);
       toast.success(t('settings.savedSuccessfully', 'Settings saved successfully!'));
     } catch (err) {
-      toast.error('Failed to save settings');
+      toast.error(i18n.t('Failed to save settings'));
     } finally {
       setSaving(false);
     }
@@ -58,7 +59,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
 
   const handleDiscard = () => {
     setSettings(originalSettings);
-    toast('Changes discarded', { icon: 'ℹ️' });
+    toast(i18n.t('Changes discarded'), { icon: 'ℹ️' });
   };
 
   if (loading) {
@@ -83,7 +84,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
       <div className="flex-none px-8 py-6 bg-white dark:bg-[var(--color-bg-primary)] border-b border-[var(--color-border)] flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-black tracking-tight text-[var(--color-text-primary)]">
-            Sales Settings <span className="text-indigo-600 text-xs px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 font-bold uppercase tracking-widest ml-2">PRO VERSION</span>
+            {t(`Sales Settings`)} <span className="text-indigo-600 text-xs px-2 py-0.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 font-bold uppercase tracking-widest ml-2">{t(`PRO VERSION`)}</span>
           </h1>
           <p className="text-sm text-[var(--color-text-secondary)] mt-1">
             Demo of unified UI/UX with global saving controls, correct theme tokens, and clean layout.
@@ -124,27 +125,27 @@ export const MockUnifiedSettingsPage: React.FC = () => {
             {activeTab === 'policy' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-black text-[var(--color-text-primary)]">Sales Operational Policy</h2>
-                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">Manage document flows, limits, and order rules.</p>
+                  <h2 className="text-lg font-black text-[var(--color-text-primary)]">{t(`Sales Operational Policy`)}</h2>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">{t(`Manage document flows, limits, and order rules.`)}</p>
                 </div>
                 
                 <Card className="p-6">
                   <div className="space-y-4">
                     <div className="grid md:grid-cols-2 gap-6">
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Workflow Mode</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Workflow Mode`)}</label>
                         <select
                           value={settings.workflowMode}
                           onChange={(e) => updateField('workflowMode', e.target.value as any)}
                           className="w-full rounded-xl border border-[var(--color-border)] bg-[var(--color-bg-secondary)] px-4 py-2.5 text-xs font-bold text-[var(--color-text-primary)] focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         >
-                          <option value="SIMPLE">Simple (Invoices only)</option>
-                          <option value="OPERATIONAL">Operational (Quotes/Orders/Delivery Notes)</option>
+                          <option value="SIMPLE">{t(`Simple (Invoices only)`)}</option>
+                          <option value="OPERATIONAL">{t(`Operational (Quotes/Orders/Delivery Notes)`)}</option>
                         </select>
                       </div>
 
                       <div>
-                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Default Payment Terms (Days)</label>
+                        <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Default Payment Terms (Days)`)}</label>
                         <Input
                           type="number"
                           value={settings.defaultPaymentTermsDays}
@@ -162,8 +163,8 @@ export const MockUnifiedSettingsPage: React.FC = () => {
                           className="h-4.5 w-4.5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <div>
-                          <div className="text-xs font-bold text-[var(--color-text-primary)]">Allow Credit Limit Overrides</div>
-                          <div className="text-[10px] text-[var(--color-text-secondary)]">Let authorized users confirm orders above customer limits.</div>
+                          <div className="text-xs font-bold text-[var(--color-text-primary)]">{t(`Allow Credit Limit Overrides`)}</div>
+                          <div className="text-[10px] text-[var(--color-text-secondary)]">{t(`Let authorized users confirm orders above customer limits.`)}</div>
                         </div>
                       </label>
                     </div>
@@ -175,14 +176,14 @@ export const MockUnifiedSettingsPage: React.FC = () => {
             {activeTab === 'accounts' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-black text-[var(--color-text-primary)]">GL Account Defaults</h2>
-                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">Specify standard general ledger accounts for automated posting.</p>
+                  <h2 className="text-lg font-black text-[var(--color-text-primary)]">{t(`GL Account Defaults`)}</h2>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">{t(`Specify standard general ledger accounts for automated posting.`)}</p>
                 </div>
                 
                 <Card className="p-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Default Revenue Account</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Default Revenue Account`)}</label>
                       <AccountSelector
                         value={settings.defaultRevenueAccountId || ''}
                         onChange={(acc: any) => updateField('defaultRevenueAccountId', acc?.id || '')}
@@ -191,7 +192,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Default Refund Account</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Default Refund Account`)}</label>
                       <AccountSelector
                         value={settings.defaultRefundAccountId || ''}
                         onChange={(acc: any) => updateField('defaultRefundAccountId', acc?.id || '')}
@@ -200,7 +201,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
                       />
                     </div>
                     <div className="md:col-span-2">
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Default Warehouse</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Default Warehouse`)}</label>
                       <WarehouseSelector
                         value={settings.defaultWarehouseId}
                         onChange={(wh: any) => updateField('defaultWarehouseId', wh?.id || '')}
@@ -215,21 +216,21 @@ export const MockUnifiedSettingsPage: React.FC = () => {
             {activeTab === 'numbering' && (
               <div className="space-y-6">
                 <div>
-                  <h2 className="text-lg font-black text-[var(--color-text-primary)]">Document Numbering Series</h2>
-                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">Customize document prefixes and next serial values.</p>
+                  <h2 className="text-lg font-black text-[var(--color-text-primary)]">{t(`Document Numbering Series`)}</h2>
+                  <p className="text-xs text-[var(--color-text-secondary)] mt-1">{t(`Customize document prefixes and next serial values.`)}</p>
                 </div>
                 
                 <Card className="p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Sales Invoice Prefix</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Sales Invoice Prefix`)}</label>
                       <Input
                         value={settings.siNumberPrefix}
                         onChange={(e) => updateField('siNumberPrefix', e.target.value.toUpperCase())}
                       />
                     </div>
                     <div>
-                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">Next Invoice Number</label>
+                      <label className="block text-xs font-bold uppercase tracking-wider text-[var(--color-text-secondary)] mb-2">{t(`Next Invoice Number`)}</label>
                       <Input
                         type="number"
                         value={settings.siNumberNextSeq}
@@ -238,7 +239,7 @@ export const MockUnifiedSettingsPage: React.FC = () => {
                     </div>
                     <div className="flex items-end">
                       <div className="w-full bg-slate-50 dark:bg-slate-900 border border-[var(--color-border)] rounded-xl p-3 text-xs text-[var(--color-text-secondary)] flex items-center justify-center font-mono">
-                        Preview: {settings.siNumberPrefix}-{String(settings.siNumberNextSeq).padStart(4, '0')}
+                        {t(`Preview:`)} {settings.siNumberPrefix}-{String(settings.siNumberNextSeq).padStart(4, '0')}
                       </div>
                     </div>
                   </div>
@@ -263,8 +264,8 @@ export const MockUnifiedSettingsPage: React.FC = () => {
               <AlertTriangle size={18} />
             </div>
             <div>
-              <div className="text-xs font-bold">Unsaved Settings Changes</div>
-              <div className="text-[10px] text-slate-400">You have unsaved changes in this module.</div>
+              <div className="text-xs font-bold">{t(`Unsaved Settings Changes`)}</div>
+              <div className="text-[10px] text-slate-400">{t(`You have unsaved changes in this module.`)}</div>
             </div>
           </div>
 

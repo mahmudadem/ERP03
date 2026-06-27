@@ -4,6 +4,7 @@ import { useWizardSession } from './context/WizardSessionContext';
 import { Button } from '../../components/ui/Button';
 import { useCompanySettings } from '../../hooks/useCompanySettings';
 import { getCompanyToday } from '../../utils/dateUtils';
+import { useTranslation } from "react-i18next";
 
 interface Props {
   field: CompanyWizardField;
@@ -12,6 +13,7 @@ interface Props {
 }
 
 export const WizardFieldRenderer: React.FC<Props> = ({ field, value, onChange }) => {
+    const { t } = useTranslation('common');
   const { settings } = useCompanySettings();
   const { sessionId } = useWizardSession();
   const [options, setOptions] = useState<Array<{ id: string; label: string }> | null>(null);
@@ -62,14 +64,14 @@ export const WizardFieldRenderer: React.FC<Props> = ({ field, value, onChange })
           onChange={(e) => onChange(e.target.value)}
           disabled={loadingOptions}
         >
-          <option value="">Select...</option>
+          <option value="">{t(`Select...`)}</option>
           {options?.map((opt) => (
             <option key={opt.id} value={opt.id}>
               {opt.label}
             </option>
           ))}
         </select>
-        {loadingOptions && <span className="text-xs text-gray-500">Loading options...</span>}
+        {loadingOptions && <span className="text-xs text-gray-500">{t(`Loading options...`)}</span>}
       </div>
     );
   }

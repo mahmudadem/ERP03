@@ -15,11 +15,11 @@ export default function ApprovalCenterSection() {
   const pendingVouchers = responseData?.items || [];
 
   const handleApprove = async (id: string) => {
-    toast.success('Approval center integration coming in Phase 3.');
+    toast.success(t('Approval center integration coming in Phase 3.'));
   };
 
   const handleReject = async (id: string) => {
-    toast.success('Rejection controls coming in Phase 3.');
+    toast.success(t('Rejection controls coming in Phase 3.'));
   };
 
   return (
@@ -45,7 +45,7 @@ export default function ApprovalCenterSection() {
         <div className="bg-white border border-[#E2E8F0] p-4 rounded-lg shadow-xs flex flex-col justify-between h-24">
           <div>
             <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">{t('apex.approval.processingTime', { defaultValue: 'Processing Time' })}</span>
-            <span className="text-2xl font-mono font-black text-emerald-600 mt-1 block">1.8 hrs</span>
+            <span className="text-2xl font-mono font-black text-emerald-600 mt-1 block">{t(`1.8 hrs`)}</span>
           </div>
           <div className="text-[10px] text-emerald-600 font-bold">{t('apex.approval.processingDesc', { defaultValue: '✓ 12% improvement from last month.' })}</div>
         </div>

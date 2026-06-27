@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { accountingApi, BudgetDTO, FiscalYearDTO, CostCenterDTO } from '../../../../../api/accountingApi';
 import { AlertTriangle, RefreshCw, TrendingDown, TrendingUp, Minus } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const round2 = (v: number) => Math.round((v + Number.EPSILON) * 100) / 100;
@@ -18,6 +19,7 @@ function VarianceIcon({ variance }: { variance: number }) {
 }
 
 export default function ApexBudgetVsActual() {
+    const { t } = useTranslation('common');
   const [budgets, setBudgets] = useState<BudgetDTO[]>([]);
   const [fiscalYears, setFiscalYears] = useState<FiscalYearDTO[]>([]);
   const [costCenters, setCostCenters] = useState<CostCenterDTO[]>([]);
@@ -168,30 +170,30 @@ export default function ApexBudgetVsActual() {
       {/* Filter bar */}
       <div className="bg-white border border-[#E2E8F0] rounded-lg p-4 flex flex-wrap items-end gap-4">
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">Budget</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`Budget`)}</label>
           <select value={selectedBudgetId} onChange={e => setSelectedBudgetId(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400 min-w-[200px]">
-            <option value="">— Select Budget —</option>
+            <option value="">{t(`— Select Budget —`)}</option>
             {budgets.map(b => (
-              <option key={b.id} value={b.id}>{b.name} v{b.version} ({b.status})</option>
+              <option key={b.id} value={b.id}>{b.name} {t(`v`)}{b.version} ({b.status})</option>
             ))}
           </select>
         </div>
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">Cost Center</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`Cost Center`)}</label>
           <select value={selectedCCId} onChange={e => setSelectedCCId(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400">
-            <option value="">All Cost Centers</option>
+            <option value="">{t(`All Cost Centers`)}</option>
             {costCenters.map(cc => <option key={cc.id} value={cc.id}>{cc.code} — {cc.name}</option>)}
           </select>
         </div>
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">From Date</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`From Date`)}</label>
           <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
         </div>
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">To Date</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`To Date`)}</label>
           <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
         </div>
@@ -235,17 +237,17 @@ export default function ApexBudgetVsActual() {
               <table className="min-w-full">
                 <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                   <tr>
-                    <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Account</th>
-                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Budget</th>
-                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Actual</th>
-                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Variance</th>
-                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-24">Var %</th>
-                    <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-28">Status</th>
+                    <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Account`)}</th>
+                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Budget`)}</th>
+                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Actual`)}</th>
+                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Variance`)}</th>
+                    <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-24">{t(`Var %`)}</th>
+                    <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-28">{t(`Status`)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#F1F5F9]">
                   {rows.length === 0 ? (
-                    <tr><td colSpan={6} className="py-12 text-center text-xs text-slate-400">No budget lines found</td></tr>
+                    <tr><td colSpan={6} className="py-12 text-center text-xs text-slate-400">{t(`No budget lines found`)}</td></tr>
                   ) : (
                     rows.map((row, idx) => (
                       <tr key={idx} className={`hover:bg-slate-50/60 ${idx % 2 === 0 ? 'bg-white' : 'bg-[#FAFAFB]'}`}>
@@ -270,7 +272,7 @@ export default function ApexBudgetVsActual() {
                 </tbody>
                 <tfoot className="bg-[#F8FAFC] border-t-2 border-[#E2E8F0]">
                   <tr>
-                    <td className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Total</td>
+                    <td className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">{t(`Total`)}</td>
                     <td className="px-4 py-2.5 text-right font-mono text-xs font-bold text-blue-700">{fmt(summary.budget)}</td>
                     <td className="px-4 py-2.5 text-right font-mono text-xs font-bold text-slate-800">{fmt(summary.actual)}</td>
                     <td className={`px-4 py-2.5 text-right font-mono text-xs font-bold ${varianceColor(summary.variance)}`}>{fmt(summary.variance)}</td>
@@ -288,7 +290,7 @@ export default function ApexBudgetVsActual() {
 
       {!generated && !loading && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
-          <p className="text-xs text-slate-400 font-mono">Select a budget and click Generate</p>
+          <p className="text-xs text-slate-400 font-mono">{t(`Select a budget and click Generate`)}</p>
         </div>
       )}
     </div>

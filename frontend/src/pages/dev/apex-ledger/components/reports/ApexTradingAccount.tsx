@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { RefreshCw, AlertTriangle, ShoppingCart, Info } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 // ─── Local Types ─────────────────────────────────────────────────────────────
 
@@ -102,6 +103,7 @@ const TradingColumn: React.FC<TradingColumnProps> = ({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export default function ApexTradingAccount() {
+    const { t } = useTranslation('common');
   const today = new Date().toISOString().slice(0, 10);
   const firstOfYear = new Date(new Date().getFullYear(), 0, 1).toISOString().slice(0, 10);
 
@@ -182,7 +184,7 @@ export default function ApexTradingAccount() {
       {loading && !data && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-6 text-center">
           <RefreshCw size={18} className="animate-spin text-slate-400 mx-auto mb-2" />
-          <p className="text-xs text-slate-400">Loading Trading Account…</p>
+          <p className="text-xs text-slate-400">{t(`Loading Trading Account…`)}</p>
         </div>
       )}
 
@@ -334,10 +336,10 @@ export default function ApexTradingAccount() {
                   No Sales or COGS accounts configured.
                 </p>
                 <p className="text-xs text-amber-700 mt-1">
-                  Assign P&L Subgroups in Chart of Accounts to enable this report. Go to{' '}
-                  <strong>Chart of Accounts → Account → P&L Subgroup</strong> and set accounts to{' '}
-                  <code className="bg-amber-100 px-1 rounded">SALES</code> or{' '}
-                  <code className="bg-amber-100 px-1 rounded">COST_OF_SALES</code>.
+                  {t(`Assign P&L Subgroups in Chart of Accounts to enable this report. Go to`)}{' '}
+                  <strong>{t(`Chart of Accounts → Account → P&L Subgroup`)}</strong> {t(`and set accounts to`)}{' '}
+                  <code className="bg-amber-100 px-1 rounded">{t(`SALES`)}</code> {t(`or`)}{' '}
+                  <code className="bg-amber-100 px-1 rounded">{t(`COST_OF_SALES`)}</code>.
                 </p>
               </div>
             </div>
@@ -349,9 +351,9 @@ export default function ApexTradingAccount() {
       {!generated && !loading && !error && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
           <ShoppingCart size={28} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-semibold text-slate-500">Trading Account</p>
+          <p className="text-sm font-semibold text-slate-500">{t(`Trading Account`)}</p>
           <p className="text-xs text-slate-400 mt-1">
-            Select a date range and click <strong>Generate</strong> to view the report.
+            {t(`Select a date range and click`)} <strong>{t(`Generate`)}</strong> to view the report.
           </p>
         </div>
       )}

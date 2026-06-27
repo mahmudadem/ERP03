@@ -212,26 +212,26 @@ const TradingAccountReportContent: React.FC<{ params: TradingAccountParams }> = 
               {data.periodicComputation && (
                 <div className="bg-white border rounded-xl p-5 shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-900">Periodic Trading Formula</h3>
+                    <h3 className="text-lg font-bold text-slate-900">{t(`Periodic Trading Formula`)}</h3>
                     <span className="text-xs font-bold uppercase tracking-widest text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-200 rounded-full px-2 py-1">
                       {data.periodicComputation.pricingPolicy.replace('_', ' ')}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-slate-500">Opening Inventory</div>
+                      <div className="text-xs font-semibold uppercase text-slate-500">{t(`Opening Inventory`)}</div>
                       <div className="font-mono text-lg font-bold text-slate-900">{moneyFmt(data.periodicComputation.openingInventory, currency)}</div>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-slate-500">Net Purchases</div>
+                      <div className="text-xs font-semibold uppercase text-slate-500">{t(`Net Purchases`)}</div>
                       <div className="font-mono text-lg font-bold text-slate-900">{moneyFmt(data.periodicComputation.netPurchases, currency)}</div>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-slate-500">Closing Inventory</div>
+                      <div className="text-xs font-semibold uppercase text-slate-500">{t(`Closing Inventory`)}</div>
                       <div className="font-mono text-lg font-bold text-slate-900">{moneyFmt(data.periodicComputation.closingInventory, currency)}</div>
                     </div>
                     <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-rose-600">Cost of Sales</div>
+                      <div className="text-xs font-semibold uppercase text-rose-600">{t(`Cost of Sales`)}</div>
                       <div className="font-mono text-lg font-bold text-rose-700">{moneyFmt(data.costOfSales, currency)}</div>
                     </div>
                   </div>

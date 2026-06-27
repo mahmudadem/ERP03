@@ -24,6 +24,7 @@ import {
   VoucherTypeModule,
   voucherTypeManagementApi,
 } from '../../../../api/voucherTypeManagementApi';
+import { useTranslation } from "react-i18next";
 
 interface VoucherTypesSettingsPageProps {
   module: VoucherTypeModule;
@@ -82,6 +83,7 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
   moduleLabel,
   formsDesignerPath = '/tools/forms-designer',
 }) => {
+    const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const { companyId } = useCompanyAccess();
   const [loading, setLoading] = useState(true);
@@ -152,7 +154,7 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="mx-auto max-w-5xl px-4">
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900">Voucher Types — {moduleLabel}</h1>
+          <h1 className="text-3xl font-bold text-gray-900">{t(`Voucher Types —`)} {moduleLabel}</h1>
           <p className="mt-1 text-gray-600">
             Manage which voucher types are installed in your company. Each type bundles one or
             more default form variants that you can activate or clone from{' '}
@@ -168,15 +170,15 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
           <div className="flex items-start gap-3">
             <Info className="mt-0.5 h-5 w-5 flex-shrink-0 text-amber-600" />
             <div className="text-sm text-amber-800 space-y-1">
-              <p className="font-semibold">Installing a type does not activate its forms.</p>
+              <p className="font-semibold">{t(`Installing a type does not activate its forms.`)}</p>
               <p>
                 The schemas become available immediately so other modules can reference the type,
                 but no sidebar entries appear until you open{' '}
                 <Link to={formsDesignerPath} className="font-semibold underline">
                   Tools &rarr; Forms Designer
                 </Link>{' '}
-                and either <span className="font-semibold">Activate</span> a default form to use
-                it as-is, or <span className="font-semibold">Clone</span> it to create an editable
+                {t(`and either`)} <span className="font-semibold">{t(`Activate`)}</span> a default form to use
+                it as-is, or <span className="font-semibold">{t(`Clone`)}</span> it to create an editable
                 variant.
               </p>
             </div>
@@ -202,7 +204,7 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <Spinner size="lg" />
-            <span className="ml-3 text-gray-600">Loading voucher type catalog...</span>
+            <span className="ml-3 text-gray-600">{t(`Loading voucher type catalog...`)}</span>
           </div>
         ) : (
           <>
@@ -211,14 +213,14 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
               <div className="mb-3 flex items-center gap-2">
                 <PackageCheck className="h-5 w-5 text-green-600" />
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Installed ({installedGroups.length})
+                  {t(`Installed (`)}{installedGroups.length})
                 </h2>
               </div>
               {installedGroups.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
                   <FileCheck className="mx-auto mb-3 h-10 w-10 text-gray-400" />
                   <p className="text-sm text-gray-600">
-                    No voucher types installed for {moduleLabel} yet. Pick one from below to install.
+                    {t(`No voucher types installed for`)} {moduleLabel} yet. Pick one from below to install.
                   </p>
                 </div>
               ) : (
@@ -239,14 +241,14 @@ const VoucherTypesSettingsPage: React.FC<VoucherTypesSettingsPageProps> = ({
               <div className="mb-3 flex items-center gap-2">
                 <Layers className="h-5 w-5 text-blue-600" />
                 <h2 className="text-xl font-semibold text-gray-900">
-                  Available ({availableGroups.length})
+                  {t(`Available (`)}{availableGroups.length})
                 </h2>
               </div>
               {availableGroups.length === 0 ? (
                 <div className="rounded-lg border border-dashed border-gray-300 bg-white p-8 text-center">
                   <CheckCircle2 className="mx-auto mb-3 h-10 w-10 text-green-500" />
                   <p className="text-sm text-gray-600">
-                    All {moduleLabel} voucher types from the system catalog are already installed.
+                    {t(`All`)} {moduleLabel} voucher types from the system catalog are already installed.
                   </p>
                 </div>
               ) : (
@@ -283,6 +285,7 @@ const TypeGroupCard: React.FC<TypeGroupCardProps> = ({
   installing,
   onInstall,
 }) => {
+    const { t } = useTranslation('common');
   const variants = group.forms
     .map(variantLabel)
     .filter((v): v is string => Boolean(v));
@@ -300,7 +303,7 @@ const TypeGroupCard: React.FC<TypeGroupCardProps> = ({
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="text-base font-semibold text-gray-900 truncate">{group.name}</h3>
             <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-              {group.forms.length} default form{group.forms.length !== 1 ? 's' : ''}
+              {group.forms.length} {t(`default form`)}{group.forms.length !== 1 ? 's' : ''}
             </span>
             {group.isInstalled && (
               <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded">
@@ -309,7 +312,7 @@ const TypeGroupCard: React.FC<TypeGroupCardProps> = ({
             )}
           </div>
           {variants.length > 0 && (
-            <p className="mt-1 text-xs text-gray-500">Variants: {variants.join(' · ')}</p>
+            <p className="mt-1 text-xs text-gray-500">{t(`Variants:`)} {variants.join(' · ')}</p>
           )}
         </div>
 

@@ -21,6 +21,7 @@ import {
   Sparkles,
   Paperclip
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface SalesSectionProps {
   salesOrders: SalesOrder[];
@@ -39,6 +40,7 @@ export default function SalesSection({
   customers, 
   inventory 
 }: SalesSectionProps) {
+    const { t } = useTranslation('common');
   const { company } = useCompanyAccess();
   const { user } = useAuth();
   const companyName = company?.name || 'Current Company';
@@ -505,7 +507,7 @@ export default function SalesSection({
     if (!pendingDeleteInvoiceId) return;
 
     setInvoices(prev => prev.filter(inv => inv.id !== pendingDeleteInvoiceId));
-    toast.success('Invoice deleted');
+    toast.success(t('Invoice deleted'));
     setPendingDeleteInvoiceId(null);
     setEditorActive(false);
   };
@@ -519,8 +521,8 @@ export default function SalesSection({
           <div className="flex items-center justify-between bg-gradient-to-r from-slate-800 to-indigo-950 border border-slate-700 px-4 py-2 rounded-lg shadow-sm text-white font-sans">
             <div className="flex items-center space-x-2">
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-              <span className="text-xs font-bold">Display Layout:</span>
-              <span className="text-xs font-black text-amber-350 font-mono">Page 2 — Comprehensive ERP Grid</span>
+              <span className="text-xs font-bold">{t(`Display Layout:`)}</span>
+              <span className="text-xs font-black text-amber-350 font-mono">{t(`Page 2 — Comprehensive ERP Grid`)}</span>
             </div>
             <button
               onClick={() => setUseErpLayout(false)}
@@ -547,8 +549,8 @@ export default function SalesSection({
         <div className="flex items-center justify-between bg-slate-100 border border-slate-205 px-4 py-2 rounded-lg text-slate-800">
           <div className="flex items-center space-x-2">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500"></span>
-            <span className="text-xs font-bold">Display Layout:</span>
-            <span className="text-xs font-semibold text-slate-600">Standard Modern Theme</span>
+            <span className="text-xs font-bold">{t(`Display Layout:`)}</span>
+            <span className="text-xs font-semibold text-slate-600">{t(`Standard Modern Theme`)}</span>
           </div>
           <button
             onClick={() => setUseErpLayout(true)}
@@ -562,36 +564,36 @@ export default function SalesSection({
         <div className="flex flex-wrap items-center justify-between pb-3 border-b border-slate-200/85 text-xs gap-3">
           <div>
             <div className="flex items-center space-x-2">
-              <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest uppercase block">Sales Invoice Voucher</span>
+              <span className="text-[10px] font-bold text-slate-400 font-mono tracking-widest uppercase block">{t(`Sales Invoice Voucher`)}</span>
               <h1 className="text-base font-black text-slate-800 font-mono flex items-center gap-1.5 leading-none">
                 <FileText className="w-4 h-4 text-blue-600" />
                 {invoiceNumber || 'SI-XXXXX'}
               </h1>
             </div>
             <span className="text-[11px] font-semibold text-slate-500 mt-1 block">
-              Customer: <span className="text-slate-800 font-bold">{customers.find(c => c.id === selectedCustomerIdForEditor)?.name || 'None selected'}</span>
+              {t(`Customer:`)} <span className="text-slate-800 font-bold">{customers.find(c => c.id === selectedCustomerIdForEditor)?.name || 'None selected'}</span>
             </span>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
             <div className="px-2.5 py-1 bg-white border border-slate-200 rounded font-mono text-[10px] text-zinc-500 flex items-center space-x-1 shadow-sm">
-              <span className="text-zinc-400 font-bold">INVOICE DATE:</span>
+              <span className="text-zinc-400 font-bold">{t(`INVOICE DATE:`)}</span>
               <span className="text-slate-800 font-black">{editorDate}</span>
             </div>
             <div className="px-2.5 py-1 bg-white border border-slate-200 rounded font-mono text-[10px] text-zinc-500 flex items-center space-x-1 shadow-sm">
-              <span className="text-zinc-400 font-bold">DUE DATE:</span>
+              <span className="text-zinc-400 font-bold">{t(`DUE DATE:`)}</span>
               <span className="text-slate-800 font-black">{editorDueDate || '-'}</span>
             </div>
             <div className="px-2.5 py-1 bg-white border border-slate-200 rounded font-mono text-[10px] text-zinc-500 flex items-center space-x-1 shadow-sm">
-              <span className="text-zinc-400 font-bold">SO REF:</span>
+              <span className="text-zinc-400 font-bold">{t(`SO REF:`)}</span>
               <span className="text-slate-800 font-black">{salesOrderRef || '-'}</span>
             </div>
             <div className="px-2.5 py-1 bg-white border border-slate-200 rounded font-mono text-[10px] text-zinc-500 flex items-center space-x-1 shadow-sm">
-              <span className="text-zinc-400 font-bold">CURRENCY:</span>
+              <span className="text-zinc-400 font-bold">{t(`CURRENCY:`)}</span>
               <span className="text-slate-800 font-black">{editorCurrency}</span>
             </div>
             <div className="px-2.5 py-1 bg-white border border-slate-200 rounded font-mono text-[10px] text-zinc-500 flex items-center space-x-1 shadow-sm">
-              <span className="text-zinc-400 font-bold">EXCHANGE RATE:</span>
+              <span className="text-zinc-400 font-bold">{t(`EXCHANGE RATE:`)}</span>
               <span className="text-slate-800 font-black">{editorExchangeRate}</span>
             </div>
             <span className={`text-[10px] font-black uppercase px-2 py-1 rounded tracking-wider shadow-inner ${
@@ -608,14 +610,14 @@ export default function SalesSection({
         <div className="bg-white rounded-lg border border-slate-200 p-3 shadow-sm text-xs">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Sales Order (optional)</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Sales Order (optional)`)}</label>
               <div className="flex space-x-1">
                 <select
                   value={salesOrderRef}
                   onChange={(e) => setSalesOrderRef(e.target.value)}
                   className="flex-1 bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 text-xs outline-none focus:border-blue-500"
                 >
-                  <option value="">No sales order</option>
+                  <option value="">{t(`No sales order`)}</option>
                   {salesOrders.map(so => (
                     <option key={so.id} value={so.soNumber}>{so.soNumber}</option>
                   ))}
@@ -632,21 +634,21 @@ export default function SalesSection({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Invoice Template</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Invoice Template`)}</label>
               <select
                 value={invoiceTemplate}
                 onChange={(e) => setInvoiceTemplate(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 text-xs outline-none focus:border-blue-500"
               >
-                <option>Sales Invoice (Direct) - Copy</option>
-                <option>Standard Tax Invoice</option>
-                <option>Commercial Billing Layout</option>
+                <option>{t(`Sales Invoice (Direct) - Copy`)}</option>
+                <option>{t(`Standard Tax Invoice`)}</option>
+                <option>{t(`Commercial Billing Layout`)}</option>
               </select>
-              <span className="text-[9px] text-slate-400 mt-0.5 block font-medium">Controls the print layout logo/footer</span>
+              <span className="text-[9px] text-slate-400 mt-0.5 block font-medium">{t(`Controls the print layout logo/footer`)}</span>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Customer</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Customer`)}</label>
               <select
                 value={selectedCustomerIdForEditor}
                 onChange={(e) => {
@@ -661,21 +663,21 @@ export default function SalesSection({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Salesperson</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Salesperson`)}</label>
               <select
                 value={salesperson}
                 onChange={(e) => setSalesperson(e.target.value)}
                 className="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-slate-700 text-xs outline-none focus:border-blue-500"
               >
-                <option>None</option>
+                <option>{t(`None`)}</option>
                 <option>{currentUserName}</option>
-                <option>Roni K.</option>
-                <option>Youssef S.</option>
+                <option>{t(`Roni K.`)}</option>
+                <option>{t(`Youssef S.`)}</option>
               </select>
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Customer Invoice #</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Customer Invoice #`)}</label>
               <input
                 type="text"
                 value={customerInvoiceNo}
@@ -686,7 +688,7 @@ export default function SalesSection({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Invoice Date</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Invoice Date`)}</label>
               <input
                 type="date"
                 value={editorDate}
@@ -696,7 +698,7 @@ export default function SalesSection({
             </div>
 
             <div>
-              <label className="block font-bold text-slate-700 mb-0.5">Due Date (optional)</label>
+              <label className="block font-bold text-slate-700 mb-0.5">{t(`Due Date (optional)`)}</label>
               <input
                 type="date"
                 value={editorDueDate}
@@ -707,19 +709,19 @@ export default function SalesSection({
 
             <div className="grid grid-cols-2 gap-1.5 font-bold">
               <div>
-                <label className="block font-bold text-slate-700 mb-0.5">Currency</label>
+                <label className="block font-bold text-slate-700 mb-0.5">{t(`Currency`)}</label>
                 <select
                   value={editorCurrency}
                   onChange={(e) => setEditorCurrency(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded px-1.5 py-1 text-[11px] text-slate-700 outline-none focus:border-blue-550 font-black"
                 >
-                  <option value="SYP">SYP</option>
-                  <option value="USD">USD</option>
-                  <option value="EUR">EUR</option>
+                  <option value="SYP">{t(`SYP`)}</option>
+                  <option value="USD">{t(`USD`)}</option>
+                  <option value="EUR">{t(`EUR`)}</option>
                 </select>
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-0.5 font-sans">Exchange Rate</label>
+                <label className="block font-bold text-slate-700 mb-0.5 font-sans">{t(`Exchange Rate`)}</label>
                 <input
                   type="number"
                   step="any"
@@ -733,7 +735,7 @@ export default function SalesSection({
           </div>
 
           <div className="mt-2.5">
-            <label className="block font-bold text-slate-700 mb-0.5">Notes</label>
+            <label className="block font-bold text-slate-700 mb-0.5">{t(`Notes`)}</label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
@@ -777,18 +779,18 @@ export default function SalesSection({
             <table className="w-full text-left border-collapse text-xs select-none min-w-[1200px]">
               <thead className="sticky top-0 z-20 bg-slate-50 shadow-sm">
                 <tr className="bg-slate-50 border-b border-slate-200 font-mono font-bold text-slate-400 uppercase tracking-wider text-[9px]">
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '280px' }}>Item</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '70px' }}>Qty</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '80px' }}>UOM</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right" style={{ width: '110px' }}>Unit Price (SYP)</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '120px' }}>Discount Type</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '80px' }}>Discount</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '110px' }}>Tax Code</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '200px' }}>Warehouse</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">Discount Amt</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">Line Total</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">Tax</th>
-                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">Line Base</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '280px' }}>{t(`Item`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '70px' }}>{t(`Qty`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '80px' }}>{t(`UOM`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right" style={{ width: '110px' }}>{t(`Unit Price (SYP)`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '120px' }}>{t(`Discount Type`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '80px' }}>{t(`Discount`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '110px' }}>{t(`Tax Code`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20" style={{ width: '200px' }}>{t(`Warehouse`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">{t(`Discount Amt`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">{t(`Line Total`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">{t(`Tax`)}</th>
+                  <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-right">{t(`Line Base`)}</th>
                   <th className="py-2 px-2 sticky top-0 bg-slate-50 z-20 text-center" style={{ width: '40px' }}></th>
                 </tr>
               </thead>
@@ -841,11 +843,11 @@ export default function SalesSection({
                           }}
                           className="w-full bg-white border border-slate-200 rounded px-1 py-1 text-slate-700 outline-none text-xs focus:border-blue-500"
                         >
-                          <option value="PCS">PCS</option>
-                          <option value="LTR">LTR</option>
-                          <option value="KG">KG</option>
-                          <option value="BOX">BOX</option>
-                          <option value="PKG">PKG</option>
+                          <option value="PCS">{t(`PCS`)}</option>
+                          <option value="LTR">{t(`LTR`)}</option>
+                          <option value="KG">{t(`KG`)}</option>
+                          <option value="BOX">{t(`BOX`)}</option>
+                          <option value="PKG">{t(`PKG`)}</option>
                         </select>
                       </td>
 
@@ -871,9 +873,9 @@ export default function SalesSection({
                           }}
                           className="w-full bg-white border border-slate-200 rounded px-1 py-1 text-slate-700 outline-none text-xs focus:border-blue-550"
                         >
-                          <option value="No Discount">No Discount</option>
-                          <option value="Percentage">Percentage %</option>
-                          <option value="Fixed">Fixed SYP</option>
+                          <option value="No Discount">{t(`No Discount`)}</option>
+                          <option value="Percentage">{t(`Percentage %`)}</option>
+                          <option value="Fixed">{t(`Fixed SYP`)}</option>
                         </select>
                       </td>
 
@@ -900,10 +902,10 @@ export default function SalesSection({
                           }}
                           className="w-full bg-white border border-slate-200 rounded px-1 py-1 text-slate-705 outline-none text-xs focus:border-blue-550"
                         >
-                          <option value="No Tax">No Tax</option>
-                          <option value="VAT 5%">VAT 5%</option>
-                          <option value="VAT 15%">VAT 15%</option>
-                          <option value="Service 10%">Service 10%</option>
+                          <option value="No Tax">{t(`No Tax`)}</option>
+                          <option value="VAT 5%">{t(`VAT 5%`)}</option>
+                          <option value="VAT 15%">{t(`VAT 15%`)}</option>
+                          <option value="Service 10%">{t(`Service 10%`)}</option>
                         </select>
                       </td>
 
@@ -916,9 +918,9 @@ export default function SalesSection({
                           }}
                           className="w-full bg-white border border-slate-200 rounded px-1 py-1 text-slate-705 outline-none text-xs focus:border-blue-550"
                         >
-                          <option value="MAIN - Main Warehouse">MAIN - Main Warehouse</option>
-                          <option value="AL-BASEL - Al-Basel Yard">AL-BASEL - Al-Basel Yard</option>
-                          <option value="TRANSIT - Transit Hub 3">TRANSIT - Transit Hub 3</option>
+                          <option value="MAIN - Main Warehouse">{t(`MAIN - Main Warehouse`)}</option>
+                          <option value="AL-BASEL - Al-Basel Yard">{t(`AL-BASEL - Al-Basel Yard`)}</option>
+                          <option value="TRANSIT - Transit Hub 3">{t(`TRANSIT - Transit Hub 3`)}</option>
                         </select>
                       </td>
 
@@ -1026,9 +1028,9 @@ export default function SalesSection({
                       }}
                       className="bg-white border border-slate-200 rounded px-1.5 py-1 text-xs outline-none focus:border-blue-500 w-32"
                     >
-                      <option value="No Tax">No Tax</option>
-                      <option value="VAT 5%">VAT 5%</option>
-                      <option value="VAT 15%">VAT 15%</option>
+                      <option value="No Tax">{t(`No Tax`)}</option>
+                      <option value="VAT 5%">{t(`VAT 5%`)}</option>
+                      <option value="VAT 15%">{t(`VAT 15%`)}</option>
                     </select>
                     <input
                       type="text"
@@ -1041,7 +1043,7 @@ export default function SalesSection({
                       className="flex-1 min-w-[150px] bg-white border border-slate-200 rounded px-1.5 py-1 text-slate-700 outline-none text-xs focus:border-blue-500"
                     />
                     <div className="text-right text-xs font-bold text-slate-655 px-2 font-mono">
-                      SYP {fmt(totalAmt)} <span className="text-[10px] text-zinc-400 font-normal">(Tax: SYP {fmt(taxAmt)})</span>
+                      {t(`SYP`)} {fmt(totalAmt)} <span className="text-[10px] text-zinc-400 font-normal">{t(`(Tax: SYP`)} {fmt(taxAmt)})</span>
                     </div>
                     <button
                       type="button"
@@ -1090,7 +1092,7 @@ export default function SalesSection({
                 onClick={() => setIsAttachmentModalOpen(true)}
                 className="bg-white hover:bg-indigo-50 text-indigo-700 border border-indigo-250 font-bold text-[10px] px-2 py-1 rounded transition flex items-center gap-1 shadow-2xs"
               >
-                <Paperclip className="w-3.5 h-3.5 text-indigo-500" /> Manage Attachments ({attachments.length})
+                <Paperclip className="w-3.5 h-3.5 text-indigo-500" /> {t(`Manage Attachments (`)}{attachments.length})
               </button>
             </div>
           </div>
@@ -1100,17 +1102,17 @@ export default function SalesSection({
               <thead className="sticky top-0 bg-slate-50 z-10 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[8px] font-mono shadow-xs">
                 <tr>
                   <th className="py-2 px-1.5 text-center" style={{ width: '35px' }}>#</th>
-                  <th className="py-2 px-1.5" style={{ width: '160px' }}>Account allocation</th>
-                  <th className="py-2 px-1.5" style={{ width: '90px' }}>Discount amt</th>
-                  <th className="py-2 px-1.5" style={{ width: '90px' }}>Discount %</th>
-                  <th className="py-2 px-1.5" style={{ width: '100px' }}>Additions (Tax)</th>
-                  <th className="py-2 px-1.5" style={{ width: '90px' }}>Additions %</th>
-                  <th className="py-2 px-1.5">Internal Accounting Notes</th>
-                  <th className="py-2 px-1.5 text-center" style={{ width: '60px' }}>Parity</th>
-                  <th className="py-2 px-1.5 text-right" style={{ width: '100px' }}>Equivalent</th>
-                  <th className="py-2 px-1.5" style={{ width: '90px' }}>Category</th>
-                  <th className="py-2 px-1.5" style={{ width: '100px' }}>Cost Center</th>
-                  <th className="py-2 px-1.5" style={{ width: '110px' }}>Contra Account</th>
+                  <th className="py-2 px-1.5" style={{ width: '160px' }}>{t(`Account allocation`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '90px' }}>{t(`Discount amt`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '90px' }}>{t(`Discount %`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '100px' }}>{t(`Additions (Tax)`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '90px' }}>{t(`Additions %`)}</th>
+                  <th className="py-2 px-1.5">{t(`Internal Accounting Notes`)}</th>
+                  <th className="py-2 px-1.5 text-center" style={{ width: '60px' }}>{t(`Parity`)}</th>
+                  <th className="py-2 px-1.5 text-right" style={{ width: '100px' }}>{t(`Equivalent`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '90px' }}>{t(`Category`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '100px' }}>{t(`Cost Center`)}</th>
+                  <th className="py-2 px-1.5" style={{ width: '110px' }}>{t(`Contra Account`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150">
@@ -1248,7 +1250,7 @@ export default function SalesSection({
               <div className="bg-gradient-to-r from-slate-900 to-indigo-950 px-4 py-3 flex items-center justify-between text-white font-sans">
                 <div className="flex items-center gap-2">
                   <Paperclip className="w-4 h-4 text-indigo-300" />
-                  <span className="font-black text-xs uppercase tracking-wider">Manage Attachments & Vouchers</span>
+                  <span className="font-black text-xs uppercase tracking-wider">{t(`Manage Attachments & Vouchers`)}</span>
                 </div>
                 <button
                   type="button"
@@ -1285,13 +1287,13 @@ export default function SalesSection({
                   <div className="w-10 h-10 rounded-full bg-indigo-50 group-hover:bg-indigo-100 flex items-center justify-center transition">
                     <Plus className="w-5 h-5 text-indigo-600" />
                   </div>
-                  <span className="text-indigo-600 font-bold hover:underline text-xs mt-1">Upload New Document</span>
-                  <span className="text-[9px] text-slate-400">Drag & drop your file here, or click to browse</span>
+                  <span className="text-indigo-600 font-bold hover:underline text-xs mt-1">{t(`Upload New Document`)}</span>
+                  <span className="text-[9px] text-slate-400">{t(`Drag & drop your file here, or click to browse`)}</span>
                 </div>
 
                 <div className="space-y-1.5">
                   <div className="text-[9px] font-black text-slate-400 uppercase tracking-widest font-mono">
-                    Current files ({attachments.length})
+                    {t(`Current files (`)}{attachments.length})
                   </div>
                   <div className="max-h-[140px] overflow-y-auto scrollbar-thin space-y-1.5 border border-slate-100 p-1.5 rounded-lg bg-slate-50/50">
                     {attachments.length === 0 ? (
@@ -1366,34 +1368,34 @@ export default function SalesSection({
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 order-1 xl:order-2 bg-slate-50/80 border border-slate-200/60 rounded-lg p-2 px-4">
             <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-xs font-semibold">
               <div className="text-[11px]">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">Subtotal</span>
-                <span className="font-mono font-bold text-slate-805">{fmt(totals.subtotalSYP)} SYP</span>
+                <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">{t(`Subtotal`)}</span>
+                <span className="font-mono font-bold text-slate-805">{fmt(totals.subtotalSYP)} {t(`SYP`)}</span>
               </div>
               
               {totals.chargesSYP > 0 && (
                 <div className="text-[11px]">
-                  <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">Charges</span>
-                  <span className="font-mono font-bold text-slate-805">{fmt(totals.chargesSYP)} SYP</span>
+                  <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">{t(`Charges`)}</span>
+                  <span className="font-mono font-bold text-slate-805">{fmt(totals.chargesSYP)} {t(`SYP`)}</span>
                 </div>
               )}
               
               <div className="text-[11px]">
-                <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">Tax Amount</span>
-                <span className="font-mono font-bold text-slate-805">{fmt(totals.taxSYP)} SYP</span>
+                <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">{t(`Tax Amount`)}</span>
+                <span className="font-mono font-bold text-slate-805">{fmt(totals.taxSYP)} {t(`SYP`)}</span>
               </div>
 
               <div className="hidden sm:block h-5 w-px bg-slate-200"></div>
 
               <div className="text-[11px]">
-                <span className="block text-[8px] uppercase tracking-widest text-slate-400 font-extrabold font-mono leading-none">Grand Total (SYP)</span>
-                <span className="font-mono text-sm font-black text-rose-600 leading-tight block">{fmt(totals.grandTotalSYP)} SYP</span>
+                <span className="block text-[8px] uppercase tracking-widest text-slate-400 font-extrabold font-mono leading-none">{t(`Grand Total (SYP)`)}</span>
+                <span className="font-mono text-sm font-black text-rose-600 leading-tight block">{fmt(totals.grandTotalSYP)} {t(`SYP`)}</span>
               </div>
 
               {Number(editorExchangeRate) !== 1 && (
                 <>
                   <div className="hidden sm:block h-5 w-px bg-slate-200"></div>
                   <div className="text-[11px]">
-                    <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">Base ({editorCurrency})</span>
+                    <span className="block text-[8px] uppercase tracking-wider text-slate-400 font-extrabold font-mono leading-none">{t(`Base (`)}{editorCurrency})</span>
                     <span className="font-mono text-xs font-black text-emerald-600 leading-tight block">{fmt(totals.grandTotalBase)}</span>
                   </div>
                 </>
@@ -1431,8 +1433,8 @@ export default function SalesSection({
       {/* Top action header matching screenshots */}
       <div className="flex items-center justify-between pb-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-800 tracking-tight">Sales Overview Module</h1>
-          <p className="text-xs text-slate-500">Track and publish invoices, monitor receivables, and configure sales order funnels.</p>
+          <h1 className="text-xl font-bold text-slate-800 tracking-tight">{t(`Sales Overview Module`)}</h1>
+          <p className="text-xs text-slate-500">{t(`Track and publish invoices, monitor receivables, and configure sales order funnels.`)}</p>
         </div>
         <div className="flex items-center space-x-2">
           <button 
@@ -1460,10 +1462,10 @@ export default function SalesSection({
       {/* Dynamic Smart KPIs Grid */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-5 rounded-lg border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.015)]">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">TOTAL REVENUE</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t(`TOTAL REVENUE`)}</span>
           <div className="mt-2 flex items-baseline">
             <span className="text-lg font-black text-slate-800 font-mono tracking-tight">{fmt(totalRevenue)}</span>
-            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">SYP</span>
+            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">{t(`SYP`)}</span>
           </div>
           <div className="mt-2 text-[10px] text-slate-400 font-semibold flex items-center gap-1">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
@@ -1472,10 +1474,10 @@ export default function SalesSection({
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.015)]">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">OUTSTANDING AR</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t(`OUTSTANDING AR`)}</span>
           <div className="mt-2 flex items-baseline">
             <span className="text-lg font-black text-rose-600 font-mono tracking-tight">{fmt(outstandingAR)}</span>
-            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">SYP</span>
+            <span className="text-[10px] text-slate-400 ml-1.5 font-sans font-bold">{t(`SYP`)}</span>
           </div>
           <div className="mt-2 text-[10px] text-rose-500 font-semibold">
             Due collection ledger status
@@ -1483,10 +1485,10 @@ export default function SalesSection({
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.015)]">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">OVERDUE INVOICES</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t(`OVERDUE INVOICES`)}</span>
           <div className="mt-2 flex items-baseline">
             <span className="text-lg font-black text-rose-700 font-mono tracking-tight">{overdueInvoicesCount}</span>
-            <span className="text-xs text-zinc-400 ml-1.5 font-sans font-normal">Active items</span>
+            <span className="text-xs text-zinc-400 ml-1.5 font-sans font-normal">{t(`Active items`)}</span>
           </div>
           <div className="mt-2 text-[10px] text-zinc-400">
             Requiring immediate credit claims
@@ -1494,10 +1496,10 @@ export default function SalesSection({
         </div>
 
         <div className="bg-white p-5 rounded-lg border border-[#E2E8F0] shadow-[0_1px_3px_rgba(0,0,0,0.015)]">
-          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">POSTED INVOICES</span>
+          <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">{t(`POSTED INVOICES`)}</span>
           <div className="mt-2 flex items-baseline">
             <span className="text-lg font-black text-blue-605 font-mono tracking-tight">{postedInvoicesCount}</span>
-            <span className="text-xs text-zinc-400 ml-1.5 font-sans font-normal">Invoices pending</span>
+            <span className="text-xs text-zinc-400 ml-1.5 font-sans font-normal">{t(`Invoices pending`)}</span>
           </div>
           <div className="mt-2 text-[10px] text-zinc-400">
             Awaiting bank transfers
@@ -1511,18 +1513,18 @@ export default function SalesSection({
           {/* Recent Sales Orders Box */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
             <div className="p-4 border-b border-zinc-150 flex items-center justify-between">
-              <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider">Recent Sales Orders (SO)</h2>
-              <span className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline">View all</span>
+              <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider">{t(`Recent Sales Orders (SO)`)}</h2>
+              <span className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline">{t(`View all`)}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-zinc-50 border-b border-zinc-200 text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-4 font-mono">SO Number</th>
-                    <th className="py-2.5 px-3">Date</th>
-                    <th className="py-2.5 px-3">Customer</th>
-                    <th className="py-2.5 px-3 text-right">Draft SYP</th>
-                    <th className="py-2.5 px-4 text-center">Workflow</th>
+                    <th className="py-2.5 px-4 font-mono">{t(`SO Number`)}</th>
+                    <th className="py-2.5 px-3">{t(`Date`)}</th>
+                    <th className="py-2.5 px-3">{t(`Customer`)}</th>
+                    <th className="py-2.5 px-3 text-right">{t(`Draft SYP`)}</th>
+                    <th className="py-2.5 px-4 text-center">{t(`Workflow`)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -1550,18 +1552,18 @@ export default function SalesSection({
           {/* Recent Sales Invoices Box */}
           <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm">
             <div className="p-4 border-b border-zinc-150 flex items-center justify-between">
-              <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider">Recent Sales Invoices (INV)</h2>
-              <span className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline">View all</span>
+              <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider">{t(`Recent Sales Invoices (INV)`)}</h2>
+              <span className="text-[11px] text-blue-600 font-semibold cursor-pointer hover:underline">{t(`View all`)}</span>
             </div>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-zinc-50 border-b border-zinc-200 text-[10px] font-mono font-bold text-zinc-500 uppercase tracking-wider">
-                    <th className="py-2.5 px-4 font-mono">Invoice Number</th>
-                    <th className="py-2.5 px-3">Due Date</th>
-                    <th className="py-2.5 px-3">Customer</th>
-                    <th className="py-2.5 px-3 text-right">Invoice Sum</th>
-                    <th className="py-2.5 px-4 text-center">Payment Status</th>
+                    <th className="py-2.5 px-4 font-mono">{t(`Invoice Number`)}</th>
+                    <th className="py-2.5 px-3">{t(`Due Date`)}</th>
+                    <th className="py-2.5 px-3">{t(`Customer`)}</th>
+                    <th className="py-2.5 px-3 text-right">{t(`Invoice Sum`)}</th>
+                    <th className="py-2.5 px-4 text-center">{t(`Payment Status`)}</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
@@ -1613,7 +1615,7 @@ export default function SalesSection({
 
         {/* Right sidebar: Top customers list */}
         <div className="bg-white border border-[#E2E8F0] rounded-lg shadow-sm p-4 h-fit">
-          <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-4">Top Client Corporate Ledger</h2>
+          <h2 className="text-xs font-black uppercase text-slate-700 tracking-wider mb-4">{t(`Top Client Corporate Ledger`)}</h2>
           <div className="space-y-4 font-sans">
             {customers.map((cust) => (
               <div key={cust.id} className="p-3 bg-zinc-50 rounded-lg border border-[#F1F3F5] hover:border-slate-300 transition-colors flex items-center justify-between">
@@ -1625,7 +1627,7 @@ export default function SalesSection({
                   <span className={`text-[11px] font-mono font-bold block ${cust.balance > 0 ? 'text-slate-800' : 'text-slate-400'}`}>
                     {cust.balance > 0 ? `${fmt(cust.balance)} SYP` : 'Clear Balance'}
                   </span>
-                  <span className="text-[9px] text-[#A1A1AA] uppercase tracking-wider block">Balance</span>
+                  <span className="text-[9px] text-[#A1A1AA] uppercase tracking-wider block">{t(`Balance`)}</span>
                 </div>
               </div>
             ))}
@@ -1639,9 +1641,9 @@ export default function SalesSection({
           <div className="w-full max-w-lg bg-white h-full shadow-2xl flex flex-col p-6 overflow-y-auto font-sans">
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div>
-                <span className="text-[10px] font-bold tracking-widest font-mono text-zinc-400 block uppercase">Tax Invoice Journal Post</span>
+                <span className="text-[10px] font-bold tracking-widest font-mono text-zinc-400 block uppercase">{t(`Tax Invoice Journal Post`)}</span>
                 <h3 className="text-sm font-black text-slate-800 mt-0.5">
-                  ID: {selectedInvoice.invoiceNumber}
+                  {t(`ID:`)} {selectedInvoice.invoiceNumber}
                 </h3>
               </div>
               <button 
@@ -1654,15 +1656,15 @@ export default function SalesSection({
 
             <div className="flex justify-between text-xs text-slate-500 mb-6 font-semibold">
               <div>
-                <span className="block text-[10px] text-zinc-400">ISSUED DATE</span>
+                <span className="block text-[10px] text-zinc-400">{t(`ISSUED DATE`)}</span>
                 <span className="text-slate-700 block mt-0.5 font-mono">{selectedInvoice.date}</span>
               </div>
               <div>
-                <span className="block text-[10px] text-zinc-400">DUE MATURITY DATE</span>
+                <span className="block text-[10px] text-zinc-400">{t(`DUE MATURITY DATE`)}</span>
                 <span className="text-slate-700 block mt-0.5 font-mono">{selectedInvoice.dueDate}</span>
               </div>
               <div>
-                <span className="block text-[10px] text-zinc-400">STATUS BADGE</span>
+                <span className="block text-[10px] text-zinc-400">{t(`STATUS BADGE`)}</span>
                 <span className={`inline-block mt-0.5 px-2 py-0.5 rounded font-mono font-black uppercase text-[10px] ${
                   selectedInvoice.status === 'Paid' ? 'bg-emerald-50 text-emerald-805' :
                   selectedInvoice.status === 'Posted' ? 'bg-blue-50 text-blue-805' : 'bg-rose-50 text-rose-805 animate-pulse'
@@ -1675,28 +1677,28 @@ export default function SalesSection({
             {/* Client / Issuer detailed split card */}
             <div className="grid grid-cols-2 gap-4 border border-zinc-100 bg-zinc-50 p-4 rounded-lg mb-6">
               <div>
-                <span className="text-[9px] font-bold text-zinc-400 block uppercase mb-1">FOR CLIENT DISCHARGE:</span>
+                <span className="text-[9px] font-bold text-zinc-400 block uppercase mb-1">{t(`FOR CLIENT DISCHARGE:`)}</span>
                 <span className="font-bold text-slate-800 text-xs block">{selectedInvoice.customerName}</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">Client ID: {selectedInvoice.customerId}</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">{t(`Client ID:`)} {selectedInvoice.customerId}</span>
               </div>
               <div className="text-right border-l border-zinc-200 pl-4">
-                <span className="text-[9px] font-bold text-zinc-400 block uppercase mb-1">TAX ISSUER CORPORATE:</span>
+                <span className="text-[9px] font-bold text-zinc-400 block uppercase mb-1">{t(`TAX ISSUER CORPORATE:`)}</span>
                 <span className="font-bold text-slate-800 text-xs block">{companyName}</span>
-                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">Branch: active tenant</span>
+                <span className="text-[10px] text-slate-400 block mt-0.5 font-mono">{t(`Branch: active tenant`)}</span>
               </div>
             </div>
 
             {/* Line items details */}
             <div className="space-y-3 flex-1">
-              <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wide">Invoice Billable Items</span>
+              <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wide">{t(`Invoice Billable Items`)}</span>
               <div className="border border-zinc-150 rounded-lg overflow-hidden">
                 <table className="w-full text-left border-collapse text-xs">
                   <thead>
                     <tr className="bg-zinc-50 text-[10px] font-mono text-zinc-500 font-bold border-b border-zinc-200">
-                      <th className="p-2">Description</th>
-                      <th className="p-2 text-center">Qty</th>
-                      <th className="p-2 text-right">Price SYP</th>
-                      <th className="p-2 text-right">Total SYP</th>
+                      <th className="p-2">{t(`Description`)}</th>
+                      <th className="p-2 text-center">{t(`Qty`)}</th>
+                      <th className="p-2 text-right">{t(`Price SYP`)}</th>
+                      <th className="p-2 text-right">{t(`Total SYP`)}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-zinc-100 text-slate-700">
@@ -1716,16 +1718,16 @@ export default function SalesSection({
               <div className="flex justify-end pt-2">
                 <div className="w-56 space-y-1.5 text-xs">
                   <div className="flex justify-between text-slate-500">
-                    <span>Aggregated Taxable:</span>
-                    <span className="font-mono font-bold">{fmt(selectedInvoice.totalAmount - selectedInvoice.taxAmount)} SYP</span>
+                    <span>{t(`Aggregated Taxable:`)}</span>
+                    <span className="font-mono font-bold">{fmt(selectedInvoice.totalAmount - selectedInvoice.taxAmount)} {t(`SYP`)}</span>
                   </div>
                   <div className="flex justify-between text-slate-500">
-                    <span>Vat / Sales Tax (5%):</span>
-                    <span className="font-mono font-bold">{fmt(selectedInvoice.taxAmount)} SYP</span>
+                    <span>{t(`Vat / Sales Tax (5%):`)}</span>
+                    <span className="font-mono font-bold">{fmt(selectedInvoice.taxAmount)} {t(`SYP`)}</span>
                   </div>
                   <div className="flex justify-between text-slate-800 font-black text-sm border-t border-zinc-200 pt-2">
-                    <span>Total Sum:</span>
-                    <span className="font-mono">{fmt(selectedInvoice.totalAmount)} SYP</span>
+                    <span>{t(`Total Sum:`)}</span>
+                    <span className="font-mono">{fmt(selectedInvoice.totalAmount)} {t(`SYP`)}</span>
                   </div>
                 </div>
               </div>
@@ -1766,8 +1768,8 @@ export default function SalesSection({
           >
             <div className="flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
               <div>
-                <h3 className="text-sm font-black text-slate-800">Draft New Sales Order</h3>
-                <p className="text-[11px] text-slate-400 mt-0.5">Publish certified sales orders mapped into ledgers automatically.</p>
+                <h3 className="text-sm font-black text-slate-800">{t(`Draft New Sales Order`)}</h3>
+                <p className="text-[11px] text-slate-400 mt-0.5">{t(`Publish certified sales orders mapped into ledgers automatically.`)}</p>
               </div>
               <button 
                 type="button"
@@ -1787,7 +1789,7 @@ export default function SalesSection({
 
             <div className="space-y-4 flex-1">
               <div>
-                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">Corporate Client</label>
+                <label className="block text-[11px] font-bold text-slate-500 uppercase mb-1">{t(`Corporate Client`)}</label>
                 <select
                   value={selectedCustomerId}
                   onChange={(e) => setSelectedCustomerId(e.target.value)}
@@ -1801,7 +1803,7 @@ export default function SalesSection({
 
               <div className="space-y-2.5">
                 <div className="flex items-center justify-between">
-                  <span className="text-[11px] font-bold text-slate-550 uppercase">Sales Line Items</span>
+                  <span className="text-[11px] font-bold text-slate-550 uppercase">{t(`Sales Line Items`)}</span>
                   <button
                     type="button"
                     onClick={handleAddLineItem}
@@ -1830,7 +1832,7 @@ export default function SalesSection({
                         </div>
                         <div className="grid grid-cols-2 gap-2">
                           <div>
-                            <label className="block text-[10px] text-zinc-400">Qty Units</label>
+                            <label className="block text-[10px] text-zinc-400">{t(`Qty Units`)}</label>
                             <input
                               type="number"
                               min={1}
@@ -1841,7 +1843,7 @@ export default function SalesSection({
                             />
                           </div>
                           <div>
-                            <label className="block text-[10px] text-zinc-400">Unit Price SYP</label>
+                            <label className="block text-[10px] text-zinc-400">{t(`Unit Price SYP`)}</label>
                             <input
                               type="number"
                               min={0}
@@ -1871,19 +1873,19 @@ export default function SalesSection({
 
             <div className="bg-[#FAFCFD] border border-[#E2E8F0] p-4 rounded-md space-y-1.5 text-xs text-slate-500 mt-4 mb-4">
               <div className="flex justify-between">
-                <span>Calculated Subtotal:</span>
+                <span>{t(`Calculated Subtotal:`)}</span>
                 <span className="font-mono text-slate-705 font-bold">
                   {fmt(selectedItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0))} SYP
                 </span>
               </div>
               <div className="flex justify-between">
-                <span>VAT / Sales Tax estimation (5%):</span>
+                <span>{t(`VAT / Sales Tax estimation (5%):`)}</span>
                 <span className="font-mono text-slate-705 font-bold">
                   {fmt(Math.round(selectedItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0) * 0.05))} SYP
                 </span>
               </div>
               <div className="flex justify-between border-t border-dashed border-slate-200/80 pt-2 font-black text-slate-805">
-                <span>Certified Invoice Sum:</span>
+                <span>{t(`Certified Invoice Sum:`)}</span>
                 <span className="font-mono">
                   {fmt(Math.round(selectedItems.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0) * 1.05))} SYP
                 </span>

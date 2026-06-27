@@ -21,6 +21,7 @@ import {
   getWorkflowModeLabel,
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
+import i18n from "i18next";
 
 const newClientId = (): string => {
   if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
@@ -323,7 +324,7 @@ const SalesSettingsPage: React.FC = () => {
           setSettings(originalSettings);
           setSellingPolicy(originalSellingPolicy);
           setCredentialDraftByAccountId({});
-          toast('Changes discarded', { icon: 'ℹ️' });
+          toast(i18n.t('Changes discarded'), { icon: 'ℹ️' });
         }}
         saving={saving}
       >
@@ -346,7 +347,7 @@ const SalesSettingsPage: React.FC = () => {
             <div className="grid md:grid-cols-2 gap-8">
               <div className="space-y-4">
                 <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-sm font-bold text-gray-900">Workflow Mode</div>
+                  <div className="mb-3 text-sm font-bold text-gray-900">{t(`Workflow Mode`)}</div>
                   <div className="space-y-3">
                     <label className={`flex items-start gap-3 rounded-lg border p-4 cursor-pointer ${settings.workflowMode === 'SIMPLE' ? 'border-indigo-500 bg-indigo-50/20' : 'border-gray-200 hover:border-indigo-200'}`}>
                       <input
@@ -356,8 +357,8 @@ const SalesSettingsPage: React.FC = () => {
                         onChange={() => applyWorkflowMode('SIMPLE')}
                       />
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Simple</div>
-                        <div className="text-xs text-gray-500 uppercase tracking-tight">Show invoices and returns only.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Simple`)}</div>
+                        <div className="text-xs text-gray-500 uppercase tracking-tight">{t(`Show invoices and returns only.`)}</div>
                       </div>
                     </label>
 
@@ -369,8 +370,8 @@ const SalesSettingsPage: React.FC = () => {
                         onChange={() => applyWorkflowMode('OPERATIONAL')}
                       />
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Operational</div>
-                        <div className="text-xs text-gray-500 uppercase tracking-tight">Expose orders and delivery documents.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Operational`)}</div>
+                        <div className="text-xs text-gray-500 uppercase tracking-tight">{t(`Expose orders and delivery documents.`)}</div>
                       </div>
                     </label>
                   </div>
@@ -379,7 +380,7 @@ const SalesSettingsPage: React.FC = () => {
                       <div className="flex gap-2">
                         <Info size={14} className="flex-shrink-0" />
                         <span>
-                          <strong>Policy Note:</strong> You are using <strong>Perpetual</strong> accounting with <strong>Simple</strong> workflow. Invoices will automatically trigger both stock movements and accounting effects.
+                          <strong>{t(`Policy Note:`)}</strong> {t(`You are using`)} <strong>{t(`Perpetual`)}</strong> {t(`accounting with`)} <strong>{t(`Simple`)}</strong> workflow. Invoices will automatically trigger both stock movements and accounting effects.
                         </span>
                       </div>
                     </div>
@@ -422,8 +423,8 @@ const SalesSettingsPage: React.FC = () => {
                         Allow credit-limit overrides
                       </span>
                       <span className="ml-1 text-gray-500">
-                        When off, BLOCK policy is absolute — no one can bypass it. Requires the{' '}
-                        <code className="rounded bg-slate-100 px-1">sales.creditOverride</code> permission
+                        {t(`When off, BLOCK policy is absolute — no one can bypass it. Requires the`)}{' '}
+                        <code className="rounded bg-slate-100 px-1">{t(`sales.creditOverride`)}</code> permission
                         when on (Owner always allowed).
                       </span>
                     </span>
@@ -484,8 +485,8 @@ const SalesSettingsPage: React.FC = () => {
 
                     <label className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white cursor-pointer hover:border-indigo-200 transition shadow-sm">
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Require SO for Stock Items</div>
-                        <div className="text-xs text-gray-500 uppercase tracking-tight">Force Sales Order workflow for inventory.</div>
+                        <div className="text-sm font-bold text-gray-900">{t(`Require SO for Stock Items`)}</div>
+                        <div className="text-xs text-gray-500 uppercase tracking-tight">{t(`Force Sales Order workflow for inventory.`)}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -505,7 +506,7 @@ const SalesSettingsPage: React.FC = () => {
 
               <div className="space-y-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Payment Terms (Days)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Payment Terms (Days)`)}</label>
                   <input
                     type="number"
                     min={0}
@@ -517,7 +518,7 @@ const SalesSettingsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Over-delivery (%)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Over-delivery (%)`)}</label>
                     <input
                       type="number"
                       step={0.01}
@@ -527,7 +528,7 @@ const SalesSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Over-invoice (%)</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Over-invoice (%)`)}</label>
                     <input
                       type="number"
                       step={0.01}
@@ -545,15 +546,15 @@ const SalesSettingsPage: React.FC = () => {
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-1">
                 <ShieldCheck className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-sm font-bold text-gray-900">Below-cost selling policy</h3>
+                <h3 className="text-sm font-bold text-gray-900">{t(`Below-cost selling policy`)}</h3>
               </div>
               <p className="mb-4 text-xs text-gray-500">
-                A company-wide commercial rule applied to both <strong>Sales invoices</strong> and the{' '}
-                <strong>POS till</strong>. Controls what happens when a line sells at or below its cost.
+                {t(`A company-wide commercial rule applied to both`)} <strong>{t(`Sales invoices`)}</strong> {t(`and the`)}{' '}
+                <strong>{t(`POS till`)}</strong>. Controls what happens when a line sells at or below its cost.
               </p>
               <div className="grid md:grid-cols-2 gap-8">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">When a line is below cost</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t(`When a line is below cost`)}</label>
                   <select
                     className="w-full rounded-lg border border-gray-300 px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                     value={sellingPolicy.belowCostMode}
@@ -563,9 +564,9 @@ const SalesSettingsPage: React.FC = () => {
                       )
                     }
                   >
-                    <option value="BLOCK">Block — never allow below-cost sales</option>
-                    <option value="REQUIRE_APPROVAL">Require approval — block until a manager approves</option>
-                    <option value="ALLOW">Allow — sell below cost freely</option>
+                    <option value="BLOCK">{t(`Block — never allow below-cost sales`)}</option>
+                    <option value="REQUIRE_APPROVAL">{t(`Require approval — block until a manager approves`)}</option>
+                    <option value="ALLOW">{t(`Allow — sell below cost freely`)}</option>
                   </select>
                   <p className="mt-1.5 text-xs text-gray-500 italic">
                     "Require approval" matches how the POS till behaved before this setting existed.
@@ -582,7 +583,7 @@ const SalesSettingsPage: React.FC = () => {
                       }
                     />
                     <span className="text-xs">
-                      <span className="font-semibold text-gray-900">Allow manager override</span>
+                      <span className="font-semibold text-gray-900">{t(`Allow manager override`)}</span>
                       <span className="ml-1 text-gray-500">
                         When off, even an approved override cannot push a below-cost line through (absolute block).
                       </span>
@@ -591,7 +592,7 @@ const SalesSettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Minimum gross margin (%)</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Minimum gross margin (%)`)}</label>
                   <input
                     type="number"
                     min={0}
@@ -632,7 +633,7 @@ const SalesSettingsPage: React.FC = () => {
               <div className="grid md:grid-cols-2 gap-8">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Revenue Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Revenue Account`)}</label>
                     <AccountSelector
                       value={settings.defaultRevenueAccountId}
                       onChange={(account: any) => updateSetting('defaultRevenueAccountId', account?.id || '')}
@@ -640,11 +641,11 @@ const SalesSettingsPage: React.FC = () => {
                       allowedClassifications={['REVENUE']}
                       contextLabel="Income"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Global fallback for all Sales Invoices.</p>
+                    <p className="mt-1.5 text-xs text-gray-500 italic">{t(`Global fallback for all Sales Invoices.`)}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Refund Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Refund Account`)}</label>
                     <AccountSelector
                       value={settings.defaultRefundAccountId}
                       onChange={(account: any) => updateSetting('defaultRefundAccountId', account?.id || undefined)}
@@ -652,11 +653,11 @@ const SalesSettingsPage: React.FC = () => {
                       allowedClassifications={['ASSET']}
                       contextLabel="Cash/Bank (Asset)"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Used when a Sales Return is posted with settlement mode = Refund. Can be overridden per return.</p>
+                    <p className="mt-1.5 text-xs text-gray-500 italic">{t(`Used when a Sales Return is posted with settlement mode = Refund. Can be overridden per return.`)}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Restocking Fee Income Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Restocking Fee Income Account`)}</label>
                     <AccountSelector
                       value={settings.restockingFeeAccountId}
                       onChange={(account: any) => updateSetting('restockingFeeAccountId', account?.id || undefined)}
@@ -664,11 +665,11 @@ const SalesSettingsPage: React.FC = () => {
                       allowedClassifications={['REVENUE']}
                       contextLabel="Income"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.</p>
+                    <p className="mt-1.5 text-xs text-gray-500 italic">{t(`Where restocking fees are booked. Keep separate from product revenue (e.g. "Other Operating Income"). Falls back to the line's revenue account if unset.`)}</p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Sales Discount Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Sales Discount Account`)}</label>
                     <AccountSelector
                       value={settings.defaultSalesExpenseAccountId}
                       onChange={(account: any) => updateSetting('defaultSalesExpenseAccountId', account?.id || undefined)}
@@ -676,7 +677,7 @@ const SalesSettingsPage: React.FC = () => {
                       allowedClassifications={['EXPENSE', 'REVENUE']}
                       contextLabel="Discount (Expense or Contra-Revenue)"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Required when a Sales Invoice line carries a discount. Typically "Sales Discounts Allowed" (expense) or a contra-revenue account so discounts have a visible ledger trace instead of netting silently into revenue.</p>
+                    <p className="mt-1.5 text-xs text-gray-500 italic">{t(`Required when a Sales Invoice line carries a discount. Typically "Sales Discounts Allowed" (expense) or a contra-revenue account so discounts have a visible ledger trace instead of netting silently into revenue.`)}</p>
                   </div>
 
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
@@ -759,13 +760,13 @@ const SalesSettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Warehouse</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Warehouse`)}</label>
                     <WarehouseSelector
                       value={settings.defaultWarehouseId}
                       onChange={(warehouse: any) => updateSetting('defaultWarehouseId', warehouse?.id || '')}
                       placeholder="Select Warehouse"
                     />
-                    <p className="mt-1.5 text-xs text-gray-500 italic">Used when no warehouse is specified on a sales line or invoice header.</p>
+                    <p className="mt-1.5 text-xs text-gray-500 italic">{t(`Used when no warehouse is specified on a sales line or invoice header.`)}</p>
                   </div>
                 </div>
 
@@ -774,21 +775,21 @@ const SalesSettingsPage: React.FC = () => {
                     <div className="p-1.5 bg-indigo-50 rounded-lg">
                       <Settings size={14} className="text-indigo-600" />
                     </div>
-                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">Linked Inventory Context</h3>
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-widest">{t(`Linked Inventory Context`)}</h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Mode:</span>
+                      <span className="text-slate-500">{t(`Mode:`)}</span>
                       <span className="font-bold text-indigo-700">{getAccountingModeLabel(accountingMode)}</span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">Inventory Asset:</span>
+                      <span className="text-slate-500">{t(`Inventory Asset:`)}</span>
                       <span className="font-medium text-slate-700">
                         {invSettings?.defaultInventoryAssetAccountId ? (getAccountById(invSettings.defaultInventoryAssetAccountId)?.name || 'Account Assigned') : 'Not Assigned'}
                       </span>
                     </div>
                     <div className="flex justify-between items-center text-xs">
-                      <span className="text-slate-500">COGS Account:</span>
+                      <span className="text-slate-500">{t(`COGS Account:`)}</span>
                       <span className="font-medium text-slate-700">
                         {invSettings?.defaultCOGSAccountId ? (getAccountById(invSettings.defaultCOGSAccountId)?.name || 'Account Assigned') : 'Not Assigned'}
                       </span>
@@ -820,7 +821,7 @@ const SalesSettingsPage: React.FC = () => {
         >
           <Card className="p-6">
             <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              Workflow mode: <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
+              {t(`Workflow mode:`)} <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
               {[
@@ -835,7 +836,7 @@ const SalesSettingsPage: React.FC = () => {
                     {doc.label}
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Prefix</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t(`Prefix`)}</label>
                     <input
                       type="text"
                       className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold uppercase focus:ring-1 focus:ring-indigo-500"
@@ -844,7 +845,7 @@ const SalesSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Next Number</label>
+                    <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t(`Next Number`)}</label>
                     <input
                       type="number"
                       min={1}
@@ -875,7 +876,7 @@ const SalesSettingsPage: React.FC = () => {
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="h-5 w-5 text-indigo-600" />
                 <h3 className="text-sm font-bold text-gray-900">
-                  Base Policy (Workflow: {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
+                  {t(`Base Policy (Workflow:`)} {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
                 </h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -889,12 +890,12 @@ const SalesSettingsPage: React.FC = () => {
                     {p.allowed ? (
                       <div className="flex items-center gap-1.5 text-green-600">
                         <CheckCircle2 className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase">Allow</span>
+                        <span className="text-xs font-bold uppercase">{t(`Allow`)}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 text-red-600">
                         <XCircle className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase">Block</span>
+                        <span className="text-xs font-bold uppercase">{t(`Block`)}</span>
                       </div>
                     )}
                   </div>
@@ -909,8 +910,8 @@ const SalesSettingsPage: React.FC = () => {
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Active Overrides</h3>
-                  <p className="text-xs text-gray-500">Specific rules that change the base policy behavior.</p>
+                  <h3 className="text-sm font-bold text-gray-900">{t(`Active Overrides`)}</h3>
+                  <p className="text-xs text-gray-500">{t(`Specific rules that change the base policy behavior.`)}</p>
                 </div>
                 {!showAddRule && (
                   <button
@@ -927,30 +928,30 @@ const SalesSettingsPage: React.FC = () => {
                 <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Persona</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Persona`)}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.persona}
                         onChange={(e) => setNewRule({ ...newRule, persona: e.target.value as any })}
                       >
-                        <option value="direct">Direct</option>
-                        <option value="linked">Linked</option>
-                        <option value="service">Service</option>
+                        <option value="direct">{t(`Direct`)}</option>
+                        <option value="linked">{t(`Linked`)}</option>
+                        <option value="service">{t(`Service`)}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Action</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Action`)}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.action}
                         onChange={(e) => setNewRule({ ...newRule, action: e.target.value as any })}
                       >
-                        <option value="allow">Allow</option>
-                        <option value="block">Block</option>
+                        <option value="allow">{t(`Allow`)}</option>
+                        <option value="block">{t(`Block`)}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Scope</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Scope`)}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.scope}
@@ -961,8 +962,8 @@ const SalesSettingsPage: React.FC = () => {
                           formType: e.target.value === 'form' ? newRule.formType : undefined,
                         })}
                       >
-                        <option value="company">Company</option>
-                        <option value="form">Form</option>
+                        <option value="company">{t(`Company`)}</option>
+                        <option value="form">{t(`Form`)}</option>
                       </select>
                     </div>
                   </div>
@@ -970,7 +971,7 @@ const SalesSettingsPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {newRule.scope === 'form' && (
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Form Type</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t(`Form Type`)}</label>
                         <input
                           type="text"
                           placeholder="e.g. sales_invoice_direct"
@@ -1003,11 +1004,11 @@ const SalesSettingsPage: React.FC = () => {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     <tr>
-                      <th className="px-4 py-3">Persona</th>
-                      <th className="px-4 py-3">Scope</th>
-                      <th className="px-4 py-3">Target</th>
-                      <th className="px-4 py-3">Action</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3">{t(`Persona`)}</th>
+                      <th className="px-4 py-3">{t(`Scope`)}</th>
+                      <th className="px-4 py-3">{t(`Target`)}</th>
+                      <th className="px-4 py-3">{t(`Action`)}</th>
+                      <th className="px-4 py-3 text-right">{t(`Actions`)}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">

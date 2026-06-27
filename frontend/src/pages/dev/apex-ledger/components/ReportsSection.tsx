@@ -240,7 +240,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
                 <span className="w-2.5 h-2.5 rounded-full bg-amber-400"></span>
                 <span className="w-2.5 h-2.5 rounded-full bg-emerald-400"></span>
               </div>
-              <span className="text-[10px] font-mono text-slate-400 ml-2">apex-preview:{report.apexPath}</span>
+              <span className="text-[10px] font-mono text-slate-400 ml-2">{t(`apex-preview:`)}{report.apexPath}</span>
             </div>
             <div className="p-6 text-center space-y-4 min-h-[350px] flex flex-col items-center justify-center">
               <div className={`w-16 h-16 ${report.bgColor} rounded-2xl flex items-center justify-center ${report.color} mx-auto`}>
@@ -267,7 +267,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
                 }`}
               >
                 <ArrowUpRight className="w-4 h-4" />
-                <span>Open in Full App</span>
+                <span>{t(`Open in Full App`)}</span>
               </button>
             </div>
           </div>
@@ -287,7 +287,7 @@ export default function ReportsSection({ activeSubReport }: ReportsSectionProps)
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-800">{t('apex.reports.centerTitle', { defaultValue: 'Financial Reports & Queries Center' })}</h2>
-            <p className="text-[10px] text-slate-500 font-mono">Financial Reports Center — {REPORTS.length} reports available</p>
+            <p className="text-[10px] text-slate-500 font-mono">{t(`Financial Reports Center —`)} {REPORTS.length} {t(`reports available`)}</p>
           </div>
         </div>
       </div>

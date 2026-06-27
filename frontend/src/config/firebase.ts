@@ -14,15 +14,20 @@ const parseEmulatorHost = (
   fallbackPort: number
 ): { host: string; port: number } => {
   if (!value) {
-    return { host: fallbackHost, port: fallbackPort };
+    value = `${fallbackHost}:${fallbackPort}`;
   }
 
   const withoutProtocol = value.replace(/^https?:\/\//, '');
   const [host, rawPort] = withoutProtocol.split(':');
   const port = rawPort ? Number(rawPort) : fallbackPort;
 
+  let finalHost = host || fallbackHost;
+  if (typeof window !== 'undefined' && (finalHost === '127.0.0.1' || finalHost === 'localhost')) {
+    finalHost = window.location.hostname;
+  }
+
   return {
-    host: host || fallbackHost,
+    host: finalHost,
     port: Number.isFinite(port) ? port : fallbackPort,
   };
 };
@@ -62,7 +67,10 @@ if (typeof window !== 'undefined') {
   // Use outer useEmulators
   
   // Auth emulator
-  const authEmulatorHost = (import.meta as any).env?.VITE_FIREBASE_AUTH_EMULATOR_HOST || 'http://127.0.0.1:9099';
+  let authEmulatorHost = (import.meta as any).env?.VITE_FIREBASE_AUTH_EMULATOR_HOST || 'http://127.0.0.1:9099';
+  if (typeof window !== 'undefined' && (authEmulatorHost.includes('127.0.0.1') || authEmulatorHost.includes('localhost'))) {
+    authEmulatorHost = authEmulatorHost.replace(/127\.0\.0\.1|localhost/, window.location.hostname);
+  }
   if (useEmulators) {
     try {
       connectAuthEmulator(auth, authEmulatorHost, { disableWarnings: true });

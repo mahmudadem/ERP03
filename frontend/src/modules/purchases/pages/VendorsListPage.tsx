@@ -5,8 +5,10 @@ import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useTranslation } from "react-i18next";
 
 const VendorsListPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const location = useLocation();
   const { openWindow } = useWindowManager();
@@ -60,7 +62,7 @@ const VendorsListPage: React.FC = () => {
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight">Vendors (Suppliers)</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight">{t(`Vendors (Suppliers)`)}</h1>
         <button
           className="rounded bg-primary-600 px-5 py-2 text-xs font-bold text-white hover:bg-primary-700 transition-all uppercase tracking-widest"
           onClick={handleAddVendor}
@@ -72,17 +74,17 @@ const VendorsListPage: React.FC = () => {
 
       <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800">
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse tracking-widest font-mono">Loading Supply Chain Records...</div>
+          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse tracking-widest font-mono">{t(`Loading Supply Chain Records...`)}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Code</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Display Name</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Email</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t(`Code`)}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t(`Display Name`)}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t(`Phone`)}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t(`Email`)}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest text-right">{t(`Status`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">

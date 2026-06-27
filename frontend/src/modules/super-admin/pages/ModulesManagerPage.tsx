@@ -429,7 +429,7 @@ export const ModulesManagerPage: React.FC = () => {
                 Version
                 <SortIcon direction={sortConfig.field === 'version' ? sortConfig.direction : null} />
               </th>
-              <th className={tableHeadCellClass}>Actions</th>
+              <th className={tableHeadCellClass}>{t(`Actions`)}</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white">
@@ -473,12 +473,12 @@ export const ModulesManagerPage: React.FC = () => {
                     </td>
                     <td className={tableCellClass}>
                       {module.isCodeOnly ? (
-                        <div className="font-mono text-xs text-blue-700">Code {module.codeVersion || module.version}</div>
+                        <div className="font-mono text-xs text-blue-700">{t(`Code`)} {module.codeVersion || module.version}</div>
                       ) : (
-                        <div className="font-mono text-xs">DB {module.version}</div>
+                        <div className="font-mono text-xs">{t(`DB`)} {module.version}</div>
                       )}
                       {module.codeVersion && module.codeVersion !== module.version && (
-                        <div className="font-mono text-xs text-red-600">Code {module.codeVersion}</div>
+                        <div className="font-mono text-xs text-red-600">{t(`Code`)} {module.codeVersion}</div>
                       )}
                     </td>
                     <td className={tableCellClass}>
@@ -543,7 +543,7 @@ export const ModulesManagerPage: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">ID</label>
+                <label className="mb-2 block text-sm font-medium">{t(`ID`)}</label>
                 <input
                   type="text"
                   value={formData.id}
@@ -554,7 +554,7 @@ export const ModulesManagerPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">Version</label>
+                <label className="mb-2 block text-sm font-medium">{t(`Version`)}</label>
                 <input
                   type="text"
                   value={formData.version}
@@ -566,7 +566,7 @@ export const ModulesManagerPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">Name</label>
+              <label className="mb-2 block text-sm font-medium">{t(`Name`)}</label>
               <input
                 type="text"
                 value={formData.name}
@@ -577,7 +577,7 @@ export const ModulesManagerPage: React.FC = () => {
             </div>
 
             <div>
-              <label className="mb-2 block text-sm font-medium">Description</label>
+              <label className="mb-2 block text-sm font-medium">{t(`Description`)}</label>
               <textarea
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
@@ -588,7 +588,7 @@ export const ModulesManagerPage: React.FC = () => {
 
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
-                <label className="mb-2 block text-sm font-medium">Lifecycle</label>
+                <label className="mb-2 block text-sm font-medium">{t(`Lifecycle`)}</label>
                 <select
                   value={formData.lifecycleStatus}
                   onChange={(e) => setFormData({ ...formData, lifecycleStatus: e.target.value as LifecycleStatus })}
@@ -599,7 +599,7 @@ export const ModulesManagerPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">Runtime</label>
+                <label className="mb-2 block text-sm font-medium">{t(`Runtime`)}</label>
                 <select
                   value={formData.runtimeStatus}
                   onChange={(e) => setFormData({ ...formData, runtimeStatus: e.target.value as RuntimeStatus })}
@@ -613,7 +613,7 @@ export const ModulesManagerPage: React.FC = () => {
 
             {editingModule && editingModule.runtimeStatus !== 'suspended' && formData.runtimeStatus === 'suspended' && (
               <div>
-                <label className="mb-2 block text-sm font-medium">Suspend reason</label>
+                <label className="mb-2 block text-sm font-medium">{t(`Suspend reason`)}</label>
                 <textarea
                   value={formData.suspendReason}
                   onChange={(e) => setFormData({ ...formData, suspendReason: e.target.value })}
@@ -625,7 +625,7 @@ export const ModulesManagerPage: React.FC = () => {
             )}
 
             <div>
-              <label className="mb-2 block text-sm font-medium">Release notes</label>
+              <label className="mb-2 block text-sm font-medium">{t(`Release notes`)}</label>
               <textarea
                 value={formData.releaseNotes}
                 onChange={(e) => setFormData({ ...formData, releaseNotes: e.target.value })}

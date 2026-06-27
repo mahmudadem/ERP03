@@ -4,6 +4,7 @@ import { accountingApi, AccountStatementData, AccountStatementEntry } from '../.
 import { AccountSelector } from '../../../../../modules/accounting/components/shared/AccountSelector';
 import { AccountsProvider } from '../../../../../context/AccountsContext';
 import { ArrowUpRight, AlertTriangle, RefreshCw, Info } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const fmt = (v: number) =>
   v !== 0 ? v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '—';
@@ -16,6 +17,7 @@ const sortEntries = (entries: AccountStatementEntry[]) =>
   });
 
 function AccountStatementInner() {
+    const { t } = useTranslation('common');
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -63,7 +65,7 @@ function AccountStatementInner() {
       <div className="bg-white border border-[#E2E8F0] rounded-lg p-4 space-y-3">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">Account *</label>
+            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`Account *`)}</label>
             <AccountSelector
               value={accountId}
               scope="all"
@@ -76,12 +78,12 @@ function AccountStatementInner() {
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">From Date</label>
+              <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`From Date`)}</label>
               <input type="date" value={fromDate} onChange={e => setFromDate(e.target.value)}
                 className="w-full bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
             </div>
             <div>
-              <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">To Date</label>
+              <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`To Date`)}</label>
               <input type="date" value={toDate} onChange={e => setToDate(e.target.value)}
                 className="w-full bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
             </div>
@@ -113,23 +115,23 @@ function AccountStatementInner() {
           <div className="bg-[#F8FAFC] border-b border-[#E2E8F0] px-4 py-3">
             <div className="flex flex-wrap gap-6 text-xs">
               <div>
-                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Account</span>
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">{t(`Account`)}</span>
                 <span className="font-bold text-slate-800">{data.accountCode} — {data.accountName}
                   {acctCcy && <span className="ml-1 text-slate-500 font-normal">({acctCcy})</span>}
                 </span>
               </div>
               <div>
-                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Period</span>
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">{t(`Period`)}</span>
                 <span className="font-bold text-slate-800">{data.fromDate} → {data.toDate}</span>
               </div>
               <div>
-                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Opening Balance</span>
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">{t(`Opening Balance`)}</span>
                 <span className={`font-mono font-bold ${data.openingBalance < 0 ? 'text-red-600' : 'text-slate-800'}`}>
                   {fmt(data.openingBalance)} {acctCcy || baseCcy}
                 </span>
               </div>
               <div>
-                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">Closing Balance</span>
+                <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block">{t(`Closing Balance`)}</span>
                 <span className={`font-mono font-bold ${data.closingBalance < 0 ? 'text-red-600' : 'text-emerald-700'}`}>
                   {fmt(data.closingBalance)} {acctCcy || baseCcy}
                 </span>
@@ -143,13 +145,13 @@ function AccountStatementInner() {
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
                   <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-8">#</th>
-                  <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-24">Date</th>
-                  <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-28">Voucher</th>
-                  <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Description</th>
-                  <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-32">Debit {acctCcy || baseCcy}</th>
-                  <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-32">Credit {acctCcy || baseCcy}</th>
-                  {showBase && <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-24">FX Rate</th>}
-                  <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">Balance</th>
+                  <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-24">{t(`Date`)}</th>
+                  <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-28">{t(`Voucher`)}</th>
+                  <th className="px-3 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Description`)}</th>
+                  <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-32">{t(`Debit`)} {acctCcy || baseCcy}</th>
+                  <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-32">{t(`Credit`)} {acctCcy || baseCcy}</th>
+                  {showBase && <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-24">{t(`FX Rate`)}</th>}
+                  <th className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest w-36">{t(`Balance`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F1F5F9]">
@@ -157,8 +159,8 @@ function AccountStatementInner() {
                 <tr className="bg-slate-50">
                   <td className="px-3 py-2 text-[10px] font-mono text-slate-400"></td>
                   <td className="px-3 py-2 text-[10px] font-mono text-slate-500">—</td>
-                  <td className="px-3 py-2 text-[10px] font-bold text-slate-500">OPENING</td>
-                  <td className="px-3 py-2 text-[10px] font-semibold text-slate-500">Opening Balance</td>
+                  <td className="px-3 py-2 text-[10px] font-bold text-slate-500">{t(`OPENING`)}</td>
+                  <td className="px-3 py-2 text-[10px] font-semibold text-slate-500">{t(`Opening Balance`)}</td>
                   <td className="px-3 py-2 text-right font-mono text-[10px] text-slate-400">—</td>
                   <td className="px-3 py-2 text-right font-mono text-[10px] text-slate-400">—</td>
                   {showBase && <td className="px-3 py-2 text-right font-mono text-[10px] text-slate-400">—</td>}
@@ -169,7 +171,7 @@ function AccountStatementInner() {
 
                 {entries.length === 0 ? (
                   <tr>
-                    <td colSpan={showBase ? 8 : 7} className="py-12 text-center text-xs text-slate-400">No entries in this period</td>
+                    <td colSpan={showBase ? 8 : 7} className="py-12 text-center text-xs text-slate-400">{t(`No entries in this period`)}</td>
                   </tr>
                 ) : (
                   entries.map((entry, idx) => (
@@ -204,7 +206,7 @@ function AccountStatementInner() {
               </tbody>
               <tfoot className="bg-[#F8FAFC] border-t-2 border-[#E2E8F0]">
                 <tr>
-                  <td colSpan={3} className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Totals</td>
+                  <td colSpan={3} className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">{t(`Totals`)}</td>
                   <td className="px-3 py-2.5"></td>
                   <td className="px-3 py-2.5 text-right font-mono text-xs font-bold text-blue-700">
                     {fmt(data.totalDebit)}
@@ -232,7 +234,7 @@ function AccountStatementInner() {
       {!generated && !loading && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
           <Info className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-          <p className="text-xs text-slate-400 font-mono">Select an account and click Generate Statement</p>
+          <p className="text-xs text-slate-400 font-mono">{t(`Select an account and click Generate Statement`)}</p>
         </div>
       )}
     </div>

@@ -12,8 +12,10 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { onboardingApi, Plan } from '../api/onboardingApi';
 import { cn } from '../../../lib/utils';
 import { useAuth } from '../../../context/AuthContext';
+import { useTranslation } from "react-i18next";
 
 const PlanSelectionPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { logout } = useAuth();
   const [plans, setPlans] = useState<Plan[]>([]);
@@ -88,13 +90,13 @@ const PlanSelectionPage: React.FC = () => {
           className="flex items-center gap-2 text-sm font-medium text-slate-500 hover:text-red-600 transition-colors bg-white/50 hover:bg-white px-3 py-2 rounded-lg"
         >
           <LogOut className="h-4 w-4" />
-          <span>Sign Out</span>
+          <span>{t(`Sign Out`)}</span>
         </button>
       </div>
 
       <div className="max-w-7xl mx-auto">
         <div className="text-center mb-12">
-          <h2 className="text-base font-semibold text-primary-500 tracking-wide uppercase">Pricing</h2>
+          <h2 className="text-base font-semibold text-primary-500 tracking-wide uppercase">{t(`Pricing`)}</h2>
           <p className="mt-2 text-3xl leading-8 font-extrabold tracking-tight text-slate-900 sm:text-4xl">
             Choose the right plan for your business
           </p>
@@ -158,25 +160,25 @@ const PlanSelectionPage: React.FC = () => {
                     <li className="flex items-start">
                       <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
                       <span className="text-sm text-slate-600">
-                        Companies: <strong>{plan.limits.maxCompanies}</strong>
+                        {t(`Companies:`)} <strong>{plan.limits.maxCompanies}</strong>
                       </span>
                     </li>
                     <li className="flex items-start">
                       <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
                       <span className="text-sm text-slate-600">
-                        Users/Company: <strong>{plan.limits.maxUsersPerCompany}</strong>
+                        {t(`Users/Company:`)} <strong>{plan.limits.maxUsersPerCompany}</strong>
                       </span>
                     </li>
                     <li className="flex items-start">
                       <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
                       <span className="text-sm text-slate-600">
-                        Modules: <strong>{plan.limits.maxModulesAllowed}</strong>
+                        {t(`Modules:`)} <strong>{plan.limits.maxModulesAllowed}</strong>
                       </span>
                     </li>
                     <li className="flex items-start">
                       <Check className="h-5 w-5 text-green-500 shrink-0 mr-2" />
                       <span className="text-sm text-slate-600">
-                        Storage: <strong>{plan.limits.maxStorageMB} MB</strong>
+                        {t(`Storage:`)} <strong>{plan.limits.maxStorageMB} {t(`MB`)}</strong>
                       </span>
                     </li>
                   </ul>
@@ -202,7 +204,7 @@ const PlanSelectionPage: React.FC = () => {
           <div className="fixed bottom-0 left-0 right-0 p-4 bg-white border-t shadow-lg animate-in slide-in-from-bottom-10 z-50">
             <div className="max-w-7xl mx-auto flex justify-between items-center">
               <div>
-                <p className="text-sm text-slate-500">Selected Plan:</p>
+                <p className="text-sm text-slate-500">{t(`Selected Plan:`)}</p>
                 <p className="font-bold text-slate-900">
                   {plans.find(p => p.id === selectedPlanId)?.name}
                 </p>

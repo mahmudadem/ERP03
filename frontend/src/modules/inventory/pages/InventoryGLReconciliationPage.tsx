@@ -5,6 +5,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from "react-i18next";
 
 interface GLReconParams {
   asOfDate: string;
@@ -61,6 +62,7 @@ const ReportContent: React.FC<{
   params: GLReconParams;
   density?: 'compact' | 'comfortable';
 }> = ({ params, density }) => {
+    const { t } = useTranslation('common');
   const [data, setData] = useState<InventoryGLReconciliationDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -94,7 +96,7 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Reconciling…</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t(`Reconciling…`)}</p>
             </div>
           </div>
         ) : data ? (
@@ -112,10 +114,10 @@ const ReportContent: React.FC<{
                   {data.isReconciled ? 'Inventory ties to the GL' : 'Drift detected between stock and GL'}
                 </div>
                 <div className="text-xs">
-                  As of {data.asOfDate} · Stock value {fmt(data.totalStockValueBase)} · GL balance {fmt(data.totalGLBalanceBase)} · Difference{' '}
+                  {t(`As of`)} {data.asOfDate} {t(`· Stock value`)} {fmt(data.totalStockValueBase)} {t(`· GL balance`)} {fmt(data.totalGLBalanceBase)} {t(`· Difference`)}{' '}
                   <span className="font-bold">{fmt(data.totalDifferenceBase)}</span>
                   {data.unmappedStockValueBase !== 0 && (
-                    <> · Unmapped stock value {fmt(data.unmappedStockValueBase)}</>
+                    <> {t(`· Unmapped stock value`)} {fmt(data.unmappedStockValueBase)}</>
                   )}
                 </div>
               </div>
@@ -125,12 +127,12 @@ const ReportContent: React.FC<{
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className={`${cellPad} text-left`}>Account</th>
-                    <th className={`${cellPad} text-left`}>Name</th>
-                    <th className={`${cellPad} text-right`}>Stock Value (Base)</th>
-                    <th className={`${cellPad} text-right`}>GL Balance (Base)</th>
-                    <th className={`${cellPad} text-right`}>Difference</th>
-                    <th className={`${cellPad} text-center`}>Status</th>
+                    <th className={`${cellPad} text-left`}>{t(`Account`)}</th>
+                    <th className={`${cellPad} text-left`}>{t(`Name`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Stock Value (Base)`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`GL Balance (Base)`)}</th>
+                    <th className={`${cellPad} text-right`}>{t(`Difference`)}</th>
+                    <th className={`${cellPad} text-center`}>{t(`Status`)}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -145,9 +147,9 @@ const ReportContent: React.FC<{
                       </td>
                       <td className={`${cellPad} text-center`}>
                         {line.matched ? (
-                          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Matched</span>
+                          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">{t(`Matched`)}</span>
                         ) : (
-                          <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Drift</span>
+                          <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">{t(`Drift`)}</span>
                         )}
                       </td>
                     </tr>

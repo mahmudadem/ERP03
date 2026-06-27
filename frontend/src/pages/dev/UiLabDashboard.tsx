@@ -41,6 +41,7 @@ import { NotesWidget } from '../../components/topbar/widgets/NotesWidget';
 import { AlarmWidget } from '../../components/topbar/widgets/AlarmWidget';
 import { CompanyLogoNameWidget } from '../../components/topbar/widgets/CompanyLogoNameWidget';
 import { SearchWidget } from '../../components/topbar/widgets/SearchWidget';
+import i18n from "i18next";
 
 export const UiLabDashboard: React.FC = () => {
   const { t, i18n } = useTranslation('common');
@@ -130,7 +131,7 @@ export const UiLabDashboard: React.FC = () => {
         h: 1
       }))
     );
-    toast.success('تمت إعادة تعيين الترتيب الافتراضي للنظام.');
+    toast.success(i18n.t('تمت إعادة تعيين الترتيب الافتراضي للنظام.'));
   };
 
   // Render Real Widget Component
@@ -466,9 +467,9 @@ export const UiLabDashboard: React.FC = () => {
           <div className="text-right">
             <div className="flex items-center gap-2 mb-1.5 justify-start">
               <Sparkles className="w-5 h-5 text-amber-300 animate-pulse" />
-              <span className="text-xs font-bold uppercase tracking-widest text-indigo-200">معمل محاكاة واجهات المستخدم UI Lab</span>
+              <span className="text-xs font-bold uppercase tracking-widest text-indigo-200">{t(`معمل محاكاة واجهات المستخدم UI Lab`)}</span>
             </div>
-            <h1 className="text-3xl font-black tracking-tight font-sans">تطبيق شريط الـ Widgets الحي بكافة النماذج</h1>
+            <h1 className="text-3xl font-black tracking-tight font-sans">{t(`تطبيق شريط الـ Widgets الحي بكافة النماذج`)}</h1>
             <p className="text-sm text-indigo-100 mt-2 max-w-3xl leading-relaxed">
               قمنا بربط **عناصر الـ Widgets الحقيقية للنظام** (الساعة الجارية، تاريخ اليوم، السنة المالية الفعالة، والشركة النشطة وغيرها) مع تصاميم الـ 9 شريط أدوات المقترحة. تم تفعيل شاشة المحاكاة لتطابق قياس ومساحة الـ TopBar الأصلي، ويمكنك اعتماد أي تصميم للنظام فوراً بضغطة زر واحدة.
             </p>

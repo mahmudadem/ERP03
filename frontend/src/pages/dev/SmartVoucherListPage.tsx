@@ -326,7 +326,7 @@ const SmartVoucherListPage: React.FC = () => {
         <div className="flex items-center gap-4 text-xs text-gray-500 px-4 py-2 bg-amber-50/50 dark:bg-amber-900/10">
           <RotateCcw size={14} className="text-amber-600" />
           <span>
-            Reversal of <span className="font-mono font-medium text-amber-700">{parent?.voucherNo || parent?.id?.slice(-8)}</span>
+            {t(`Reversal of`)} <span className="font-mono font-medium text-amber-700">{parent?.voucherNo || parent?.id?.slice(-8)}</span>
           </span>
           {row.voucher.postedAt && (
             <Badge variant="success">
@@ -369,9 +369,9 @@ const SmartVoucherListPage: React.FC = () => {
       <div className="flex-none p-4 pb-0">
         <div className="flex justify-between items-center mb-4">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Smart Voucher List</h1>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">{t(`Smart Voucher List`)}</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {vouchers.length} vouchers · {displayRows.length} rows (reversals shown inline)
+              {vouchers.length} {t(`vouchers ·`)} {displayRows.length} rows (reversals shown inline)
             </p>
           </div>
           <div className="flex items-center gap-2">

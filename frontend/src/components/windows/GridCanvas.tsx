@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
 import { GripVertical, Trash2 } from 'lucide-react';
 import { WindowComponent } from '../../types/WindowConfig';
+import { useTranslation } from "react-i18next";
 
 interface GridCanvasProps {
   components: WindowComponent[];
@@ -21,6 +22,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
   onDeleteComponent,
   onDropComponent,
 }) => {
+    const { t } = useTranslation('common');
   const resizingRef = useRef<{ 
     fieldId: string; 
     startX: number; 
@@ -90,7 +92,7 @@ export const GridCanvas: React.FC<GridCanvasProps> = ({
       <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center">
         <div className="flex items-center gap-2">
           <GripVertical size={14} className="text-gray-400" />
-          <span className="text-xs font-bold text-gray-500 uppercase">{sectionName} SECTION</span>
+          <span className="text-xs font-bold text-gray-500 uppercase">{sectionName} {t(`SECTION`)}</span>
         </div>
       </div>
 

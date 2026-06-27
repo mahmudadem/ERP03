@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from "react-i18next";
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
 
@@ -125,6 +126,7 @@ const inputCls =
 const labelCls = 'block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1';
 
 const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
+    const { t } = useTranslation('common');
   const [form, setForm] = useState<PromotionForm>(initial ? toForm(initial) : defaultForm());
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -169,7 +171,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
                 {initial ? 'Edit Promotion' : 'New Promotion'}
               </h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Promotion Rule Configuration</p>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Promotion Rule Configuration`)}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
@@ -201,60 +203,60 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
           {/* General */}
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">General</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`General`)}</p>
             </div>
             <div className="p-6 grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <label className={labelCls}>Name</label>
+                <label className={labelCls}>{t(`Name`)}</label>
                 <input className={inputCls} value={form.name} onChange={(e) => set({ name: e.target.value })} placeholder="e.g. Summer 10% Off" />
               </div>
               <div className="col-span-2">
-                <label className={labelCls}>Description</label>
+                <label className={labelCls}>{t(`Description`)}</label>
                 <input className={inputCls} value={form.description} onChange={(e) => set({ description: e.target.value })} placeholder="Optional description" />
               </div>
               <div>
-                <label className={labelCls}>Type</label>
+                <label className={labelCls}>{t(`Type`)}</label>
                 <select className={inputCls} value={form.type} onChange={(e) => set({ type: e.target.value as PromotionType })}>
-                  <option value="THRESHOLD_DISCOUNT">Threshold Discount</option>
-                  <option value="BUY_X_GET_Y">Buy X Get Y</option>
+                  <option value="THRESHOLD_DISCOUNT">{t(`Threshold Discount`)}</option>
+                  <option value="BUY_X_GET_Y">{t(`Buy X Get Y`)}</option>
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Status</label>
+                <label className={labelCls}>{t(`Status`)}</label>
                 <select className={inputCls} value={form.status} onChange={(e) => set({ status: e.target.value as 'ACTIVE' | 'INACTIVE' })}>
-                  <option value="ACTIVE">Active</option>
-                  <option value="INACTIVE">Inactive</option>
+                  <option value="ACTIVE">{t(`Active`)}</option>
+                  <option value="INACTIVE">{t(`Inactive`)}</option>
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Priority</label>
+                <label className={labelCls}>{t(`Priority`)}</label>
                 <input type="number" className={inputCls} value={form.priority} onChange={(e) => set({ priority: parseInt(e.target.value) || 0 })} />
               </div>
               <div>
-                <label className={labelCls}>Scope</label>
+                <label className={labelCls}>{t(`Scope`)}</label>
                 <select className={inputCls} value={form.scope} onChange={(e) => set({ scope: e.target.value as PromotionScope })}>
-                  <option value="ALL">All Items</option>
-                  <option value="ITEMS">Specific Items</option>
-                  <option value="CATEGORIES">Specific Categories</option>
+                  <option value="ALL">{t(`All Items`)}</option>
+                  <option value="ITEMS">{t(`Specific Items`)}</option>
+                  <option value="CATEGORIES">{t(`Specific Categories`)}</option>
                 </select>
               </div>
               <div>
-                <label className={labelCls}>Valid From</label>
+                <label className={labelCls}>{t(`Valid From`)}</label>
                 <DatePicker inputClassName={inputCls} value={form.validFrom} onChange={(validFrom) => set({ validFrom })} />
               </div>
               <div>
-                <label className={labelCls}>Valid To</label>
+                <label className={labelCls}>{t(`Valid To`)}</label>
                 <DatePicker inputClassName={inputCls} value={form.validTo} onChange={(validTo) => set({ validTo })} />
               </div>
               {form.scope === 'ITEMS' && (
                 <div className="col-span-2">
-                  <label className={labelCls}>Item IDs (comma-separated)</label>
+                  <label className={labelCls}>{t(`Item IDs (comma-separated)`)}</label>
                   <input className={inputCls} value={form.itemIds} onChange={(e) => set({ itemIds: e.target.value })} placeholder="item-id-1, item-id-2" />
                 </div>
               )}
               {form.scope === 'CATEGORIES' && (
                 <div className="col-span-2">
-                  <label className={labelCls}>Category IDs (comma-separated)</label>
+                  <label className={labelCls}>{t(`Category IDs (comma-separated)`)}</label>
                   <input className={inputCls} value={form.categoryIds} onChange={(e) => set({ categoryIds: e.target.value })} placeholder="cat-id-1, cat-id-2" />
                 </div>
               )}
@@ -265,19 +267,19 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
           {form.type === 'BUY_X_GET_Y' && (
             <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
               <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Buy X Get Y Configuration</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Buy X Get Y Configuration`)}</p>
               </div>
               <div className="p-6 grid grid-cols-3 gap-4">
                 <div>
-                  <label className={labelCls}>Buy Qty</label>
+                  <label className={labelCls}>{t(`Buy Qty`)}</label>
                   <input type="number" min={1} className={inputCls} value={form.buyQty} onChange={(e) => set({ buyQty: parseInt(e.target.value) || 1 })} />
                 </div>
                 <div>
-                  <label className={labelCls}>Get Qty (free)</label>
+                  <label className={labelCls}>{t(`Get Qty (free)`)}</label>
                   <input type="number" min={1} className={inputCls} value={form.getQty} onChange={(e) => set({ getQty: parseInt(e.target.value) || 1 })} />
                 </div>
                 <div>
-                  <label className={labelCls}>Free Item ID (optional)</label>
+                  <label className={labelCls}>{t(`Free Item ID (optional)`)}</label>
                   <ItemSelector 
                     value={form.getItemId} 
                     onChange={(item) => set({ getItemId: item?.id || '' })} 
@@ -291,22 +293,22 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
           {form.type === 'THRESHOLD_DISCOUNT' && (
             <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
               <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Threshold Discount Configuration</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Threshold Discount Configuration`)}</p>
               </div>
               <div className="p-6 grid grid-cols-3 gap-4">
                 <div>
-                  <label className={labelCls}>Threshold Basis</label>
+                  <label className={labelCls}>{t(`Threshold Basis`)}</label>
                   <select className={inputCls} value={form.thresholdBasis} onChange={(e) => set({ thresholdBasis: e.target.value as 'QTY' | 'AMOUNT' })}>
-                    <option value="AMOUNT">Amount</option>
-                    <option value="QTY">Quantity</option>
+                    <option value="AMOUNT">{t(`Amount`)}</option>
+                    <option value="QTY">{t(`Quantity`)}</option>
                   </select>
                 </div>
                 <div>
-                  <label className={labelCls}>Threshold Value</label>
+                  <label className={labelCls}>{t(`Threshold Value`)}</label>
                   <input type="number" min={0} step="0.01" className={inputCls} value={form.thresholdValue} onChange={(e) => set({ thresholdValue: parseFloat(e.target.value) || 0 })} />
                 </div>
                 <div>
-                  <label className={labelCls}>Discount %</label>
+                  <label className={labelCls}>{t(`Discount %`)}</label>
                   <input type="number" min={0} max={100} step="0.01" className={inputCls} value={form.discountPct} onChange={(e) => set({ discountPct: parseFloat(e.target.value) || 0 })} />
                 </div>
               </div>
@@ -331,6 +333,7 @@ const typeLabel = (type: PromotionType) => {
 };
 
 const PromotionsPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [promotions, setPromotions] = useState<PromotionRuleDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -377,8 +380,8 @@ const PromotionsPage: React.FC = () => {
               <Tag size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Promotions</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Discount Rules & Promotional Campaigns</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t(`Promotions`)}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Discount Rules & Promotional Campaigns`)}</p>
             </div>
           </div>
           <button
@@ -394,8 +397,8 @@ const PromotionsPage: React.FC = () => {
         <div className="mx-auto max-w-5xl">
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Promotion Directory</div>
-              {loading && <div className="text-[10px] text-violet-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t(`Promotion Directory`)}</div>
+              {loading && <div className="text-[10px] text-violet-500 font-black animate-pulse uppercase tracking-tighter">{t(`Loading...`)}</div>}
             </div>
 
             <div className="p-6">
@@ -405,8 +408,8 @@ const PromotionsPage: React.FC = () => {
                     <Tag size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Promotions Found</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Create your first promotion by clicking the button above.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t(`No Promotions Found`)}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t(`Create your first promotion by clicking the button above.`)}</p>
                   </div>
                 </div>
               ) : (
@@ -428,7 +431,7 @@ const PromotionsPage: React.FC = () => {
                             </span>
                           </div>
                           <div className="text-[11px] text-slate-400">
-                            Priority: {promo.priority}
+                            {t(`Priority:`)} {promo.priority}
                             {promo.validFrom && ` · from ${promo.validFrom}`}
                             {promo.validTo && ` to ${promo.validTo}`}
                           </div>

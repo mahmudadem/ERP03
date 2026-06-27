@@ -631,7 +631,7 @@ export const AiAssistantHomePage: React.FC = () => {
             <div className="flex items-center gap-2 mt-0.5">
               {pinnedConvs.has(conv.conversationId) && <Pin className="w-3 h-3 text-gray-400" />}
               {conv.messageCount != null && (
-                <span className="text-xs text-gray-400">{conv.messageCount} msgs</span>
+                <span className="text-xs text-gray-400">{conv.messageCount} {t(`msgs`)}</span>
               )}
               {conv.lastMessageAt && (
                 <span className="text-xs text-gray-400">
@@ -943,9 +943,9 @@ export const AiAssistantHomePage: React.FC = () => {
                             className="flex items-center gap-1 text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
                           >
                             {copiedId === msg.id ? (
-                              <><Check className="w-3 h-3" /> Copied</>
+                              <><Check className="w-3 h-3" /> {t(`Copied`)}</>
                             ) : (
-                              <><Copy className="w-3 h-3" /> Copy</>
+                              <><Copy className="w-3 h-3" /> {t(`Copy`)}</>
                             )}
                           </button>
                         )}

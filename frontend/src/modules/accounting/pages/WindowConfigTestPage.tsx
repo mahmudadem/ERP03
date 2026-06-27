@@ -3,8 +3,10 @@ import { Settings, Eye } from 'lucide-react';
 import { WindowConfigDesigner } from '../../../components/windows/WindowConfigDesigner';
 import { ConfigurableWindow } from '../../../components/windows/ConfigurableWindow';
 import { WindowConfig, DEFAULT_CONFIGS } from '../../../types/WindowConfig';
+import { useTranslation } from "react-i18next";
 
 export const WindowConfigTestPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const [showDesigner, setShowDesigner] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<WindowConfig>(DEFAULT_CONFIGS.voucher);
@@ -47,7 +49,7 @@ export const WindowConfigTestPage: React.FC = () => {
 
         {/* Controls */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Controls</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">{t(`Controls`)}</h2>
           
           <div className="grid grid-cols-3 gap-6">
             {/* Load Template */}
@@ -123,31 +125,31 @@ export const WindowConfigTestPage: React.FC = () => {
 
         {/* Current Configuration Info */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-8">
-          <h2 className="text-xl font-bold text-gray-900 mb-4">Current Configuration</h2>
+          <h2 className="text-xl font-bold text-gray-900 mb-4">{t(`Current Configuration`)}</h2>
           
           <div className="grid grid-cols-3 gap-4 text-sm">
             <div>
-              <span className="text-gray-600">Window Type:</span>
+              <span className="text-gray-600">{t(`Window Type:`)}</span>
               <span className="ml-2 font-medium text-gray-900">{currentConfig.windowType}</span>
             </div>
             <div>
-              <span className="text-gray-600">Title:</span>
+              <span className="text-gray-600">{t(`Title:`)}</span>
               <span className="ml-2 font-medium text-gray-900">{currentConfig.header.title}</span>
             </div>
             <div>
-              <span className="text-gray-600">Body Component:</span>
+              <span className="text-gray-600">{t(`Body Component:`)}</span>
               <span className="ml-2 font-medium text-gray-900">{currentConfig.body.component}</span>
             </div>
             <div>
-              <span className="text-gray-600">Header Components:</span>
+              <span className="text-gray-600">{t(`Header Components:`)}</span>
               <span className="ml-2 font-medium text-gray-900">{currentConfig.header.components?.length || 0}</span>
             </div>
             <div>
-              <span className="text-gray-600">Footer Components:</span>
+              <span className="text-gray-600">{t(`Footer Components:`)}</span>
               <span className="ml-2 font-medium text-gray-900">{currentConfig.footer.components?.length || 0}</span>
             </div>
             <div>
-              <span className="text-gray-600">Show Controls:</span>
+              <span className="text-gray-600">{t(`Show Controls:`)}</span>
               <span className="ml-2 font-medium text-gray-900">{currentConfig.header.showControls ? 'Yes' : 'No'}</span>
             </div>
           </div>
@@ -155,15 +157,15 @@ export const WindowConfigTestPage: React.FC = () => {
 
         {/* Instructions */}
         <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 mb-8">
-          <h3 className="font-bold text-blue-900 mb-2">How to Use:</h3>
+          <h3 className="font-bold text-blue-900 mb-2">{t(`How to Use:`)}</h3>
           <ol className="list-decimal list-inside space-y-1 text-blue-800 text-sm">
-            <li>Click "Load Template" to see pre-configured window layouts</li>
-            <li>Click "Open Designer" to customize the configuration</li>
-            <li>Drag components from the library to the grid canvas (header or footer)</li>
-            <li>Click on a component to select it and use resize controls</li>
-            <li>Click the trash icon to remove components</li>
-            <li>Click "Save Config" to apply changes</li>
-            <li>Click <strong>"Test Preview"</strong> to see the window in action!</li>
+            <li>{t(`Click "Load Template" to see pre-configured window layouts`)}</li>
+            <li>{t(`Click "Open Designer" to customize the configuration`)}</li>
+            <li>{t(`Drag components from the library to the grid canvas (header or footer)`)}</li>
+            <li>{t(`Click on a component to select it and use resize controls`)}</li>
+            <li>{t(`Click the trash icon to remove components`)}</li>
+            <li>{t(`Click "Save Config" to apply changes`)}</li>
+            <li>{t(`Click`)} <strong>{t(`"Test Preview"`)}</strong> {t(`to see the window in action!`)}</li>
           </ol>
         </div>
 
@@ -174,7 +176,7 @@ export const WindowConfigTestPage: React.FC = () => {
               <div className="bg-white p-6 rounded-full shadow-sm inline-block mb-4">
                 <Eye size={48} className="text-gray-300" />
               </div>
-              <p className="text-gray-500 font-medium">Click "Test Preview" to launch the configurable window</p>
+              <p className="text-gray-500 font-medium">{t(`Click "Test Preview" to launch the configurable window`)}</p>
             </div>
           ) : (
             <ConfigurableWindow
@@ -186,7 +188,7 @@ export const WindowConfigTestPage: React.FC = () => {
             >
               <div className="space-y-4">
                 <h3 className="text-lg font-bold text-gray-900">
-                  Sample {currentConfig.windowType} Content
+                  {t(`Sample`)} {currentConfig.windowType} Content
                 </h3>
                 <div className="p-4 bg-blue-50 border border-blue-100 rounded text-blue-800">
                   This is a test preview of your window configuration. 

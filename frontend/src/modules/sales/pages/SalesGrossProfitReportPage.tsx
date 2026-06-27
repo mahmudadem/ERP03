@@ -180,7 +180,7 @@ export const GrossProfitInitiator: React.FC<{
             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-semibold outline-none transition-all hover:border-emerald-300 hover:bg-white focus:border-emerald-500 focus:bg-white focus:ring-4 focus:ring-emerald-500/10 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
           >
             {[500, 1000, 2500, 5000].map((value) => (
-              <option key={value} value={value}>{value.toLocaleString()} rows</option>
+              <option key={value} value={value}>{value.toLocaleString()} {t(`rows`)}</option>
             ))}
           </select>
         </div>
@@ -343,7 +343,7 @@ export const GrossProfitReportContent: React.FC<{
               {params.docCurrency}
             </span>
           )}
-          <span className="ml-auto text-xs font-bold text-slate-500">{rows.length} row{rows.length === 1 ? '' : 's'}</span>
+          <span className="ml-auto text-xs font-bold text-slate-500">{rows.length} {t(`row`)}{rows.length === 1 ? '' : 's'}</span>
         </div>
       </div>
 
@@ -356,7 +356,7 @@ export const GrossProfitReportContent: React.FC<{
           )}
 
           {loading && (
-            <div className="py-20 text-center text-sm text-slate-400">Loading report...</div>
+            <div className="py-20 text-center text-sm text-slate-400">{t(`Loading report...`)}</div>
           )}
 
           {!loading && report && (
@@ -386,15 +386,15 @@ export const GrossProfitReportContent: React.FC<{
                       <thead>
                         <tr className="border-b border-slate-200 bg-slate-50 dark:border-slate-800 dark:bg-slate-950/40">
                           {visible('group') && <th className={clsx(cellPad, 'text-left text-[10px] font-black uppercase tracking-widest text-slate-400')}>{params.mode === 'BY_DOCUMENT' ? 'Document' : 'Item'}</th>}
-                          {visible('lineCount') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Lines</th>}
-                          {visible('revenueBaseIn') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Revenue In</th>}
-                          {visible('revenueBaseOut') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Revenue Out</th>}
-                          {visible('costBaseIn') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Cost In</th>}
-                          {visible('costBaseOut') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Cost Out</th>}
-                          {visible('profitBaseIn') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Profit In</th>}
-                          {visible('profitBaseOut') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Profit Out</th>}
-                          {visible('profitBaseNet') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Net Profit</th>}
-                          {visible('docCurrency') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>Doc Currency Profit</th>}
+                          {visible('lineCount') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Lines`)}</th>}
+                          {visible('revenueBaseIn') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Revenue In`)}</th>}
+                          {visible('revenueBaseOut') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Revenue Out`)}</th>}
+                          {visible('costBaseIn') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Cost In`)}</th>}
+                          {visible('costBaseOut') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Cost Out`)}</th>}
+                          {visible('profitBaseIn') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Profit In`)}</th>}
+                          {visible('profitBaseOut') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Profit Out`)}</th>}
+                          {visible('profitBaseNet') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Net Profit`)}</th>}
+                          {visible('docCurrency') && <th className={clsx(cellPad, 'text-right text-[10px] font-black uppercase tracking-widest text-slate-400')}>{t(`Doc Currency Profit`)}</th>}
                         </tr>
                       </thead>
                       <tbody>
@@ -422,7 +422,7 @@ export const GrossProfitReportContent: React.FC<{
                       </tbody>
                       <tfoot>
                         <tr className="border-t-2 border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-800">
-                          {visible('group') && <td className={clsx(cellPad, 'text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-100')}>Totals</td>}
+                          {visible('group') && <td className={clsx(cellPad, 'text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-100')}>{t(`Totals`)}</td>}
                           {visible('lineCount') && <td className={clsx(cellPad, 'text-right text-xs font-bold tabular-nums text-slate-700 dark:text-slate-100')}>{report.totals.lineCount.toLocaleString()}</td>}
                           {visible('revenueBaseIn') && <td className={clsx(cellPad, 'text-right text-xs font-bold tabular-nums text-slate-700 dark:text-slate-100')}>{formatAmount(report.totals.revenueBaseIn)}</td>}
                           {visible('revenueBaseOut') && <td className={clsx(cellPad, 'text-right text-xs font-bold tabular-nums text-slate-500 dark:text-slate-300')}>{formatAmount(report.totals.revenueBaseOut)}</td>}
@@ -431,7 +431,7 @@ export const GrossProfitReportContent: React.FC<{
                           {visible('profitBaseIn') && <td className={clsx(cellPad, 'text-right text-xs font-black tabular-nums', profitColor(report.totals.profitBaseIn))}>{formatAmount(report.totals.profitBaseIn)}</td>}
                           {visible('profitBaseOut') && <td className={clsx(cellPad, 'text-right text-xs font-black tabular-nums', profitColor(-report.totals.profitBaseOut))}>{formatAmount(report.totals.profitBaseOut)}</td>}
                           {visible('profitBaseNet') && <td className={clsx(cellPad, 'text-right text-xs font-black tabular-nums', profitColor(report.totals.profitBaseNet))}>{formatAmount(report.totals.profitBaseNet)}</td>}
-                          {visible('docCurrency') && <td className={clsx(cellPad, 'text-right text-[10px] font-bold uppercase tracking-widest text-slate-400')}>Per row</td>}
+                          {visible('docCurrency') && <td className={clsx(cellPad, 'text-right text-[10px] font-bold uppercase tracking-widest text-slate-400')}>{t(`Per row`)}</td>}
                         </tr>
                       </tfoot>
                     </table>

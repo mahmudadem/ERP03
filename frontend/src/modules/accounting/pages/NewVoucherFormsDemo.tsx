@@ -3,10 +3,12 @@ import { PaymentVoucherForm } from '../components/PaymentVoucherForm';
 import { ReceiptVoucherForm } from '../components/ReceiptVoucherForm';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
 
 type VoucherType = 'payment' | 'receipt' | null;
 
 const NewVoucherFormsDemo: React.FC = () => {
+    const { t } = useTranslation('common');
   const [activeForm, setActiveForm] = useState<VoucherType>(null);
   const { companyId } = useCompanyAccess();
   const currentCompanyId = companyId || '';
@@ -44,7 +46,7 @@ const NewVoucherFormsDemo: React.FC = () => {
   return (
     <div className="new-voucher-demo">
       <div className="demo-header">
-        <h1>New Voucher Forms — Corrected Architecture</h1>
+        <h1>{t(`New Voucher Forms — Corrected Architecture`)}</h1>
         <p className="subtitle">
           Demonstrating one-to-many (Payment) and many-to-one (Receipt) structures
           with generic semantic field names and auto-calculated totals.
@@ -54,55 +56,55 @@ const NewVoucherFormsDemo: React.FC = () => {
       <div className="form-selector">
         <div className="form-card" onClick={() => setActiveForm('payment')}>
           <div className="card-icon">💸</div>
-          <h2>Payment Voucher</h2>
+          <h2>{t(`Payment Voucher`)}</h2>
           <p className="card-description">
             One-to-Many Structure
           </p>
           <ul className="feature-list">
-            <li>✓ Single source account (payFromAccountId)</li>
-            <li>✓ Multiple allocations (payToAccountId)</li>
-            <li>✓ Auto-calculated total</li>
-            <li>✓ Multi-currency support</li>
+            <li>{t(`✓ Single source account (payFromAccountId)`)}</li>
+            <li>{t(`✓ Multiple allocations (payToAccountId)`)}</li>
+            <li>{t(`✓ Auto-calculated total`)}</li>
+            <li>{t(`✓ Multi-currency support`)}</li>
           </ul>
-          <button className="try-button">Try Payment Form →</button>
+          <button className="try-button">{t(`Try Payment Form →`)}</button>
         </div>
 
         <div className="form-card" onClick={() => setActiveForm('receipt')}>
           <div className="card-icon">💰</div>
-          <h2>Receipt Voucher</h2>
+          <h2>{t(`Receipt Voucher`)}</h2>
           <p className="card-description">
             Many-to-One Structure
           </p>
           <ul className="feature-list">
-            <li>✓ Multiple sources (receiveFromAccountId)</li>
-            <li>✓ Single destination (depositToAccountId)</li>
-            <li>✓ Auto-calculated total</li>
-            <li>✓ Multi-currency support</li>
+            <li>{t(`✓ Multiple sources (receiveFromAccountId)`)}</li>
+            <li>{t(`✓ Single destination (depositToAccountId)`)}</li>
+            <li>{t(`✓ Auto-calculated total`)}</li>
+            <li>{t(`✓ Multi-currency support`)}</li>
           </ul>
-          <button className="try-button">Try Receipt Form →</button>
+          <button className="try-button">{t(`Try Receipt Form →`)}</button>
         </div>
       </div>
 
       <div className="info-section">
-        <h3>Architecture Highlights</h3>
+        <h3>{t(`Architecture Highlights`)}</h3>
         <div className="info-grid">
           <div className="info-item">
-            <strong>Generic Semantic Fields:</strong>
-            <p>No business-specific names like <code>vendorAccountId</code>.
-            Uses <code>payFromAccountId</code>, <code>payToAccountId</code> instead.</p>
+            <strong>{t(`Generic Semantic Fields:`)}</strong>
+            <p>{t(`No business-specific names like`)} <code>{t(`vendorAccountId`)}</code>.
+            Uses <code>{t(`payFromAccountId`)}</code>, <code>{t(`payToAccountId`)}</code> {t(`instead.`)}</p>
           </div>
           <div className="info-item">
-            <strong>Auto-Balance:</strong>
+            <strong>{t(`Auto-Balance:`)}</strong>
             <p>Total amount calculated from line allocations/sources.
             Guarantees balanced vouchers.</p>
           </div>
           <div className="info-item">
-            <strong>Multi-Currency:</strong>
+            <strong>{t(`Multi-Currency:`)}</strong>
             <p>Foreign currency (TRY) → Base currency (USD) conversion.
             Both amounts stored for audit trail.</p>
           </div>
           <div className="info-item">
-            <strong>Unified Storage:</strong>
+            <strong>{t(`Unified Storage:`)}</strong>
             <p>All vouchers stored as General Journal entries.
             Voucher type is UX concept only.</p>
           </div>

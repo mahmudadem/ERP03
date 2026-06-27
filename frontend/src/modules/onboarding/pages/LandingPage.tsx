@@ -106,7 +106,7 @@ const LandingPage: React.FC = () => {
             <div className="bg-primary-500 p-1.5 rounded-lg">
               <Building2 className="h-5 w-5 text-white" />
             </div>
-            <span className="font-extrabold text-xl text-[var(--color-text-primary)] tracking-tight">ERP<span className="text-primary-600">03</span></span>
+            <span className="font-extrabold text-xl text-[var(--color-text-primary)] tracking-tight">{t(`ERP`)}<span className="text-primary-600">03</span></span>
           </div>
           <div className="hidden md:flex items-center gap-8 text-sm font-semibold text-[var(--color-text-secondary)]">
             <a href="#" className="hover:text-primary-500 transition-colors">{t('onboarding.landing.nav.features', { defaultValue: 'Features' })}</a>
@@ -324,7 +324,7 @@ const LandingPage: React.FC = () => {
                    <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">{t('onboarding.landing.stats.industryBundles', { defaultValue: 'Industry Bundles' })}</p>
                 </div>
                 <div className="group">
-                   <h4 className="text-4xl font-extrabold text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">10k+</h4>
+                   <h4 className="text-4xl font-extrabold text-[var(--color-text-primary)] group-hover:text-primary-500 transition-colors">{t(`10k+`)}</h4>
                    <p className="text-xs font-bold text-[var(--color-text-muted)] mt-2 uppercase tracking-widest">{t('onboarding.landing.stats.activeOrgs', { defaultValue: 'Active Orgs' })}</p>
                 </div>
                 <div className="group">

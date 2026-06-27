@@ -35,6 +35,7 @@ import {
 } from '../types';
 import { GenericVoucherRenderer } from '../../components/shared/GenericVoucherRenderer';
 import { errorHandler } from '../../../../services/errorHandler';
+import { useTranslation } from "react-i18next";
 
 // --- MOCK DATA (UI ONLY) ---
 
@@ -123,6 +124,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
   onSave, 
   onCancel 
 }) => {
+    const { t } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   
   // Wizard State
@@ -682,7 +684,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         <div className="bg-gray-50 px-4 py-2 border-b border-gray-200 flex justify-between items-center cursor-move">
           <div className="flex items-center gap-2">
             <GripVertical size={14} className="text-gray-400" />
-            <span className="text-xs font-bold text-gray-500 uppercase">{sectionName} SECTION</span>
+            <span className="text-xs font-bold text-gray-500 uppercase">{sectionName} {t(`SECTION`)}</span>
           </div>
           <div className="flex gap-2">
              <button onClick={() => updateSectionOrder(sectionName, layout.order - 1)} disabled={layout.order === 0}><ArrowLeft size={14} className="rotate-90" /></button>
@@ -911,13 +913,13 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
          <div className="flex-1 flex flex-col min-w-0">
              <div className="flex justify-between items-center mb-4 sticky top-0 bg-slate-50 z-20 py-2">
                 <div>
-                   <h2 className="text-lg font-bold text-gray-800">Visual Layout Editor</h2>
-                   <p className="text-xs text-gray-500">Drag fields to move/resize. Drag table headers to reorder/resize.</p>
+                   <h2 className="text-lg font-bold text-gray-800">{t(`Visual Layout Editor`)}</h2>
+                   <p className="text-xs text-gray-500">{t(`Drag fields to move/resize. Drag table headers to reorder/resize.`)}</p>
                 </div>
                 <div className="flex items-center gap-4">
                   <div className="flex bg-gray-100 p-1 rounded-lg">
-                    <button onClick={() => setPreviewMode('classic')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'classic' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Classic</button>
-                    <button onClick={() => setPreviewMode('windows')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'windows' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>Windows</button>
+                    <button onClick={() => setPreviewMode('classic')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'classic' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>{t(`Classic`)}</button>
+                    <button onClick={() => setPreviewMode('windows')} className={`px-3 py-1 rounded text-xs font-bold ${previewMode === 'windows' ? 'bg-white shadow text-indigo-600' : 'text-gray-500'}`}>{t(`Windows`)}</button>
                   </div>
                   <button onClick={() => setIsTesting(true)} className="flex items-center gap-2 px-3 py-1.5 bg-indigo-600 text-white rounded text-xs font-bold hover:bg-indigo-700">
                     <PlayCircle size={14} /> Test Run
@@ -935,8 +937,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                           <div className="flex items-center gap-3">
                              <div className="bg-indigo-500 p-2 rounded-lg text-white shadow-lg shadow-indigo-500/20"><Layers size={20} /></div>
                              <div>
-                                <h3 className="text-sm font-bold text-white uppercase tracking-widest">Live Table Designer</h3>
-                                <p className="text-[10px] text-indigo-200">Drag headers to reorder. Drag edges to resize. Click to rename.</p>
+                                <h3 className="text-sm font-bold text-white uppercase tracking-widest">{t(`Live Table Designer`)}</h3>
+                                <p className="text-[10px] text-indigo-200">{t(`Drag headers to reorder. Drag edges to resize. Click to rename.`)}</p>
                              </div>
                           </div>
                           {activeColumnId && (
@@ -1053,7 +1055,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                                 {activeColumnId ? (
                                    <div className="flex items-center gap-6 w-full animate-in fade-in slide-in-from-left-2 duration-300">
                                       <div className="shrink-0">
-                                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Editing Column</label>
+                                         <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t(`Editing Column`)}</label>
                                          <div className="flex items-center gap-2">
                                             <span className="font-bold text-slate-800 font-mono bg-white px-2 py-0.5 rounded border border-gray-200">{activeColumnId}</span>
                                          </div>
@@ -1064,7 +1066,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                                       <div className="flex items-center gap-4 flex-1">
                                          {/* Label Editor */}
                                          <div className="flex-1 max-w-[200px]">
-                                             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Header Label</label>
+                                             <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t(`Header Label`)}</label>
                                              <input 
                                                 type="text"
                                                 value={(() => {
@@ -1094,7 +1096,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
                                          {/* Width Editor */}
                                          <div>
-                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Width</label>
+                                            <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">{t(`Width`)}</label>
                                             <div className="flex items-center gap-2">
                                                <input 
                                                   type="text"
@@ -1171,24 +1173,24 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                                    <div className="flex items-center gap-4 text-gray-400 w-full">
                                       <div className="flex items-center gap-2">
                                          <div className="p-1.5 bg-gray-100 rounded text-gray-400"><MousePointerClick size={16} /></div>
-                                         <span className="text-xs font-medium">Click column header to edit properties</span>
+                                         <span className="text-xs font-medium">{t(`Click column header to edit properties`)}</span>
                                       </div>
                                       <div className="h-4 w-px bg-gray-200"></div>
                                       <div className="flex items-center gap-2">
                                          <div className="p-1.5 bg-gray-100 rounded text-gray-400"><GripVertical size={16} /></div>
-                                         <span className="text-xs font-medium">Drag header to reorder</span>
+                                         <span className="text-xs font-medium">{t(`Drag header to reorder`)}</span>
                                       </div>
                                       <div className="h-4 w-px bg-gray-200"></div>
                                       <div className="flex items-center gap-2">
                                          <div className="p-1.5 bg-gray-100 rounded text-gray-400 flex"><ArrowLeft size={10} /><ArrowRight size={10} /></div>
-                                         <span className="text-xs font-medium">Drag edge to resize</span>
+                                         <span className="text-xs font-medium">{t(`Drag edge to resize`)}</span>
                                       </div>
                                    </div>
                                 )}
                              </div>
 
                           </div>
-                          <p className="mt-4 text-[10px] text-gray-400 italic text-center uppercase tracking-widest font-bold">Live Preview</p>
+                          <p className="mt-4 text-[10px] text-gray-400 italic text-center uppercase tracking-widest font-bold">{t(`Live Preview`)}</p>
                        </div>
                     </div>
                  )}
@@ -1207,12 +1209,12 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 {selectedField ? (
                   <div className="space-y-6">
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Field ID</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Field ID`)}</label>
                         <div className="text-sm font-mono bg-gray-100 p-2 rounded text-gray-600">{selectedField.id}</div>
                      </div>
                      
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Custom Label</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Custom Label`)}</label>
                         <input 
                           type="text" 
                           value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.labelOverride || ''}
@@ -1223,7 +1225,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Width (Columns)</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Width (Columns)`)}</label>
                         <div className="flex items-center gap-3">
                            <input 
                              type="range" min="1" max="12"
@@ -1233,11 +1235,11 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                            />
                            <span className="text-sm font-bold w-6 text-center text-slate-900">{config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.colSpan}</span>
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-1">Grid has 12 columns total.</p>
+                        <p className="text-[10px] text-gray-400 mt-1">{t(`Grid has 12 columns total.`)}</p>
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Height (Rows)</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Height (Rows)`)}</label>
                         <div className="flex items-center gap-3">
                            <input 
                              type="range" min="1" max="6"
@@ -1250,22 +1252,22 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Component Type</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Component Type`)}</label>
                         <select 
                            value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.typeOverride || ''}
                            onChange={(e) => updateSelectedField('typeOverride', e.target.value)}
                            className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                         >
-                           <option value="">Default</option>
-                           <option value="text">Text Input</option>
-                           <option value="textarea">Multi-line Text (Textarea)</option>
-                           <option value="number">Number Input</option>
-                           <option value="date">Date Picker</option>
+                           <option value="">{t(`Default`)}</option>
+                           <option value="text">{t(`Text Input`)}</option>
+                           <option value="textarea">{t(`Multi-line Text (Textarea)`)}</option>
+                           <option value="number">{t(`Number Input`)}</option>
+                           <option value="date">{t(`Date Picker`)}</option>
                         </select>
                      </div>
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase mt-4">Display Mode</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase mt-4">{t(`Display Mode`)}</label>
                         <select 
                            value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.displayMode || 'standard'}
                            onChange={(e) => updateSelectedField('displayMode', e.target.value)}
@@ -1273,48 +1275,48 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                         >
                            <option value="standard">{selectedField.id.startsWith('action_') ? 'Standard Button' : 'Standard Input'}</option>
                            {selectedField.id.startsWith('action_') ? (
-                             <option value="compact">Icon Only</option>
+                             <option value="compact">{t(`Icon Only`)}</option>
                            ) : (
                              <>
-                               <option value="compact">Compact Text</option>
-                               <option value="badge">Badge</option>
+                               <option value="compact">{t(`Compact Text`)}</option>
+                               <option value="badge">{t(`Badge`)}</option>
                              </>
                            )}
                         </select>
                         {selectedField.id.startsWith('action_') ? (
-                          <p className="text-[10px] text-gray-400 mt-1">Display this action as a compact icon</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{t(`Display this action as a compact icon`)}</p>
                         ) : (
-                          <p className="text-[10px] text-gray-400 mt-1">Useful to display statuses or compact metadata</p>
+                          <p className="text-[10px] text-gray-400 mt-1">{t(`Useful to display statuses or compact metadata`)}</p>
                         )}
                      </div>
 
                      {selectedField.id.startsWith('action_') && (
                        <div className="mt-4">
-                          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Icon</label>
+                          <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Icon`)}</label>
                           <select 
                              value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.iconOverride || ''}
                              onChange={(e) => updateSelectedField('iconOverride', e.target.value)}
                              className="w-full p-2 border border-gray-300 rounded text-sm focus:ring-2 focus:ring-indigo-500 outline-none bg-white text-slate-900"
                           >
-                             <option value="">Default Icon</option>
-                             <option value="Printer">Printer</option>
-                             <option value="Save">Save</option>
-                             <option value="Download">Download</option>
-                             <option value="Mail">Mail</option>
-                             <option value="Send">Send</option>
-                             <option value="FileText">Document</option>
-                             <option value="Check">Check</option>
-                             <option value="X">Close (X)</option>
-                             <option value="Upload">Upload</option>
-                             <option value="Image">Image</option>
-                             <option value="Excel">Excel</option>
+                             <option value="">{t(`Default Icon`)}</option>
+                             <option value="Printer">{t(`Printer`)}</option>
+                             <option value="Save">{t(`Save`)}</option>
+                             <option value="Download">{t(`Download`)}</option>
+                             <option value="Mail">{t(`Mail`)}</option>
+                             <option value="Send">{t(`Send`)}</option>
+                             <option value="FileText">{t(`Document`)}</option>
+                             <option value="Check">{t(`Check`)}</option>
+                             <option value="X">{t(`Close (X)`)}</option>
+                             <option value="Upload">{t(`Upload`)}</option>
+                             <option value="Image">{t(`Image`)}</option>
+                             <option value="Excel">{t(`Excel`)}</option>
                           </select>
                        </div>
                      )}
 
                      <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-100">
                        <div>
-                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Row Index</label>
+                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">{t(`Row Index`)}</label>
                          <input 
                            type="number" min="0"
                            value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.row || 0}
@@ -1323,7 +1325,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                          />
                        </div>
                        <div>
-                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">Column Start</label>
+                         <label className="block text-[10px] font-bold text-gray-400 mb-1 uppercase">{t(`Column Start`)}</label>
                          <input 
                            type="number" min="0" max="11"
                            value={config.uiModeOverrides[previewMode].sections[selectedField.section as SectionType].fields.find((f: FieldLayout) => f.fieldId === selectedField.id)?.col || 0}
@@ -1335,7 +1337,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
                       {selectedField.id === 'lineItems' && (
                         <div className="pt-4 border-t border-gray-100">
-                          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Table Style</label>
+                          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">{t(`Table Style`)}</label>
                           <div className="grid grid-cols-2 gap-2">
                              <button
                                onClick={() => setConfig({...config, tableStyle: 'web'})}
@@ -1362,7 +1364,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                       )}
 
                      <div>
-                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">Move to Section</label>
+                        <label className="block text-xs font-bold text-gray-500 mb-1 uppercase">{t(`Move to Section`)}</label>
                         <select 
                           value={selectedField.section}
                           onChange={(e) => moveSelectedFieldSection(e.target.value)}
@@ -1377,7 +1379,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 ) : (
                   <div className="text-center text-gray-400 py-10">
                      <MousePointerClick size={40} className="mx-auto mb-2 opacity-50" />
-                     <p className="text-sm">Select a field in the grid to edit its properties.</p>
+                     <p className="text-sm">{t(`Select a field in the grid to edit its properties.`)}</p>
                   </div>
                 )}
              </div>
@@ -1393,8 +1395,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         return (
           <div className="max-w-4xl mx-auto">
             <div className="text-center mb-8">
-              <h2 className="text-2xl font-bold text-gray-900 mb-2">Choose a Starting Template</h2>
-              <p className="text-gray-600">Select a predefined template or start from scratch</p>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">{t(`Choose a Starting Template`)}</h2>
+              <p className="text-gray-600">{t(`Select a predefined template or start from scratch`)}</p>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -1430,7 +1432,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                         Selected
                       </div>
                     ) : (
-                      <div className="text-xs text-gray-400">Click to select</div>
+                      <div className="text-xs text-gray-400">{t(`Click to select`)}</div>
                     )}
                   </div>
                 </div>
@@ -1451,7 +1453,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
           <div className="max-w-xl mx-auto space-y-6">
              <div className="space-y-4">
                 <label className="block">
-                  <span className="text-sm font-medium text-gray-700">Voucher Type Name *</span>
+                  <span className="text-sm font-medium text-gray-700">{t(`Voucher Type Name *`)}</span>
                   <input 
                     type="text" 
                     value={config.name} 
@@ -1471,7 +1473,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 </label>
                 <div className="grid grid-cols-2 gap-4">
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">ID Key *</span>
+                    <span className="text-sm font-medium text-gray-700">{t(`ID Key *`)}</span>
                     <input 
                       type="text" 
                       value={config.id} 
@@ -1505,7 +1507,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                     )}
                   </label>
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Prefix *</span>
+                    <span className="text-sm font-medium text-gray-700">{t(`Prefix *`)}</span>
                     <input 
                       type="text" 
                       value={config.prefix} 
@@ -1520,7 +1522,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                         validationErrors.prefix ? 'border-red-500' : 'border-gray-300'
                       }`}
                     />
-                    <p className="mt-1 text-xs text-gray-500">Short code only (e.g. JE-, PV-). For format templates, use the Number Format field below.</p>
+                    <p className="mt-1 text-xs text-gray-500">{t(`Short code only (e.g. JE-, PV-). For format templates, use the Number Format field below.`)}</p>
                     {validationErrors.prefix && (
                       <p className="mt-1 text-sm text-red-600">❌ {validationErrors.prefix}</p>
                     )}
@@ -1530,7 +1532,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 {/* Number Format */}
                 <div className="mt-4">
                   <label className="block">
-                    <span className="text-sm font-medium text-gray-700">Number Format <span className="text-gray-400 font-normal">(optional)</span></span>
+                    <span className="text-sm font-medium text-gray-700">{t(`Number Format`)} <span className="text-gray-400 font-normal">{t(`(optional)`)}</span></span>
                     <input 
                       type="text" 
                       value={config.numberFormat || ''} 
@@ -1539,12 +1541,12 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                       className="mt-1 block w-full rounded-md shadow-sm p-2 border border-gray-300 bg-white text-slate-900"
                     />
                     <p className="mt-1 text-xs text-gray-500">
-                      Leave blank for default format. Placeholders: <code className="bg-gray-100 px-1 rounded">{'{PREFIX}'}</code> <code className="bg-gray-100 px-1 rounded">{'{YYYY}'}</code> <code className="bg-gray-100 px-1 rounded">{'{COUNTER:4}'}</code>
+                      {t(`Leave blank for default format. Placeholders:`)} <code className="bg-gray-100 px-1 rounded">{'{PREFIX}'}</code> <code className="bg-gray-100 px-1 rounded">{'{YYYY}'}</code> <code className="bg-gray-100 px-1 rounded">{'{COUNTER:4}'}</code>
                     </p>
                   </label>
                   {/* Live Preview */}
                   <div className="mt-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">Preview</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-slate-400 block mb-1">{t(`Preview`)}</span>
                     <span className="font-mono text-sm font-bold text-indigo-700">
                       {(() => {
                         const prefix = (config.prefix || 'V-').replace(/-$/, '');
@@ -1566,8 +1568,8 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                 
                 <div onClick={() => setConfig({...config, isMultiLine: !config.isMultiLine})} className={`p-4 rounded-xl border cursor-pointer flex items-center justify-between ${config.isMultiLine ? 'border-indigo-600 bg-indigo-50' : 'border-gray-200'}`}>
                    <div>
-                      <h3 className="text-sm font-bold text-gray-900">Enable Line Items Table</h3>
-                      <p className="text-xs text-gray-500">Enable line items table for this voucher.</p>
+                      <h3 className="text-sm font-bold text-gray-900">{t(`Enable Line Items Table`)}</h3>
+                      <p className="text-xs text-gray-500">{t(`Enable line items table for this voucher.`)}</p>
                    </div>
                    <div className={`px-3 py-1 rounded-full text-xs font-bold ${config.isMultiLine ? 'bg-indigo-600 text-white' : 'bg-gray-200 text-gray-500'}`}>{config.isMultiLine ? 'ON' : 'OFF'}</div>
                 </div>
@@ -1622,7 +1624,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                   <div className="flex items-center gap-2">
                     <span className="text-sm font-bold">{field.label}</span>
                     {isCore && (
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>Required</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-black uppercase tracking-tighter ${isSelected ? 'bg-white/20 text-white' : 'bg-blue-50 text-blue-600'}`}>{t(`Required`)}</span>
                     )}
                   </div>
                   <span className={`text-[10px] ${isSelected ? 'text-indigo-100' : 'text-gray-400 font-medium'}`}>
@@ -1644,7 +1646,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                     <h3 className="text-[10px] font-black text-indigo-600 uppercase tracking-widest flex items-center gap-2">
                        <Shield size={12} /> Core System Fields
                     </h3>
-                    <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-2 py-0.5 rounded">Always Included</span>
+                    <span className="text-[10px] text-gray-400 font-bold bg-gray-100 px-2 py-0.5 rounded">{t(`Always Included`)}</span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                      {coreFields.map(renderFieldCard)}
@@ -1664,7 +1666,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
              {config.isMultiLine && (
                <div className="space-y-6">
-                  <h3 className="text-sm font-bold text-gray-500 uppercase text-center border-t border-gray-100 pt-6">Table Columns Selection</h3>
+                  <h3 className="text-sm font-bold text-gray-500 uppercase text-center border-t border-gray-100 pt-6">{t(`Table Columns Selection`)}</h3>
                   <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
                      {AVAILABLE_TABLE_COLUMNS.map(col => {
                         const currentCols = (config.tableColumns || []) as any[];
@@ -1697,7 +1699,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                         );
                      })}
                   </div>
-                  <p className="mt-4 text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">Labels and ordering are managed in the <span className="text-indigo-600">Visual Editor</span> step.</p>
+                  <p className="mt-4 text-[10px] text-gray-400 text-center uppercase tracking-widest font-bold">{t(`Labels and ordering are managed in the`)} <span className="text-indigo-600">{t(`Visual Editor`)}</span> {t(`step.`)}</p>
                </div>
              )}
           </div>
@@ -1722,7 +1724,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
                   
                   {action.enabled && (
                     <div className="pt-3 mt-3 border-t border-indigo-100 flex items-center justify-between">
-                      <span className="text-xs font-medium text-slate-700">Display as Icon Only (Compact)</span>
+                      <span className="text-xs font-medium text-slate-700">{t(`Display as Icon Only (Compact)`)}</span>
                       <ToggleSwitch
                         checked={!!action.isCompact}
                         onChange={(checked) => {
@@ -1744,10 +1746,10 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
         return (
            <div className="max-w-2xl mx-auto text-center space-y-8">
               <div className="bg-green-50 border border-green-200 rounded-full w-20 h-20 mx-auto flex items-center justify-center text-green-600 mb-4"><CheckCircle2 size={40} /></div>
-              <h2 className="text-2xl font-bold text-gray-900">Ready to Save</h2>
+              <h2 className="text-2xl font-bold text-gray-900">{t(`Ready to Save`)}</h2>
               <div className="bg-white rounded-xl border border-gray-200 p-6 text-start space-y-4 shadow-sm">
-                 <div className="flex justify-between pb-2 border-b"><span className="text-gray-500">Name</span><span className="font-bold text-slate-900">{config.name}</span></div>
-                 <div className="flex justify-between pb-2"><span className="text-gray-500">Total Fields</span><span className="font-bold text-slate-900">{selectedFieldIds.length}</span></div>
+                 <div className="flex justify-between pb-2 border-b"><span className="text-gray-500">{t(`Name`)}</span><span className="font-bold text-slate-900">{config.name}</span></div>
+                 <div className="flex justify-between pb-2"><span className="text-gray-500">{t(`Total Fields`)}</span><span className="font-bold text-slate-900">{selectedFieldIds.length}</span></div>
               </div>
            </div>
         );
@@ -1764,7 +1766,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
               <div className="bg-slate-900 text-white p-4 flex justify-between items-center">
                  <div className="flex items-center gap-2">
                     <PlayCircle size={20} className="text-green-400" />
-                    <h2 className="font-bold">Test Run: {config.name} ({previewMode.toUpperCase()} Mode)</h2>
+                    <h2 className="font-bold">{t(`Test Run:`)} {config.name} ({previewMode.toUpperCase()} {t(`Mode)`)}</h2>
                  </div>
                  <button onClick={() => setIsTesting(false)} className="bg-white/10 hover:bg-white/20 p-2 rounded-full transition-colors"><X size={20} /></button>
               </div>
@@ -1781,17 +1783,17 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
       <div className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 shadow-sm z-20 shrink-0">
          <div className="flex items-center gap-3">
             <div className="bg-indigo-600 text-white p-2 rounded-lg"><LayoutTemplate size={20} /></div>
-            <div><h1 className="text-lg font-bold text-slate-800 leading-tight">Voucher Wizard</h1></div>
+            <div><h1 className="text-lg font-bold text-slate-800 leading-tight">{t(`Voucher Wizard`)}</h1></div>
          </div>
-         <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">Cancel</button>
+         <button onClick={onCancel} className="text-gray-500 hover:text-gray-700 text-sm font-medium">{t(`Cancel`)}</button>
       </div>
 
       {/* Read-only Warning Banner */}
       {isReadOnly && (
         <div className="bg-yellow-50 border-b border-yellow-200 px-6 py-3">
           <div className="flex items-center gap-2 text-yellow-800">
-            <span className="font-semibold">⚠️ Read Only:</span>
-            <span className="text-sm">This is a system default voucher. Use the Clone button to create a customizable version.</span>
+            <span className="font-semibold">{t(`⚠️ Read Only:`)}</span>
+            <span className="text-sm">{t(`This is a system default voucher. Use the Clone button to create a customizable version.`)}</span>
           </div>
         </div>
       )}
@@ -1839,7 +1841,7 @@ export const VoucherDesigner: React.FC<VoucherDesignerProps> = ({
 
       {/* Footer */}
       <div className="h-20 bg-white border-t border-gray-200 px-8 flex items-center justify-between shrink-0">
-         <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> Back</button>
+         <button onClick={handleBack} disabled={currentStep === 1} className="flex items-center gap-2 px-6 py-2.5 rounded-lg font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50"><ArrowLeft size={18} /> {t(`Back`)}</button>
          {currentStep === 7 ? (
             <button 
               onClick={() => onSave?.(previewConfig)} 

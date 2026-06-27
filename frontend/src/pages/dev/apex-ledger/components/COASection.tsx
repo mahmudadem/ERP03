@@ -413,7 +413,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                   <div className="divide-y divide-slate-100 bg-white font-mono text-[11px]">
                     <div className="grid grid-cols-3 p-2 hover:bg-slate-50">
                       <div>
-                        <span className="block font-sans font-bold text-slate-700">JV-2026-081</span>
+                        <span className="block font-sans font-bold text-slate-700">{t(`JV-2026-081`)}</span>
                         <span className="text-[10px] text-slate-400">2026-05-28</span>
                       </div>
                       <span className="text-right tabular-nums text-emerald-600">{selectedAccountForLedger.classification === 'Posting' ? fmt(selectedAccountForLedger.balance * 0.1) : '–'}</span>
@@ -421,7 +421,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                     </div>
                     <div className="grid grid-cols-3 p-2 hover:bg-slate-50">
                       <div>
-                        <span className="block font-sans font-bold text-slate-700">JV-2026-042</span>
+                        <span className="block font-sans font-bold text-slate-700">{t(`JV-2026-042`)}</span>
                         <span className="text-[10px] text-slate-400">2026-05-15</span>
                       </div>
                       <span className="text-right tabular-nums text-slate-400">–</span>
@@ -429,7 +429,7 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                     </div>
                     <div className="grid grid-cols-3 p-2 bg-slate-50 font-bold">
                       <span className="font-sans text-slate-600">{t('apex.coa.calcBalance', { defaultValue: 'Calculated Balance' })}</span>
-                      <span className="text-right tabular-nums block font-black text-slate-800 col-span-2">{fmt(selectedAccountForLedger.balance)} SYP</span>
+                      <span className="text-right tabular-nums block font-black text-slate-800 col-span-2">{fmt(selectedAccountForLedger.balance)} {t(`SYP`)}</span>
                     </div>
                   </div>
                 </div>
@@ -537,11 +537,11 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                       onChange={(e) => setNewType(e.target.value as AccountType)}
                       className="w-full text-xs text-slate-700 bg-zinc-50 border border-[#E2E8F0] disabled:bg-slate-100 focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-2 outline-none"
                     >
-                      <option value="Asset">Asset</option>
-                      <option value="Liability">Liability</option>
-                      <option value="Equity">Equity</option>
-                      <option value="Revenue">Revenue</option>
-                      <option value="Expense">Expense</option>
+                      <option value="Asset">{t(`Asset`)}</option>
+                      <option value="Liability">{t(`Liability`)}</option>
+                      <option value="Equity">{t(`Equity`)}</option>
+                      <option value="Revenue">{t(`Revenue`)}</option>
+                      <option value="Expense">{t(`Expense`)}</option>
                     </select>
                   </div>
                 </div>
@@ -567,9 +567,9 @@ export default function COASection({ accounts, setAccounts }: COASectionProps) {
                       onChange={(e) => setNewCurrency(e.target.value)}
                       className="w-full text-xs text-slate-700 bg-zinc-50 border border-[#E2E8F0] focus:border-blue-500 focus:ring-1 focus:ring-blue-500 rounded-md p-2 outline-none"
                     >
-                      <option value="SYP">SYP (Syrian Pound)</option>
-                      <option value="USD">USD (US Dollar)</option>
-                      <option value="AED">AED (Emirati Dirham)</option>
+                      <option value="SYP">{t(`SYP (Syrian Pound)`)}</option>
+                      <option value="USD">{t(`USD (US Dollar)`)}</option>
+                      <option value="AED">{t(`AED (Emirati Dirham)`)}</option>
                     </select>
                   </div>
                 </div>

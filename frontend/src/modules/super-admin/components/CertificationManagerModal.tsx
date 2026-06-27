@@ -384,7 +384,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                   <ShieldCheck className="h-5 w-5 text-emerald-700" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-emerald-900">Ready for tenants</h3>
+                  <h3 className="text-base font-semibold text-emerald-900">{t(`Ready for tenants`)}</h3>
                   <p className="mt-1 text-sm text-emerald-800">
                     This model is certified. Tenants can use it for the categories listed below.
                   </p>
@@ -400,7 +400,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                   <AlertTriangle className="h-5 w-5 text-amber-700" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-amber-900">Setup incomplete — no platform API key</h3>
+                  <h3 className="text-base font-semibold text-amber-900">{t(`Setup incomplete — no platform API key`)}</h3>
                   <p className="mt-1 text-sm text-amber-800">
                     Certification can&apos;t run without a platform API key for this model. Set one up in Platform Global Providers, then come back and re-run.
                   </p>
@@ -423,7 +423,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                   <XCircle className="h-5 w-5 text-red-700" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-red-900">Last certification failed</h3>
+                  <h3 className="text-base font-semibold text-red-900">{t(`Last certification failed`)}</h3>
                   <p className="mt-1 text-sm text-red-800">
                     Check the failure detail in the table below, fix the underlying issue, then re-run for the same category.
                   </p>
@@ -439,7 +439,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                   <Shield className="h-5 w-5 text-slate-600" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-slate-800">All certifications expired</h3>
+                  <h3 className="text-base font-semibold text-slate-800">{t(`All certifications expired`)}</h3>
                   <p className="mt-1 text-sm text-slate-600">
                     Re-run certification for the categories you want to enable.
                   </p>
@@ -476,7 +476,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                   <Shield className="h-5 w-5 text-slate-500" />
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base font-semibold text-slate-800">Not certified yet</h3>
+                  <h3 className="text-base font-semibold text-slate-800">{t(`Not certified yet`)}</h3>
                   <p className="mt-1 text-sm text-slate-600">
                     Pick an ERP category below and run certification to unlock tool access for tenants.
                   </p>
@@ -539,7 +539,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
               <div className="mt-4 border-t border-slate-200 pt-4">
                 <div className="flex items-center justify-between mb-2">
                   <h4 className="text-xs font-semibold text-slate-700 uppercase tracking-wide">
-                    Results {runAllInProgress && runAllProgress ? `(${runAllProgress.current}/${runAllProgress.total})` : `— ${runAllResults.length} categories`}
+                    {t(`Results`)} {runAllInProgress && runAllProgress ? `(${runAllProgress.current}/${runAllProgress.total})` : `— ${runAllResults.length} categories`}
                   </h4>
                   {!runAllInProgress && (
                     <button
@@ -563,8 +563,8 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                         : 'border-amber-200 bg-amber-50 text-amber-800',
                     )}>
                       {failed === 0
-                        ? <><ShieldCheck className="inline h-4 w-4 mr-1.5 -mt-0.5" />{passed} certified{warned > 0 ? `, ${warned} warnings` : ''} — all categories passed</>
-                        : <><AlertTriangle className="inline h-4 w-4 mr-1.5 -mt-0.5" />{passed} certified, {failed} failed{warned > 0 ? `, ${warned} warnings` : ''}</>
+                        ? <><ShieldCheck className="inline h-4 w-4 mr-1.5 -mt-0.5" />{passed} {t(`certified`)}{warned > 0 ? `, ${warned} warnings` : ''} {t(`— all categories passed`)}</>
+                        : <><AlertTriangle className="inline h-4 w-4 mr-1.5 -mt-0.5" />{passed} {t(`certified,`)} {failed} {t(`failed`)}{warned > 0 ? `, ${warned} warnings` : ''}</>
                       }
                     </div>
                   );
@@ -606,7 +606,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                   {runAllInProgress && runAllProgress && (
                     <div className="flex items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-500">
                       <RefreshCw className="h-4 w-4 animate-spin flex-shrink-0" />
-                      <span>Running {runAllProgress.category}…</span>
+                      <span>{t(`Running`)} {runAllProgress.category}…</span>
                     </div>
                   )}
                 </div>
@@ -618,47 +618,47 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
               <div className="mt-4 space-y-3 border-t border-slate-200 pt-4">
                 <div className="grid gap-3 sm:grid-cols-3">
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Data Filter Policy</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">{t(`Data Filter Policy`)}</label>
                     <select
                       value={dataFilterPolicyId}
                       onChange={e => setDataFilterPolicyId(e.target.value)}
                       className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs"
                     >
-                      <option value="none">None</option>
-                      <option value="erp-standard-masking">ERP Standard Masking</option>
-                      <option value="strict-pii">Strict PII Filtering</option>
-                      <option value="financial-only">Financial Data Only</option>
+                      <option value="none">{t(`None`)}</option>
+                      <option value="erp-standard-masking">{t(`ERP Standard Masking`)}</option>
+                      <option value="strict-pii">{t(`Strict PII Filtering`)}</option>
+                      <option value="financial-only">{t(`Financial Data Only`)}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">Safety Policy</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">{t(`Safety Policy`)}</label>
                     <select
                       value={safetyPolicyId}
                       onChange={e => setSafetyPolicyId(e.target.value)}
                       className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs"
                     >
-                      <option value="none">None</option>
-                      <option value="default-safety">Default Safety</option>
-                      <option value="strict-safety">Strict Safety</option>
+                      <option value="none">{t(`None`)}</option>
+                      <option value="default-safety">{t(`Default Safety`)}</option>
+                      <option value="strict-safety">{t(`Strict Safety`)}</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 mb-1">System Prompt Policy</label>
+                    <label className="block text-xs font-medium text-slate-600 mb-1">{t(`System Prompt Policy`)}</label>
                     <select
                       value={systemPromptPolicyId}
                       onChange={e => setSystemPromptPolicyId(e.target.value)}
                       className="w-full rounded-md border border-slate-300 bg-white px-2 py-1.5 text-xs"
                     >
-                      <option value="none">None</option>
-                      <option value="erp-default-assistant">ERP Default Assistant</option>
-                      <option value="sales-specialist">Sales Specialist</option>
-                      <option value="accounting-specialist">Accounting Specialist</option>
+                      <option value="none">{t(`None`)}</option>
+                      <option value="erp-default-assistant">{t(`ERP Default Assistant`)}</option>
+                      <option value="sales-specialist">{t(`Sales Specialist`)}</option>
+                      <option value="accounting-specialist">{t(`Accounting Specialist`)}</option>
                     </select>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-slate-500">
-                    Profile hash: <span className="font-mono text-slate-700">{profile?.profileHash?.slice(0, 16) || '—'}…</span>
+                    {t(`Profile hash:`)} <span className="font-mono text-slate-700">{profile?.profileHash?.slice(0, 16) || '—'}…</span>
                   </span>
                   <button
                     type="button"
@@ -854,7 +854,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
               {t('superAdmin.aiModels.certifications.manualCertInfo', 'Record a certification result from an external AI test suite. This does NOT run any automated tests — it registers a result you have verified manually.')}
             </div>
             <div className="rounded-md border border-slate-200 bg-slate-50 p-2 text-xs text-slate-600">
-              <span className="font-medium">Profile Hash:</span> {profile?.profileHash || '\u2014'}
+              <span className="font-medium">{t(`Profile Hash:`)}</span> {profile?.profileHash || '\u2014'}
             </div>
             <label className="block text-sm">
               <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiModels.certifications.form.category', 'Category')}</span>
@@ -863,7 +863,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
                 onChange={e => setManualCertForm({ ...manualCertForm, category: e.target.value as AiCertificationCategory })}
                 className="w-full rounded-md border border-slate-300 px-3 py-2"
               >
-                <option value="">{'\u2014'} Select {'\u2014'}</option>
+                <option value="">{'\u2014'} {t(`Select`)} {'\u2014'}</option>
                 {CERTIFICATION_CATEGORIES.map(cat => (
                   <option key={cat} value={cat}>{t(`superAdmin.aiModels.certifications.categories.${cat}`, cat)}</option>
                 ))}
@@ -935,7 +935,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
             </div>
 
             <div>
-              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">Summary</h4>
+              <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-slate-500">{t(`Summary`)}</h4>
               <div className="rounded-lg border border-slate-200 bg-slate-50 p-3 text-sm text-slate-700 whitespace-pre-wrap leading-relaxed">
                 {detailCert.summary || 'No summary available.'}
               </div>
@@ -943,7 +943,7 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
 
             {detailCert.failureReasons && detailCert.failureReasons.length > 0 && (
               <div>
-                <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-600">Failure Reasons</h4>
+                <h4 className="mb-1 text-xs font-semibold uppercase tracking-wide text-red-600">{t(`Failure Reasons`)}</h4>
                 <ul className="space-y-1">
                   {detailCert.failureReasons.map((reason, i) => (
                     <li key={i} className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
@@ -955,10 +955,10 @@ export const CertificationManagerModal: React.FC<CertificationManagerModalProps>
             )}
 
             <div className="grid grid-cols-2 gap-3 text-xs text-slate-500">
-              <div><span className="font-medium text-slate-600">Tested by:</span> {detailCert.testedBy}</div>
-              <div><span className="font-medium text-slate-600">Profile hash:</span> <span className="font-mono">{detailCert.profileHash?.slice(0, 20)}…</span></div>
-              <div><span className="font-medium text-slate-600">Test suite:</span> {detailCert.testSuiteVersion || '—'}</div>
-              <div><span className="font-medium text-slate-600">Tool contract:</span> {detailCert.toolContractVersion || '—'}</div>
+              <div><span className="font-medium text-slate-600">{t(`Tested by:`)}</span> {detailCert.testedBy}</div>
+              <div><span className="font-medium text-slate-600">{t(`Profile hash:`)}</span> <span className="font-mono">{detailCert.profileHash?.slice(0, 20)}…</span></div>
+              <div><span className="font-medium text-slate-600">{t(`Test suite:`)}</span> {detailCert.testSuiteVersion || '—'}</div>
+              <div><span className="font-medium text-slate-600">{t(`Tool contract:`)}</span> {detailCert.toolContractVersion || '—'}</div>
             </div>
           </div>
         </SuperAdminModal>

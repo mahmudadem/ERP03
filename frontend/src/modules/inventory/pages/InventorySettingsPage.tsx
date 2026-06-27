@@ -13,6 +13,7 @@ import { useTranslation } from 'react-i18next';
 import {
   resolveInventoryAccountingMode,
 } from '../../../utils/documentPolicy';
+import i18n from "i18next";
 
 const unwrap = <T,>(payload: any): T => {
   const data = payload?.data ?? payload;
@@ -131,7 +132,7 @@ const InventorySettingsPage: React.FC = () => {
       onSave={handleSave}
       onDiscard={() => {
         setSettings(originalSettings);
-        toast('Changes discarded', { icon: 'ℹ️' });
+        toast(i18n.t('Changes discarded'), { icon: 'ℹ️' });
       }}
       saving={saving}
     >
@@ -189,7 +190,7 @@ const InventorySettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Cost Currency</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Cost Currency`)}</label>
                   <input
                     type="text"
                     value={settings.defaultCostCurrency}
@@ -200,17 +201,17 @@ const InventorySettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Costing Basis</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Costing Basis`)}</label>
                   <select
                     value={settings.costingBasis || 'WAREHOUSE'}
                     onChange={(e) => updateSetting('costingBasis', e.target.value as 'WAREHOUSE' | 'GLOBAL')}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none bg-white font-medium"
                   >
-                    <option value="WAREHOUSE">Per Warehouse (moving average per item + warehouse)</option>
-                    <option value="GLOBAL">Global (one company-wide average per item)</option>
+                    <option value="WAREHOUSE">{t(`Per Warehouse (moving average per item + warehouse)`)}</option>
+                    <option value="GLOBAL">{t(`Global (one company-wide average per item)`)}</option>
                   </select>
                   <p className="mt-1.5 text-xs text-gray-500 italic">
-                    Set once at setup — changing it after stock movements exist is not recommended. <strong>Per Warehouse</strong> keeps a separate moving average per location (default). <strong>Global</strong> keeps one company-wide average per item, so every location issues at the same cost. Both engines are live.
+                    {t(`Set once at setup — changing it after stock movements exist is not recommended.`)} <strong>{t(`Per Warehouse`)}</strong> {t(`keeps a separate moving average per location (default).`)} <strong>{t(`Global`)}</strong> keeps one company-wide average per item, so every location issues at the same cost. Both engines are live.
                   </p>
                 </div>
               </div>
@@ -218,7 +219,7 @@ const InventorySettingsPage: React.FC = () => {
               <div className="space-y-6">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Inventory Asset Account`)}</label>
                     <AccountSelector
                       value={settings.defaultInventoryAssetAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryAssetAccountId', acc?.id || '')}
@@ -233,7 +234,7 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Opening Balance Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Opening Balance Account`)}</label>
                     <AccountSelector
                       value={settings.defaultOpeningBalanceAccountId}
                       onChange={(acc) => updateSetting('defaultOpeningBalanceAccountId', acc?.id || '')}
@@ -249,7 +250,7 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default COGS Account`)}</label>
                     <AccountSelector
                       value={settings.defaultCOGSAccountId}
                       onChange={(acc) => updateSetting('defaultCOGSAccountId', acc?.id || '')}
@@ -265,7 +266,7 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Loss / Write-down Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Inventory Loss / Write-down Account`)}</label>
                     <AccountSelector
                       value={settings.defaultInventoryLossAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryLossAccountId', acc?.id || '')}
@@ -281,7 +282,7 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Gain / Write-up Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Inventory Gain / Write-up Account`)}</label>
                     <AccountSelector
                       value={settings.defaultInventoryGainAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryGainAccountId', acc?.id || '')}
@@ -297,7 +298,7 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Transfer Clearing Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Inventory Transfer Clearing Account`)}</label>
                     <AccountSelector
                       value={settings.defaultInventoryTransferClearingAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryTransferClearingAccountId', acc?.id || '')}
@@ -310,7 +311,7 @@ const InventorySettingsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Revaluation Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Inventory Revaluation Account`)}</label>
                     <AccountSelector
                       value={settings.defaultInventoryRevaluationAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryRevaluationAccountId', acc?.id || '')}
@@ -341,13 +342,13 @@ const InventorySettingsPage: React.FC = () => {
             <div className="space-y-6">
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Warehouse</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Default Warehouse`)}</label>
                   <select
                     value={settings.defaultWarehouseId || ''}
                     onChange={(e) => updateSetting('defaultWarehouseId', e.target.value || undefined)}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none bg-white font-medium"
                   >
-                    <option value="">No default</option>
+                    <option value="">{t(`No default`)}</option>
                     {warehouses.map((wh) => (
                       <option key={wh.id} value={wh.id}>
                         {wh.name} ({wh.code})
@@ -358,8 +359,8 @@ const InventorySettingsPage: React.FC = () => {
 
                 <label className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 cursor-pointer hover:border-gray-300 transition">
                   <div>
-                    <div className="text-sm font-bold text-gray-900">Allow Negative Stock</div>
-                    <div className="text-xs text-gray-500 uppercase tracking-tighter">Enable if stock can go below zero.</div>
+                    <div className="text-sm font-bold text-gray-900">{t(`Allow Negative Stock`)}</div>
+                    <div className="text-xs text-gray-500 uppercase tracking-tighter">{t(`Enable if stock can go below zero.`)}</div>
                   </div>
                   <input
                     type="checkbox"
@@ -371,7 +372,7 @@ const InventorySettingsPage: React.FC = () => {
 
                 <label className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 cursor-pointer hover:border-gray-300 transition">
                   <div>
-                    <div className="text-sm font-bold text-gray-900">Allow Deferred Cost Posting</div>
+                    <div className="text-sm font-bold text-gray-900">{t(`Allow Deferred Cost Posting`)}</div>
                     <div className="text-xs text-gray-500 uppercase tracking-tighter">
                       Post sales invoices before stock cost is known. COGS is recognized later when cost settles.
                     </div>
@@ -402,8 +403,8 @@ const InventorySettingsPage: React.FC = () => {
             <div className="space-y-6">
               <label className="flex items-center justify-between rounded-xl border border-gray-200 bg-gray-50 px-5 py-4 cursor-pointer hover:border-gray-300 transition">
                 <div>
-                  <div className="text-sm font-bold text-gray-900">Auto-generate Item Codes</div>
-                  <div className="text-xs text-gray-500 uppercase tracking-tighter">Automatically assign codes on item creation.</div>
+                  <div className="text-sm font-bold text-gray-900">{t(`Auto-generate Item Codes`)}</div>
+                  <div className="text-xs text-gray-500 uppercase tracking-tighter">{t(`Automatically assign codes on item creation.`)}</div>
                 </div>
                 <input
                   type="checkbox"
@@ -416,7 +417,7 @@ const InventorySettingsPage: React.FC = () => {
               {settings.autoGenerateItemCode && (
                 <div className="grid md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-top-2">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Prefix</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Prefix`)}</label>
                     <input
                       type="text"
                       value={settings.itemCodePrefix || ''}
@@ -426,7 +427,7 @@ const InventorySettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Next Sequence Number</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t(`Next Sequence Number`)}</label>
                     <input
                       type="number"
                       min={1}

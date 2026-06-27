@@ -17,6 +17,7 @@ import {
   Share2,
   FolderOpen
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface SalesPage2Props {
   onClose: () => void;
@@ -36,6 +37,7 @@ export default function SalesPage2({
   setInvoices,
   editInvoiceId
 }: SalesPage2Props) {
+    const { t } = useTranslation('common');
   // 1. Core Header fields state
   const [selectedCustomerId, setSelectedCustomerId] = useState(customers[0]?.id || '');
   const [currency, setCurrency] = useState('USD');
@@ -237,7 +239,7 @@ export default function SalesPage2({
   const handleSaveInvoice = (status: 'Draft' | 'Posted' | 'Paid') => {
     const cust = customers.find(c => c.id === selectedCustomerId);
     if (!cust) {
-      toast.error('Please select a valid customer.');
+      toast.error(t('Please select a valid customer.'));
       return;
     }
 
@@ -256,7 +258,7 @@ export default function SalesPage2({
       });
 
     if (mappedItems.length === 0) {
-      toast.error('Please choose at least one material/product.');
+      toast.error(t('Please choose at least one material/product.'));
       return;
     }
 
@@ -304,7 +306,7 @@ export default function SalesPage2({
     }
 
     handleClearForm();
-    toast('New document form ready', { icon: 'i' });
+    toast(t('New document form ready'), { icon: 'i' });
   };
 
   const handleConfirmDelete = () => {
@@ -314,7 +316,7 @@ export default function SalesPage2({
     }
 
     setInvoices(prev => prev.filter(inv => inv.id !== editInvoiceId));
-    toast.success('Invoice deleted');
+    toast.success(t('Invoice deleted'));
     setIsDeleteConfirmOpen(false);
     onClose();
   };
@@ -325,11 +327,11 @@ export default function SalesPage2({
       <div className="bg-[#0f172a] text-white px-4 py-2 flex items-center justify-between border-b border-[#1e293b]">
         <div className="flex items-center space-x-2">
           <Database className="w-4 h-4 text-emerald-400" />
-          <span className="font-bold tracking-tight text-xs">Sales Voucher ERP Interface — Layout V2</span>
+          <span className="font-bold tracking-tight text-xs">{t(`Sales Voucher ERP Interface — Layout V2`)}</span>
         </div>
         <div className="flex items-center space-x-2">
           <span className="text-[10px] bg-slate-800 text-slate-300 font-mono px-2 py-0.5 rounded border border-slate-700">
-            RECORD MODE: {editInvoiceId ? 'EDIT' : 'NEW'}
+            {t(`RECORD MODE:`)} {editInvoiceId ? 'EDIT' : 'NEW'}
           </span>
           <button
             onClick={onClose}
@@ -346,7 +348,7 @@ export default function SalesPage2({
         {/* ROW 1 of Controls */}
         <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm grid grid-cols-1 xl:grid-cols-12 gap-3 items-center">
           <div className="xl:col-span-6">
-            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Client Selector</span>
+            <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">{t(`Client Selector`)}</span>
             <div className="relative flex rounded-md shadow-xs">
               <select
                 value={selectedCustomerId}
@@ -355,7 +357,7 @@ export default function SalesPage2({
               >
                 {customers.map(c => (
                   <option key={c.id} value={c.id}>
-                    {c.name} — {c.company} (ID: {c.id})
+                    {c.name} — {c.company} {t(`(ID:`)} {c.id})
                   </option>
                 ))}
               </select>
@@ -372,11 +374,11 @@ export default function SalesPage2({
               const isOverDraft = currentBalance > limit;
               return (
                 <div className="mt-1.5 flex flex-wrap items-center gap-x-3 gap-y-1 text-[9px] bg-slate-50 border border-slate-150 rounded py-1 px-2 text-slate-505 font-mono">
-                  <span>Ledger Balance: <strong className="text-slate-800">{currentBalance.toLocaleString('en-US')} SYP</strong></span>
+                  <span>{t(`Ledger Balance:`)} <strong className="text-slate-800">{currentBalance.toLocaleString('en-US')} {t(`SYP`)}</strong></span>
                   <span className="text-slate-300">|</span>
-                  <span>Credit Limit: <strong className="text-slate-700">{limit.toLocaleString('en-US')} SYP</strong></span>
+                  <span>{t(`Credit Limit:`)} <strong className="text-slate-700">{limit.toLocaleString('en-US')} {t(`SYP`)}</strong></span>
                   <span className="text-slate-300">|</span>
-                  <span>Credit Vetting: <strong className={isOverDraft ? 'text-rose-600 font-bold' : ratio > 0.75 ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold'}>
+                  <span>{t(`Credit Vetting:`)} <strong className={isOverDraft ? 'text-rose-600 font-bold' : ratio > 0.75 ? 'text-amber-600 font-bold' : 'text-emerald-600 font-bold'}>
                     {isOverDraft ? '⚠️ RESTRICTED (EXCEEDS LIMIT)' : ratio > 0.75 ? '⚠️ CAUTION (NEAR LIMIT)' : '✓ HEALTHY (APPROVED)'}
                   </strong></span>
                 </div>
@@ -393,9 +395,9 @@ export default function SalesPage2({
               onChange={(e) => setSecurityLevel(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 py-1.5 px-2 rounded-md outline-none text-xs font-semibold focus:border-blue-500"
             >
-              <option value="Standard">Standard Authorization</option>
-              <option value="High">L-2 Restricted Clearance</option>
-              <option value="Critical">L-3 Executive Board Verified</option>
+              <option value="Standard">{t(`Standard Authorization`)}</option>
+              <option value="High">{t(`L-2 Restricted Clearance`)}</option>
+              <option value="Critical">{t(`L-3 Executive Board Verified`)}</option>
             </select>
           </div>
 
@@ -442,20 +444,20 @@ export default function SalesPage2({
         {/* ROW 2 of Controls */}
         <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm grid grid-cols-1 md:grid-cols-4 lg:grid-cols-12 gap-3 items-center">
           <div className="lg:col-span-3">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Currency</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Currency`)}</span>
             <select
               value={currency}
               onChange={(e) => setCurrency(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 py-1.5 px-2 rounded-md outline-none text-xs font-semibold focus:border-blue-500"
             >
-              <option value="USD">US Dollar (USD)</option>
-              <option value="SYP">Syrian Pound (SYP)</option>
-              <option value="EUR">Euro (EUR)</option>
+              <option value="USD">{t(`US Dollar (USD)`)}</option>
+              <option value="SYP">{t(`Syrian Pound (SYP)`)}</option>
+              <option value="EUR">{t(`Euro (EUR)`)}</option>
             </select>
           </div>
 
           <div className="lg:col-span-2">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Parity Multiplier</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Parity Multiplier`)}</span>
             <input
               type="number"
               step="any"
@@ -467,7 +469,7 @@ export default function SalesPage2({
           </div>
 
           <div className="lg:col-span-2">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Exchange Parity</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Exchange Parity`)}</span>
             <input
               type="number"
               step="any"
@@ -479,7 +481,7 @@ export default function SalesPage2({
           </div>
 
           <div className="lg:col-span-5">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Warehouse Division</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Warehouse Division`)}</span>
             <div className="relative flex rounded-md">
               <span className="bg-blue-600 text-white font-mono px-2 py-1.5 rounded-l-md flex items-center text-[10px] font-black">
                 1
@@ -503,7 +505,7 @@ export default function SalesPage2({
         {/* ROW 3 of Controls */}
         <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm grid grid-cols-1 md:grid-cols-3 lg:grid-cols-12 gap-3 items-center">
           <div className="lg:col-span-3">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Voucher Date</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Voucher Date`)}</span>
             <input
               type="date"
               value={invoiceDate}
@@ -513,20 +515,20 @@ export default function SalesPage2({
           </div>
 
           <div className="lg:col-span-3">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Payment Method</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Payment Method`)}</span>
             <select
               value={payType}
               onChange={(e) => setPayType(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 py-1.5 px-2 rounded-md outline-none text-xs font-semibold focus:border-blue-500"
             >
-              <option value="On Credit">On Credit</option>
-              <option value="Cash Safe">Cash Drawer Transaction</option>
-              <option value="Bank Wire">Bank Wire Transfer</option>
+              <option value="On Credit">{t(`On Credit`)}</option>
+              <option value="Cash Safe">{t(`Cash Drawer Transaction`)}</option>
+              <option value="Bank Wire">{t(`Bank Wire Transfer`)}</option>
             </select>
           </div>
 
           <div className="lg:col-span-6">
-            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Financial Client Account</span>
+            <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Financial Client Account`)}</span>
             <div className="relative flex rounded-md">
               <input
                 type="text"
@@ -552,7 +554,7 @@ export default function SalesPage2({
 
         {/* Notes block */}
         <div className="bg-white border border-slate-200 rounded-lg p-2.5 shadow-sm">
-          <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">Document Allocation Notes (Private / Internal)</span>
+          <span className="block text-[9px] font-bold text-slate-400 uppercase mb-1">{t(`Document Allocation Notes (Private / Internal)`)}</span>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -583,12 +585,12 @@ export default function SalesPage2({
               <thead className="sticky top-0 bg-slate-100 z-10 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[9px] font-mono shadow-xs">
                 <tr>
                   <th className="py-1.5 px-2 bg-slate-100 text-center" style={{ width: '45px' }}>#</th>
-                  <th className="py-1.5 px-2 bg-slate-100" style={{ width: '280px' }}>Material SKU & Name</th>
-                  <th className="py-1.5 px-2 bg-slate-100 text-center" style={{ width: '85px' }}>Unit</th>
-                  <th className="py-1.5 px-2 bg-slate-100 text-center" style={{ width: '70px' }}>Qty</th>
-                  <th className="py-1.5 px-2 bg-slate-100 text-right" style={{ width: '130px' }}>Unit Price ({currency})</th>
-                  <th className="py-1.5 px-2 bg-slate-100 text-right" style={{ width: '130px' }}>Total ({currency})</th>
-                  <th className="py-1.5 px-2 bg-slate-100">Specific Line Notes</th>
+                  <th className="py-1.5 px-2 bg-slate-100" style={{ width: '280px' }}>{t(`Material SKU & Name`)}</th>
+                  <th className="py-1.5 px-2 bg-slate-100 text-center" style={{ width: '85px' }}>{t(`Unit`)}</th>
+                  <th className="py-1.5 px-2 bg-slate-100 text-center" style={{ width: '70px' }}>{t(`Qty`)}</th>
+                  <th className="py-1.5 px-2 bg-slate-100 text-right" style={{ width: '130px' }}>{t(`Unit Price (`)}{currency})</th>
+                  <th className="py-1.5 px-2 bg-slate-100 text-right" style={{ width: '130px' }}>{t(`Total (`)}{currency})</th>
+                  <th className="py-1.5 px-2 bg-slate-100">{t(`Specific Line Notes`)}</th>
                   <th className="py-1.5 px-2 bg-slate-100 text-center" style={{ width: '45px' }}></th>
                 </tr>
               </thead>
@@ -620,7 +622,7 @@ export default function SalesPage2({
                           }}
                           className="w-full bg-slate-50 border border-slate-200 rounded py-1 px-1 text-xs text-slate-800 outline-none focus:border-blue-500 focus:bg-white"
                         >
-                          <option value="">-- Click to choose SKU / Material --</option>
+                          <option value="">{t(`-- Click to choose SKU / Material --`)}</option>
                           {inventory.map(prod => (
                             <option key={prod.id} value={prod.id}>
                               [{prod.sku}] — {prod.name}
@@ -633,10 +635,10 @@ export default function SalesPage2({
                           const isLowStock = prod.qtyOnHand <= 15;
                           return (
                             <span className={`block text-[9px] mt-0.5 px-1.5 py-0.5 font-mono rounded ${isLowStock ? 'text-red-700 font-bold bg-rose-50/85 border border-rose-100' : 'text-slate-500 bg-slate-100/80 border border-slate-200/50'} inline-flex items-center gap-1`}>
-                              <span>Stock On Hand: <strong>{prod.qtyOnHand} pcs</strong></span>
+                              <span>{t(`Stock On Hand:`)} <strong>{prod.qtyOnHand} {t(`pcs`)}</strong></span>
                               <span className="text-slate-300">|</span>
-                              <span>Avg Cost: <strong>${prod.avgCost.toFixed(2)}</strong></span>
-                              {isLowStock && <span className="text-[8px] bg-red-600 text-white px-1 rounded-sm uppercase tracking-wider scale-95 font-sans">Low Critical</span>}
+                              <span>{t(`Avg Cost:`)} <strong>${prod.avgCost.toFixed(2)}</strong></span>
+                              {isLowStock && <span className="text-[8px] bg-red-600 text-white px-1 rounded-sm uppercase tracking-wider scale-95 font-sans">{t(`Low Critical`)}</span>}
                             </span>
                           );
                         })()}
@@ -651,10 +653,10 @@ export default function SalesPage2({
                           }}
                           className="w-full bg-slate-50 border border-slate-200 rounded py-1 px-1 text-center outline-none focus:border-blue-500"
                         >
-                          <option value="PCS">Pieces (PCS)</option>
-                          <option value="KG">Kilograms (KG)</option>
-                          <option value="LTR">Liters (LTR)</option>
-                          <option value="BOX">Containers (BOX)</option>
+                          <option value="PCS">{t(`Pieces (PCS)`)}</option>
+                          <option value="KG">{t(`Kilograms (KG)`)}</option>
+                          <option value="LTR">{t(`Liters (LTR)`)}</option>
+                          <option value="BOX">{t(`Containers (BOX)`)}</option>
                         </select>
                       </td>
 
@@ -759,17 +761,17 @@ export default function SalesPage2({
               <thead className="sticky top-0 bg-slate-100 z-10 border-b border-slate-200 text-slate-500 font-bold uppercase tracking-wider text-[8px] font-mono shadow-xs">
                 <tr>
                   <th className="py-1 px-1.5">#</th>
-                  <th className="py-1 px-1.5" style={{ width: '180px' }}>Account allocation</th>
-                  <th className="py-1 px-1.5" style={{ width: '90px' }}>Discount amt</th>
-                  <th className="py-1 px-1.5" style={{ width: '90px' }}>Discount %</th>
-                  <th className="py-1 px-1.5" style={{ width: '100px' }}>Additions (Tax)</th>
-                  <th className="py-1 px-1.5" style={{ width: '90px' }}>Additions %</th>
-                  <th className="py-1 px-1.5">Internal Accounting Notes</th>
-                  <th className="py-1 px-1.5" style={{ width: '75px' }}>Parity</th>
-                  <th className="py-1 px-1.5" style={{ width: '110px' }}>Equivalent</th>
-                  <th className="py-1 px-1.5" style={{ width: '100px' }}>Category</th>
-                  <th className="py-1 px-1.5" style={{ width: '110px' }}>Cost Center</th>
-                  <th className="py-1 px-1.5" style={{ width: '110px' }}>Contra Account</th>
+                  <th className="py-1 px-1.5" style={{ width: '180px' }}>{t(`Account allocation`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '90px' }}>{t(`Discount amt`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '90px' }}>{t(`Discount %`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '100px' }}>{t(`Additions (Tax)`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '90px' }}>{t(`Additions %`)}</th>
+                  <th className="py-1 px-1.5">{t(`Internal Accounting Notes`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '75px' }}>{t(`Parity`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '110px' }}>{t(`Equivalent`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '100px' }}>{t(`Category`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '110px' }}>{t(`Cost Center`)}</th>
+                  <th className="py-1 px-1.5" style={{ width: '110px' }}>{t(`Contra Account`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-150">
@@ -906,7 +908,7 @@ export default function SalesPage2({
           <div className="bg-[#78909c] text-white p-3.5 rounded-xl flex items-center justify-between shadow-inner">
             <div>
               <span className="block text-[8px] uppercase tracking-widest font-black text-slate-200">
-                Sum ({currency})
+                {t(`Sum (`)}{currency})
               </span>
               <span className="text-2xl font-black font-mono leading-none tracking-tight block mt-1">
                 {totals.finalSum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
@@ -945,32 +947,32 @@ export default function SalesPage2({
 
           <div className="relative group">
             <button className="bg-white hover:bg-slate-100 text-slate-705 border border-slate-300 px-3 py-1.5 rounded-md font-bold text-xs transition flex items-center gap-1 shadow-2xs">
-              Reports <ChevronDown className="w-3 h-3" />
+              {t(`Reports`)} <ChevronDown className="w-3 h-3" />
             </button>
             <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block bg-white border border-slate-200 rounded-md shadow-lg py-1 w-44 z-20">
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Ledger Statement</button>
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Tax Assessment Form</button>
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Daily Accruals Log</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Ledger Statement`)}</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Tax Assessment Form`)}</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Daily Accruals Log`)}</button>
             </div>
           </div>
 
           <div className="relative group">
             <button className="bg-white hover:bg-slate-100 text-slate-705 border border-slate-300 px-3 py-1.5 rounded-md font-bold text-xs transition flex items-center gap-1 shadow-2xs">
-              Operations <ChevronDown className="w-3 h-3" />
+              {t(`Operations`)} <ChevronDown className="w-3 h-3" />
             </button>
             <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block bg-white border border-slate-200 rounded-md shadow-lg py-1 w-44 z-20">
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Verify Accruals</button>
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Adjust Stock Level</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Verify Accruals`)}</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Adjust Stock Level`)}</button>
             </div>
           </div>
 
           <div className="relative group">
             <button className="bg-blue-50 hover:bg-blue-100 text-blue-700 border border-blue-200 px-3 py-1.5 rounded-md font-bold text-xs transition flex items-center gap-1 shadow-2xs">
-              Display Mode <ChevronDown className="w-3 h-3 text-blue-500" />
+              {t(`Display Mode`)} <ChevronDown className="w-3 h-3 text-blue-500" />
             </button>
             <div className="absolute bottom-full left-0 mb-1 hidden group-hover:block bg-white border border-slate-200 rounded-md shadow-lg py-1 w-32 z-20">
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Dense List</button>
-              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">Column Configurator</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Dense List`)}</button>
+              <button className="w-full text-left px-3 py-1 text-slate-700 hover:bg-slate-100 text-[11px] font-semibold">{t(`Column Configurator`)}</button>
             </div>
           </div>
         </div>
@@ -988,7 +990,7 @@ export default function SalesPage2({
             type="button"
             onClick={() => {
               handleClearForm();
-              toast('New document form ready', { icon: 'i' });
+              toast(t('New document form ready'), { icon: 'i' });
             }}
             className="bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 font-bold px-3.5 py-2 rounded-md transition flex items-center justify-center gap-1.5 shadow-2xs text-xs"
           >
@@ -1029,7 +1031,7 @@ export default function SalesPage2({
 
           <button
             type="button"
-            onClick={() => toast('Extra ERP configurations: Import XML, Batch accrual settlement, configure automated tax mappings.', { icon: 'ℹ️' })}
+            onClick={() => toast(t('Extra ERP configurations: Import XML, Batch accrual settlement, configure automated tax mappings.'), { icon: 'ℹ️' })}
             className="bg-white hover:bg-slate-100 text-slate-755 border border-slate-300 font-bold px-3 py-2 rounded-md transition text-xs"
           >
             More...

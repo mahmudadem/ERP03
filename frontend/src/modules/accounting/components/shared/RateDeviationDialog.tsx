@@ -92,15 +92,15 @@ export const RateDeviationDialog: React.FC<RateDeviationDialogProps> = ({
               <div className="space-y-1">
                 <div className="text-amber-700/60 dark:text-amber-400/60 font-medium">{t('rateDeviation.effectiveBalance', { defaultValue: 'Effective Balance:' })}</div>
                 <div className="font-mono text-[var(--color-text-primary)] flex justify-between">
-                  <span>D {formatNumber(result.totalEffectiveBase.debit)}</span>
-                  <span>C {formatNumber(result.totalEffectiveBase.credit)}</span>
+                  <span>{t(`D`)} {formatNumber(result.totalEffectiveBase.debit)}</span>
+                  <span>{t(`C`)} {formatNumber(result.totalEffectiveBase.credit)}</span>
                 </div>
               </div>
               <div className="space-y-1">
                 <div className="text-amber-700/60 dark:text-amber-400/60 font-medium">{t('rateDeviation.systemBalance', { defaultValue: 'System Rate Balance:' })}</div>
                 <div className="font-mono text-[var(--color-text-primary)] flex justify-between">
-                  <span>D {formatNumber(result.totalSystemBase.debit)}</span>
-                  <span>C {formatNumber(result.totalSystemBase.credit)}</span>
+                  <span>{t(`D`)} {formatNumber(result.totalSystemBase.debit)}</span>
+                  <span>{t(`C`)} {formatNumber(result.totalSystemBase.credit)}</span>
                 </div>
               </div>
             </div>

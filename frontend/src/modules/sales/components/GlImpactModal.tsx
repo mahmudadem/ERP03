@@ -191,7 +191,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
               <div key={vid} className="mb-3 rounded-lg border border-slate-200 overflow-hidden">
                 <div className="flex items-center justify-between bg-slate-50 px-3 py-2">
                   <span className="flex items-center gap-2 text-xs font-semibold text-slate-700">{voucher.voucherNo}<RoleBadge type={voucher.type} /></span>
-                  <span className="text-xs text-slate-500">{voucher.date} &mdash; {voucher.type}</span>
+                  <span className="text-xs text-slate-500">{voucher.date} {t(`&mdash;`)} {voucher.type}</span>
                 </div>
                 <table className="min-w-full text-xs">
                   <thead>
@@ -286,7 +286,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
                           <RoleBadge type={voucher.type} />
                         </span>
                         <span className="text-xs text-slate-500">
-                          {voucher.date} &mdash; {voucher.type}
+                          {voucher.date} {t(`&mdash;`)} {voucher.type}
                         </span>
                       </div>
                       <table className="min-w-full text-xs">
@@ -375,7 +375,7 @@ export const GlImpactModal: React.FC<GlImpactModalProps> = ({
                           )}
                           {decision.cogsPostingStatus && (
                             <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs text-slate-600">
-                              COGS: {decision.cogsPostingStatus}
+                              {t(`COGS:`)} {decision.cogsPostingStatus}
                             </span>
                           )}
                         </div>

@@ -31,6 +31,7 @@ import {
   fiscalYearInstructions
 } from '../../../components/instructions';
 import { ModuleSettingsLayout, SettingsSection } from '../../../components/shared/ModuleSettingsLayout';
+import i18n from "i18next";
 
 interface PolicyConfig {
   // Approval Policy V1 Toggles
@@ -371,7 +372,7 @@ const AccountingSettingsPageContent: React.FC = () => {
   const handleGlobalDiscard = () => {
     if (activeTab === 'general' || activeTab === 'fx-revaluation') {
       setLocalCoreSettings(originalCoreSettings);
-      toast('Changes discarded', { icon: 'ℹ️' });
+      toast(i18n.t('Changes discarded'), { icon: 'ℹ️' });
     } else if (originalConfig) {
       if (activeTab === 'policies') {
         setConfig(prev => ({
@@ -410,7 +411,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           allowPeriodLockOverride: originalConfig.allowPeriodLockOverride
         }));
       }
-      toast('Changes discarded', { icon: 'ℹ️' });
+      toast(i18n.t('Changes discarded'), { icon: 'ℹ️' });
     }
   };
 
@@ -845,11 +846,11 @@ const AccountingSettingsPageContent: React.FC = () => {
                       value={localCoreSettings.timezone}
                       onChange={(e) => setLocalCoreSettings({ ...localCoreSettings, timezone: e.target.value })}
                     >
-                      <option value="UTC">UTC (Universal Time)</option>
-                      <option value="Europe/Istanbul">Europe/Istanbul (UTC+03:00)</option>
-                      <option value="Europe/London">Europe/London (GMT/BST)</option>
-                      <option value="America/New_York">America/New_York (EST/EDT)</option>
-                      <option value="Asia/Dubai">Asia/Dubai (GST)</option>
+                      <option value="UTC">{t(`UTC (Universal Time)`)}</option>
+                      <option value="Europe/Istanbul">{t(`Europe/Istanbul (UTC+03:00)`)}</option>
+                      <option value="Europe/London">{t(`Europe/London (GMT/BST)`)}</option>
+                      <option value="America/New_York">{t(`America/New_York (EST/EDT)`)}</option>
+                      <option value="Asia/Dubai">{t(`Asia/Dubai (GST)`)}</option>
                     </select>
                   </div>
 
@@ -882,7 +883,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                           <div className="flex flex-col">
                             <span className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{format}</span>
                             <span className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">
-                              Example: {(() => {
+                              {t(`Example:`)} {(() => {
                                 const d = new Date();
                                 const day = String(d.getDate()).padStart(2, '0');
                                 const month = String(d.getMonth() + 1).padStart(2, '0');
@@ -1739,7 +1740,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                            <span className="text-gray-500 dark:text-[var(--color-text-secondary)]">
                              When off, the lock is absolute — no one can post into a locked period.
                              When on, only Owner and users with the{' '}
-                             <code className="rounded bg-slate-100 dark:bg-slate-800 px-1">accounting.periodLockOverride</code>{' '}
+                             <code className="rounded bg-slate-100 dark:bg-slate-800 px-1">{t(`accounting.periodLockOverride`)}</code>{' '}
                              permission may override (with a reason, audited).
                            </span>
                          </span>
@@ -1868,7 +1869,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                                     className="p-1.5 text-xs font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 rounded border border-indigo-200 transition-colors ml-2"
                                     title={t('settings.fiscal.addSpecialPeriod', 'Add Special Period')}
                                   >
-                                    + P{13 + (fy.specialPeriodsCount || 0)}
+                                    {t(`+ P`)}{13 + (fy.specialPeriodsCount || 0)}
                                   </button>
                                 )}
 
@@ -2547,7 +2548,7 @@ const AccountingSettingsPageContent: React.FC = () => {
                     ))}
                   </div>
                   <div className="mt-3 pt-3 border-t border-gray-100 dark:border-[var(--color-border)]">
-                    <p className="text-xs text-slate-500">{t('settings.numbering.example', 'Example')}: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{PREFIX}-{YYYY}-{COUNTER:4}'}</code> → <strong>JE-2026-0042</strong></p>
+                    <p className="text-xs text-slate-500">{t('settings.numbering.example', 'Example')}: <code className="bg-slate-100 dark:bg-slate-800 px-1 rounded">{'{PREFIX}-{YYYY}-{COUNTER:4}'}</code> → <strong>{t(`JE-2026-0042`)}</strong></p>
                   </div>
                 </div>
         </SettingsSection>

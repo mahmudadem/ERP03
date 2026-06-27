@@ -103,7 +103,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
                     {actionLabels[action]}
                   </span>
                   <span className="text-xs text-gray-500">
-                    Default: <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">{DEFAULT_POS_SHORTCUTS[action]}</kbd>
+                    {t(`Default:`)} <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">{DEFAULT_POS_SHORTCUTS[action]}</kbd>
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">

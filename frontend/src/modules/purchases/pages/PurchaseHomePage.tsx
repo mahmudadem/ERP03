@@ -17,6 +17,7 @@ import {
   resolvePurchaseWorkflowMode,
   shouldShowOperationalDocuments,
 } from '../../../utils/documentPolicy';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = (): string => new Date().toISOString().slice(0, 10);
@@ -44,6 +45,7 @@ const StatsCard = ({
 );
 
 const PurchaseHomePage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { companyId } = useCompanyAccess();
 
@@ -193,8 +195,8 @@ const PurchaseHomePage: React.FC = () => {
   if (loading && initialized === null) {
     return (
       <div className="space-y-6 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Overview</h1>
-        <Card className="p-6">Loading purchases module...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Purchases Overview`)}</h1>
+        <Card className="p-6">{t(`Loading purchases module...`)}</Card>
       </div>
     );
   }
@@ -202,7 +204,7 @@ const PurchaseHomePage: React.FC = () => {
   if (loadError && initialized === null) {
     return (
       <div className="space-y-6 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Overview</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t(`Purchases Overview`)}</h1>
         <Card className="p-6 text-sm text-red-700">{loadError}</Card>
       </div>
     );
@@ -347,7 +349,7 @@ const PurchaseHomePage: React.FC = () => {
             </button>
           ))}
           {!loading && recentActivity.length === 0 && (
-            <div className="py-4 text-center text-sm text-slate-500">No recent activity yet.</div>
+            <div className="py-4 text-center text-sm text-slate-500">{t(`No recent activity yet.`)}</div>
           )}
         </div>
       </Card>

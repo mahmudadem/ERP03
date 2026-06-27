@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { ArrowLeft, Check, Copy, Palette, Eye, Code, Scale, Coins, FileSpreadsheet, Percent, Calculator, TrendingUp, Sparkles, Layers } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import i18n from "i18next";
 
 // --- SPINNER OPTIONS COMPONENTS ---
 
@@ -128,6 +129,7 @@ const OptionAcctLedger: React.FC<{ size: string; color: string }> = ({ size, col
 };
 
 export const SpinnerGalleryPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [selectedBg, setSelectedBg] = useState<'light' | 'dark' | 'slate'>('light');
   const [selectedSize, setSelectedSize] = useState<'sm' | 'md' | 'lg' | 'xl'>('lg');
@@ -158,7 +160,7 @@ export const SpinnerGalleryPage: React.FC = () => {
   const handleCopyCode = (id: string, code: string) => {
     navigator.clipboard.writeText(code);
     setCopiedId(id);
-    toast.success('Code copied to clipboard!');
+    toast.success(i18n.t('Code copied to clipboard!'));
     setTimeout(() => setCopiedId(null), 2000);
   };
 
@@ -286,7 +288,7 @@ export const SpinnerGalleryPage: React.FC = () => {
             <h1 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
               <Sparkles className="w-6 h-6 text-indigo-600" /> Premium Spinner Options
             </h1>
-            <p className="text-sm text-slate-500">Preview and select the unified loading spinner styling for the application.</p>
+            <p className="text-sm text-slate-500">{t(`Preview and select the unified loading spinner styling for the application.`)}</p>
           </div>
         </div>
       </div>

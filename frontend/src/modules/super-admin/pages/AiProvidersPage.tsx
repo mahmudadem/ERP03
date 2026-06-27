@@ -271,7 +271,7 @@ export const AiProvidersPage: React.FC = () => {
     <SuperAdminPage>
       <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
         <span>
-          <strong>Setting up a new AI model?</strong> Use the guided wizard — it handles provider, model,
+          <strong>{t(`Setting up a new AI model?`)}</strong> Use the guided wizard — it handles provider, model,
           key, test, and certification in one flow.
         </span>
         <button
@@ -393,7 +393,7 @@ export const AiProvidersPage: React.FC = () => {
                 {viewState.mode === 'editing' ? t('superAdmin.aiProviders.form.editTitle') : t('superAdmin.aiProviders.form.createTitle')}
               </h2>
             </div>
-            <button onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-700">Cancel</button>
+            <button onClick={resetForm} className="text-sm font-medium text-slate-500 hover:text-slate-700">{t(`Cancel`)}</button>
           </div>
 
           <div className="space-y-3">

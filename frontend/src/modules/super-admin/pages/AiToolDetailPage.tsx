@@ -163,7 +163,7 @@ export const AiToolDetailPage: React.FC<{ toolNameProp?: string; onBack?: () => 
     return (
       <SuperAdminPage>
         <SuperAdminHeader title={t('superAdmin.aiTools.title', { defaultValue: 'AI Tool Catalog' })} />
-        <div className="py-12 text-center text-slate-500">Tool not found.</div>
+        <div className="py-12 text-center text-slate-500">{t(`Tool not found.`)}</div>
       </SuperAdminPage>
     );
   }
@@ -518,7 +518,7 @@ export const AiToolDetailPage: React.FC<{ toolNameProp?: string; onBack?: () => 
           {enablementPolicy ? (
             <dl className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
               <div>
-                <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">Enabled</dt>
+                <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">{t(`Enabled`)}</dt>
                 <dd className="mt-1">
                   <SuperAdminBadge tone={enablementPolicy.enabled ? 'green' : 'slate'}>
                     {enablementPolicy.enabled ? 'Yes' : 'No'}
@@ -527,13 +527,13 @@ export const AiToolDetailPage: React.FC<{ toolNameProp?: string; onBack?: () => 
               </div>
               {enablementPolicy.maxUsagePerDay && (
                 <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">Max Usage/Day</dt>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">{t(`Max Usage/Day`)}</dt>
                   <dd className="mt-1 text-sm text-[var(--sa-text)]">{enablementPolicy.maxUsagePerDay}</dd>
                 </div>
               )}
               {enablementPolicy.allowedRoles && enablementPolicy.allowedRoles.length > 0 && (
                 <div>
-                  <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">Allowed Roles</dt>
+                  <dt className="text-xs font-medium uppercase tracking-wide text-[var(--sa-muted)]">{t(`Allowed Roles`)}</dt>
                   <dd className="mt-1">
                     <div className="flex flex-wrap gap-1">
                       {enablementPolicy.allowedRoles.map((role) => (
@@ -545,7 +545,7 @@ export const AiToolDetailPage: React.FC<{ toolNameProp?: string; onBack?: () => 
               )}
             </dl>
           ) : (
-            <p className="text-sm text-[var(--sa-muted)]">No enablement policy configured for this tool.</p>
+            <p className="text-sm text-[var(--sa-muted)]">{t(`No enablement policy configured for this tool.`)}</p>
           )}
         </div>
       </SuperAdminPanel>
@@ -563,8 +563,8 @@ export const AiToolDetailPage: React.FC<{ toolNameProp?: string; onBack?: () => 
               <table className="min-w-full divide-y divide-slate-100 text-sm">
                 <thead>
                   <tr>
-                    <th className={tableCellClass + ' text-left text-xs font-semibold uppercase tracking-wide text-[var(--sa-muted)]'}>Model</th>
-                    <th className={tableCellClass + ' text-left text-xs font-semibold uppercase tracking-wide text-[var(--sa-muted)]'}>Allowed</th>
+                    <th className={tableCellClass + ' text-left text-xs font-semibold uppercase tracking-wide text-[var(--sa-muted)]'}>{t(`Model`)}</th>
+                    <th className={tableCellClass + ' text-left text-xs font-semibold uppercase tracking-wide text-[var(--sa-muted)]'}>{t(`Allowed`)}</th>
                   </tr>
                 </thead>
                 <tbody>

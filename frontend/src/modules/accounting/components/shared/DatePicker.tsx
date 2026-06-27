@@ -4,6 +4,7 @@ import { formatCompanyDate, parseCompanyDate, getCompanyToday } from '../../../.
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Calendar, Hash, ArrowRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { accountingApi, FiscalYearDTO } from '../../../../api/accountingApi';
+import { useTranslation } from "react-i18next";
 
 interface Props {
   value: string; // ISO format (YYYY-MM-DD)
@@ -35,6 +36,7 @@ const getSharedFiscalYears = async () => {
  * Includes a custom popover calendar for selecting dates format agnostically.
  */
 export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', inputClassName, disabled = false, placeholder }) => {
+    const { t } = useTranslation('common');
   const { settings } = useCompanySettings();
   const containerRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -391,9 +393,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Clock className="w-3.5 h-3.5 text-primary-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">Today</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t(`Today`)}</span>
               </div>
-              <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover/item:opacity-100 transition-opacity">Now</span>
+              <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover/item:opacity-100 transition-opacity">{t(`Now`)}</span>
             </button>
 
             <button
@@ -402,7 +404,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">This Month First</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t(`This Month First`)}</span>
               </div>
               <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover/item:opacity-100 transition-opacity">01</span>
             </button>
@@ -415,7 +417,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Hash className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">FY Beginning</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t(`FY Beginning`)}</span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-indigo-300 opacity-0 group-hover/item:opacity-100 -translate-x-2 group-hover/item:translate-x-0 transition-all" />
             </button>
@@ -426,9 +428,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Hash className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">FY Close</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t(`FY Close`)}</span>
               </div>
-              <span className="px-1 text-[8px] bg-indigo-100 text-indigo-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">YEAR END</span>
+              <span className="px-1 text-[8px] bg-indigo-100 text-indigo-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">{t(`YEAR END`)}</span>
             </button>
 
             <button
@@ -437,9 +439,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">Period Opening</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t(`Period Opening`)}</span>
               </div>
-              <span className="px-1 text-[8px] bg-emerald-100 text-emerald-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">START</span>
+              <span className="px-1 text-[8px] bg-emerald-100 text-emerald-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">{t(`START`)}</span>
             </button>
 
             <button
@@ -448,9 +450,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <CalendarIcon className="w-3.5 h-3.5 text-amber-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">Period Close</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t(`Period Close`)}</span>
               </div>
-              <span className="px-1 text-[8px] bg-amber-100 text-amber-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">END</span>
+              <span className="px-1 text-[8px] bg-amber-100 text-amber-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">{t(`END`)}</span>
             </button>
           </div>
         </>

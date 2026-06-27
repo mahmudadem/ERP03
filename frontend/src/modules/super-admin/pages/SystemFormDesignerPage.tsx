@@ -311,7 +311,7 @@ const SystemFormDesignerPage: React.FC = () => {
               <LayoutTemplate size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-slate-900">System Form Designer</h1>
+              <h1 className="text-2xl font-bold text-slate-900">{t(`System Form Designer`)}</h1>
               <p className="text-sm text-slate-500">
                 Edit default layouts for system voucher types. New companies automatically receive these layouts.
               </p>
@@ -339,7 +339,7 @@ const SystemFormDesignerPage: React.FC = () => {
         {savedTemplateId && (
           <div className="bg-green-50 border border-green-200 rounded-lg p-4 flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
             <CheckCircle className="text-green-600 shrink-0" size={20} />
-            <span className="text-green-800 text-sm font-medium">Layout saved successfully</span>
+            <span className="text-green-800 text-sm font-medium">{t(`Layout saved successfully`)}</span>
           </div>
         )}
 
@@ -356,23 +356,23 @@ const SystemFormDesignerPage: React.FC = () => {
           {loading ? (
             <div className="p-12 text-center">
               <Spinner size="lg" variant="secondary" className="mx-auto mb-3" />
-              <p className="text-slate-500 text-sm">Loading system templates...</p>
+              <p className="text-slate-500 text-sm">{t(`Loading system templates...`)}</p>
             </div>
           ) : templates.length === 0 ? (
             <div className="p-12 text-center text-slate-500">
               <FileJson size={40} className="mx-auto mb-3 opacity-30" />
-              <p>No system templates found</p>
+              <p>{t(`No system templates found`)}</p>
             </div>
           ) : (
             <table className="w-full text-left">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Template</th>
-                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Code</th>
-                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Module</th>
-                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Fields</th>
-                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">Layout</th>
-                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">Action</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`Template`)}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`Code`)}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`Module`)}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`Fields`)}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider">{t(`Layout`)}</th>
+                  <th className="px-6 py-3 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">{t(`Action`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -454,7 +454,7 @@ const SystemFormDesignerPage: React.FC = () => {
               <div className="flex items-center gap-3">
                 <LayoutTemplate size={18} className="text-indigo-400" />
                 <h2 className="font-bold text-sm flex items-center gap-2">
-                  <span className="text-white/60">System Wizard</span>
+                  <span className="text-white/60">{t(`System Wizard`)}</span>
                   <span className="text-white/30 font-normal">/</span>
                   <span className="text-indigo-400">{editingTemplate.name}</span>
                 </h2>

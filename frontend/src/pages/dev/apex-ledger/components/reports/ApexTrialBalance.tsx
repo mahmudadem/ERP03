@@ -13,6 +13,7 @@ import {
   Scale,
   AlertTriangle,
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -141,6 +142,7 @@ const fmtNum = (value: number): string =>
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ApexTrialBalance() {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const today = new Date().toISOString().slice(0, 10);
 
@@ -394,7 +396,7 @@ export default function ApexTrialBalance() {
                   <tr>
                     <td colSpan={4} className="py-16 text-center">
                       <Scale className="w-8 h-8 text-slate-300 mx-auto mb-2" />
-                      <p className="text-xs text-slate-400">No accounts to display</p>
+                      <p className="text-xs text-slate-400">{t(`No accounts to display`)}</p>
                     </td>
                   </tr>
                 ) : (
@@ -578,7 +580,7 @@ export default function ApexTrialBalance() {
                         ) : (
                           <span className="inline-flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide">
                             <AlertTriangle className="w-3 h-3" />
-                            Unbalanced — Diff:{' '}
+                            {t(`Unbalanced — Diff:`)}{' '}
                             {meta.difference.toLocaleString(undefined, {
                               minimumFractionDigits: 2,
                               maximumFractionDigits: 2,

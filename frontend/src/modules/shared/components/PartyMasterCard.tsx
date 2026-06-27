@@ -281,7 +281,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     }
   };
 
-  if (loading) return <div className="p-20 text-center opacity-50 font-mono text-xs italic tracking-widest">Hydrating Master Table...</div>;
+  if (loading) return <div className="p-20 text-center opacity-50 font-mono text-xs italic tracking-widest">{t(`Hydrating Master Table...`)}</div>;
 
   return (
     <MasterCardLayout
@@ -355,8 +355,8 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
               </Field>
               <Field label="Record Status">
                  <select className="form-control font-bold" value={String(form.active)} onChange={e => setForm(p => ({ ...p, active: e.target.value === 'true' }))}>
-                    <option value="true">ACTIVE</option>
-                    <option value="false">SUSPENDED</option>
+                    <option value="true">{t(`ACTIVE`)}</option>
+                    <option value="false">{t(`SUSPENDED`)}</option>
                  </select>
               </Field>
             </div>
@@ -412,7 +412,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                          <Coins size={16} />
                       </div>
                       <select className="form-control font-bold text-emerald-700 dark:text-emerald-400" value={form.defaultCurrency || ''} onChange={e => setForm(p => ({ ...p, defaultCurrency: e.target.value }))}>
-                        <option value="">(Currency Selection)</option>
+                        <option value="">{t(`(Currency Selection)`)}</option>
                         {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                    </div>
@@ -425,13 +425,13 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <Field label="Customer Group">
                    <select className="form-control" value={form.customerGroupId || ''} onChange={e => setForm(p => ({ ...p, customerGroupId: e.target.value || undefined }))}>
-                     <option value="">(No Group)</option>
+                     <option value="">{t(`(No Group)`)}</option>
                      {customerGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                    </select>
                  </Field>
                  <Field label="Default Price List">
                    <select className="form-control" value={form.defaultPriceListId || ''} onChange={e => setForm(p => ({ ...p, defaultPriceListId: e.target.value || undefined }))}>
-                     <option value="">(No Price List)</option>
+                     <option value="">{t(`(No Price List)`)}</option>
                      {priceLists.map(pl => <option key={pl.id} value={pl.id}>{pl.name} ({pl.currency})</option>)}
                    </select>
                  </Field>
@@ -440,15 +440,15 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                  </Field>
                  <Field label="Credit Hold Policy">
                    <select className="form-control" value={form.creditHoldPolicy || 'NONE'} onChange={e => setForm(p => ({ ...p, creditHoldPolicy: e.target.value as 'NONE' | 'WARN' | 'BLOCK' }))}>
-                     <option value="NONE">NONE</option>
-                     <option value="WARN">WARN</option>
-                     <option value="BLOCK">BLOCK</option>
+                     <option value="NONE">{t(`NONE`)}</option>
+                     <option value="WARN">{t(`WARN`)}</option>
+                     <option value="BLOCK">{t(`BLOCK`)}</option>
                    </select>
                  </Field>
                  <Field label="Tax Exempt">
                    <div className="flex items-center gap-2 pt-1">
                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={!!form.taxExempt} onChange={e => setForm(p => ({ ...p, taxExempt: e.target.checked }))} />
-                     <span className="form-control border-0 p-0 bg-transparent text-xs text-slate-500">Customer is tax exempt</span>
+                     <span className="form-control border-0 p-0 bg-transparent text-xs text-slate-500">{t(`Customer is tax exempt`)}</span>
                    </div>
                  </Field>
                  <div className="sm:col-span-2">

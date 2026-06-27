@@ -572,7 +572,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                   >
                     <option value="1">1: العرض المزدوج الرأسي المتكدس</option>
                     <option value="2">2: النظام الهندسي البرمجي</option>
-                    <option value="3">3: خطوط الفاصل العمودي (Pipeline)</option>
+                    <option value="3">{t(`3: خطوط الفاصل العمودي (Pipeline)`)}</option>
                     <option value="5">5: الكبسولة الفقاعية الموحدة</option>
                     <option value="10">10: الأشكال الهندسية المائلة</option>
                     <option value="11">11: الإطارات المنقطة التقنية</option>
@@ -625,7 +625,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
         {/* User Avatar Menu — always visible */}
         <HeadlessMenu as="div" className="relative ml-1">
           <HeadlessMenu.Button className="flex items-center rounded-full bg-[var(--color-bg-primary)] text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 hover:ring-2 hover:ring-indigo-100 transition-all p-0.5 border border-transparent hover:border-indigo-100">
-            <span className="sr-only">Open user menu</span>
+            <span className="sr-only">{t(`Open user menu`)}</span>
             <div className="h-8 w-8 bg-gradient-to-br from-indigo-500 to-indigo-700 rounded-full text-white flex items-center justify-center font-bold text-sm shadow-sm ring-1 ring-white">
               {userInitial}
             </div>

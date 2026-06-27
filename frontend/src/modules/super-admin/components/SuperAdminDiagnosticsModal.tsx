@@ -130,19 +130,19 @@ export const SuperAdminDiagnosticsModal: React.FC<SuperAdminDiagnosticsModalProp
           </h3>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div>
-              <span className="text-slate-500">Provider:</span>
+              <span className="text-slate-500">{t(`Provider:`)}</span>
               <span className="ml-2 font-medium text-slate-800">{profile.provider}</span>
             </div>
             <div>
-              <span className="text-slate-500">Provider ID:</span>
+              <span className="text-slate-500">{t(`Provider ID:`)}</span>
               <span className="ml-2 font-mono text-xs text-slate-600">{profile.providerId || '—'}</span>
             </div>
             <div>
-              <span className="text-slate-500">Model:</span>
+              <span className="text-slate-500">{t(`Model:`)}</span>
               <span className="ml-2 font-medium text-slate-800">{profile.modelId || profile.modelName}</span>
             </div>
             <div>
-              <span className="text-slate-500">Status:</span>
+              <span className="text-slate-500">{t(`Status:`)}</span>
               <SuperAdminBadge
                 tone={profile.status === 'recommended' ? 'green' : profile.status === 'tested' ? 'blue' : profile.status === 'experimental' ? 'amber' : 'slate'}
               >

@@ -2,6 +2,7 @@ import React from 'react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { clsx } from 'clsx';
 import { useBreakpoint } from '../../../hooks/useBreakpoint';
+import { useTranslation } from "react-i18next";
 
 interface DataTablePaginationProps {
   page: number;
@@ -22,6 +23,7 @@ export function DataTablePagination({
   onPageSizeChange,
   pageSizeOptions = [10, 25, 50, 100],
 }: DataTablePaginationProps) {
+    const { t } = useTranslation('common');
   const isSm = useBreakpoint('sm');
 
   if (totalPages <= 0) return null;
@@ -57,7 +59,7 @@ export function DataTablePagination({
     <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 border-t border-[var(--color-border)] bg-[var(--color-bg-primary)]">
       <div className="flex items-center gap-3 text-sm text-[var(--color-text-secondary)]">
         <span>
-          Showing {startItem}-{endItem} of {totalItems}
+          {t(`Showing`)} {startItem}-{endItem} {t(`of`)} {totalItems}
         </span>
         {onPageSizeChange && (
           <select
@@ -67,7 +69,7 @@ export function DataTablePagination({
             aria-label="Rows per page"
           >
             {pageSizeOptions.map(size => (
-              <option key={size} value={size}>{size} / page</option>
+              <option key={size} value={size}>{size} {t(`/ page`)}</option>
             ))}
           </select>
         )}
@@ -106,7 +108,7 @@ export function DataTablePagination({
           )
         ) : (
           <span className="text-sm text-[var(--color-text-secondary)]">
-            Page {page} of {totalPages}
+            {t(`Page`)} {page} {t(`of`)} {totalPages}
           </span>
         )}
 

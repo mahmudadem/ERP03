@@ -6,6 +6,7 @@
 
 import React from 'react';
 import { AlertTriangle, X } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface WarningModalProps {
   isOpen: boolean;
@@ -22,6 +23,7 @@ export const WarningModal: React.FC<WarningModalProps> = ({
   message,
   suggestion
 }) => {
+    const { t } = useTranslation('common');
   if (!isOpen) return null;
 
   return (
@@ -58,7 +60,7 @@ export const WarningModal: React.FC<WarningModalProps> = ({
           
           {suggestion && (
             <div className="bg-blue-50 border border-blue-100 rounded-lg p-4">
-              <p className="text-sm text-blue-800 font-medium mb-1">💡 Suggestion:</p>
+              <p className="text-sm text-blue-800 font-medium mb-1">{t(`💡 Suggestion:`)}</p>
               <p className="text-sm text-blue-700">{suggestion}</p>
             </div>
           )}

@@ -36,8 +36,8 @@ export const AiToolResultsPanel: React.FC<Props> = ({ toolResults }) => {
             <span className="font-mono text-[10px] normal-case bg-indigo-50 px-1.5 py-0.5 rounded text-indigo-700">{tool.toolName}</span>
             {((tool as any).durationMs || (tool as any).round) && (
               <span className="text-[9px] text-gray-400 normal-case ml-auto flex items-center gap-2">
-                {(tool as any).round && <span>Round {(tool as any).round}</span>}
-                {(tool as any).durationMs && <span>{(tool as any).durationMs}ms</span>}
+                {(tool as any).round && <span>{t(`Round`)} {(tool as any).round}</span>}
+                {(tool as any).durationMs && <span>{(tool as any).durationMs}{t(`ms`)}</span>}
               </span>
             )}
           </div>

@@ -1,3 +1,4 @@
+import i18n from 'i18next';
 import React, { useState, useMemo, useEffect, lazy, Suspense } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
@@ -42,7 +43,7 @@ const ReportLoader = () => (
   <div className="flex items-center justify-center h-48 bg-white border border-[#E2E8F0] rounded-lg">
     <div className="text-center space-y-2">
       <div className="w-6 h-6 border-2 border-blue-500 border-t-transparent rounded-full animate-spin mx-auto" />
-      <p className="text-[11px] font-mono text-slate-400">Loading report...</p>
+      <p className="text-[11px] font-mono text-slate-400">{i18n.t(`Loading report...`)}</p>
     </div>
   </div>
 );
@@ -424,7 +425,7 @@ export default function ApexLedgerDashboard() {
     mutationFn: accountingApi.createAccount,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['accounts'] });
-      toast.success('Account registered successfully in backend.');
+      toast.success(t('Account registered successfully in backend.'));
     },
     onError: (err: any) => {
       toast.error(`Failed to register account: ${err.message || err}`);
@@ -454,7 +455,7 @@ export default function ApexLedgerDashboard() {
     mutationFn: salesApi.createSI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salesInvoices'] });
-      toast.success('Sales invoice saved successfully.');
+      toast.success(t('Sales invoice saved successfully.'));
     },
     onError: (err: any) => {
       toast.error(`Sales invoice save failed: ${err.message || err}`);
@@ -465,7 +466,7 @@ export default function ApexLedgerDashboard() {
     mutationFn: ({ id, payload }: { id: string; payload: any }) => salesApi.updateSI(id, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salesInvoices'] });
-      toast.success('Sales invoice updated successfully.');
+      toast.success(t('Sales invoice updated successfully.'));
     },
     onError: (err: any) => {
       toast.error(`Sales invoice update failed: ${err.message || err}`);
@@ -500,7 +501,7 @@ export default function ApexLedgerDashboard() {
       salesApi.deleteSI(deleted.id)
         .then(() => {
           queryClient.invalidateQueries({ queryKey: ['salesInvoices'] });
-          toast.success('Sales invoice deleted successfully.');
+          toast.success(t('Sales invoice deleted successfully.'));
         })
         .catch(err => {
           toast.error(`Failed to delete sales invoice: ${err.message || err}`);
@@ -534,7 +535,7 @@ export default function ApexLedgerDashboard() {
     mutationFn: salesApi.createSO,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['salesOrders'] });
-      toast.success('Sales order created successfully.');
+      toast.success(t('Sales order created successfully.'));
     },
     onError: (err: any) => {
       toast.error(`Sales order creation failed: ${err.message || err}`);
@@ -567,7 +568,7 @@ export default function ApexLedgerDashboard() {
     mutationFn: purchasesApi.createPI,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['purchaseInvoices'] });
-      toast.success('Purchase bill saved successfully.');
+      toast.success(t('Purchase bill saved successfully.'));
     },
     onError: (err: any) => {
       toast.error(`Purchase bill save failed: ${err.message || err}`);
@@ -600,7 +601,7 @@ export default function ApexLedgerDashboard() {
     mutationFn: inventoryApi.createItem,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['inventoryItems'] });
-      toast.success('Inventory item created successfully.');
+      toast.success(t('Inventory item created successfully.'));
     },
     onError: (err: any) => {
       toast.error(`Item creation failed: ${err.message || err}`);
@@ -819,10 +820,10 @@ export default function ApexLedgerDashboard() {
                   <Settings className="w-6 h-6 text-slate-400" />
                 </div>
                 <h3 className="text-sm font-bold text-slate-700">
-                  {t('modulePlaceholders.common.underDevelopment', { defaultValue: 'Module Coming Soon' })}
+                  {i18n.t('modulePlaceholders.common.underDevelopment', { defaultValue: 'Module Coming Soon' })}
                 </h3>
                 <p className="text-xs text-slate-500">
-                  {t('modulePlaceholders.common.underConstruction', { defaultValue: 'This module is part of the roadmap and will be built in a future phase.' })}
+                  {i18n.t('modulePlaceholders.common.underConstruction', { defaultValue: 'This module is part of the roadmap and will be built in a future phase.' })}
                 </p>
                 <p className="text-[10px] font-mono text-slate-400">{location.pathname}</p>
               </div>
@@ -838,10 +839,10 @@ export default function ApexLedgerDashboard() {
               <Settings className="w-6 h-6 text-slate-400" />
             </div>
             <h3 className="text-sm font-bold text-slate-700">
-              {t('modulePlaceholders.common.underDevelopment', { defaultValue: 'Module Coming Soon' })}
+              {i18n.t('modulePlaceholders.common.underDevelopment', { defaultValue: 'Module Coming Soon' })}
             </h3>
             <p className="text-xs text-slate-500">
-              {t('modulePlaceholders.common.underConstruction', { defaultValue: 'This module is part of the roadmap and will be built in a future phase.' })}
+              {i18n.t('modulePlaceholders.common.underConstruction', { defaultValue: 'This module is part of the roadmap and will be built in a future phase.' })}
             </p>
             <p className="text-[10px] font-mono text-slate-400">{location.pathname}</p>
           </div>
@@ -852,26 +853,26 @@ export default function ApexLedgerDashboard() {
   // Build page title from section
   const getPageTitle = (): string => {
     switch (activeSection) {
-      case 'home': return t('sidebar.overview', { defaultValue: 'Dashboard' });
-      case 'accounting-overview': return t('sidebar.overview', { defaultValue: 'Accounting Overview' });
-      case 'coa': return t('sidebar.chartOfAccounts', { defaultValue: 'Chart of Accounts' });
-      case 'vouchers': return t('sidebar.vouchers', { defaultValue: 'Vouchers Register' });
-      case 'approvals': return t('sidebar.approvalCenter', { defaultValue: 'Approval Center' });
-      case 'reports': return t('sidebar.reports', { defaultValue: 'Financial Reports' });
-      case 'reports-sub': return `${t('sidebar.reports')} · ${activeSub}`;
-      case 'tools': return t('sidebar.tools', { defaultValue: 'Accounting Tools' });
-      case 'tools-sub': return `${t('sidebar.tools')} · ${activeSub}`;
-      case 'settings': return t('sidebar.settings', { defaultValue: 'Accounting Settings' });
-      case 'settings-appearance': return t('settings.appearance.title', { defaultValue: 'Appearance Settings' });
-      case 'settings-accounting': return t('settings.home.links.accounting.title', { defaultValue: 'Accounting Settings Details' });
-      case 'company-settings': return t('sidebar.companySettings', { defaultValue: 'Company Settings' });
-      case 'profile': return t('profile.title', { defaultValue: 'User Profile' });
+      case 'home': return i18n.t('sidebar.overview', { defaultValue: 'Dashboard' });
+      case 'accounting-overview': return i18n.t('sidebar.overview', { defaultValue: 'Accounting Overview' });
+      case 'coa': return i18n.t('sidebar.chartOfAccounts', { defaultValue: 'Chart of Accounts' });
+      case 'vouchers': return i18n.t('sidebar.vouchers', { defaultValue: 'Vouchers Register' });
+      case 'approvals': return i18n.t('sidebar.approvalCenter', { defaultValue: 'Approval Center' });
+      case 'reports': return i18n.t('sidebar.reports', { defaultValue: 'Financial Reports' });
+      case 'reports-sub': return `${i18n.t('sidebar.reports')} · ${activeSub}`;
+      case 'tools': return i18n.t('sidebar.tools', { defaultValue: 'Accounting Tools' });
+      case 'tools-sub': return `${i18n.t('sidebar.tools')} · ${activeSub}`;
+      case 'settings': return i18n.t('sidebar.settings', { defaultValue: 'Accounting Settings' });
+      case 'settings-appearance': return i18n.t('settings.appearance.title', { defaultValue: 'Appearance Settings' });
+      case 'settings-accounting': return i18n.t('settings.home.links.accounting.title', { defaultValue: 'Accounting Settings Details' });
+      case 'company-settings': return i18n.t('sidebar.companySettings', { defaultValue: 'Company Settings' });
+      case 'profile': return i18n.t('profile.title', { defaultValue: 'User Profile' });
 
-      case 'sales': return t('sidebar.sales', { defaultValue: 'Sales' });
-      case 'purchases': return t('sidebar.purchases', { defaultValue: 'Purchases' });
-      case 'inventory': return t('sidebar.inventory', { defaultValue: 'Inventory' });
-      case 'ai-assistant': return t('sidebar.aiAssistant', { defaultValue: 'AI Assistant' });
-      default: return t('appName', { defaultValue: 'Apex Ledger' });
+      case 'sales': return i18n.t('sidebar.sales', { defaultValue: 'Sales' });
+      case 'purchases': return i18n.t('sidebar.purchases', { defaultValue: 'Purchases' });
+      case 'inventory': return i18n.t('sidebar.inventory', { defaultValue: 'Inventory' });
+      case 'ai-assistant': return i18n.t('sidebar.aiAssistant', { defaultValue: 'AI Assistant' });
+      default: return i18n.t('appName', { defaultValue: 'Apex Ledger' });
     }
   };
 
@@ -926,7 +927,7 @@ export default function ApexLedgerDashboard() {
               <Search className="absolute left-2.5 rtl:left-auto rtl:right-2.5 top-1.5 w-3.5 h-3.5 text-zinc-400" />
               <input
                 type="text"
-                placeholder={t('actions.search', { defaultValue: 'Search' }) + '...'}
+                placeholder={i18n.t('actions.search', { defaultValue: 'Search' }) + '...'}
                 className="w-full bg-white border border-[#E2E8F0] rounded py-1 pl-7 rtl:pl-2 rtl:pr-7 pr-2 font-semibold text-[11px] outline-none placeholder-zinc-400 text-left rtl:text-right"
               />
             </div>
@@ -946,7 +947,7 @@ export default function ApexLedgerDashboard() {
             <button
               onClick={() => navigate('/dev/apex-ledger/settings/appearance')}
               className="w-8 h-8 rounded hover:bg-slate-200/80 border border-[#E2E8F0] bg-white flex items-center justify-center transition-colors"
-              title={t('settings.appearance.title', { defaultValue: 'Appearance settings' })}
+              title={i18n.t('settings.appearance.title', { defaultValue: 'Appearance settings' })}
             >
               <Settings className="w-4 h-4 text-slate-500" />
             </button>
@@ -957,11 +958,11 @@ export default function ApexLedgerDashboard() {
                 value={currentLanguage}
                 onChange={(event) => handleLanguageChange(event.target.value)}
                 className="bg-transparent text-[10px] font-mono font-bold text-slate-700 outline-none uppercase cursor-pointer"
-                title={t('language.label', { defaultValue: 'Language' })}
+                title={i18n.t('language.label', { defaultValue: 'Language' })}
               >
-                <option value="en">EN</option>
-                <option value="ar">AR</option>
-                <option value="tr">TR</option>
+                <option value="en">{i18n.t(`EN`)}</option>
+                <option value="ar">{i18n.t(`AR`)}</option>
+                <option value="tr">{i18n.t(`TR`)}</option>
               </select>
             </div>
 
@@ -998,6 +999,7 @@ function AccountingOverviewBento({
   bills: PurchaseBill[];
   navigate: ReturnType<typeof useNavigate>;
 }) {
+    const { t } = useTranslation('common');
   const totalInvoiced = invoices.reduce((s, i) => s + (i.totalAmount || 0), 0);
   const totalBills = bills.reduce((s, b) => s + (b.totalAmount || 0), 0);
   const postedInvoices = invoices.filter(i => i.status === 'Posted' || i.status === 'Paid').length;
@@ -1031,7 +1033,7 @@ function AccountingOverviewBento({
 
       {/* Quick Links */}
       <div className="bg-white border border-[#E2E8F0] rounded-lg p-4">
-        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">Quick Access</h3>
+        <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-3">{i18n.t(`Quick Access`)}</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {quickLinks.map((link, i) => (
             <button

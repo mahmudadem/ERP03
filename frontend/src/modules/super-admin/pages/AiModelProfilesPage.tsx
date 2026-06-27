@@ -293,7 +293,7 @@ export const AiModelProfilesPage: React.FC = () => {
       {confirmDialog}
       <div className="mb-4 rounded-lg border border-indigo-200 bg-indigo-50 p-3 text-sm text-indigo-900 flex items-center justify-between gap-3">
         <span>
-          <strong>Setting up a new AI model?</strong> Use the guided wizard instead of editing each piece by hand.
+          <strong>{t(`Setting up a new AI model?`)}</strong> Use the guided wizard instead of editing each piece by hand.
         </span>
         <button
           type="button"
@@ -589,18 +589,18 @@ export const AiModelProfilesPage: React.FC = () => {
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiModels.form.scope')}</span>
                   <select value={form.scope || 'GLOBAL'} onChange={event => setForm({ ...form, scope: event.target.value as 'GLOBAL' | 'TENANT' })} className="w-full rounded-md border border-slate-300 px-3 py-2">
-                    <option value="GLOBAL">GLOBAL</option>
-                    <option value="TENANT">TENANT</option>
+                    <option value="GLOBAL">{t(`GLOBAL`)}</option>
+                    <option value="TENANT">{t(`TENANT`)}</option>
                   </select>
                 </label>
                 <label className="block text-sm">
                   <span className="mb-1 block font-medium text-slate-700">{t('superAdmin.aiModels.form.toolMode')}</span>
                   <select value={form.toolMode || ''} onChange={event => setForm({ ...form, toolMode: (event.target.value || undefined) as any })} className="w-full rounded-md border border-slate-300 px-3 py-2">
-                    <option value="">Auto (from flags)</option>
-                    <option value="native_tools">Native Tools</option>
-                    <option value="text_plan">Text Plan</option>
-                    <option value="json_only">JSON Only</option>
-                    <option value="none">None (text-only)</option>
+                    <option value="">{t(`Auto (from flags)`)}</option>
+                    <option value="native_tools">{t(`Native Tools`)}</option>
+                    <option value="text_plan">{t(`Text Plan`)}</option>
+                    <option value="json_only">{t(`JSON Only`)}</option>
+                    <option value="none">{t(`None (text-only)`)}</option>
                   </select>
                 </label>
               </div>

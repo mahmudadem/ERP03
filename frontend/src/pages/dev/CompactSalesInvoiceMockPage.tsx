@@ -21,6 +21,7 @@ import {
   ShieldCheck,
   Truck,
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 type SourceMode = 'direct' | 'sales-order' | 'delivery-note';
 type WarehouseMode = 'single' | 'per-line';
@@ -208,6 +209,7 @@ function Pill({
 }
 
 export default function CompactSalesInvoiceMockPage() {
+    const { t } = useTranslation('common');
   const [directRows, setDirectRows] = useState<MockLine[]>(() => [...directLines, createEmptyLine()]);
   const [adjustmentRows, setAdjustmentRows] = useState<InvoiceAdjustmentLine[]>(initialAdjustments);
   const [sourceMode, setSourceMode] = useState<SourceMode>('direct');
@@ -589,7 +591,7 @@ export default function CompactSalesInvoiceMockPage() {
             <div className="min-w-0">
               <div className="flex items-center gap-2.5">
                 <FileText className="h-4.5 w-4.5 text-blue-600" />
-                <h1 className="truncate text-base font-black tracking-wide text-slate-950">Sales Invoice</h1>
+                <h1 className="truncate text-base font-black tracking-wide text-slate-950">{t(`Sales Invoice`)}</h1>
                 <Pill tone={isPosted ? 'green' : 'amber'}>{isPosted ? 'Posted' : 'Draft'}</Pill>
                 <Pill tone={sourceMode === 'direct' ? 'green' : 'blue'}>{sourceLabel(sourceMode)}</Pill>
               </div>
@@ -677,13 +679,13 @@ export default function CompactSalesInvoiceMockPage() {
               <div className="grid shrink-0 gap-2 rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs text-emerald-800 lg:grid-cols-[minmax(0,1fr)_auto]">
                 <div className="flex min-w-0 flex-wrap items-center gap-2">
                   <CheckCircle2 className="h-4 w-4 shrink-0" />
-                  <span className="font-black">Posted document view</span>
-                  <span className="truncate text-emerald-700">Inputs become plain values; only legal post-posting actions remain.</span>
+                  <span className="font-black">{t(`Posted document view`)}</span>
+                  <span className="truncate text-emerald-700">{t(`Inputs become plain values; only legal post-posting actions remain.`)}</span>
                 </div>
                 <div className="flex flex-wrap items-center gap-1.5">
-                  <Pill tone="green">JV-2026-0184</Pill>
-                  <Pill tone="slate">Edit policy: controlled</Pill>
-                  <Pill tone="blue">Approved by CFO</Pill>
+                  <Pill tone="green">{t(`JV-2026-0184`)}</Pill>
+                  <Pill tone="slate">{t(`Edit policy: controlled`)}</Pill>
+                  <Pill tone="blue">{t(`Approved by CFO`)}</Pill>
                 </div>
               </div>
             ) : null}
@@ -736,7 +738,7 @@ export default function CompactSalesInvoiceMockPage() {
 
                 <div className="rounded border border-slate-200 bg-slate-50 p-2">
                   <div className="mb-1 flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-wide text-slate-600">Warehouse placement</span>
+                    <span className="text-[10px] font-black uppercase tracking-wide text-slate-600">{t(`Warehouse placement`)}</span>
                     <Truck className="h-3.5 w-3.5 text-slate-500" />
                   </div>
                   <div className="grid grid-cols-2 gap-1">
@@ -774,7 +776,7 @@ export default function CompactSalesInvoiceMockPage() {
               title="Lines"
               className="flex min-h-0 flex-[1.8] flex-col"
               action={
-                <Pill tone="slate">{meaningfulLines.length} billable lines</Pill>
+                <Pill tone="slate">{meaningfulLines.length} {t(`billable lines`)}</Pill>
               }
             >
               <div className="flex min-h-0 flex-1 flex-col gap-2 p-2">
@@ -823,19 +825,19 @@ export default function CompactSalesInvoiceMockPage() {
               <CompactCard title="Attachments">
                 <div className="flex items-center gap-2 p-2 text-xs text-slate-600">
                   <Paperclip className="h-4 w-4 text-slate-400" />
-                  <span className="font-bold">2 files</span>
-                  <span className="text-slate-400">PO approval, delivery image</span>
+                  <span className="font-bold">{t(`2 files`)}</span>
+                  <span className="text-slate-400">{t(`PO approval, delivery image`)}</span>
                 </div>
               </CompactCard>
               <CompactCard title="Audit And Warnings">
                 <div className="grid gap-1 p-2 text-xs sm:grid-cols-2">
                   <div className="flex items-center gap-2 rounded border border-amber-100 bg-amber-50 px-2 py-1 text-amber-700">
                     <AlertTriangle className="h-4 w-4 shrink-0" />
-                    <span className="font-bold">Credit close to limit</span>
+                    <span className="font-bold">{t(`Credit close to limit`)}</span>
                   </div>
                   <div className="flex items-center gap-2 rounded border border-slate-200 bg-slate-50 px-2 py-1 text-slate-600">
                     <History className="h-4 w-4 shrink-0" />
-                    <span className="font-bold">History available</span>
+                    <span className="font-bold">{t(`History available`)}</span>
                   </div>
                 </div>
               </CompactCard>
@@ -845,7 +847,7 @@ export default function CompactSalesInvoiceMockPage() {
           <aside className="grid min-h-0 gap-2 xl:grid-rows-[minmax(0,1.5fr)_minmax(0,1fr)_minmax(0,1fr)_auto] xl:overflow-hidden">
             <section className="shrink-0 overflow-visible rounded-md border border-slate-200 bg-white">
               <div className="flex h-8 items-center justify-between border-b border-slate-100 bg-slate-50/70 px-3">
-                <h2 className="text-[11px] font-black uppercase tracking-wide text-slate-700">Info</h2>
+                <h2 className="text-[11px] font-black uppercase tracking-wide text-slate-700">{t(`Info`)}</h2>
                 <Pill tone={railFocus.kind === 'item' ? 'blue' : 'slate'}>{railFocus.kind === 'item' ? 'Item' : 'Account'}</Pill>
               </div>
               <div className="flex h-[calc(100%-2rem)] min-h-0 flex-col gap-2 overflow-auto p-2 text-xs">
@@ -862,8 +864,8 @@ export default function CompactSalesInvoiceMockPage() {
                     <div className="mt-0.5 font-mono text-sm font-black text-slate-800">{fmt(railFocus.balance)}</div>
                   </div>
                   <div className="rounded border border-slate-100 bg-white px-2 py-1.5">
-                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Status</div>
-                    <div className="mt-0.5 text-sm font-black text-emerald-700">Active</div>
+                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t(`Status`)}</div>
+                    <div className="mt-0.5 text-sm font-black text-emerald-700">{t(`Active`)}</div>
                   </div>
                 </div>
                 <div className="rounded border border-blue-100 bg-blue-50 px-2 py-1.5 text-[11px] leading-4 text-blue-700">
@@ -899,17 +901,17 @@ export default function CompactSalesInvoiceMockPage() {
 
             <section className="min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white">
               <div className="flex h-8 items-center justify-between border-b border-slate-100 bg-slate-50/70 px-3">
-                <h2 className="text-[11px] font-black uppercase tracking-wide text-slate-700">Settlement</h2>
+                <h2 className="text-[11px] font-black uppercase tracking-wide text-slate-700">{t(`Settlement`)}</h2>
                 <Pill tone={paidAmount > 0 ? 'green' : 'amber'}>{paidAmount > 0 ? 'Partial' : 'Unpaid'}</Pill>
               </div>
               <div className="h-[calc(100%-2rem)] space-y-1.5 overflow-auto p-2 text-xs">
                 <div className="grid grid-cols-2 gap-1.5">
                   <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
-                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Paid</div>
+                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t(`Paid`)}</div>
                     <div className="font-mono text-sm font-black text-emerald-700">{fmt(paidAmount)}</div>
                   </div>
                   <div className="rounded border border-slate-100 bg-slate-50 px-2 py-1.5">
-                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">Remaining</div>
+                    <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t(`Remaining`)}</div>
                     <div className="font-mono text-sm font-black text-slate-800">{fmt(remainingAmount)}</div>
                   </div>
                 </div>
@@ -930,7 +932,7 @@ export default function CompactSalesInvoiceMockPage() {
 
             <section className="min-h-0 overflow-hidden rounded-md border border-slate-200 bg-white">
               <div className="flex h-8 items-center justify-between border-b border-slate-100 bg-slate-50/70 px-3">
-                <h2 className="text-[11px] font-black uppercase tracking-wide text-slate-700">Totals</h2>
+                <h2 className="text-[11px] font-black uppercase tracking-wide text-slate-700">{t(`Totals`)}</h2>
                 <Pill tone="slate">{documentCurrency}</Pill>
               </div>
               <div className="space-y-1 p-2">
@@ -947,12 +949,12 @@ export default function CompactSalesInvoiceMockPage() {
                   </div>
                 ))}
                 <div className="rounded-md border border-slate-900 bg-slate-950 px-3 py-2 text-white">
-                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">Grand Total</div>
+                  <div className="text-[10px] font-black uppercase tracking-wide text-slate-400">{t(`Grand Total`)}</div>
                   <div className="mt-0.5 text-right font-mono text-xl font-black">{fmt(totals.total)}</div>
                   <div className="text-right text-[10px] font-bold text-slate-400">{documentCurrency}</div>
                   {showBaseCurrency ? (
                     <div className="mt-1 border-t border-white/10 pt-1 text-right text-[10px] font-bold text-slate-300">
-                      Base {baseCurrency}: <span className="font-mono">{fmt(totals.baseTotal)}</span>
+                      {t(`Base`)} {baseCurrency}: <span className="font-mono">{fmt(totals.baseTotal)}</span>
                     </div>
                   ) : null}
                 </div>
@@ -964,8 +966,8 @@ export default function CompactSalesInvoiceMockPage() {
         <footer className="sticky bottom-0 z-20 shrink-0 border-t border-slate-200 bg-white/95 px-4 py-2.5 shadow-[0_-8px_20px_rgba(15,23,42,0.06)] backdrop-blur">
           <div className="grid items-center gap-2 lg:grid-cols-[1fr_auto_1fr]">
             <div className="hidden min-w-0 items-center gap-2 text-xs lg:flex">
-              <span className="font-black text-slate-700">Invoice actions</span>
-              <span className="text-slate-400">Totals and settlement stay visible in the right rail.</span>
+              <span className="font-black text-slate-700">{t(`Invoice actions`)}</span>
+              <span className="text-slate-400">{t(`Totals and settlement stay visible in the right rail.`)}</span>
             </div>
             <div className="flex flex-wrap items-center justify-center gap-1.5">
               <button type="button" className="inline-flex h-9 items-center justify-center gap-1.5 rounded border border-slate-200 bg-white px-3.5 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50">

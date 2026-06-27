@@ -403,7 +403,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
       </div>
       {classificationMismatch && (
         <p className="mt-1 text-[10px] text-amber-700 italic">
-          ⚠ Wrong account type — expected {classificationFilterLabel}, got {currentAccount?.classification || currentAccount?.type}. This will distort your financial reports.
+          {t(`⚠ Wrong account type — expected`)} {classificationFilterLabel}{t(`, got`)} {currentAccount?.classification || currentAccount?.type}. This will distort your financial reports.
         </p>
       )}
 
@@ -606,7 +606,7 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
                             {account.classification || account.type}
                           </span>
                           {account.accountRole === 'HEADER' && (
-                            <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase font-black border border-indigo-100">HEADER</span>
+                            <span className="text-[9px] bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded uppercase font-black border border-indigo-100">{t(`HEADER`)}</span>
                           )}
                         </div>
 
@@ -664,16 +664,16 @@ export const AccountSelector = forwardRef<HTMLInputElement, AccountSelectorProps
         icon={<AlertCircle size={24} />}
         message={
            <div className="space-y-4">
-              <p>You are attempting to create a new account as a child of <strong className="text-slate-900 italic">"{warningParentName}"</strong>.</p>
+              <p>{t(`You are attempting to create a new account as a child of`)} <strong className="text-slate-900 italic">"{warningParentName}"</strong>.</p>
               <div className="bg-amber-100/50 p-4 rounded-xl border border-amber-200">
-                 <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">Accounting Rule Violation</h4>
+                 <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">{t(`Accounting Rule Violation`)}</h4>
                  <p className="text-amber-700 text-xs leading-relaxed">
-                    Account <strong>"{warningParentName}"</strong> is a <span className="underline decoration-2">Posting Account</span> (Transaction level). 
-                    In a professional Chart of Accounts, only <strong>Header Accounts</strong> can have children.
+                    {t(`Account`)} <strong>"{warningParentName}"</strong> {t(`is a`)} <span className="underline decoration-2">{t(`Posting Account`)}</span> (Transaction level). 
+                    In a professional Chart of Accounts, only <strong>{t(`Header Accounts`)}</strong> can have children.
                  </p>
               </div>
               <p className="text-slate-500 italic text-[11px]">
-                 <strong>Instruction:</strong> To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.
+                 <strong>{t(`Instruction:`)}</strong> To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.
               </p>
            </div>
         }

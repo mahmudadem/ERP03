@@ -7,11 +7,13 @@ import { Plus, Warehouse as WarehouseIcon, Search, Layers, ChevronRight, Edit3 }
 import { clsx } from 'clsx';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useTranslation } from "react-i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const ROOT_KEY = '__ROOT__';
 
 const WarehousesPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const { openWindow } = useWindowManager();
   const { uiMode } = useUserPreferences();
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -91,7 +93,7 @@ const WarehousesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{warehouse.name}</span>
                 <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">{warehouse.code}</span>
-                {warehouse.isDefault && <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest pl-2">DEFAULT</span>}
+                {warehouse.isDefault && <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest pl-2">{t(`DEFAULT`)}</span>}
               </div>
               <div className="text-[11px] text-slate-400 line-clamp-1 max-w-md">{warehouse.address || 'No physical address defined'}</div>
             </div>
@@ -142,8 +144,8 @@ const WarehousesPage: React.FC = () => {
                 <Layers size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Warehouse Logistics</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Distribution Nodes & Global Storage Hierarchy</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t(`Warehouse Logistics`)}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t(`Distribution Nodes & Global Storage Hierarchy`)}</p>
             </div>
           </div>
           <button 
@@ -163,7 +165,7 @@ const WarehousesPage: React.FC = () => {
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
                     <Search size={14} /> Master Directory
                 </div>
-                {loading && <div className="text-[10px] text-blue-500 font-black animate-pulse uppercase tracking-tighter">Syncing Nodes...</div>}
+                {loading && <div className="text-[10px] text-blue-500 font-black animate-pulse uppercase tracking-tighter">{t(`Syncing Nodes...`)}</div>}
             </div>
             
             <div className="p-6">
@@ -173,8 +175,8 @@ const WarehousesPage: React.FC = () => {
                         <WarehouseIcon size={48} />
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Warehouses Registered</p>
-                        <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Start by clicking the button above to register your first storage location.</p>
+                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t(`No Warehouses Registered`)}</p>
+                        <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t(`Start by clicking the button above to register your first storage location.`)}</p>
                     </div>
                 </div>
               ) : (

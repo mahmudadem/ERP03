@@ -159,7 +159,7 @@ export default function ApexAccountingSettings() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-slate-800">{t('apex.settings.accountingSettings', { defaultValue: 'Accounting Settings' })}</h2>
-            <p className="text-[10px] text-slate-500 font-mono">Accounting Settings — {SETTING_SECTIONS.length} sections</p>
+            <p className="text-[10px] text-slate-500 font-mono">{t(`Accounting Settings —`)} {SETTING_SECTIONS.length} {t(`sections`)}</p>
           </div>
         </div>
         <button

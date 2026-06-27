@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { accountingApi, AgingReportData } from '../../../../../api/accountingApi';
 import { ChevronRight, ChevronDown, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 const fmt = (v: number) => v.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -14,6 +15,7 @@ const BUCKET_COLORS = [
 ];
 
 export default function ApexAging() {
+    const { t } = useTranslation('common');
   const today = new Date().toISOString().slice(0, 10);
   const [type, setType] = useState<'AR' | 'AP'>('AR');
   const [asOfDate, setAsOfDate] = useState(today);
@@ -41,15 +43,15 @@ export default function ApexAging() {
       {/* Filter bar */}
       <div className="bg-white border border-[#E2E8F0] rounded-lg p-4 flex flex-wrap items-end gap-4">
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">Report Type</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`Report Type`)}</label>
           <select value={type} onChange={e => setType(e.target.value as 'AR' | 'AP')}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400">
-            <option value="AR">Accounts Receivable (AR)</option>
-            <option value="AP">Accounts Payable (AP)</option>
+            <option value="AR">{t(`Accounts Receivable (AR)`)}</option>
+            <option value="AP">{t(`Accounts Payable (AP)`)}</option>
           </select>
         </div>
         <div>
-          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">As of Date</label>
+          <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`As of Date`)}</label>
           <input type="date" value={asOfDate} onChange={e => setAsOfDate(e.target.value)}
             className="bg-white border border-[#E2E8F0] rounded px-3 py-1.5 text-xs font-semibold outline-none focus:border-blue-400" />
         </div>
@@ -78,19 +80,19 @@ export default function ApexAging() {
             <span className={`px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-widest ${type === 'AR' ? 'bg-blue-100 text-blue-700' : 'bg-violet-100 text-violet-700'}`}>
               {type === 'AR' ? 'Receivables' : 'Payables'}
             </span>
-            <span className="text-[9px] font-mono text-slate-500">As of {data.asOfDate || asOfDate}</span>
-            <span className="text-[9px] font-mono text-slate-400 ml-auto">{data.accounts.length} accounts</span>
+            <span className="text-[9px] font-mono text-slate-500">{t(`As of`)} {data.asOfDate || asOfDate}</span>
+            <span className="text-[9px] font-mono text-slate-400 ml-auto">{data.accounts.length} {t(`accounts`)}</span>
           </div>
 
           <div className="overflow-x-auto">
             <table className="min-w-full">
               <thead className="bg-[#F8FAFC] border-b border-[#E2E8F0]">
                 <tr>
-                  <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Account</th>
+                  <th className="px-4 py-2.5 text-left text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Account`)}</th>
                   {(data.buckets || []).map(b => (
                     <th key={b} className="px-3 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{b}</th>
                   ))}
-                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Total</th>
+                  <th className="px-4 py-2.5 text-right text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Total`)}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#F1F5F9]">
@@ -126,14 +128,14 @@ export default function ApexAging() {
                       {expanded === acct.accountId && acct.entries && acct.entries.length > 0 && (
                         <tr className="bg-slate-50/60">
                           <td colSpan={(data.buckets?.length || 0) + 2} className="px-6 py-3">
-                            <div className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-2">Transaction Details</div>
+                            <div className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest mb-2">{t(`Transaction Details`)}</div>
                             <table className="min-w-full text-[10px]">
                               <thead>
                                 <tr className="bg-white border border-[#E2E8F0] rounded">
-                                  <th className="px-3 py-1.5 text-left font-bold text-slate-500">Date</th>
-                                  <th className="px-3 py-1.5 text-left font-bold text-slate-500">Description</th>
-                                  <th className="px-3 py-1.5 text-right font-bold text-slate-500">Amount</th>
-                                  <th className="px-3 py-1.5 text-right font-bold text-slate-500">Days</th>
+                                  <th className="px-3 py-1.5 text-left font-bold text-slate-500">{t(`Date`)}</th>
+                                  <th className="px-3 py-1.5 text-left font-bold text-slate-500">{t(`Description`)}</th>
+                                  <th className="px-3 py-1.5 text-right font-bold text-slate-500">{t(`Amount`)}</th>
+                                  <th className="px-3 py-1.5 text-right font-bold text-slate-500">{t(`Days`)}</th>
                                 </tr>
                               </thead>
                               <tbody>
@@ -159,7 +161,7 @@ export default function ApexAging() {
               {data.accounts.length > 0 && (
                 <tfoot className="bg-[#F8FAFC] border-t-2 border-[#E2E8F0]">
                   <tr>
-                    <td className="px-4 py-3 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">Grand Total</td>
+                    <td className="px-4 py-3 text-right text-[9px] font-mono font-bold text-slate-500 uppercase tracking-widest">{t(`Grand Total`)}</td>
                     {(data.totals || []).map((v, idx) => (
                       <td key={idx} className={`px-3 py-3 text-right text-xs font-bold ${BUCKET_COLORS[idx] || 'text-slate-900 font-mono'}`}>{fmt(v)}</td>
                     ))}
@@ -174,7 +176,7 @@ export default function ApexAging() {
 
       {!generated && !loading && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg p-12 text-center">
-          <p className="text-xs text-slate-400 font-mono">Select report type and click Generate</p>
+          <p className="text-xs text-slate-400 font-mono">{t(`Select report type and click Generate`)}</p>
         </div>
       )}
     </div>

@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useCallback } from 'react';
 import { accountingApi } from '../../../../../api/accountingApi';
 import { BookOpen, RefreshCw, Search, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 /* ── Types ─────────────────────────────────────────────── */
 
@@ -73,6 +74,7 @@ const typeLabel = (type: string) => {
 /* ── Main Component ─────────────────────────────────────── */
 
 export default function ApexJournal() {
+    const { t } = useTranslation('common');
   const [fromDate, setFromDate] = useState(today());
   const [toDate, setToDate]     = useState(today());
   const [search, setSearch]     = useState('');
@@ -143,7 +145,7 @@ export default function ApexJournal() {
       <div className="bg-white border border-[#E2E8F0] rounded-lg">
         <div className="px-4 py-3 border-b border-[#E2E8F0] flex items-center space-x-2">
           <BookOpen className="w-4 h-4 text-blue-600" />
-          <span className="text-sm font-bold text-slate-800">Journal / Day Book</span>
+          <span className="text-sm font-bold text-slate-800">{t(`Journal / Day Book`)}</span>
           <span className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest ml-2">
             Chronological ledger entries
           </span>
@@ -152,7 +154,7 @@ export default function ApexJournal() {
         <div className="px-4 py-3 flex items-end flex-wrap gap-3">
           {/* From */}
           <div>
-            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">From Date</label>
+            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`From Date`)}</label>
             <input
               type="date"
               value={fromDate}
@@ -162,7 +164,7 @@ export default function ApexJournal() {
           </div>
           {/* To */}
           <div>
-            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">To Date</label>
+            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`To Date`)}</label>
             <input
               type="date"
               value={toDate}
@@ -172,7 +174,7 @@ export default function ApexJournal() {
           </div>
           {/* Search */}
           <div>
-            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">Search</label>
+            <label className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest block mb-1">{t(`Search`)}</label>
             <div className="relative">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3 h-3 text-slate-400" />
               <input
@@ -223,13 +225,13 @@ export default function ApexJournal() {
           {/* Stats bar */}
           <div className="flex items-center space-x-4 px-1 flex-wrap gap-y-2">
             <span className="text-[10px] font-mono font-bold text-slate-400 uppercase tracking-widest">
-              {sorted.length} voucher{sorted.length !== 1 ? 's' : ''}
+              {sorted.length} {t(`voucher`)}{sorted.length !== 1 ? 's' : ''}
               {rawData.length !== sorted.length && ` (filtered from ${rawData.length})`}
             </span>
             {isBalanced && sorted.length > 0 && (
               <span className="inline-flex items-center space-x-1 text-[10px] font-bold text-emerald-600">
                 <CheckCircle2 className="w-3 h-3" />
-                <span>Balanced</span>
+                <span>{t(`Balanced`)}</span>
               </span>
             )}
           </div>
@@ -238,7 +240,7 @@ export default function ApexJournal() {
           {sorted.length === 0 && (
             <div className="bg-white border border-[#E2E8F0] rounded-lg flex flex-col items-center justify-center py-16 space-y-3">
               <BookOpen className="w-8 h-8 text-slate-300" />
-              <p className="text-xs font-semibold text-slate-400">No journal entries found for the selected criteria</p>
+              <p className="text-xs font-semibold text-slate-400">{t(`No journal entries found for the selected criteria`)}</p>
             </div>
           )}
 
@@ -284,10 +286,10 @@ export default function ApexJournal() {
                 <table className="w-full">
                   <thead>
                     <tr className="bg-[#F8FAFC]">
-                      <th className="text-left px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Account</th>
-                      <th className="text-left px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Description</th>
-                      <th className="text-right px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Debit</th>
-                      <th className="text-right px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Credit</th>
+                      <th className="text-left px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Account`)}</th>
+                      <th className="text-left px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Description`)}</th>
+                      <th className="text-right px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Debit`)}</th>
+                      <th className="text-right px-4 py-2 text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Credit`)}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -333,20 +335,20 @@ export default function ApexJournal() {
           {sorted.length > 0 && (
             <div className="bg-white border-2 border-[#E2E8F0] rounded-lg overflow-hidden">
               <div className="flex items-center justify-between px-4 py-3 bg-slate-800">
-                <span className="text-[9px] font-mono font-bold text-slate-300 uppercase tracking-widest">Grand Total</span>
+                <span className="text-[9px] font-mono font-bold text-slate-300 uppercase tracking-widest">{t(`Grand Total`)}</span>
                 <div className="flex items-center space-x-8">
                   <div className="text-right">
-                    <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Debit</p>
+                    <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Debit`)}</p>
                     <p className="font-mono text-sm font-bold text-white">{fmt(totals.debit)}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">Credit</p>
+                    <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-widest">{t(`Credit`)}</p>
                     <p className="font-mono text-sm font-bold text-white">{fmt(totals.credit)}</p>
                   </div>
                   {isBalanced && (
                     <span className="flex items-center space-x-1 text-emerald-400 text-[10px] font-bold">
                       <CheckCircle2 className="w-3.5 h-3.5" />
-                      <span>Balanced</span>
+                      <span>{t(`Balanced`)}</span>
                     </span>
                   )}
                 </div>
@@ -360,7 +362,7 @@ export default function ApexJournal() {
       {!generated && !loading && (
         <div className="bg-white border border-[#E2E8F0] rounded-lg flex flex-col items-center justify-center py-16 space-y-3">
           <BookOpen className="w-8 h-8 text-slate-300" />
-          <p className="text-xs font-semibold text-slate-400">Set a date range and click Generate</p>
+          <p className="text-xs font-semibold text-slate-400">{t(`Set a date range and click Generate`)}</p>
         </div>
       )}
 

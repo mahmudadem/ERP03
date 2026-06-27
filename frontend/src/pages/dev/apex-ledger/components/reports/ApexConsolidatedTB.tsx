@@ -1,6 +1,7 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Settings, ArrowUpRight, Info } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 /**
  * ApexConsolidatedTB — Placeholder
@@ -10,6 +11,7 @@ import { Building2, Settings, ArrowUpRight, Info } from 'lucide-react';
  * and is only meaningful when the platform has subsidiary companies set up.
  */
 export default function ApexConsolidatedTB() {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
 
   return (
@@ -19,7 +21,7 @@ export default function ApexConsolidatedTB() {
           <Building2 className="w-7 h-7 text-indigo-500" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-slate-800 mb-1">Consolidated Trial Balance</h3>
+          <h3 className="text-sm font-bold text-slate-800 mb-1">{t(`Consolidated Trial Balance`)}</h3>
           <p className="text-xs text-slate-500 leading-relaxed">
             This report consolidates trial balances across multiple subsidiary companies.
             It requires multi-company configuration to be enabled.
@@ -29,10 +31,10 @@ export default function ApexConsolidatedTB() {
         <div className="bg-indigo-50 border border-indigo-100 rounded-lg px-4 py-3 flex items-start gap-3 text-left">
           <Info className="w-4 h-4 text-indigo-500 shrink-0 mt-0.5" />
           <div className="text-xs text-indigo-700 leading-relaxed">
-            <span className="font-bold block mb-0.5">Setup Required</span>
-            To use this report, you need to:<br />
-            1. Configure subsidiary companies in Admin<br />
-            2. Set up inter-company elimination accounts<br />
+            <span className="font-bold block mb-0.5">{t(`Setup Required`)}</span>
+            {t(`To use this report, you need to:`)}<br />
+            {t(`1. Configure subsidiary companies in Admin`)}<br />
+            {t(`2. Set up inter-company elimination accounts`)}<br />
             3. Define consolidation rules per fiscal year
           </div>
         </div>

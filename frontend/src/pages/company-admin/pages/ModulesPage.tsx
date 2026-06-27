@@ -139,7 +139,7 @@ export const ModulesPage: React.FC = () => {
 
                 {isBlocked && (
                   <div className="mb-4 p-3 bg-amber-100 border border-amber-200 rounded text-xs text-amber-800">
-                    <span className="font-medium">Runtime blocked.</span> {blockedReason}
+                    <span className="font-medium">{t(`Runtime blocked.`)}</span> {blockedReason}
                   </div>
                 )}
 
@@ -172,7 +172,7 @@ export const ModulesPage: React.FC = () => {
             <p>{t('companyAdmin.modules.confirmDisable', { moduleName: confirmDialog.moduleName })}</p>
             <div className="flex items-start gap-2 p-3 bg-amber-50 rounded-lg text-xs text-amber-700 border border-amber-100">
               <AlertTriangle className="h-4 w-4 shrink-0" />
-              <p>Disabling this module will hide all its related menu items and features from the sidebar for all users immediately.</p>
+              <p>{t(`Disabling this module will hide all its related menu items and features from the sidebar for all users immediately.`)}</p>
             </div>
           </div>
         }

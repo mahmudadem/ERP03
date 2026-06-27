@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Search, Plus } from 'lucide-react';
 import { CurrencyDTO } from '../../../../../api/accountingApi';
+import { useTranslation } from "react-i18next";
 
 interface AvailableCurrenciesModalProps {
   currencies: CurrencyDTO[];
@@ -13,6 +14,7 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
   onClose,
   onSelect
 }) => {
+    const { t } = useTranslation('common');
   const [search, setSearch] = useState('');
 
   const filtered = currencies.filter(c => 
@@ -89,8 +91,8 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
               <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center mb-4">
                 <Search size={24} className="text-gray-300" />
               </div>
-              <p className="text-gray-900 dark:text-[var(--color-text-primary)] font-bold">No matches found</p>
-              <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">Try a different currency code or name.</p>
+              <p className="text-gray-900 dark:text-[var(--color-text-primary)] font-bold">{t(`No matches found`)}</p>
+              <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">{t(`Try a different currency code or name.`)}</p>
             </div>
           )}
         </div>

@@ -281,6 +281,7 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
   onStyleChange,
   onRemove,
 }) => {
+    const { t } = useTranslation('common');
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: widget.id,
     disabled: !isEditing,
@@ -380,7 +381,7 @@ const PrecisionWidget: React.FC<PrecisionWidgetProps> = ({
                 <ChevronLeft className="h-3.5 w-3.5" />
               </button>
               <div className="flex h-7 items-center border-x border-slate-200 bg-white px-1.5">
-                <span className="mr-1 text-[10px] font-bold text-slate-400">W</span>
+                <span className="mr-1 text-[10px] font-bold text-slate-400">{t(`W`)}</span>
                 <input
                   type="text"
                   value={editSpan}
@@ -1230,6 +1231,7 @@ const CustomGridDndImplementation: React.FC = () => {
 // CANVAS DEV PAGE
 // ============================================================================
 export const CanvasDevPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const { isLayoutMode, setLayoutMode } = useWidgetStore();
   const [containerHeight, setContainerHeight] = useState('h-12'); // Default TopBar height (48px)
   const [showLegacyImplementations, setShowLegacyImplementations] = useState(false);
@@ -1240,7 +1242,7 @@ export const CanvasDevPage: React.FC = () => {
         
         {/* Controls */}
         <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-          <h1 className="text-2xl font-bold text-slate-800 mb-2">Canvas Dev 🧪</h1>
+          <h1 className="text-2xl font-bold text-slate-800 mb-2">{t(`Canvas Dev 🧪`)}</h1>
           <p className="text-slate-500 mb-6">
             Compare all implementations side-by-side. Scroll horizontally if the screen is too small.
           </p>
@@ -1260,14 +1262,14 @@ export const CanvasDevPage: React.FC = () => {
             </button>
 
             <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200">
-              <span className="text-sm font-medium text-slate-600">Height:</span>
+              <span className="text-sm font-medium text-slate-600">{t(`Height:`)}</span>
               <select 
                 value={containerHeight}
                 onChange={e => setContainerHeight(e.target.value)}
                 className="bg-transparent text-sm font-bold text-slate-800 outline-none cursor-pointer"
               >
-                <option value="h-12">48px (Current TopBar)</option>
-                <option value="h-16">64px</option>
+                <option value="h-12">{t(`48px (Current TopBar)`)}</option>
+                <option value="h-16">{t(`64px`)}</option>
               </select>
             </div>
 
@@ -1308,9 +1310,9 @@ export const CanvasDevPage: React.FC = () => {
                   "flex items-center justify-between pl-1 pr-3 w-full border border-slate-300 bg-white shadow-md relative overflow-visible rounded-lg"
                 )}
               >
-                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-r border-slate-100 flex items-center justify-center h-full">Left</div>
+                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-r border-slate-100 flex items-center justify-center h-full">{t(`Left`)}</div>
                 <CustomGridDndImplementation />
-                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-l border-slate-100 flex items-center justify-center h-full">Right</div>
+                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-l border-slate-100 flex items-center justify-center h-full">{t(`Right`)}</div>
               </header>
             </div>
           </div>
@@ -1327,9 +1329,9 @@ export const CanvasDevPage: React.FC = () => {
                   "flex items-center justify-between pl-1 pr-3 w-full border border-slate-300 bg-white shadow-md relative overflow-visible rounded-lg mt-2"
                 )}
               >
-                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-r border-slate-100 flex items-center justify-center h-full">Left</div>
+                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-r border-slate-100 flex items-center justify-center h-full">{t(`Left`)}</div>
                 <DndKitImplementation />
-                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-l border-slate-100 flex items-center justify-center h-full">Right</div>
+                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-l border-slate-100 flex items-center justify-center h-full">{t(`Right`)}</div>
               </header>
             </div>
           </div>
@@ -1346,9 +1348,9 @@ export const CanvasDevPage: React.FC = () => {
                   "flex items-center justify-between pl-1 pr-3 w-full border border-slate-300 bg-white shadow-md relative overflow-visible rounded-lg mt-2"
                 )}
               >
-                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-r border-slate-100 flex items-center justify-center h-full">Left</div>
+                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-r border-slate-100 flex items-center justify-center h-full">{t(`Left`)}</div>
                 <RGLImplementation />
-                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-l border-slate-100 flex items-center justify-center h-full">Right</div>
+                <div className="shrink-0 px-4 text-xs font-bold text-slate-400 border-l border-slate-100 flex items-center justify-center h-full">{t(`Right`)}</div>
               </header>
             </div>
           </div>

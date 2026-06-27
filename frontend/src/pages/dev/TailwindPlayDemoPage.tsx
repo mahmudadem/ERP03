@@ -6,6 +6,7 @@ import { useWindowManager } from '../../context/WindowManagerContext';
 import { ChevronDown, RefreshCcw, Database, Plus, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { clsx } from 'clsx';
+import i18n from "i18next";
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -43,7 +44,7 @@ export const TailwindPlayDemoPage: React.FC = () => {
       setStockLevels(stockList);
     } catch (error) {
       console.error('Failed to load dev data', error);
-      toast.error('Failed to load inventory data');
+      toast.error(i18n.t('Failed to load inventory data'));
     } finally {
       setLoading(false);
     }
@@ -94,7 +95,7 @@ export const TailwindPlayDemoPage: React.FC = () => {
         notes: 'Initial seed stock for Tailwind Play layout demo'
       });
 
-      toast.success('Seeded Raw Steel Sheets (1,200 pcs)');
+      toast.success(i18n.t('Seeded Raw Steel Sheets (1,200 pcs)'));
       await loadData();
     } catch (error: any) {
       console.error('Failed to seed demo data', error);
@@ -107,7 +108,7 @@ export const TailwindPlayDemoPage: React.FC = () => {
   const handleCreateCustomItem = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newItemCode || !newItemName) {
-      toast.error('Please fill in Code and Name');
+      toast.error(i18n.t('Please fill in Code and Name'));
       return;
     }
 
@@ -180,11 +181,11 @@ export const TailwindPlayDemoPage: React.FC = () => {
       for (const item of items) {
         await inventoryApi.deleteItem(item.id);
       }
-      toast.success('Cleaned items list');
+      toast.success(i18n.t('Cleaned items list'));
       await loadData();
     } catch (error) {
       console.error('Failed to clean items', error);
-      toast.error('Failed to clean items');
+      toast.error(i18n.t('Failed to clean items'));
     } finally {
       setLoading(false);
     }
@@ -222,7 +223,7 @@ export const TailwindPlayDemoPage: React.FC = () => {
       {/* Page Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Items Master</h1>
+          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{t(`Items Master`)}</h1>
           <span className="px-2 py-0.5 text-[10px] font-bold text-blue-600 bg-blue-50 border border-blue-200 rounded-md">
             Active
           </span>
@@ -350,7 +351,7 @@ export const TailwindPlayDemoPage: React.FC = () => {
 
       {loading && (
         <div className="flex justify-center items-center py-4">
-          <span className="text-xs text-slate-500 animate-pulse">Loading sandbox data...</span>
+          <span className="text-xs text-slate-500 animate-pulse">{t(`Loading sandbox data...`)}</span>
         </div>
       )}
 
@@ -358,10 +359,10 @@ export const TailwindPlayDemoPage: React.FC = () => {
       {showNewItemModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-sm">
           <div className="w-full max-w-md bg-white p-6 rounded-xl border border-slate-200 shadow-xl space-y-4">
-            <h2 className="text-sm font-bold text-slate-900">Create New Item</h2>
+            <h2 className="text-sm font-bold text-slate-900">{t(`Create New Item`)}</h2>
             <form onSubmit={handleCreateCustomItem} className="space-y-3">
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Item Code</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t(`Item Code`)}</label>
                 <input
                   type="text"
                   placeholder="ITEM-002"
@@ -372,7 +373,7 @@ export const TailwindPlayDemoPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Item Name</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t(`Item Name`)}</label>
                 <input
                   type="text"
                   placeholder="Aluminium Rods"
@@ -383,20 +384,20 @@ export const TailwindPlayDemoPage: React.FC = () => {
                 />
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Warehouse</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t(`Warehouse`)}</label>
                 <select
                   value={newItemWarehouseId}
                   onChange={(e) => setNewItemWarehouseId(e.target.value)}
                   className="w-full px-3 py-2 text-xs border border-slate-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500"
                 >
-                  <option value="">Default Warehouse</option>
+                  <option value="">{t(`Default Warehouse`)}</option>
                   {warehouses.map((w) => (
                     <option key={w.id} value={w.id}>{w.name}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">Starting Stock Qty</label>
+                <label className="block text-[10px] font-bold text-slate-500 uppercase mb-1">{t(`Starting Stock Qty`)}</label>
                 <input
                   type="number"
                   placeholder="1200"

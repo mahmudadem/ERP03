@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Modal } from '../../../components/ui/Modal';
 import { AlertCircle } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 
 interface RejectionModalProps {
   isOpen: boolean;
@@ -15,6 +16,7 @@ export const RejectionModal: React.FC<RejectionModalProps> = ({
   onConfirm,
   title = "Reject Voucher"
 }) => {
+    const { t } = useTranslation('common');
   const [reason, setReason] = useState('');
   const [error, setError] = useState(false);
 
@@ -54,7 +56,7 @@ export const RejectionModal: React.FC<RejectionModalProps> = ({
 
         <div>
           <label htmlFor="reason" className="block text-sm font-medium text-gray-700">
-            Rejection Reason <span className="text-red-500">*</span>
+            {t(`Rejection Reason`)} <span className="text-red-500">*</span>
           </label>
           <div className="mt-1">
             <textarea

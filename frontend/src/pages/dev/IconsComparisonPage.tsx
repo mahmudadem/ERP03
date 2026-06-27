@@ -5,6 +5,8 @@ import * as Icons from 'lucide-react';
 import { clsx } from 'clsx';
 import toast from 'react-hot-toast';
 import { resolveSidebarIcon } from '../../components/navigation/sidebarIcons';
+import { useTranslation } from "react-i18next";
+import i18n from "i18next";
 
 // Proposed Icon sets
 const ICON_PACKAGES = [
@@ -152,6 +154,7 @@ const DynamicIcon = ({ name, className = 'w-5 h-5' }: { name: string; className?
 };
 
 export const IconsComparisonPage: React.FC = () => {
+    const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [activePreset, setActivePreset] = useState<string>('modern_saas');
   const [copied, setCopied] = useState(false);
@@ -162,7 +165,7 @@ export const IconsComparisonPage: React.FC = () => {
     const codeString = JSON.stringify(selectedPreset.icons, null, 2);
     void navigator.clipboard.writeText(codeString);
     setCopied(true);
-    toast.success('Icon mapping config copied!');
+    toast.success(i18n.t('Icon mapping config copied!'));
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -181,7 +184,7 @@ export const IconsComparisonPage: React.FC = () => {
             <div className="p-1.5 rounded-lg bg-primary-100 dark:bg-primary-950 text-primary-600 dark:text-primary-400">
               <Sparkles size={20} />
             </div>
-            <h1 className="text-xl font-bold tracking-tight">Sidebar & Module Icons Playground</h1>
+            <h1 className="text-xl font-bold tracking-tight">{t(`Sidebar & Module Icons Playground`)}</h1>
           </div>
           <p className="text-xs text-slate-400 mt-1">
             Compare 5 different icon package aesthetics side-by-side or preview them dynamically in a mock sidebar drawer.
@@ -220,7 +223,7 @@ export const IconsComparisonPage: React.FC = () => {
               <table className="w-full border-collapse text-left text-xs">
                 <thead>
                   <tr className="bg-slate-50 dark:bg-slate-950 border-b border-slate-100 dark:border-slate-800 text-slate-500 font-semibold">
-                    <th className="p-4 w-40">Module</th>
+                    <th className="p-4 w-40">{t(`Module`)}</th>
                     {ICON_PACKAGES.map(pkg => (
                       <th
                         key={pkg.id}
@@ -300,7 +303,7 @@ export const IconsComparisonPage: React.FC = () => {
             
             <div className="border-t border-slate-100 dark:border-slate-800 pt-3 flex flex-col gap-2">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-slate-400 font-medium">JSON Config:</span>
+                <span className="text-slate-400 font-medium">{t(`JSON Config:`)}</span>
                 <button
                   onClick={handleCopyCode}
                   className="text-primary-500 hover:text-primary-600 flex items-center gap-1 font-semibold transition-colors"
@@ -330,8 +333,8 @@ export const IconsComparisonPage: React.FC = () => {
                     E
                   </div>
                   <div>
-                    <h3 className="text-xs font-bold leading-tight">ERP03 Workspace</h3>
-                    <span className="text-[9px] text-slate-400">Company Admin</span>
+                    <h3 className="text-xs font-bold leading-tight">{t(`ERP03 Workspace`)}</h3>
+                    <span className="text-[9px] text-slate-400">{t(`Company Admin`)}</span>
                   </div>
                 </div>
 
@@ -339,37 +342,37 @@ export const IconsComparisonPage: React.FC = () => {
                 <div className="space-y-3">
                   {/* General */}
                   <div className="space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-1">General</span>
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-1">{t(`General`)}</span>
                     <div className="flex items-center gap-2.5 px-3 py-2 rounded-lg text-xs font-semibold bg-slate-800/40 text-slate-200 cursor-pointer">
                       <DynamicIcon name="Home" className="w-4 h-4 text-slate-400" />
-                      <span>Home</span>
+                      <span>{t(`Home`)}</span>
                     </div>
                   </div>
 
                   {/* Operational Modules */}
                   <div className="space-y-1">
-                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-1">Modules</span>
+                    <span className="text-[9px] font-bold text-slate-500 uppercase tracking-widest block pl-2 mb-1">{t(`Modules`)}</span>
                     
                     {/* Accounting */}
                     <div className="space-y-1.5 pl-1.5">
                       <div className="flex items-center justify-between px-2 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900 cursor-pointer">
                         <div className="flex items-center gap-2.5">
                           <DynamicIcon name={selectedPreset.icons.accounting} className="w-4 h-4 text-primary-500" />
-                          <span>Accounting</span>
+                          <span>{t(`Accounting`)}</span>
                         </div>
                       </div>
                       <div className="pl-6 border-l border-slate-800 space-y-1">
                         <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-slate-400 hover:text-white cursor-pointer">
                           <FolderTree size={12} className="text-slate-500" />
-                          <span>Chart of Accounts</span>
+                          <span>{t(`Chart of Accounts`)}</span>
                         </div>
                         <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-slate-400 hover:text-white cursor-pointer">
                           <Scale size={12} className="text-slate-500" />
-                          <span>Trial Balance</span>
+                          <span>{t(`Trial Balance`)}</span>
                         </div>
                         <div className="flex items-center gap-2 px-2 py-1 text-[11px] text-slate-400 hover:text-white cursor-pointer">
                           <BookOpen size={12} className="text-slate-500" />
-                          <span>General Ledger</span>
+                          <span>{t(`General Ledger`)}</span>
                         </div>
                       </div>
                     </div>
@@ -378,7 +381,7 @@ export const IconsComparisonPage: React.FC = () => {
                     <div className="flex items-center justify-between px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900 cursor-pointer">
                       <div className="flex items-center gap-2.5">
                         <DynamicIcon name={selectedPreset.icons.inventory} className="w-4 h-4 text-slate-400" />
-                        <span>Inventory</span>
+                        <span>{t(`Inventory`)}</span>
                       </div>
                     </div>
 
@@ -386,7 +389,7 @@ export const IconsComparisonPage: React.FC = () => {
                     <div className="flex items-center justify-between px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900 cursor-pointer">
                       <div className="flex items-center gap-2.5">
                         <DynamicIcon name={selectedPreset.icons.sales} className="w-4 h-4 text-slate-400" />
-                        <span>Sales</span>
+                        <span>{t(`Sales`)}</span>
                       </div>
                     </div>
 
@@ -394,7 +397,7 @@ export const IconsComparisonPage: React.FC = () => {
                     <div className="flex items-center justify-between px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900 cursor-pointer">
                       <div className="flex items-center gap-2.5">
                         <DynamicIcon name={selectedPreset.icons.purchase} className="w-4 h-4 text-slate-400" />
-                        <span>Purchases</span>
+                        <span>{t(`Purchases`)}</span>
                       </div>
                     </div>
 
@@ -402,7 +405,7 @@ export const IconsComparisonPage: React.FC = () => {
                     <div className="flex items-center justify-between px-3.5 py-1.5 rounded-lg text-xs font-bold text-slate-300 hover:bg-slate-900 cursor-pointer">
                       <div className="flex items-center gap-2.5">
                         <DynamicIcon name={selectedPreset.icons.crm} className="w-4 h-4 text-slate-400" />
-                        <span>CRM</span>
+                        <span>{t(`CRM`)}</span>
                       </div>
                     </div>
 
@@ -411,8 +414,8 @@ export const IconsComparisonPage: React.FC = () => {
                       <div className="flex items-center gap-2.5">
                         <DynamicIcon name={selectedPreset.icons.ai} className="w-4 h-4 text-indigo-400 animate-pulse" />
                         <span className="flex items-center gap-1">
-                          <span>AI Agent</span>
-                          <span className="text-[8px] bg-indigo-500/25 text-indigo-300 px-1 rounded font-bold">BETA</span>
+                          <span>{t(`AI Agent`)}</span>
+                          <span className="text-[8px] bg-indigo-500/25 text-indigo-300 px-1 rounded font-bold">{t(`BETA`)}</span>
                         </span>
                       </div>
                     </div>
@@ -424,7 +427,7 @@ export const IconsComparisonPage: React.FC = () => {
               <div className="border-t border-slate-850 pt-2.5 flex items-center justify-between">
                 <div className="flex items-center gap-2 cursor-pointer">
                   <DynamicIcon name={selectedPreset.icons.tools} className="w-4 h-4 text-slate-500" />
-                  <span className="text-xs text-slate-400 font-semibold hover:text-white transition-colors">Settings & Tools</span>
+                  <span className="text-xs text-slate-400 font-semibold hover:text-white transition-colors">{t(`Settings & Tools`)}</span>
                 </div>
               </div>
 

@@ -3,6 +3,7 @@ import { X, Plus, Trash2, GripVertical } from 'lucide-react';
 import { WindowConfig, WindowComponent, AVAILABLE_WIDGETS, AVAILABLE_ACTIONS } from '../../types/WindowConfig';
 import { ComponentPropertiesPanel } from './ComponentPropertiesPanel';
 import { GridCanvas } from './GridCanvas';
+import { useTranslation } from "react-i18next";
 
 interface WindowDesignerProps {
   initialConfig?: WindowConfig;
@@ -15,6 +16,7 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
   onSave,
   onCancel,
 }) => {
+    const { t } = useTranslation('common');
   const [config, setConfig] = useState<WindowConfig>(
     initialConfig || {
       id: `config-${Date.now()}`,
@@ -153,8 +155,8 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
         {/* Header */}
         <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center">
           <div>
-            <h2 className="text-2xl font-bold text-gray-900">Window Configuration Designer</h2>
-            <p className="text-sm text-gray-600 mt-1">Configure components with detailed properties</p>
+            <h2 className="text-2xl font-bold text-gray-900">{t(`Window Configuration Designer`)}</h2>
+            <p className="text-sm text-gray-600 mt-1">{t(`Configure components with detailed properties`)}</p>
           </div>
           <button
             onClick={onCancel}
@@ -170,7 +172,7 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
           <div className="w-80 border-r border-gray-200 flex flex-col">
             <div className="p-4 border-b border-gray-200">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-900">Components</h3>
+                <h3 className="font-bold text-gray-900">{t(`Components`)}</h3>
                 <button
                   onClick={() => setShowAddMenu(!showAddMenu)}
                   className="px-3 py-1.5 bg-indigo-600 text-white rounded text-sm hover:bg-indigo-700 flex items-center gap-1"
@@ -186,7 +188,7 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
             {/* Component List */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
               <div>
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Widgets</h4>
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{t(`Widgets`)}</h4>
                 <div className="space-y-2">
                   {AVAILABLE_WIDGETS.map(widget => (
                     <div
@@ -206,7 +208,7 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
               </div>
 
               <div>
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">Actions</h4>
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-2">{t(`Actions`)}</h4>
                 <div className="space-y-2">
                   {AVAILABLE_ACTIONS.map(action => (
                     <div
@@ -229,7 +231,7 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
             {/* Basic Settings */}
             <div className="p-4 border-t border-gray-200 space-y-3">
               <div>
-                <label className="block text-xs font-medium text-gray-700 mb-1">Window Title</label>
+                <label className="block text-xs font-medium text-gray-700 mb-1">{t(`Window Title`)}</label>
                 <input
                   type="text"
                   value={config.header.title}
@@ -287,8 +289,8 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
               {/* Body Placeholder */}
               <div className="border border-dashed border-gray-300 rounded-xl bg-gray-50/50 p-12 text-center">
                 <div className="flex flex-col items-center gap-2">
-                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Main Content Area (Body)</div>
-                   <div className="text-xs text-gray-400">The primary voucher content will be rendered here.</div>
+                   <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{t(`Main Content Area (Body)`)}</div>
+                   <div className="text-xs text-gray-400">{t(`The primary voucher content will be rendered here.`)}</div>
                 </div>
               </div>
 
@@ -307,7 +309,7 @@ export const WindowConfigDesigner: React.FC<WindowDesignerProps> = ({
           {/* Right Panel - Properties */}
           <div className="w-96 border-l border-gray-200 bg-gray-50">
             <div className="p-4 border-b border-gray-200 bg-white">
-              <h3 className="font-bold text-gray-900">Properties</h3>
+              <h3 className="font-bold text-gray-900">{t(`Properties`)}</h3>
             </div>
             <ComponentPropertiesPanel
               component={selectedComponent}

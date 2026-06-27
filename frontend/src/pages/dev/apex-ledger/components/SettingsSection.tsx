@@ -100,7 +100,7 @@ export default function SettingsSection() {
         </div>
         <div>
           <h2 className="text-sm font-bold text-slate-800">{t('apex.settings.accountingSettings', { defaultValue: 'Accounting Settings' })}</h2>
-          <p className="text-[10px] text-slate-500">Configure fiscal periods, approval rules, currencies, and more</p>
+          <p className="text-[10px] text-slate-500">{t(`Configure fiscal periods, approval rules, currencies, and more`)}</p>
         </div>
       </div>
 
@@ -134,7 +134,7 @@ export default function SettingsSection() {
       <div className="bg-slate-800 rounded-lg p-4 flex items-center justify-between">
         <div className="text-white">
           <h3 className="text-xs font-bold">{t('apex.settings.fullSettings', { defaultValue: 'Full Accounting Settings' })}</h3>
-          <p className="text-[10px] text-slate-400 mt-0.5">Open the complete settings page in the main application</p>
+          <p className="text-[10px] text-slate-400 mt-0.5">{t(`Open the complete settings page in the main application`)}</p>
         </div>
         <button
           onClick={() => navigate('/accounting/settings')}
