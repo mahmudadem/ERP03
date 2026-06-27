@@ -987,9 +987,9 @@ const PosTerminalPage: React.FC<Props> = () => {
   }
 
   return (
-    <div ref={containerRef} className="flex h-full flex-col bg-slate-50 dark:bg-[var(--color-bg-primary)]">
+    <div ref={containerRef} className="flex h-[calc(100vh-64px)] min-h-0 flex-col overflow-hidden bg-slate-50 dark:bg-[var(--color-bg-primary)]">
       {/* Context bar */}
-      <header className="flex flex-none flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
+      <header className="flex flex-none shrink-0 flex-wrap items-center justify-between gap-3 border-b border-slate-200 bg-white px-4 py-2.5 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)]">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-indigo-600 text-white">
             <MonitorSmartphone className="h-5 w-5" />
@@ -1077,10 +1077,10 @@ const PosTerminalPage: React.FC<Props> = () => {
       </header>
 
       {/* Workspace */}
-      <div className="grid flex-1 grid-cols-1 gap-3 overflow-hidden p-3 landscape:grid-cols-12 lg:grid-cols-12">
+      <div className="grid flex-1 min-h-0 grid-cols-1 gap-3 overflow-hidden p-3 lg:grid-cols-12">
         {/* Products pane */}
-        <section className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-4 lg:col-span-7 lg:landscape:col-span-7">
-          <div className="flex-none border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
+        <section className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-7">
+          <div className="flex-none shrink-0 border-b border-slate-100 p-3 dark:border-[var(--color-border)]">
             <div className="relative">
               <input
                 ref={searchRef}
@@ -1094,6 +1094,38 @@ const PosTerminalPage: React.FC<Props> = () => {
               />
               <ScanLine className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-300" />
             </div>
+            
+            {!searching && !searchQuery && currentShortcutNodes.length > 0 && (
+              <div className="mt-3 flex overflow-x-auto items-center gap-2 text-xs pb-1 shrink-0 no-scrollbar">
+                <button
+                  type="button"
+                  onClick={() => setShortcutPath([])}
+                  disabled={shortcutPath.length === 0}
+                  className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
+                >
+                  {t('pos:terminal.shortcutsRoot', { defaultValue: 'Root' })}
+                </button>
+                {shortcutPath.map((node, index) => (
+                  <button
+                    key={node.id}
+                    type="button"
+                    onClick={() => setShortcutPath((prev) => prev.slice(0, index + 1))}
+                    className="shrink-0 rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)]"
+                  >
+                    {node.label}
+                  </button>
+                ))}
+                {shortcutPath.length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShortcutPath((prev) => prev.slice(0, -1))}
+                    className="shrink-0 rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
+                  >
+                    {t('common.back', { defaultValue: 'Back' })}
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto p-3">
@@ -1154,35 +1186,6 @@ const PosTerminalPage: React.FC<Props> = () => {
 
             {!searching && !searchQuery && currentShortcutNodes.length > 0 && (
               <div className="space-y-3">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <button
-                    type="button"
-                    onClick={() => setShortcutPath([])}
-                    disabled={shortcutPath.length === 0}
-                    className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 disabled:opacity-50 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
-                  >
-                    {t('pos:terminal.shortcutsRoot', { defaultValue: 'Root' })}
-                  </button>
-                  {shortcutPath.map((node, index) => (
-                    <button
-                      key={node.id}
-                      type="button"
-                      onClick={() => setShortcutPath((prev) => prev.slice(0, index + 1))}
-                      className="rounded-lg bg-slate-100 px-2.5 py-1 font-medium text-slate-700 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-primary)]"
-                    >
-                      {node.label}
-                    </button>
-                  ))}
-                  {shortcutPath.length > 0 && (
-                    <button
-                      type="button"
-                      onClick={() => setShortcutPath((prev) => prev.slice(0, -1))}
-                      className="rounded-lg border border-slate-200 px-2.5 py-1 font-medium text-slate-600 dark:border-[var(--color-border)] dark:text-[var(--color-text-secondary)]"
-                    >
-                      {t('common.back', { defaultValue: 'Back' })}
-                    </button>
-                  )}
-                </div>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 xl:grid-cols-4">
                   {currentShortcutNodes.map((node) => (
                     <button
@@ -1246,8 +1249,8 @@ const PosTerminalPage: React.FC<Props> = () => {
         </section>
 
         {/* Order pane */}
-        <aside className="flex min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] landscape:col-span-8 lg:col-span-5 lg:landscape:col-span-5">
-          <div className="flex flex-none items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
+        <aside className="flex flex-1 min-h-0 flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-[var(--color-border)] dark:bg-[var(--color-bg-secondary)] lg:col-span-5">
+          <div className="flex flex-none shrink-0 items-center justify-between border-b border-slate-100 px-4 py-3 dark:border-[var(--color-border)]">
             <h2 className="flex items-center gap-2 text-sm font-semibold text-slate-900 dark:text-[var(--color-text-primary)]">
               <Receipt className="h-4 w-4 text-indigo-600" />
               {t('pos:terminal.currentSale', { defaultValue: 'Current sale' })}
@@ -1297,7 +1300,7 @@ const PosTerminalPage: React.FC<Props> = () => {
                     <div className="flex items-center justify-between w-full gap-2 sm:gap-4">
                       {/* Left Side: Name, Edit (Desktop), Code, DefPrice, DefTax */}
                       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
-                        <span className={`inline-block whitespace-normal break-words rounded bg-indigo-50/60 px-2 py-1 text-sm sm:text-[16px] font-semibold border border-indigo-100/60 dark:border-indigo-500/20 dark:bg-indigo-500/10 ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-indigo-950 dark:text-indigo-50'}`} title={l.itemName}>
+                        <span className={`block truncate rounded bg-indigo-50/60 px-2 py-1 text-sm sm:text-[16px] font-semibold border border-indigo-100/60 dark:border-indigo-500/20 dark:bg-indigo-500/10 ${isVoided ? 'text-slate-500 line-through dark:text-[var(--color-text-secondary)]' : 'text-indigo-950 dark:text-indigo-50'}`} title={l.itemName}>
                           <span className="mr-1 sm:mr-1.5 text-[12px] sm:text-[14px] font-mono font-medium text-slate-400 dark:text-slate-500">{index + 1}.</span>
                           {l.itemName}
                         </span>
@@ -1513,7 +1516,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
 
           {/* Totals + customer + pay */}
-          <div className="flex-none space-y-2 border-t border-slate-200 bg-slate-100 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)]">
+          <div className="flex-none shrink-0 space-y-2 border-t border-slate-200 bg-slate-100 p-2 sm:p-3 lg:space-y-3 lg:p-4 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)]">
             {/* Mobile Expand Toggle */}
             <button
               onClick={() => setIsTotalsExpanded(!isTotalsExpanded)}
