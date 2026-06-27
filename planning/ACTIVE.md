@@ -1,5 +1,18 @@
 # 🎯 Current Focus
 
+## Task 272/273 — POS Fixes Batch & Terminal Restructure (2026-06-27)
+
+**Status:** ✅ Complete locally on `codex/pos-fixes-batch` and `codex/pos-terminal-layout`.
+
+- **Why:** Implementation of required fixes for scanner integration, multiple barcode support, credit sales policies, held notes, Z-report list generation, and POS terminal viewport restructuring without scrolling.
+- **What changed:**
+  - Branch `codex/pos-fixes-batch` holds backend schemas, APIs, test coverages, and core scanner logic.
+  - Integration tests for Credit Sales were added in `CompletePosSale.test.ts` to ensure policy rules and manager overrides behave natively.
+  - Branch `codex/pos-terminal-layout` is fully isolated and applies only flex-level grid layout changes to `PosTerminalPage.tsx` for optimal dual-pane scrolling and fixed button footprints.
+- **Next action:** Review and open PRs.
+
+---
+
 ## Task 271 — Sales/Purchase Return layout parity and direct Purchase Return (2026-06-26)
 
 **Status:** ✅ Complete locally on `codex/271-returns-parity` (pending PR/merge).
