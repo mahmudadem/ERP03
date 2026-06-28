@@ -2,6 +2,18 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 — Task 275e: SQL integration tests — accounting slice + 2 bug fixes)
+
+- **Goal:** Continue Epic 275 into 275e — real-Postgres integration tests of the service-level posting flows. Owner wants a QA-able SQL build.
+- **What happened:** Built a repeatable integration harness (`backend/scripts/sql-integration-275e.ts`) and the accounting flow: post a balanced Journal Entry through the `PostingGateway` (the mandatory ledger choke point) → `PrismaLedgerRepository`, then assert ledger rows tie, trial balance balances to zero, and resync (`replaceForVoucher`) doesn't duplicate. 7 checks, green, run 2× (isolated/repeatable).
+- **Caught + fixed 2 launch-blocking SQL bugs** (would have broken ALL of SQL mode — exactly the schema-strictness risk this epic exists for):
+  1. `PrismaAccountRepository.create` mixed Prisma's checked input (`company: { connect }`) with a raw scalar `parentId` → "Unknown argument parentId". Every account create threw. Fixed to `parent: { connect }`.
+  2. `PrismaLedgerRepository.recordForVoucher` used `createMany` with relation `connect` (createMany takes scalars only) → "Argument companyId is missing". Every ledger post threw. Fixed to scalar `companyId`/`accountId`.
+  - Scanned sibling self-relation repos (ItemCategory, Warehouse, CostCenter) — all fine (they use the all-scalar unchecked input). Bug was Account-specific.
+- **Accounting/ERP impact:** Fixes are Prisma write-shape only; no accounting math changed; Firestore path untouched. The integration test now proves balancing + ledger + trial balance execute correctly on Postgres.
+- **Verification:** `tsc --noEmit` clean; integration test passes twice. See `planning/done/275e-sql-integration-tests.md`.
+- **Next:** Extend the harness to the remaining 6 modules (inventory/sales/purchases/RBAC/core/POS) — expect more schema-strictness bugs. Then 275f (deploy). Branch `feat/275-supabase-integration` stays unmerged.
+
 ### Session: 2026-06-28 (Epic 275 — Task 275c: integrate SQL branches + first real-Postgres run)
 
 - **Goal:** Owner: "get things done so we QA everything." Drive the SQL path to a QA-able state. A spawned 275c agent hit the session usage limit and produced nothing, so the CTO (Claude/Opus) did the integration + smoke test directly.

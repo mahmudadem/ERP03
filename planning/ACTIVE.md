@@ -1,13 +1,14 @@
 # 🎯 Current Focus
 
-## Epic 275 — Supabase/PostgreSQL launch — Task 275c DONE, 275e NEXT (2026-06-28)
+## Epic 275 — Supabase/PostgreSQL launch — 275c DONE, 275e accounting slice DONE (2026-06-28)
 
-**Status:** 🔶 Epic in progress. SQL path now **runs on real Postgres** for the first time.
+**Status:** 🔶 Epic in progress. SQL path **runs on real Postgres**; accounting posting now **proven correct** there, and 2 launch-blocking bugs found+fixed.
 
 - **Done so far (all on branch `feat/275-supabase-integration`, not merged):**
-  - 275d (20 Prisma repos + schema +23 models), 275a (10 seeders), 275b (`SettingsResolverSQL`) — all merged together clean.
-  - 275c — fixed the FK bug (added `seedSystemCompany.ts` SYSTEM sentinel) and proved the SQL path on local Postgres (port 5433, `erp_db`): `db push` 128 tables in sync; `seed:sql` idempotent (2×); `tsc` clean; runtime repo smoke test `backend/scripts/sql-smoke-275c.ts` passes. Report: `planning/done/275c-local-sql-smoke-test.md`.
-- **NEXT — Task 275e (SQL integration tests per module):** exercise the real **service-level posting flows** (Sales Invoice → ledger + stock, Purchase Invoice → ledger + stock, accounting voucher → ledger) under `DB_TYPE=SQL` against the live local Postgres. This is the behavioral safety net 275c deliberately left out. Also resolve the 5×`TODO(275a-audit)` + 7×`TODO(275b-audit)` model-name markers against the now-live schema.
+  - 275d (20 Prisma repos + schema +23 models), 275a (10 seeders), 275b (`SettingsResolverSQL`) — merged clean.
+  - 275c — FK fix (`seedSystemCompany.ts` SYSTEM sentinel); `db push` 128 tables; `seed:sql` idempotent (2×); repo smoke test green. Report: `planning/done/275c-local-sql-smoke-test.md`.
+  - 275e (accounting slice) — integration harness `backend/scripts/sql-integration-275e.ts`: JE post → ledger → trial-balance via `PostingGateway` on real Postgres, 7 checks, run 2×. **Found+fixed 2 SQL bugs** (`PrismaAccountRepository.create` input mix; `PrismaLedgerRepository.recordForVoucher` createMany+connect) that would have broken all of SQL mode. Report: `planning/done/275e-sql-integration-tests.md`.
+- **NEXT — finish Task 275e:** extend the harness to the remaining modules — **Inventory** (movements + stock level + cost), **Sales** (SI post), **Purchases** (PI post), RBAC, Core, POS. Each adds a `flowX()` to `sql-integration-275e.ts`. Expect more schema-strictness bugs (that's the goal). Also clear the 5×`TODO(275a-audit)` + 7×`TODO(275b-audit)` markers against the live schema.
 - **Then 275f:** provision Supabase + deploy backend (Railway) + frontend. Merge `feat/275-supabase-integration` to main only after 275e passes + owner go.
 - **Local env still up:** portable Postgres 16 on `localhost:5433`, db `erp_db`, trust auth (no password). `DATABASE_URL=postgresql://postgres@localhost:5433/erp_db?schema=public`.
 

@@ -63,10 +63,12 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     const tx = transaction || this.prisma;
     const dateValue = typeof voucher.date === 'string' ? new Date(voucher.date) : voucher.date;
 
+    // createMany accepts only scalar fields — relation `connect` syntax is invalid here,
+    // so the FK columns (companyId, accountId) must be set directly.
     const entries = voucher.lines.map((line, index) => ({
       id: `${voucher.id}-ledger-${index + 1}`,
-      company: { connect: { id: voucher.companyId } },
-      account: { connect: { id: line.accountId } },
+      companyId: voucher.companyId,
+      accountId: line.accountId,
       voucherId: voucher.id,
       date: dateValue,
       description: line.notes || voucher.description || null,

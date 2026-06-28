@@ -130,7 +130,9 @@ export class PrismaAccountRepository implements IAccountRepository {
         classification,
         balanceNature,
         balanceEnforcement,
-        parentId,
+        // parentId is the FK backing the self-relation `parent`; Prisma's create
+        // input exposes it only via the relation, not as a raw scalar. Connect when set.
+        ...(parentId ? { parent: { connect: { id: parentId } } } : {}),
         currencyPolicy,
         fixedCurrencyCode,
         allowedCurrencyCodes,
