@@ -116,6 +116,14 @@ const variantLabel = (item: { persona?: string | null; name?: string }): string 
 };
 
 const FORM_NAME_KEY_BY_NAME: Record<string, string> = {
+  'Journal Entry': 'formsManagement.typeNames.journalEntry',
+  'Opening Balance': 'formsManagement.typeNames.openingBalance',
+  'Payment Voucher': 'formsManagement.typeNames.paymentVoucher',
+  'Receipt Voucher': 'formsManagement.typeNames.receiptVoucher',
+  'FX Revaluation': 'formsManagement.typeNames.fxRevaluation',
+  'Sales Invoice': 'formsManagement.typeNames.salesInvoice',
+  'Sales Invoice (Direct)': 'formsManagement.formNames.salesInvoiceDirect',
+  'Purchase Invoice': 'formsManagement.typeNames.purchaseInvoice',
   'Native Vouchers': 'formsManagement.formNames.nativeVouchers',
   'Native Sales Invoice': 'formsManagement.formNames.nativeSalesInvoice',
   'Native Sales Order': 'formsManagement.formNames.nativeSalesOrder',
@@ -129,8 +137,45 @@ const FORM_NAME_KEY_BY_NAME: Record<string, string> = {
   'Purchase Order': 'formsManagement.formNames.purchaseOrder',
 };
 
+const TYPE_NAME_KEY_BY_TYPE_KEY: Record<string, string> = {
+  journal_entry: 'formsManagement.typeNames.journalEntry',
+  opening_balance: 'formsManagement.typeNames.openingBalance',
+  payment: 'formsManagement.typeNames.paymentVoucher',
+  payment_voucher: 'formsManagement.typeNames.paymentVoucher',
+  receipt: 'formsManagement.typeNames.receiptVoucher',
+  receipt_voucher: 'formsManagement.typeNames.receiptVoucher',
+  fx_revaluation: 'formsManagement.typeNames.fxRevaluation',
+  sales_invoice: 'formsManagement.typeNames.salesInvoice',
+  sales_order: 'formsManagement.typeNames.salesOrder',
+  sales_return: 'formsManagement.typeNames.salesReturn',
+  purchase_invoice: 'formsManagement.typeNames.purchaseInvoice',
+  purchase_order: 'formsManagement.typeNames.purchaseOrder',
+  purchase_return: 'formsManagement.typeNames.purchaseReturn',
+  goods_receipt: 'formsManagement.typeNames.goodsReceipt',
+};
+
+const translateKnownFormName = (t: any, name: string): string => {
+  const copySuffix = name.match(/\s+-\s+Copy$/i);
+  const customSuffix = name.match(/\s+\(Custom\)$/i);
+  const baseName = name
+    .replace(/\s+-\s+Copy$/i, '')
+    .replace(/\s+\(Custom\)$/i, '')
+    .trim();
+  const key = FORM_NAME_KEY_BY_NAME[baseName];
+  const translatedBase = key ? t(key, { defaultValue: baseName }) : name;
+  if (key && copySuffix) return t('formsManagement.copyName', { defaultValue: '{{name}} - Copy', name: translatedBase });
+  if (key && customSuffix) return t('formsManagement.customName', { defaultValue: '{{name}} (Custom)', name: translatedBase });
+  return translatedBase;
+};
+
 const formDisplayName = (t: any, name: string): string =>
-  t(FORM_NAME_KEY_BY_NAME[name] || name, { defaultValue: name });
+  translateKnownFormName(t, name);
+
+const typeDisplayName = (t: any, node: TypeNode): string => {
+  const key = TYPE_NAME_KEY_BY_TYPE_KEY[node.typeKey] || FORM_NAME_KEY_BY_NAME[node.name];
+  if (!key) return formDisplayName(t, node.name);
+  return t(key, { defaultValue: node.name });
+};
 
 const BUILT_IN_FORMS_BY_MODULE: Record<VoucherTypeModule, BuiltInNativeForm[]> = {
   ACCOUNTING: [
@@ -939,7 +984,7 @@ const VoucherDesignerPage: React.FC<VoucherDesignerPageProps> = ({ module, modul
       const total = result.formsCreated + result.formsUpdated;
       errorHandler.showInfo(
         t('formsManagement.installedToast', 'Installed "{{name}}" — {{count}} default form added as locked, inactive.', {
-          name: formDisplayName(t, node.name),
+          name: typeDisplayName(t, node),
           count: total,
         }),
       );
@@ -1331,7 +1376,7 @@ const InstalledTypeRow: React.FC<InstalledTypeRowProps> = ({
         )}
         <div className="flex-1">
           <div className="flex items-center gap-2 flex-wrap">
-            <h3 className="text-base font-semibold text-gray-900">{formDisplayName(t, node.name)}</h3>
+            <h3 className="text-base font-semibold text-gray-900">{typeDisplayName(t, node)}</h3>
             <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
               {t('formsManagement.formCount', '{{count}} form', { count: node.forms.length })}
             </span>
@@ -1828,7 +1873,7 @@ const AvailableTypeRow: React.FC<AvailableTypeRowProps> = ({ node, installing, o
     <div className="rounded-lg border border-gray-200 bg-white p-3 flex items-center gap-3">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="text-sm font-semibold text-gray-900">{formDisplayName(t, node.name)}</h3>
+          <h3 className="text-sm font-semibold text-gray-900">{typeDisplayName(t, node)}</h3>
           <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
             {t('formsManagement.defaultFormCount', '{{count}} default form', { count: node.catalogVariants.length })}
           </span>

@@ -4328,7 +4328,8 @@
       "purchaseInvoiceDirect": "Purchase Invoice (Direct)",
       "purchaseInvoiceLinked": "Purchase Invoice (Linked)",
       "purchaseReturn": "Purchase Return",
-      "purchaseOrder": "Purchase Order"
+      "purchaseOrder": "Purchase Order",
+      "salesInvoiceDirect": "Sales Invoice (Direct)"
     },
     "persona": {
       "direct": "Direct",
@@ -4348,7 +4349,23 @@
       "updateStatusFailed": "Failed to update form status",
       "installFailed": "Install failed",
       "saveSettingsFailed": "Failed to save form settings."
-    }
+    },
+    "typeNames": {
+      "journalEntry": "Journal Entry",
+      "openingBalance": "Opening Balance",
+      "paymentVoucher": "Payment Voucher",
+      "receiptVoucher": "Receipt Voucher",
+      "fxRevaluation": "FX Revaluation",
+      "salesInvoice": "Sales Invoice",
+      "salesOrder": "Sales Order",
+      "salesReturn": "Sales Return",
+      "purchaseInvoice": "Purchase Invoice",
+      "purchaseOrder": "Purchase Order",
+      "purchaseReturn": "Purchase Return",
+      "goodsReceipt": "Goods Receipt"
+    },
+    "copyName": "{{name}} - Copy",
+    "customName": "{{name}} (Custom)"
   },
   "accountingIntegrationStatus": {
     "modules": {

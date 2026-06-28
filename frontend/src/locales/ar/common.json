@@ -4404,7 +4404,8 @@
       "purchaseInvoiceDirect": "فاتورة مشتريات (مباشرة)",
       "purchaseInvoiceLinked": "فاتورة مشتريات (مرتبطة)",
       "purchaseReturn": "مردود مشتريات",
-      "purchaseOrder": "أمر شراء"
+      "purchaseOrder": "أمر شراء",
+      "salesInvoiceDirect": "فاتورة مبيعات (مباشرة)"
     },
     "persona": {
       "direct": "مباشر",
@@ -4424,7 +4425,23 @@
       "updateStatusFailed": "فشل تحديث حالة النموذج",
       "installFailed": "فشل التثبيت",
       "saveSettingsFailed": "فشل حفظ إعدادات النموذج."
-    }
+    },
+    "typeNames": {
+      "journalEntry": "قيد يومية",
+      "openingBalance": "رصيد افتتاحي",
+      "paymentVoucher": "سند دفع",
+      "receiptVoucher": "سند قبض",
+      "fxRevaluation": "إعادة تقييم العملات",
+      "salesInvoice": "فاتورة مبيعات",
+      "salesOrder": "طلب مبيعات",
+      "salesReturn": "مردود مبيعات",
+      "purchaseInvoice": "فاتورة مشتريات",
+      "purchaseOrder": "أمر شراء",
+      "purchaseReturn": "مردود مشتريات",
+      "goodsReceipt": "إشعار استلام بضائع"
+    },
+    "copyName": "{{name}} - نسخة",
+    "customName": "{{name}} (مخصص)"
   },
   "accountingIntegrationStatus": {
     "modules": {

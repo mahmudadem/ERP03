@@ -4307,7 +4307,8 @@
       "purchaseInvoiceDirect": "Alış Faturası (Doğrudan)",
       "purchaseInvoiceLinked": "Alış Faturası (Bağlantılı)",
       "purchaseReturn": "Alış İadesi",
-      "purchaseOrder": "Satınalma Siparişi"
+      "purchaseOrder": "Satınalma Siparişi",
+      "salesInvoiceDirect": "Satış Faturası (Doğrudan)"
     },
     "persona": {
       "direct": "Doğrudan",
@@ -4327,7 +4328,23 @@
       "updateStatusFailed": "Form durumu güncellenemedi",
       "installFailed": "Kurulum başarısız",
       "saveSettingsFailed": "Form ayarları kaydedilemedi."
-    }
+    },
+    "typeNames": {
+      "journalEntry": "Yevmiye Fişi",
+      "openingBalance": "Açılış Bakiyesi",
+      "paymentVoucher": "Ödeme Fişi",
+      "receiptVoucher": "Tahsilat Fişi",
+      "fxRevaluation": "Kur Değerleme",
+      "salesInvoice": "Satış Faturası",
+      "salesOrder": "Satış Siparişi",
+      "salesReturn": "Satış İadesi",
+      "purchaseInvoice": "Alış Faturası",
+      "purchaseOrder": "Satınalma Siparişi",
+      "purchaseReturn": "Alış İadesi",
+      "goodsReceipt": "Mal Kabul"
+    },
+    "copyName": "{{name}} - Kopya",
+    "customName": "{{name}} (Özel)"
   },
   "accountingIntegrationStatus": {
     "modules": {
