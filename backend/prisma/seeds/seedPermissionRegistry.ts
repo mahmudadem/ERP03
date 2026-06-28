@@ -89,9 +89,16 @@ export async function seedPermissionRegistry(prisma: PrismaClient): Promise<void
     where: { OR: [{ module: 'ai-assistant' }, { code: { startsWith: 'ai-assistant.' } }] },
   });
   for (const perm of PERMISSION_DATA) {
+    // Canonical identity for a permission is `id === code === dotted key`. The
+    // runtime PermissionCatalogSyncService keys existing rows by `id` and creates
+    // new ones with `id = code`; the Firestore twin stores each at doc(code). If
+    // the seed let Prisma auto-generate a uuid `id`, startup sync would never match
+    // the seeded row and would re-`create` it, hitting the unique `code` constraint
+    // and wedging the server at "Server not ready" (503). So pin `id = code` here.
     await prisma.permissionRegistry.upsert({
       where: { code: perm.code },
       create: {
+        id: perm.code,
         code: perm.code,
         name: perm.name,
         module: perm.module,
