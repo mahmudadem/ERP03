@@ -12,12 +12,10 @@
 import { PrismaClient } from '@prisma/client';
 import { CURRENCY_SEED_DATA } from './currencySeedData';
 
-// COA template manifests — account arrays are seeded separately into
-// chart_of_accounts_templates.  The wizard reads this manifest for the
-// dropdown; it then calls GetCOATemplate to load the full account list.
-// TODO(275a-audit): Confirm the company-wizard reads coa_templates from
-// SystemMetadata vs ChartOfAccountsTemplate. If it reads from the SQL
-// model directly, this metadata key may be redundant but is harmless.
+// COA template manifests are kept for legacy system metadata consumers.
+// The company-creation wizard's live option list reads chart_of_accounts_templates
+// through ChartOfAccountsTemplateRepository; these ids mirror that table's stable
+// template codes.
 const COA_TEMPLATE_MANIFESTS = [
   { id: 'empty',            name: 'Empty – Start from Scratch',    complexity: 'custom',  accountCount: 0 },
   { id: 'simplified',       name: 'Simplified',                    complexity: 'low',     accountCount: null }, // count filled at runtime

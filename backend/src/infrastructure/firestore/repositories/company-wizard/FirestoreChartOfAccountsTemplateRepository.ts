@@ -7,12 +7,12 @@ export class FirestoreChartOfAccountsTemplateRepository implements IChartOfAccou
 
   constructor(private db: admin.firestore.Firestore) {}
 
-  async listChartOfAccountsTemplates(): Promise<Array<{ id: string; name: string }>> {
+  async listChartOfAccountsTemplates(): Promise<Array<{ id: string; name: string; code?: string }>> {
     try {
       const snapshot = await this.db.collection(this.collectionName).get();
       return snapshot.docs.map((doc) => {
         const data = doc.data();
-        return { id: data.id || doc.id, name: data.name || data.title || 'Template' };
+        return { id: data.id || doc.id, code: data.code, name: data.name || data.title || 'Template' };
       });
     } catch (error) {
       throw new InfrastructureError('Failed to list chart of accounts templates', error);

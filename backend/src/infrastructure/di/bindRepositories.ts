@@ -279,7 +279,6 @@ import { PrismaCurrencyRepository as PrismaWizardCurrencyRepository } from '../p
 import { PrismaExchangeRateRepository as PrismaTopExchangeRateRepository } from '../prisma/repositories/PrismaExchangeRateRepository';
 import { getPrismaClient } from '../prisma/prismaClient';
 import { PrismaTransactionManager } from '../prisma/PrismaTransactionManager';
-import { SettingsResolverSQL } from '../prisma/SettingsResolverSQL';
 
 import { PrismaUserRepository } from '../prisma/repositories/core/PrismaUserRepository';
 import { PrismaCompanyUserRepository } from '../prisma/repositories/core/PrismaCompanyUserRepository';
@@ -450,7 +449,6 @@ const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
 
 // Shared Services
 const settingsResolver = new SettingsResolver(getDb());
-const settingsResolverSQL = new SettingsResolverSQL();
 
 // REPORTING — Sales Gross Profit Facts recorder (Task 246)
 const profitFactRecorder = new RecordSalesProfitLineFactsUseCase(

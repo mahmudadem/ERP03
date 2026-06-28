@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 — 275a/275b audit TODO resolution)
+
+- **Goal:** Execute `planning/handoff-275ab-codex.md`: resolve the remaining 275a SQL seed and 275b SQL settings resolver audit markers before 275f deploy.
+- **What happened:** Removed all `TODO(275a-audit)` / `TODO(275b-audit)` markers. Added nullable `ChartOfAccountsTemplate.code` and re-keyed SQL COA template seeding to stable codes with legacy name claiming. Confirmed the company wizard reads live COA options through `ChartOfAccountsTemplateRepository`, while `system_metadata.coa_templates` remains a legacy manifest. Kept AI off for v1 by excluding AI module/permissions from SQL seeds and aligning role templates. Deleted `SettingsResolverSQL` and its test after verifying no live runtime path consumed it. Hydrated voucher template `voucherType` / `persona` / `sidebarGroup` from `layout._meta` in the Prisma voucher-type repo.
+- **Accounting/ERP impact:** Seed/schema/read-shape cleanup only. No posting math, tax, costing, stock valuation, ledger balancing, tenant isolation, or Firestore persistence behavior changed. The stable COA template code reduces launch seed drift if display names change.
+- **Verification:** `prisma db push --skip-generate` passed; Prisma client generation passed; clean DB `prisma db push --force-reset --skip-generate` passed; full SQL seed passed; SQL integration harness passed with `ALL 25 INTEGRATION CHECKS PASSED`; `node_modules/.bin/tsc --noEmit` passed; audit TODO grep returned zero.
+- **Docs/planning:** Added `planning/done/275ab-audit-resolution.md`, updated `docs/architecture/accounting.md`, `planning/ACTIVE.md`, and `planning/PRIORITIES.md`.
+- **Time spent:** ~1.4h. Estimate was 2-3h.
+- **Next:** Ask owner to approve committing this audit cleanup on `feat/275-supabase-integration`. Do not merge to `main`; after commit approval, continue 275f deploy.
+
 ### Session: 2026-06-28 (Epic 275 — Task 275e: sales + purchases slices + 3 more SQL bug fixes)
 
 - **Goal:** Continue 275e into the Sales (SI) and Purchases (PI) money-path round-trips.

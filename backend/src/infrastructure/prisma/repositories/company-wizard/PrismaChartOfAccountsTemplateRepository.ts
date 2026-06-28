@@ -4,14 +4,19 @@ import { IChartOfAccountsTemplateRepository } from '../../../../repository/inter
 export class PrismaChartOfAccountsTemplateRepository implements IChartOfAccountsTemplateRepository {
   constructor(private prisma: PrismaClient) {}
 
-  async listChartOfAccountsTemplates(): Promise<Array<{ id: string; name: string }>> {
+  async listChartOfAccountsTemplates(): Promise<Array<{ id: string; name: string; code?: string }>> {
     const records = await this.prisma.chartOfAccountsTemplate.findMany({
       select: {
         id: true,
+        code: true,
         name: true,
       },
       orderBy: { name: 'asc' },
     });
-    return records;
+    return records.map((record) => ({
+      id: record.id,
+      code: record.code || undefined,
+      name: record.name,
+    }));
   }
 }

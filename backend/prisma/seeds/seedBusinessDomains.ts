@@ -5,10 +5,9 @@
  * seedBusinessDomains.ts (Firestore seeders).
  * Idempotent: upserts by stable `code` key.
  *
- * TODO(275a-audit): The BusinessDomain Prisma model has a `modules` String[]
- * field not present in the Firestore seeder data.  We default it to [] here.
- * If business-domain→module suggestions are needed by the wizard, populate
- * that array per domain before Task 275c testing.
+ * BusinessDomain.modules is SQL-only starter metadata used for future module
+ * suggestions. The wizard does not consume it for v1 company creation, but the
+ * SQL seed provides conservative suggestions so the column is not empty.
  */
 
 import { PrismaClient } from '@prisma/client';

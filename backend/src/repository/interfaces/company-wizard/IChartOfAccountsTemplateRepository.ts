@@ -1,3 +1,3 @@
 export interface IChartOfAccountsTemplateRepository {
-  listChartOfAccountsTemplates(): Promise<Array<{ id: string; name: string }>>;
+  listChartOfAccountsTemplates(): Promise<Array<{ id: string; name: string; code?: string }>>;
 }

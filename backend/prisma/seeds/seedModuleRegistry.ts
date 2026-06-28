@@ -4,9 +4,9 @@
  * Source data derived from seedOnboardingData.ts (Firestore seeder).
  * Idempotent: upserts by stable `code` key.
  *
- * TODO(275a-audit): lifecycleStatus "ready" vs "draft" is inferred from the
- * IMPLEMENTED_CODE_MODULES set in the Firestore seeder.  If new modules are
- * implemented between 275a and audit, add them to IMPLEMENTED_MODULES below.
+ * lifecycleStatus "ready" vs "draft" follows the v1 launch scope: modules with
+ * tested runtime code are marked ready; future placeholders remain draft.
+ * AI is deliberately omitted from the registry for v1 per Epic 275.
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -16,7 +16,6 @@ const IMPLEMENTED_MODULES = new Set([
   'inventory',
   'purchase',
   'sales',
-  // ai-assistant is deliberately excluded for v1 per Epic 275 locked decisions
 ]);
 
 const MODULE_REGISTRY_DATA = [
@@ -30,11 +29,11 @@ const MODULE_REGISTRY_DATA = [
   { code: 'purchase',      name: 'Purchase',      description: 'Core Purchase module' },
   { code: 'companyAdmin',  name: 'CompanyAdmin',  description: 'Core CompanyAdmin module' },
   { code: 'system',        name: 'System',        description: 'Core System module' },
-  // TODO(275a-audit): ai-assistant excluded per v1 scope; add when AI module is ported
 ];
 
 export async function seedModuleRegistry(prisma: PrismaClient): Promise<void> {
   console.log('  Seeding module_registries...');
+  await prisma.moduleRegistry.deleteMany({ where: { code: 'ai-assistant' } });
   for (const mod of MODULE_REGISTRY_DATA) {
     const isImplemented = IMPLEMENTED_MODULES.has(mod.code);
     await prisma.moduleRegistry.upsert({

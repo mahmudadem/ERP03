@@ -11,11 +11,9 @@
  * Idempotent: upserts by (companyId='SYSTEM', code, module).
  * The unique constraint @@unique([companyId, code, module]) on the schema makes this safe.
  *
- * TODO(275a-audit): The Prisma VoucherTypeDefinitionRepository does NOT persist the
- * `voucherType`, `persona`, or `sidebarGroup` fields (they are domain-only extras).
- * These are stored in the `layout` JSON payload here as `_meta` so downstream
- * code that reads layout can access them. Confirm in Task 275c whether any use-case
- * reads these from the DB or only from the in-memory domain object.
+ * `voucherType`, `persona`, and `sidebarGroup` are stored in layout._meta.
+ * PrismaVoucherTypeDefinitionRepository hydrates them from that JSON payload when
+ * SYSTEM templates are copied into a tenant during module/company initialization.
  */
 
 import { PrismaClient } from '@prisma/client';

@@ -2258,6 +2258,7 @@ model RoleTemplateRegistry {
 
 model ChartOfAccountsTemplate {
   id        String   @id @default(uuid())
+  code      String?
   country   String?
   industry  String?
   name      String
@@ -2266,6 +2267,7 @@ model ChartOfAccountsTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([code])
   @@index([country])
   @@index([industry])
   @@map("chart_of_accounts_templates")

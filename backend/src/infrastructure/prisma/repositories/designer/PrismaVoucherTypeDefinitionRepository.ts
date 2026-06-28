@@ -106,6 +106,8 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
   }
 
   private toDomain(record: any): VoucherTypeDefinition {
+    const layout = (record.layout as Record<string, any>) || {};
+    const meta = (layout._meta as Record<string, any>) || {};
     return new VoucherTypeDefinition(
       record.id,
       record.companyId,
@@ -114,7 +116,7 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
       record.module,
       (record.headerFields as FieldDefinition[]) || [],
       (record.tableColumns as TableColumn[]) || [],
-      (record.layout as Record<string, any>) || {},
+      layout,
       record.schemaVersion,
       (record.requiredPostingRoles as PostingRole[]) || [],
       record.workflow as any,
@@ -122,7 +124,10 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
       record.isMultiLine,
       (record.rules as any[]) || [],
       (record.actions as any[]) || [],
-      record.defaultCurrency
+      record.defaultCurrency,
+      typeof meta.voucherType === 'string' ? meta.voucherType : record.code,
+      typeof meta.persona === 'string' ? meta.persona : undefined,
+      typeof meta.sidebarGroup === 'string' ? meta.sidebarGroup : undefined
     );
   }
 }

@@ -4,10 +4,8 @@
  * Source data derived from MODULE_DEFINITIONS in seedOnboardingData.ts.
  * Idempotent: upserts by stable `code` key.
  *
- * TODO(275a-audit): ai-assistant permissions are included here because the
- * PermissionRegistry is a flat catalog (not gated per module activation).
- * If CTO decides to exclude AI perms from v1 registry, remove the
- * 'ai-assistant' block below.
+ * AI Assistant permissions are excluded for v1 because the AI module is out of
+ * the Epic 275 SQL launch scope. Add them back only when AI is ported and seeded.
  */
 
 import { PrismaClient } from '@prisma/client';
@@ -83,28 +81,13 @@ const PERMISSION_DATA: PermissionEntry[] = [
   { code: 'system.company.settings.manage',          module: 'system', name: 'Manage Company Settings' },
   { code: 'system.users.manage',                     module: 'system', name: 'Manage Users' },
   { code: 'system.audit.view',                       module: 'system', name: 'View Audit Logs' },
-  // ai-assistant — TODO(275a-audit): exclude if CTO decides AI perms out of v1 registry
-  { code: 'ai-assistant.chat.use',                   module: 'ai-assistant', name: 'Use AI Assistant Chat' },
-  { code: 'ai-assistant.chat.view',                  module: 'ai-assistant', name: 'View AI Chat History' },
-  { code: 'ai-assistant.settings.view',              module: 'ai-assistant', name: 'View AI Settings' },
-  { code: 'ai-assistant.settings.manage',            module: 'ai-assistant', name: 'Manage AI Settings' },
-  { code: 'ai-assistant.settings.health',            module: 'ai-assistant', name: 'Test Provider Connectivity' },
-  { code: 'ai-assistant.tools.view',                 module: 'ai-assistant', name: 'View AI Tool Catalog' },
-  { code: 'ai-assistant.tools.manage',               module: 'ai-assistant', name: 'Manage AI Tool Enablement' },
-  { code: 'ai-assistant.usage.view',                 module: 'ai-assistant', name: 'View AI Usage Analytics' },
-  { code: 'ai-assistant.health.test',                module: 'ai-assistant', name: 'Test AI Provider Health' },
-  { code: 'ai-assistant.model-policy.view',          module: 'ai-assistant', name: 'View AI Model Tool Policies' },
-  { code: 'ai-assistant.model-policy.manage',        module: 'ai-assistant', name: 'Manage AI Model Tool Policies' },
-  { code: 'ai-assistant.tools.accounting.trial-balance', module: 'ai-assistant', name: 'AI Accounting: Trial Balance Summary' },
-  { code: 'ai-assistant.proposals.view',             module: 'ai-assistant', name: 'View AI Proposals' },
-  { code: 'ai-assistant.proposals.create',           module: 'ai-assistant', name: 'Create AI Proposals' },
-  { code: 'ai-assistant.proposals.review',           module: 'ai-assistant', name: 'Review AI Proposals' },
-  { code: 'ai-assistant.proposals.manage',           module: 'ai-assistant', name: 'Manage AI Proposals' },
-  { code: 'ai-assistant.proposals.archive',          module: 'ai-assistant', name: 'Archive AI Proposals' },
 ];
 
 export async function seedPermissionRegistry(prisma: PrismaClient): Promise<void> {
   console.log('  Seeding permission_registries...');
+  await prisma.permissionRegistry.deleteMany({
+    where: { OR: [{ module: 'ai-assistant' }, { code: { startsWith: 'ai-assistant.' } }] },
+  });
   for (const perm of PERMISSION_DATA) {
     await prisma.permissionRegistry.upsert({
       where: { code: perm.code },

@@ -30,11 +30,6 @@ const ALL_PERMISSIONS = [
   'vendor.list',
   'manage_settings', 'view_audit_logs', 'manage_users', 'manage_roles',
   'system.roles.manage', 'system.company.settings.manage', 'system.users.manage', 'system.audit.view',
-  'ai-assistant.chat.use', 'ai-assistant.chat.view', 'ai-assistant.settings.view', 'ai-assistant.settings.manage',
-  'ai-assistant.settings.health', 'ai-assistant.tools.view', 'ai-assistant.tools.manage', 'ai-assistant.usage.view',
-  'ai-assistant.health.test', 'ai-assistant.model-policy.view', 'ai-assistant.model-policy.manage',
-  'ai-assistant.tools.accounting.trial-balance', 'ai-assistant.proposals.view', 'ai-assistant.proposals.create',
-  'ai-assistant.proposals.review', 'ai-assistant.proposals.manage', 'ai-assistant.proposals.archive',
 ];
 
 const ACCOUNTING_PERMISSIONS = [
