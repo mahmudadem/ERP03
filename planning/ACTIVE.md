@@ -1,5 +1,16 @@
 # 🎯 Current Focus
 
+## Task 277 — Item UOM barcodes and multilingual UOM names (2026-06-29)
+
+**Status:** ✅ Complete locally on `codex/items-uom-barcodes`.
+
+- General item barcodes remain optional.
+- Item-specific UOMs can carry multiple company-unique barcodes.
+- POS resolves the scanned UOM and requests its price from Commercial Core.
+- UOM names support extensible translations, initially English/Arabic/Turkish.
+- Used conversion factors are immutable; unsafe smart correction is blocked.
+- **Next:** owner QA, then merge after PostgreSQL `prisma db push`.
+
 ## Epic 275 — Supabase/PostgreSQL launch — 275a/275b audit COMPLETE, awaiting owner commit/go (2026-06-28)
 
 **Status:** 🔶 Epic in progress. SQL path **runs on real Postgres**; Task 275e proves Accounting, Inventory, Sales, Purchases, RBAC, Core, and POS on live PostgreSQL. The remaining 275a/275b audit TODOs are now resolved locally and not committed.

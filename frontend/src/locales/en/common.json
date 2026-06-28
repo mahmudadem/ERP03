@@ -2410,6 +2410,11 @@
     "SAVE": "Saved successfully"
   },
   "inventory": {
+    "uom": {
+      "fields": {
+        "localizedName": "Localized name"
+      }
+    },
     "settings": {
       "accountingMode": {
         "label": "Accounting Mode",
@@ -4631,6 +4636,9 @@
       "saveFailed": "Could not save appearance preferences."
     }
   },
+  "Barcodes by Unit of Measure": "Barcodes by Unit of Measure",
+  "Save the item and configure its units before assigning unit barcodes.": "Save the item and configure its units before assigning unit barcodes.",
+  "Comma-separated barcodes": "Comma-separated barcodes",
   "saveChanges": "Save Changes",
   "loading": "Loading...",
   "Primary Barcode": "Primary Barcode",

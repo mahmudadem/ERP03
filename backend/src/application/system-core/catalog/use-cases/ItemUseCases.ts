@@ -13,6 +13,7 @@ export interface CreateItemInput {
   description?: string;
   barcode?: string;
   barcodes?: string[];
+  uomBarcodes?: Item['uomBarcodes'];
   type: Item['type'];
   categoryId?: string;
   brand?: string;
@@ -111,6 +112,19 @@ const resolveItemUomFields = async (
   });
 };
 
+const resolveItemUomBarcodes = async (
+  companyId: string,
+  entries: Item['uomBarcodes'] = [],
+  repo?: IUomRepository
+): Promise<Item['uomBarcodes']> => Promise.all(entries.map(async (entry) => {
+  const resolved = await resolveManagedUom(companyId, repo, 'barcode', entry.uomId, entry.uom, true);
+  return {
+    uomId: resolved.uomId,
+    uom: resolved.uom as string,
+    barcodes: (entry.barcodes || []).map((value) => value.trim()).filter(Boolean),
+  };
+}));
+
 export class CreateItemUseCase {
   constructor(
     private readonly itemRepo: IItemRepository,
@@ -125,7 +139,12 @@ export class CreateItemUseCase {
     }
 
     const normalizedSecondaryBarcodes = (data.barcodes || []).map((b) => b.trim()).filter(Boolean);
-    const allBarcodes = [data.barcode?.trim(), ...normalizedSecondaryBarcodes].filter(Boolean) as string[];
+    const normalizedUomBarcodes = await resolveItemUomBarcodes(data.companyId, data.uomBarcodes, this.uomRepo);
+    const allBarcodes = [
+      data.barcode?.trim(),
+      ...normalizedSecondaryBarcodes,
+      ...normalizedUomBarcodes.flatMap((entry) => entry.barcodes || []),
+    ].filter(Boolean) as string[];
     
     const uniqueBarcodes = new Set<string>();
     for (const b of allBarcodes) {
@@ -172,6 +191,7 @@ export class CreateItemUseCase {
         description: data.description,
         barcode: data.barcode,
         barcodes: normalizedSecondaryBarcodes,
+        uomBarcodes: normalizedUomBarcodes,
         type: normalizedType,
         categoryId: data.categoryId,
         brand: data.brand,
@@ -217,11 +237,20 @@ export class UpdateItemUseCase {
       throw new Error(`Item not found: ${id}`);
     }
 
+    const normalizedUomBarcodes = data.uomBarcodes !== undefined
+      ? await resolveItemUomBarcodes(current.companyId, data.uomBarcodes, this.uomRepo)
+      : current.uomBarcodes || [];
+
     // Only run duplication checks if barcodes field or barcode field is being updated
-    if (data.barcode !== undefined || data.barcodes !== undefined) {
+    if (data.barcode !== undefined || data.barcodes !== undefined || data.uomBarcodes !== undefined) {
       const normalizedSecondaryBarcodes = (data.barcodes !== undefined ? data.barcodes : current.barcodes || []).map((b) => b.trim()).filter(Boolean);
       const primaryBarcode = data.barcode !== undefined ? data.barcode?.trim() : current.barcode?.trim();
-      const newBarcodes = [primaryBarcode, ...normalizedSecondaryBarcodes].filter(Boolean) as string[];
+      const uomBarcodes = normalizedUomBarcodes;
+      const newBarcodes = [
+        primaryBarcode,
+        ...normalizedSecondaryBarcodes,
+        ...uomBarcodes.flatMap((entry) => entry.barcodes || []),
+      ].filter(Boolean) as string[];
       const uniqueBarcodes = new Set<string>();
       for (const b of newBarcodes) {
         const trimmed = b;
@@ -259,6 +288,7 @@ export class UpdateItemUseCase {
     const effectiveType = data.type ?? current.type;
     const patch = stripUndefined({
       ...data,
+      ...(data.uomBarcodes !== undefined ? { uomBarcodes: normalizedUomBarcodes } : {}),
       ...uomFields,
       ...(effectiveType === 'SERVICE' ? { trackInventory: false } : {}),
       updatedAt: new Date(),

@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState, forwardRef, useImperativeH
 import { ExternalLink, RefreshCw, Search, X } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { inventoryApi, InventoryItemDTO, UomConversionDTO } from '../../../api/inventoryApi';
+import { inventoryApi, InventoryItemDTO, InventoryUomDTO, UomConversionDTO } from '../../../api/inventoryApi';
 import {
   buildItemUomOptions,
   findItemUomOption,
@@ -45,9 +45,10 @@ export const UomSelector = forwardRef<UomSelectorHandle, UomSelectorProps>(({
   placeholder,
   hideIcon = false,
 }, ref) => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const [currentItem, setCurrentItem] = useState<InventoryItemDTO | null>(item || null);
   const [conversions, setConversions] = useState<UomConversionDTO[]>([]);
+  const [uoms, setUoms] = useState<InventoryUomDTO[]>([]);
   const [inputValue, setInputValue] = useState('');
   const [modalOpen, setModalOpen] = useState(false);
   const [modalSearch, setModalSearch] = useState('');
@@ -61,7 +62,10 @@ export const UomSelector = forwardRef<UomSelectorHandle, UomSelectorProps>(({
   );
 
   const effectiveItemId = item?.id || itemId || '';
-  const options = useMemo(() => buildItemUomOptions(currentItem, conversions), [conversions, currentItem]);
+  const options = useMemo(
+    () => buildItemUomOptions(currentItem, conversions, uoms, i18n.resolvedLanguage || i18n.language),
+    [conversions, currentItem, i18n.language, i18n.resolvedLanguage, uoms]
+  );
   const selected = useMemo(() => findItemUomOption(options, valueId, valueCode), [options, valueCode, valueId]);
   const matches = useMemo(() => {
     const query = normalize(modalSearch);
@@ -82,14 +86,17 @@ export const UomSelector = forwardRef<UomSelectorHandle, UomSelectorProps>(({
     if (!force && currentItem?.id === effectiveItemId && conversions.length > 0) return;
     setLoading(true);
     try {
-      const [freshItem, freshConversions] = await Promise.all([
+      const [freshItem, freshConversions, freshUoms] = await Promise.all([
         currentItem?.id === effectiveItemId && !force ? Promise.resolve(currentItem) : inventoryApi.getItem(effectiveItemId),
         inventoryApi.listUomConversions(effectiveItemId),
+        inventoryApi.listUoms({ active: true, limit: 500 }),
       ]);
       const nextItem = unwrapApiPayload<InventoryItemDTO | null>(freshItem);
       const nextConversions = unwrapApiPayload<UomConversionDTO[]>(freshConversions);
+      const nextUoms = unwrapApiPayload<InventoryUomDTO[]>(freshUoms);
       setCurrentItem(nextItem || null);
       setConversions(Array.isArray(nextConversions) ? nextConversions : []);
+      setUoms(Array.isArray(nextUoms) ? nextUoms : []);
     } catch (error) {
       console.error('Failed to load item UOMs', error);
     } finally {

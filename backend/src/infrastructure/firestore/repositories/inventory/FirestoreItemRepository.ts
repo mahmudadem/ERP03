@@ -55,7 +55,10 @@ export class FirestoreItemRepository implements IItemRepository {
   async updateItem(id: string, data: Partial<Item>): Promise<void> {
     const ref = await this.resolveRefById(id);
     if (!ref) return;
-    await ref.update(stripUndefinedDeep(data) as any);
+    const payload = data.uomBarcodes
+      ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
+      : data;
+    await ref.update(stripUndefinedDeep(payload) as any);
   }
 
   async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
@@ -65,7 +68,10 @@ export class FirestoreItemRepository implements IItemRepository {
       return;
     }
 
-    txn.set(this.collection(companyId).doc(id), stripUndefinedDeep(data) as any, { merge: true });
+    const payload = data.uomBarcodes
+      ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
+      : data;
+    txn.set(this.collection(companyId).doc(id), stripUndefinedDeep(payload) as any, { merge: true });
   }
 
   async setItemActive(id: string, active: boolean): Promise<void> {
@@ -112,6 +118,10 @@ export class FirestoreItemRepository implements IItemRepository {
     if (!snap2.empty) {
       return ItemMapper.toDomain(snap2.docs[0].data());
     }
+    const snap3 = await this.collection(companyId).where('uomBarcodeValues', 'array-contains', barcode).limit(1).get();
+    if (!snap3.empty) {
+      return ItemMapper.toDomain(snap3.docs[0].data());
+    }
     return null;
   }
 
@@ -142,7 +152,8 @@ export class FirestoreItemRepository implements IItemRepository {
       item.code.toLowerCase().includes(normalized) ||
       item.name.toLowerCase().includes(normalized) ||
       (item.barcode || '').toLowerCase().includes(normalized) ||
-      (item.barcodes || []).some((b) => b.toLowerCase().includes(normalized))
+      (item.barcodes || []).some((b) => b.toLowerCase().includes(normalized)) ||
+      item.uomBarcodes.some((entry) => entry.barcodes.some((b) => b.toLowerCase().includes(normalized)))
     );
 
     return matches.slice(0, opts?.limit ?? 50);

@@ -2482,6 +2482,11 @@
     "SAVE": "Başarıyla kaydedildi"
   },
   "inventory": {
+    "uom": {
+      "fields": {
+        "localizedName": "Yerelleştirilmiş ad"
+      }
+    },
     "settings": {
       "accountingMode": {
         "label": "Muhasebe Modu",
@@ -4610,6 +4615,9 @@
       "saveFailed": "Görünüm tercihleri kaydedilemedi."
     }
   },
+  "Barcodes by Unit of Measure": "Ölçü birimine göre barkodlar",
+  "Save the item and configure its units before assigning unit barcodes.": "Birim barkodlarını atamadan önce ürünü kaydedin ve birimlerini yapılandırın.",
+  "Comma-separated barcodes": "Virgülle ayrılmış barkodlar",
   "saveChanges": "Değişiklikleri Kaydet",
   "loading": "Yükleniyor...",
   "Primary Barcode": "Ana Barkod",

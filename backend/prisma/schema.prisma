@@ -605,6 +605,8 @@ model Item {
   description               String?
   barcode                   String?
   barcodes                  String[] @default([])
+  uomBarcodes               Json?
+  uomBarcodeValues          String[] @default([])
   type                      String   @default("PRODUCT")
   categoryId                String?
   brand                     String?
@@ -693,6 +695,7 @@ model Uom {
   decimalPlaces     Int      @default(0)
   active            Boolean  @default(true)
   isSystem          Boolean  @default(false)
+  translations      Json?
   baseUomId         String?
   conversionFactor  Float    @default(1.0)
   createdBy         String   @default("SYSTEM")

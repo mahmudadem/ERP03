@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Task 277 audit cleanup — conversion-factor lock made honest)
+
+- **Goal:** Audit of Task 277 (`a173dfa1`) found the "used conversion factor is immutable" rule was bolted onto the top of `applyUomConversionCorrection` as `if (impact.used) throw`. Since `impact.used === impactedMovements.length > 0`, the guard fired exactly when the old in-place "smart correction" delta-adjustment engine below it had work to do — making ~150 lines unreachable dead code, leaving a self-contradictory delete-path message, and a frontend dialog still promising auto-adjustments the backend now rejects. No test covered the lock.
+- **Fixes:**
+  - `InventoryController.applyUomConversionCorrection`: removed the dead smart-correction engine; endpoint now cleanly locks used conversions (409) and allows factor edits only on unused ones. Removed now-unused locals (`userId`, `effectiveDate`, `roundQty`, `signedQty`).
+  - `ItemMasterCard.tsx`: used-conversion path no longer promises delta adjustments; shows a "factor locked" notice and skips the guaranteed-to-fail API call.
+  - New `UomConversionCorrectionLock.test.ts`: pins the 409 lock (no mutation) + the unused/noChanges path.
+- **Verification:** backend `tsc` clean; frontend `tsc` clean; new lock suite + existing `UomConversionUseCases` suite → 6/6 pass.
+- **Time spent:** ~0.5h.
+- **Next:** Owner to run `prisma db push` then the Task 277 QA-QUEUE entry; barcode/translation work itself was already sound.
+
 ### Session: 2026-06-28 (Epic 275 SQL QA — two-company creation bug sweep + smoke test)
 
 - **Goal:** Owner hit a cascade of errors creating companies in SQL mode (UNIQUE on `taxId`, "creation fails but company is still created", duplicate role id). Asked why these weren't caught earlier and "what else is on the way."
@@ -5430,3 +5441,18 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused `SimpleTradingCompanyInitializer.test.ts` passed; frontend typecheck passed. Full backend typecheck remains noisy in this dirty checkout due existing repo-wide script/test tsconfig issues and Prisma generate DLL lock.
 - **Future task:** Created `planning/tasks/276-bundle-aware-auto-initialization.md` to make the starter fully bundle-aware for Accounting-only, Inventory/POS-only, and larger bundles.
 - **Time spent:** ~1.3h.
+# 2026-06-29 — Task 277 item UOM barcodes and translations
+
+- Implemented per-UOM item barcodes while preserving optional general barcodes.
+- Added tenant-scoped uniqueness across primary, secondary, and UOM barcodes.
+- POS now resolves scanned UOM and UOM-specific Commercial Core pricing.
+- Added extensible UOM translations with EN/AR/TR editing and locale fallback.
+- Hard-blocked factor changes after posted usage, including smart correction.
+- Type B detour: fixed the existing onboarding plan-selection contract mismatch
+  so SQL-mode verified users can be materialized and backend build can pass.
+- Focused tests: 12/12 passed. Backend build and frontend typecheck passed.
+- Final gate: 45/45 focused + System Core boundary tests passed; backend and
+  frontend production builds passed. `graphify update .` could not run because
+  the graphify CLI is not installed/available in this environment.
+- Actual time: ~2.5h.
+- Next: owner QA, PostgreSQL `prisma db push`, then merge.
