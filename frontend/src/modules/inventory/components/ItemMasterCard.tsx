@@ -328,13 +328,16 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
     const existingImpact = conversionImpactById[conversion.id];
     if (existingImpact?.used) {
-      const shouldProceed = await confirm({
-        title: 'Adjust UoM conversion?',
-        message: 'This conversion has posted usage. The system will add stock adjustment delta movements to apply the new factor without changing invoice/payment values. Continue?',
-        confirmLabel: 'Continue',
+      // Policy: a used conversion factor is locked. We do not rewrite history with
+      // delta adjustments; the backend rejects this call. Inform the user instead of
+      // attempting an edit that is guaranteed to fail.
+      await confirm({
+        title: 'Conversion factor locked',
+        message: 'This conversion has posted usage, so its factor can no longer be changed. To correct it, reverse the affected documents first, or record a separately approved, dated correction.',
+        confirmLabel: 'OK',
         tone: 'warning',
       });
-      if (!shouldProceed) return;
+      return;
     }
 
     try {

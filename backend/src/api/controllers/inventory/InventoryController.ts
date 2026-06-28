@@ -849,13 +849,8 @@ export class InventoryController {
     try {
       validateApplyUomConversionCorrectionInput((req as any).body);
       const companyId = InventoryController.getCompanyId(req);
-      const userId = InventoryController.getUserId(req);
       const conversionId = String((req as any).params.id);
       const newFactor = Number((req as any).body.newFactor);
-      const effectiveDate = String((req as any).body.effectiveDate || new Date().toISOString().slice(0, 10));
-
-      const roundQty = (value: number): number => Math.round((value + Number.EPSILON) * 1_000_000) / 1_000_000;
-      const signedQty = (direction: 'IN' | 'OUT', qty: number): number => (direction === 'IN' ? qty : -qty);
 
       const manageUseCase = new ManageUomConversionsUseCase(diContainer.uomConversionRepository, diContainer.uomRepository);
       const current = await manageUseCase.get(conversionId);
@@ -869,19 +864,22 @@ export class InventoryController {
         conversionId,
         proposedFactor: newFactor,
       });
+      // Task 277 policy: once a conversion factor has been used in posted stock
+      // movements it is immutable. History must never be rewritten in place;
+      // corrections to posted documents go through the separate, dated, auditable
+      // workflow (reverse the affected documents, then re-post). The old in-place
+      // "smart correction" engine that generated delta adjustments was removed to
+      // enforce this rule.
       if (impact.used) {
         throw ApiError.conflict(
-          'This conversion has posted usage and its factor is immutable. '
-          + 'Reverse the affected documents or use a separately approved, dated correction workflow.'
+          'This conversion has posted usage and its factor is locked. '
+          + 'It cannot be edited or deleted. Reverse the affected documents first, '
+          + 'or record a separately approved, dated correction.'
         );
       }
 
-      const correctedMovements = impact.impactedMovements.filter((entry) => (
-        typeof entry.projectedBaseQty === 'number'
-        && Math.abs((entry.projectedBaseQty || 0) - entry.currentBaseQty) > 0.0000001
-      ));
-
-      if (Math.abs(current.factor - newFactor) < 0.0000001 && correctedMovements.length === 0) {
+      // Unused conversion: changing the factor rewrites no history and is allowed.
+      if (Math.abs(current.factor - newFactor) < 0.0000001) {
         (res as any).json({
           success: true,
           data: {
@@ -893,146 +891,13 @@ export class InventoryController {
         return;
       }
 
-      const correctionMetadataRows = await diContainer.stockMovementRepository.getItemMovements(
-        companyId,
-        current.itemId
-      );
-      const appliedDeltaBySourceMovement = new Map<string, number>();
-      correctionMetadataRows.forEach((movement) => {
-        if (movement.referenceType !== 'MANUAL') return;
-        const meta = (movement.metadata?.uomCorrection || {}) as Record<string, any>;
-        if (meta.conversionId !== conversionId) return;
-        const sourceMovementId = typeof meta.sourceMovementId === 'string' ? meta.sourceMovementId : '';
-        if (!sourceMovementId) return;
-        const existing = appliedDeltaBySourceMovement.get(sourceMovementId) || 0;
-        appliedDeltaBySourceMovement.set(
-          sourceMovementId,
-          roundQty(existing + signedQty(movement.direction, movement.qty))
-        );
-      });
-
-      const movementUseCase = InventoryController.buildMovementUseCase();
-      const correctionRunId = `UOM_CORR_${conversionId}_${Date.now()}`;
-
-      let generatedIn = 0;
-      let generatedOut = 0;
-      let generatedNetDeltaBaseQty = 0;
-
-      for (const impacted of correctedMovements) {
-        const sourceMovement = await diContainer.stockMovementRepository.getMovement(impacted.movementId);
-        if (!sourceMovement || sourceMovement.companyId !== companyId) {
-          throw ApiError.notFound(`Source stock movement not found: ${impacted.movementId}`);
-        }
-
-        const projectedBaseQty = impacted.projectedBaseQty as number;
-        const desiredDelta = roundQty(
-          signedQty(sourceMovement.direction, projectedBaseQty) - signedQty(sourceMovement.direction, sourceMovement.qty)
-        );
-        const alreadyAppliedDelta = appliedDeltaBySourceMovement.get(sourceMovement.id) || 0;
-        const remainingDelta = roundQty(desiredDelta - alreadyAppliedDelta);
-        if (Math.abs(remainingDelta) <= 0.0000001) {
-          continue;
-        }
-
-        const correctionMetadata = {
-          conversionId,
-          sourceMovementId: sourceMovement.id,
-          sourceReferenceType: sourceMovement.referenceType,
-          sourceReferenceId: sourceMovement.referenceId,
-          sourceReferenceLineId: sourceMovement.referenceLineId,
-          sourceDirection: sourceMovement.direction,
-          sourceQty: sourceMovement.qty,
-          desiredQty: projectedBaseQty,
-          desiredDeltaBaseQty: desiredDelta,
-          appliedDeltaBaseQty: remainingDelta,
-          effectiveDate,
-          fromFactor: current.factor,
-          toFactor: newFactor,
-          correctedAt: new Date().toISOString(),
-          module: impacted.module,
-        };
-
-        if (remainingDelta > 0) {
-          const fxRateMovToBase = sourceMovement.fxRateMovToBase > 0 ? sourceMovement.fxRateMovToBase : 1;
-          const fxRateCCYToBase = sourceMovement.fxRateCCYToBase > 0 ? sourceMovement.fxRateCCYToBase : fxRateMovToBase;
-          const unitCostInMoveCurrency = sourceMovement.unitCostBase / fxRateMovToBase;
-
-          await movementUseCase.processIN({
-            companyId,
-            itemId: sourceMovement.itemId,
-            warehouseId: sourceMovement.warehouseId,
-            qty: remainingDelta,
-            date: effectiveDate,
-            movementType: 'ADJUSTMENT_IN',
-            refs: {
-              type: 'MANUAL',
-              docId: correctionRunId,
-              lineId: sourceMovement.id,
-            },
-            currentUser: userId,
-            unitCostInMoveCurrency,
-            moveCurrency: sourceMovement.movementCurrency,
-            fxRateMovToBase,
-            fxRateCCYToBase,
-            notes: `UOM correction delta for movement ${sourceMovement.id}`,
-            metadata: {
-              uomCorrection: correctionMetadata,
-            },
-          });
-          generatedIn += 1;
-        } else {
-          await movementUseCase.processOUT({
-            companyId,
-            itemId: sourceMovement.itemId,
-            warehouseId: sourceMovement.warehouseId,
-            qty: Math.abs(remainingDelta),
-            date: effectiveDate,
-            movementType: 'ADJUSTMENT_OUT',
-            refs: {
-              type: 'MANUAL',
-              docId: correctionRunId,
-              lineId: sourceMovement.id,
-            },
-            currentUser: userId,
-            forcedUnitCostBase: sourceMovement.unitCostBase,
-            forcedUnitCostCCY: sourceMovement.unitCostCCY,
-            notes: `UOM correction delta for movement ${sourceMovement.id}`,
-            metadata: {
-              uomCorrection: correctionMetadata,
-            },
-          });
-          generatedOut += 1;
-        }
-
-        generatedNetDeltaBaseQty = roundQty(generatedNetDeltaBaseQty + remainingDelta);
-        appliedDeltaBySourceMovement.set(sourceMovement.id, roundQty(alreadyAppliedDelta + remainingDelta));
-      }
-
-      const updatedConversion = Math.abs(current.factor - newFactor) < 0.0000001
-        ? current
-        : await manageUseCase.update(conversionId, { factor: newFactor });
-
-      const afterImpact = await impactUseCase.execute({
-        companyId,
-        conversionId,
-      });
-
+      const updatedConversion = await manageUseCase.update(conversionId, { factor: newFactor });
       (res as any).json({
         success: true,
         data: {
           conversion: InventoryDTOMapper.toUomConversionDTO(updatedConversion),
-          impactBefore: impact,
-          impactAfter: afterImpact,
-          autoFix: {
-            mode: 'STOCK_ONLY_DELTA',
-            correctionRunId,
-            generatedAdjustments: {
-              in: generatedIn,
-              out: generatedOut,
-              netDeltaBaseQty: generatedNetDeltaBaseQty,
-            },
-            notes: 'Commercial invoice/payment values are not modified. Stock is corrected via adjustment delta movements.',
-          },
+          impact,
+          noChanges: false,
         },
       });
     } catch (error) {
