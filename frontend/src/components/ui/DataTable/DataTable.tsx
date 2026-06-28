@@ -91,7 +91,7 @@ export function DataTable<T = any>({
   statusFilterConfig,
 }: DataTableProps<T>) {
   const tableId = `table-${columns.map(c => c.key).join('-')}`;
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation('common');
   const isRtl = i18n.dir() === 'rtl';
   const {
     visibleColumns,
@@ -328,7 +328,7 @@ export function DataTable<T = any>({
               {/* Density */}
               <div className="mb-4">
                 <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">
-                  Density
+                  {t('dataTable.density', 'Density')}
                 </h3>
                 <div className="flex gap-2">
                   {(['compact', 'comfortable', 'spacious'] as Density[]).map(d => (
@@ -342,7 +342,7 @@ export function DataTable<T = any>({
                           : 'bg-[var(--color-bg-secondary)] text-[var(--color-text-primary)] border-[var(--color-border)] hover:border-primary-500'
                       )}
                     >
-                      {d}
+                      {t(`dataTable.densities.${d}`, d)}
                     </button>
                   ))}
                 </div>
@@ -351,7 +351,7 @@ export function DataTable<T = any>({
               {/* Font Size */}
               <div className="mb-4">
                 <h3 className="font-bold text-[var(--color-text-primary)] uppercase mb-2 tracking-wider">
-                  Font Size
+                  {t('dataTable.fontSize', 'Font Size')}
                 </h3>
                 <div className="flex gap-2">
                   {(['sm', 'md', 'lg'] as FontSize[]).map(size => (
@@ -375,13 +375,13 @@ export function DataTable<T = any>({
               <div>
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="font-bold text-[var(--color-text-primary)] uppercase tracking-wider">
-                    Columns
+                    {t('dataTable.columns', 'Columns')}
                   </h3>
                   <button
                     onClick={resetColumns}
                     className="text-[var(--color-text-muted)] hover:text-primary-600 transition-colors"
                   >
-                    Reset
+                    {t('dataTable.reset', 'Reset')}
                   </button>
                 </div>
                 <div className="grid grid-cols-1 gap-1 max-h-48 overflow-y-auto pr-1">
@@ -401,7 +401,7 @@ export function DataTable<T = any>({
                         <span className="truncate flex-1">{col.label}</span>
                         <span className="flex items-center gap-2 shrink-0">
                           <span className="text-[10px] text-[var(--color-text-muted)]">
-                            {PRIORITY_LABELS[col.priority]}
+                            {t(`dataTable.priority.${PRIORITY_LABELS[col.priority].toLowerCase()}`, PRIORITY_LABELS[col.priority])}
                           </span>
                           {visible && <Check size={14} />}
                         </span>
@@ -491,12 +491,12 @@ export function DataTable<T = any>({
           </table>
         ) : (
           <div className="flex flex-col items-center justify-center h-48 text-[var(--color-text-muted)]">
-            <p className="text-sm mb-3">No columns visible</p>
+            <p className="text-sm mb-3">{t('dataTable.noColumnsVisible', 'No columns visible')}</p>
             <button
               onClick={resetColumns}
               className="px-4 py-2 text-sm font-medium text-primary-600 border border-primary-600 rounded-md hover:bg-primary-50 transition-colors"
             >
-              Reset to defaults
+              {t('dataTable.resetToDefaults', 'Reset to defaults')}
             </button>
           </div>
         )}

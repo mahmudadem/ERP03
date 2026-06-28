@@ -4219,5 +4219,137 @@
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "{{itemLabel}} ürünü {{warehouseLabel}} deposundan çıkışı yapılamıyor — stokta yalnızca {{current}} var ancak {{requested}} istendi (kalan {{resulting}} olurdu). Negatif stok kapalı. Önce stok girişi yapın veya Envanter Ayarları’ndan negatif stoğu etkinleştirin."
+  },
+  "dataTable": {
+    "density": "Yoğunluk",
+    "fontSize": "Yazı boyutu",
+    "columns": "Sütunlar",
+    "actions": "İşlemler",
+    "reset": "Sıfırla",
+    "noColumnsVisible": "Görünen sütun yok",
+    "resetToDefaults": "Varsayılana sıfırla",
+    "densities": {
+      "compact": "Sıkı",
+      "comfortable": "Rahat",
+      "spacious": "Geniş"
+    },
+    "priority": {
+      "core": "Temel",
+      "standard": "Standart",
+      "detail": "Detay"
+    },
+    "pagination": {
+      "showing": "{{total}} kayıttan {{start}}-{{end}} arası gösteriliyor",
+      "rowsPerPage": "Sayfa başına satır",
+      "pageSizeOption": "{{size}} / sayfa",
+      "previousPage": "Önceki sayfa",
+      "nextPage": "Sonraki sayfa",
+      "pageOf": "Sayfa {{page}} / {{totalPages}}"
+    },
+    "selection": {
+      "selectedCount": "{{total}} kayıttan {{selected}} seçildi",
+      "clear": "Temizle"
+    }
+  },
+  "formsManagement": {
+    "title": "Form Yönetimi — {{module}}",
+    "loading": "{{module}} form yönetimi yükleniyor...",
+    "installedTypes": "Kurulu Türler ({{count}})",
+    "availableTypes": "Uygun Türler ({{count}})",
+    "noInstalledTypes": "Henüz belge türü kurulmamış. Kurmak için aşağıdaki uygun türlerden birini seçin.",
+    "documentWizard": "Belge Sihirbazı",
+    "newForm": "Yeni Form",
+    "formCount": "{{count}} form",
+    "activeCount": "{{count}} aktif",
+    "customCount": "{{count}} özel",
+    "defaultFormCount": "{{count}} varsayılan form",
+    "variants": "Varyantlar: {{variants}}",
+    "addCustomForm": "Özel Form Ekle",
+    "builtInNative": "Yerleşik yerel",
+    "lockedDefault": "Kilitli varsayılan",
+    "active": "Aktif",
+    "off": "Kapalı",
+    "activate": "Etkinleştir",
+    "deactivate": "Devre dışı bırak",
+    "formSettings": "Form ayarları",
+    "cloneTitle": "Klonla (düzenlenebilir kopya oluşturur)",
+    "restrictedEdit": "Görüntüle / kısıtlı düzenle",
+    "moreOptions": "Diğer seçenekler",
+    "exportJson": "JSON dışa aktar",
+    "viewSchema": "Şemayı görüntüle",
+    "sidebarGroup": "Kenar çubuğu grubu",
+    "sidebarGroupPlaceholder": "Bir grup yazın veya seçin...",
+    "comingSoon": "Yakında",
+    "installing": "Kuruluyor",
+    "install": "Kur",
+    "installedToast": "\"{{name}}\" kuruldu — {{count}} varsayılan form kilitli ve pasif olarak eklendi.",
+    "instructions": {
+      "title": "Form Yönetimi — {{module}}",
+      "helpTitle": "Bu sayfa ne işe yarar?",
+      "open": "Sayfa yardımını aç"
+    },
+    "formNames": {
+      "nativeVouchers": "Yerel Fişler",
+      "nativeSalesInvoice": "Yerel Satış Faturası",
+      "nativeSalesOrder": "Yerel Satış Siparişi",
+      "nativePurchaseInvoice": "Yerel Alış Faturası",
+      "nativePurchaseOrder": "Yerel Satınalma Siparişi",
+      "goodsReceipt": "Mal Kabul",
+      "purchaseInvoiceService": "Alış Faturası (Hizmet)",
+      "purchaseInvoiceDirect": "Alış Faturası (Doğrudan)",
+      "purchaseInvoiceLinked": "Alış Faturası (Bağlantılı)",
+      "purchaseReturn": "Alış İadesi",
+      "purchaseOrder": "Satınalma Siparişi"
+    },
+    "persona": {
+      "direct": "Doğrudan",
+      "linked": "Bağlantılı",
+      "service": "Hizmet"
+    },
+    "settings": {
+      "accountDefaults": "Hesap Varsayılanları",
+      "pricingBehavior": "Fiyatlandırma Davranışı"
+    },
+    "messages": {
+      "activated": "Form etkinleştirildi.",
+      "deactivated": "Form devre dışı bırakıldı."
+    },
+    "errors": {
+      "loadFailed": "Form yönetimi verileri yüklenemedi",
+      "updateStatusFailed": "Form durumu güncellenemedi",
+      "installFailed": "Kurulum başarısız",
+      "saveSettingsFailed": "Form ayarları kaydedilemedi."
+    }
+  },
+  "accountingIntegrationStatus": {
+    "modules": {
+      "inventory": "Stok",
+      "purchases": "Satınalma",
+      "sales": "Satış"
+    },
+    "modulesLower": {
+      "inventory": "stok",
+      "purchases": "satınalma",
+      "sales": "satış"
+    },
+    "notEnabled": {
+      "label": "Muhasebe Etkin Değil",
+      "message": "{{module}} işlemleri miktarları ve belgeleri izler, ancak finansal/GL kayıtları oluşturmaz.",
+      "action": "Muhasebeyi Etkinleştir"
+    },
+    "setupRequired": {
+      "label": "Muhasebe Etkin - Kurulum Gerekli",
+      "message": "Muhasebe modülü etkin, ancak henüz kurulmadı. Önce Muhasebe kurulumunu tamamlayın, sonra {{module}} finansal entegrasyonunu yapılandırın.",
+      "action": "Muhasebe Kurulumunu Tamamla"
+    },
+    "pending": {
+      "label": "Finansal Entegrasyon Bekliyor",
+      "message": "Muhasebe kuruldu, ancak {{module}} hesap eşlemeleri yapılandırılmadı. Eşlemeler ayarlanana kadar finansal kayıtlar oluşturulmaz.",
+      "action": "Entegrasyonu Yapılandır"
+    },
+    "active": {
+      "label": "Finansal Entegrasyon Aktif",
+      "message": "{{module}} Muhasebe ile tamamen entegre. Tüm işlemler finansal/GL kayıtları oluşturur."
+    }
   }
 }
