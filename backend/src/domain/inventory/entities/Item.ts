@@ -33,6 +33,12 @@ export interface ItemCostingStats {
   extra?: Record<string, CostPoint>;
 }
 
+export interface ItemUomBarcode {
+  uomId?: string;
+  uom: string;
+  barcodes: string[];
+}
+
 export interface ItemProps {
   id: string;
   companyId: string;
@@ -41,6 +47,7 @@ export interface ItemProps {
   description?: string;
   barcode?: string;
   barcodes?: string[];
+  uomBarcodes?: ItemUomBarcode[];
   type: ItemType;
   categoryId?: string;
   brand?: string;
@@ -91,6 +98,7 @@ export class Item {
   description?: string;
   barcode?: string;
   barcodes?: string[];
+  uomBarcodes: ItemUomBarcode[];
   type: ItemType;
   categoryId?: string;
   brand?: string;
@@ -166,6 +174,11 @@ export class Item {
     this.description = props.description;
     this.barcode = props.barcode;
     this.barcodes = props.barcodes ? [...props.barcodes] : [];
+    this.uomBarcodes = (props.uomBarcodes || []).map((entry) => ({
+      uomId: entry.uomId,
+      uom: entry.uom.trim().toUpperCase(),
+      barcodes: [...new Set((entry.barcodes || []).map((value) => value.trim()).filter(Boolean))],
+    })).filter((entry) => entry.uom && entry.barcodes.length > 0);
     this.type = props.type;
     this.categoryId = props.categoryId;
     this.brand = props.brand;
@@ -218,6 +231,8 @@ export class Item {
       description: this.description,
       barcode: this.barcode,
       barcodes: this.barcodes ? [...this.barcodes] : [],
+      uomBarcodes: this.uomBarcodes.map((entry) => ({ ...entry, barcodes: [...entry.barcodes] })),
+      uomBarcodeValues: this.uomBarcodes.flatMap((entry) => entry.barcodes),
       type: this.type,
       categoryId: this.categoryId,
       brand: this.brand,
@@ -260,6 +275,7 @@ export class Item {
       description: data.description,
       barcode: data.barcode,
       barcodes: data.barcodes || [],
+      uomBarcodes: data.uomBarcodes || [],
       type: data.type,
       categoryId: data.categoryId,
       brand: data.brand,

@@ -8,6 +8,7 @@ export interface CreateUomInput {
   companyId: string;
   code: string;
   name: string;
+  translations?: Record<string, string>;
   dimension: UomDimension;
   decimalPlaces?: number;
   active?: boolean;
@@ -29,6 +30,7 @@ export class CreateUomUseCase {
       companyId: input.companyId,
       code: input.code,
       name: input.name,
+      translations: input.translations,
       dimension: input.dimension,
       decimalPlaces: input.decimalPlaces ?? 0,
       active: input.active ?? true,

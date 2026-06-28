@@ -80,6 +80,29 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Barcode already in use: 123', { field: 'barcodes', value: '123' })
       );
     });
+
+    it('rejects a UOM barcode duplicated by a general barcode', async () => {
+      const input: any = {
+        companyId: 'c1', code: 'ITM1', name: 'Item 1', type: 'PRODUCT',
+        baseUom: 'PCS', costCurrency: 'USD', trackInventory: true, createdBy: 'user1',
+        barcode: 'BOX-1',
+        uomBarcodes: [{ uom: 'BOX', barcodes: ['BOX-1'] }],
+      };
+
+      await expect(createUseCase.execute(input)).rejects.toThrow('Duplicate barcode in payload: BOX-1');
+    });
+
+    it('checks company uniqueness for every UOM barcode', async () => {
+      mockItemRepo.getItemByBarcode.mockResolvedValue({ id: 'other' } as Item);
+      const input: any = {
+        companyId: 'c1', code: 'ITM1', name: 'Item 1', type: 'PRODUCT',
+        baseUom: 'PCS', costCurrency: 'USD', trackInventory: true, createdBy: 'user1',
+        uomBarcodes: [{ uom: 'BOX', barcodes: ['BOX-1'] }],
+      };
+
+      await expect(createUseCase.execute(input)).rejects.toThrow('Barcode already in use: BOX-1');
+      expect(mockItemRepo.getItemByBarcode).toHaveBeenCalledWith('c1', 'BOX-1');
+    });
   });
 
   describe('UpdateItemUseCase', () => {

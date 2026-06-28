@@ -869,6 +869,12 @@ export class InventoryController {
         conversionId,
         proposedFactor: newFactor,
       });
+      if (impact.used) {
+        throw ApiError.conflict(
+          'This conversion has posted usage and its factor is immutable. '
+          + 'Reverse the affected documents or use a separately approved, dated correction workflow.'
+        );
+      }
 
       const correctedMovements = impact.impactedMovements.filter((entry) => (
         typeof entry.projectedBaseQty === 'number'

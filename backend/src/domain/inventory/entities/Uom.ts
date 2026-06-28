@@ -12,6 +12,7 @@ export interface UomProps {
   companyId: string;
   code: string;
   name: string;
+  translations?: Record<string, string>;
   dimension: UomDimension;
   decimalPlaces: number;
   active: boolean;
@@ -34,6 +35,7 @@ export class Uom {
   readonly companyId: string;
   code: string;
   name: string;
+  translations: Record<string, string>;
   dimension: UomDimension;
   decimalPlaces: number;
   active: boolean;
@@ -59,6 +61,11 @@ export class Uom {
     this.companyId = props.companyId;
     this.code = props.code.trim().toUpperCase();
     this.name = props.name.trim();
+    this.translations = Object.fromEntries(
+      Object.entries(props.translations || {})
+        .map(([language, value]) => [language.trim().toLowerCase(), value?.trim()])
+        .filter(([language, value]) => Boolean(language && value))
+    ) as Record<string, string>;
     this.dimension = props.dimension;
     this.decimalPlaces = props.decimalPlaces;
     this.active = props.active;
@@ -74,6 +81,7 @@ export class Uom {
       companyId: this.companyId,
       code: this.code,
       name: this.name,
+      translations: { ...this.translations },
       dimension: this.dimension,
       decimalPlaces: this.decimalPlaces,
       active: this.active,
@@ -90,6 +98,7 @@ export class Uom {
       companyId: data.companyId,
       code: data.code,
       name: data.name,
+      translations: data.translations || {},
       dimension: data.dimension || 'OTHER',
       decimalPlaces: Number.isInteger(data.decimalPlaces) ? data.decimalPlaces : 0,
       active: data.active ?? true,

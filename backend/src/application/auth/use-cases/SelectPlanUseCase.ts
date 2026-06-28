@@ -8,10 +8,13 @@
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { IPlanRegistryRepository } from '../../../repository/interfaces/super-admin/IPlanRegistryRepository';
 import { ApiError } from '../../../api/errors/ApiError';
+import { User } from '../../../domain/core/entities/User';
 
 export interface SelectPlanInput {
   userId: string;
   planId: string;
+  email?: string;
+  name?: string;
 }
 
 export interface SelectPlanResult {
@@ -38,7 +41,17 @@ export class SelectPlanUseCase {
     }
 
     // Validate user exists
-    const user = await this.userRepository.getUserById(input.userId);
+    let user = await this.userRepository.getUserById(input.userId);
+    if (!user && input.email?.trim()) {
+      user = new User(
+        input.userId,
+        input.email.trim(),
+        input.name?.trim() || input.email.trim(),
+        'USER',
+        new Date()
+      );
+      await this.userRepository.createUser(user);
+    }
     if (!user) {
       throw ApiError.notFound('User not found');
     }

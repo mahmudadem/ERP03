@@ -600,6 +600,8 @@ model Item {
   description               String?
   barcode                   String?
   barcodes                  String[] @default([])
+  uomBarcodes               Json?
+  uomBarcodeValues          String[] @default([])
   type                      String   @default("PRODUCT")
   categoryId                String?
   brand                     String?
@@ -684,6 +686,7 @@ model Uom {
   companyId         String
   code              String
   name              String
+  translations      Json?
   baseUomId         String?
   conversionFactor  Float    @default(1.0)
   createdAt         DateTime @default(now())

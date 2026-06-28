@@ -52,7 +52,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   onClose, 
   onSaved 
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const { hasPermission } = useRBAC();
   const { confirm, confirmDialog } = useConfirm();
   const [activeTab, setActiveTab] = useState('GENERAL');
@@ -94,6 +94,29 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     { id: 'INVENTORY', label: t('Stock Control', 'Stock Control'), icon: Warehouse },
     { id: 'ACCOUNTING', label: t('Accounting GL', 'Accounting GL'), icon: ShieldCheck },
   ];
+  const itemUomKeys = new Set([
+    item.baseUomId, item.baseUom,
+    item.purchaseUomId, item.purchaseUom,
+    item.salesUomId, item.salesUom,
+    ...conversions.flatMap((entry) => [entry.fromUomId, entry.fromUom, entry.toUomId, entry.toUom]),
+  ].filter(Boolean).map((value) => String(value).toUpperCase()));
+  const itemUomOptions = uoms.filter((uom) =>
+    itemUomKeys.has(uom.id.toUpperCase()) || itemUomKeys.has(uom.code.toUpperCase())
+  );
+
+  const setUomBarcodes = (uom: InventoryUomDTO, barcodes: string[]) => {
+    setItem((current) => {
+      const remaining = (current.uomBarcodes || []).filter((entry) =>
+        entry.uomId ? entry.uomId !== uom.id : entry.uom.toUpperCase() !== uom.code.toUpperCase()
+      );
+      return {
+        ...current,
+        uomBarcodes: barcodes.length
+          ? [...remaining, { uomId: uom.id, uom: uom.code, barcodes }]
+          : remaining,
+      };
+    });
+  };
 
   useEffect(() => {
     loadCategories();
@@ -458,6 +481,39 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                   </div>
                 </Field>
               </div>
+              <div className="col-span-1 sm:col-span-4">
+                <Field label={t('Barcodes by Unit of Measure', 'Barcodes by Unit of Measure')}>
+                  <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
+                    {itemUomOptions.length === 0 ? (
+                      <p className="text-xs text-slate-500">
+                        {t('Save the item and configure its units before assigning unit barcodes.', 'Save the item and configure its units before assigning unit barcodes.')}
+                      </p>
+                    ) : itemUomOptions.map((uom) => {
+                      const assigned = (item.uomBarcodes || []).find((entry) =>
+                        entry.uomId ? entry.uomId === uom.id : entry.uom.toUpperCase() === uom.code.toUpperCase()
+                      )?.barcodes || [];
+                      return (
+                        <div key={uom.id} className="grid gap-2 sm:grid-cols-[10rem_1fr]">
+                          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
+                            {uom.code} · {uom.translations?.[i18n.resolvedLanguage || i18n.language]
+                              || uom.translations?.[(i18n.resolvedLanguage || i18n.language).split('-')[0]]
+                              || uom.name}
+                          </div>
+                          <input
+                            className="form-control text-sm"
+                            value={assigned.join(', ')}
+                            onChange={(event) => setUomBarcodes(
+                              uom,
+                              event.target.value.split(',').map((value) => value.trim()).filter(Boolean)
+                            )}
+                            placeholder={t('Comma-separated barcodes', 'Comma-separated barcodes')}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </Field>
+              </div>
               <div className="col-span-1 sm:col-span-2">
                 <Field label={t('Secondary Barcodes', 'Secondary Barcodes')}>
                   <div className="space-y-2">
@@ -816,7 +872,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                                   <button
                                     type="button"
                                     className="rounded bg-blue-600 px-2 py-1 text-[10px] font-semibold text-white disabled:opacity-50"
-                                    disabled={!hasDraftChange || applyingConversionId === conversion.id}
+                                    disabled={!hasDraftChange || applyingConversionId === conversion.id || impact?.used === true}
                                     onClick={() => handleApplyConversionCorrection(conversion)}
                                   >
                                     {applyingConversionId === conversion.id ? t('Applying...', 'Applying...') : t('Apply', 'Apply')}

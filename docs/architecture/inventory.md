@@ -508,3 +508,30 @@ The shared `CreateUom` / `UpdateUom` endpoints and `ManageUomConversionsUseCase`
 | Algorithms | `docs/modules/inventory/ALGORITHMS.md` |
 | Schemas | `docs/modules/inventory/SCHEMAS.md` |
 | Opening stock rules | `docs/modules/inventory/OPENING_STOCK_DOCUMENTS.md` |
+# Item UOM barcodes and localized UOM names
+
+Catalog Core keeps optional item-level `barcode` and `barcodes` fields and also
+stores `uomBarcodes` as item-owned assignments:
+
+```ts
+{ uomId?: string; uom: string; barcodes: string[] }
+```
+
+`uomBarcodeValues` is a persistence-only flattened search field. Firestore uses
+it with `array-contains`; PostgreSQL stores both the structured JSON assignments
+and the flattened string array. Create/update validation checks every general
+and UOM barcode through the company-scoped item repository, so one scanned value
+cannot resolve to multiple items or units in a tenant.
+
+POS search returns the matched UOM assignment. Commercial Core resolves the POS
+price using that UOM id, and the terminal keeps cart lines distinct by
+`itemId + uom`.
+
+UOM codes remain stable identifiers. `Uom.translations` is an extensible
+language-code map; the initial UI edits `en`, `ar`, and `tr`. Display resolution
+uses the full active locale, then its base language, then the default UOM name.
+
+Conversion factors become immutable after any posted stock movement references
+the conversion. Direct update/delete and the former smart-correction endpoint
+all reject used conversions. This prevents retrospective quantity, valuation,
+COGS, and GL drift.

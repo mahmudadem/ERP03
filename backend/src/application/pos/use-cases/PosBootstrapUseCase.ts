@@ -95,11 +95,15 @@ export interface PosProductSearchResult {
     id: string;
     code: string;
     barcode?: string;
+    barcodes?: string[];
+    uomBarcodes?: Item['uomBarcodes'];
     name: string;
     type: 'PRODUCT' | 'SERVICE';
     trackInventory: boolean;
     baseUom: string;
     salesUomId?: string;
+    uomId?: string;
+    uom?: string;
     defaultSalesTaxCodeId?: string;
     salePrice?: number;
   }>;
@@ -121,21 +125,31 @@ export class SearchPosProductsUseCase {
     if (!q) return { items: [] };
     const all = await this.itemRepo.searchItems(input.companyId, q, { limit: input.limit || 25, active: true });
     const items = await Promise.all((all || []).map(async (it: Item) => {
+      const uomBarcodes = it.uomBarcodes || [];
+      const normalizedQuery = q.toLowerCase();
+      const matchedUom = uomBarcodes.find((entry) =>
+        entry.barcodes.some((barcode) => barcode.toLowerCase() === normalizedQuery)
+      );
+      const selectedUomId = matchedUom?.uomId || it.salesUomId || it.baseUomId;
       const resolvedPrice = await this.commercialCore?.resolvePrice({
         companyId: input.companyId,
         itemId: it.id,
         channel: 'pos',
-        uomId: it.salesUomId,
+        uomId: selectedUomId,
       });
       return {
         id: it.id,
         code: it.code,
         barcode: it.barcode,
+        barcodes: it.barcodes,
+        uomBarcodes,
         name: it.name,
         type: (it.type === 'SERVICE' ? 'SERVICE' : 'PRODUCT') as 'PRODUCT' | 'SERVICE',
         trackInventory: !!it.trackInventory,
         baseUom: it.baseUom,
         salesUomId: it.salesUomId,
+        uomId: selectedUomId,
+        uom: matchedUom?.uom || it.salesUom || it.baseUom,
         defaultSalesTaxCodeId: it.defaultSalesTaxCodeId,
         salePrice: resolvedPrice ?? it.salePrice,
       };

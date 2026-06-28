@@ -394,7 +394,8 @@ const PosTerminalPage: React.FC<Props> = () => {
       return false;
     }
     setCart((prev) => {
-      const existing = prev.find((l) => l.itemId === item.id && l.status !== 'VOIDED');
+      const selectedUom = item.uom || item.unitOfMeasure || item.baseUom || '';
+      const existing = prev.find((l) => l.itemId === item.id && l.uom === selectedUom && l.status !== 'VOIDED');
       if (existing) {
         return prev.map((l) =>
           l.lineId === existing.lineId
@@ -409,7 +410,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           itemId: item.id,
           itemCode: item.code || '',
           itemName: item.name || '',
-          uom: item.uom || item.unitOfMeasure || '',
+          uom: selectedUom,
           qty: 1,
           unitPrice,
           originalUnitPrice: unitPrice,
@@ -456,7 +457,11 @@ const PosTerminalPage: React.FC<Props> = () => {
       const normalized = code.toLowerCase();
       const exactMatches = items.filter((item) =>
         String(item.barcode || '').toLowerCase() === normalized ||
-        String(item.code || '').toLowerCase() === normalized
+        String(item.code || '').toLowerCase() === normalized ||
+        (item.barcodes || []).some((barcode: string) => barcode.toLowerCase() === normalized) ||
+        (item.uomBarcodes || []).some((entry: any) =>
+          (entry.barcodes || []).some((barcode: string) => barcode.toLowerCase() === normalized)
+        )
       );
       const matches = exactMatches.length > 0 ? exactMatches : items.length === 1 ? items : [];
 
