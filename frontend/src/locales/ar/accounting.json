@@ -84,7 +84,8 @@
     "totals": "الإجماليات",
     "unbalanced": "غير متوازن",
     "loadError": "فشل تحميل التقرير، حاول مرة أخرى.",
-    "generatedOn": "تم التوليد في {{date}}"
+    "generatedOn": "تم التوليد في {{date}}",
+    "excludeZero": "استبعاد الأرصدة الصفرية"
   },
   "profitLoss": {
     "title": "بيان الأرباح والخسائر",
@@ -241,7 +242,19 @@
     "description": "الوصف",
     "amount": "المبلغ",
     "days": "الأيام",
-    "totals": "الإجماليات"
+    "totals": "الإجماليات",
+    "title": "تقرير أعمار الذمم",
+    "subtitle": "متابعة الذمم المدينة والدائنة حسب فترات الأعمار.",
+    "asOfDate": "حتى تاريخ",
+    "includeZeroBalance": "تضمين الحسابات ذات الرصيد الصفري",
+    "loading": "جارٍ تحميل التقرير...",
+    "empty": "لا توجد أرصدة مستحقة",
+    "emptyDesc": "عدّل الفلاتر أو نطاق التاريخ لعرض النتائج.",
+    "noTransactions": "لا توجد تفاصيل حركات متاحة.",
+    "modeAutoInfo": "الوضع التلقائي: يتضمن التقرير حسابات الذمم المدينة/الدائنة القابلة للترحيل فقط. يتم استبعاد حسابات النقد والحسابات الرئيسية حسب التصميم. استخدم فلتر الحساب لاستهداف حساب أو مجموعة محددة.",
+    "modeManualInfo": "الوضع اليدوي: التقرير محدد بالحساب المختار وفروعه عند وجودها. استخدمه عندما تعرف بنية الذمم المطلوبة للتحليل.",
+    "type": "نوع التقرير",
+    "targetAccount": "اختياري: اختر حساباً محدداً"
   },
   "consolidated": {
     "selectGroup": "اختر المجموعة",
@@ -250,7 +263,11 @@
     "debit": "مدين ({{currency}})",
     "credit": "دائن ({{currency}})",
     "balance": "الرصيد",
-    "totals": "الإجماليات"
+    "totals": "الإجماليات",
+    "title": "ميزان المراجعة المجمع",
+    "subtitle": "ميزان مراجعة على مستوى المجموعة عبر الشركات",
+    "empty": "لا توجد بيانات مجمعة للمعايير المحددة.",
+    "loadError": "فشل تحميل ميزان المراجعة المجمع."
   },
   "bankRec": {
     "selectAccount": "اختر حساباً بنكياً",
@@ -272,7 +289,18 @@
       "unmatched": "غير مطابق",
       "auto_matched": "مطابق تلقائياً",
       "matched": "مطابق"
-    }
+    },
+    "title": "التسوية البنكية",
+    "subtitle": "مطابقة كشوف البنك مع قيود الأستاذ",
+    "chooseFile": "اختر ملف OFX/CSV",
+    "completeHint": "يجب مطابقة كل أسطر كشف البنك قبل الإتمام.",
+    "loading": "جارٍ تحميل بيانات التسوية...",
+    "importTitle": "استيراد كشف البنك",
+    "importPrompt": "لبدء التسوية، ارفع ملف كشف بنك للحساب المختار.",
+    "supportedFormats": "الصيغ المدعومة:",
+    "supportedOfx": ".OFX أو .QFX (تصدير البنك)",
+    "supportedCsv": ".CSV (التاريخ، الوصف، المبلغ، المرجع، الرصيد)",
+    "importedOn": "تم الاستيراد: {{date}}"
   },
   "budget": {
     "fiscalYearId": "معرف السنة المالية",
@@ -310,17 +338,29 @@
       "oct": "أكتوبر",
       "nov": "نوفمبر",
       "dec": "ديسمبر"
-    }
+    },
+    "allCostCenters": "كل مراكز التكلفة"
   },
   "budgetVsActual": {
-    "selectBudget": "اختر الموازنة",
+    "selectBudget": "اختر موازنة أولاً.",
     "option": "{{name}} (الإصدار {{version}}) - {{status}}",
     "account": "الحساب",
     "budget": "الموازنة",
     "actual": "الفعلي",
-    "variance": "الانحراف",
-    "variancePct": "الانحراف %",
-    "costCenter": "مركز تكلفة {{id}}"
+    "variance": "الفرق",
+    "variancePct": "نسبة الفرق",
+    "costCenter": "مركز تكلفة {{id}}",
+    "title": "الموازنة مقابل الفعلي",
+    "subtitle": "مقارنة الموازنات المعتمدة مع القيود الفعلية خلال فترة محددة",
+    "loading": "جارٍ التحميل...",
+    "missingFiscalYear": "لم يتم العثور على السنة المالية للموازنة المختارة.",
+    "invalidRange": "نطاق التاريخ خارج السنة المالية المختارة.",
+    "loadError": "فشل تحميل التقرير.",
+    "monthlyBreakdown": "تفصيل شهري",
+    "month": "الشهر",
+    "underBudget": "أقل من الموازنة",
+    "overBudget": "أعلى من الموازنة",
+    "onBudget": "مطابق للموازنة"
   },
   "costCenters": {
     "title": "مراكز التكلفة",
@@ -372,7 +412,7 @@
   },
   "journal": {
     "title": "دفتر اليومية",
-    "subtitle": "قيود مرتبة زمنياً مع تفاصيلها.",
+    "subtitle": "سجل زمني لكل قيود السندات",
     "from": "من",
     "to": "إلى",
     "voucherType": "نوع القيد",
@@ -384,13 +424,52 @@
     "debit": "مدين",
     "credit": "دائن",
     "period": "الفترة {{from}} إلى {{to}}",
-    "empty": "لا توجد قيود في هذه الفترة.",
+    "empty": "لا توجد قيود يومية للمعايير المحددة.",
     "dateLabel": "التاريخ: {{date}}",
     "voucherLabel": "القيد:",
     "type": "النوع",
     "descriptionLabel": "الوصف",
     "debitTotal": "إجمالي المدين",
-    "creditTotal": "إجمالي الدائن"
+    "creditTotal": "إجمالي الدائن",
+    "processing": "جارٍ المعالجة...",
+    "grandTotal": "الإجمالي العام",
+    "balanced": "متوازن",
+    "voucherCount": "{{count}} قيد",
+    "filters": {
+      "period": "الفترة",
+      "type": "النوع",
+      "form": "النموذج",
+      "currency": "العملة",
+      "status": "الحالة",
+      "voucherType": "نوع السند",
+      "voucherForm": "نموذج السند",
+      "allForms": "كل النماذج",
+      "allCurrencies": "كل العملات",
+      "generateReport": "إنشاء التقرير"
+    },
+    "columns": {
+      "account": "الحساب",
+      "description": "الوصف",
+      "debit": "مدين",
+      "credit": "دائن"
+    },
+    "voucherTypes": {
+      "allTypes": "كل الأنواع",
+      "journalEntry": "قيد يومية",
+      "paymentVoucher": "سند دفع",
+      "receiptVoucher": "سند قبض",
+      "openingBalance": "رصيد افتتاحي",
+      "reversal": "عكس قيد",
+      "fxRevaluation": "إعادة تقييم العملات"
+    },
+    "statuses": {
+      "allStatuses": "كل الحالات",
+      "draft": "مسودة",
+      "pending": "بانتظار الموافقة",
+      "approved": "معتمد",
+      "rejected": "مرفوض",
+      "cancelled": "ملغى"
+    }
   },
   "voucherList": {
     "titleAll": "كل القيود",
@@ -480,7 +559,8 @@
     "awaitingApproval": "بانتظار اعتمادي",
     "awaitingCustody": "بانتظار تأكيد الاستلام",
     "noneApproval": "لا توجد قيود بانتظار اعتمادك.",
-    "noneCustody": "لا توجد أصول بانتظار تأكيدك."
+    "noneCustody": "لا توجد أصول بانتظار تأكيدك.",
+    "awaitingSourceDocs": "مستندات المصدر"
   },
   "settings": {
     "title": "إعدادات المحاسبة",
@@ -713,7 +793,15 @@
     "balanceBase": "الرصيد (أساس)",
     "totals": "الإجماليات",
     "closingBalance": "الرصيد الختامي",
-    "openVoucher": "فتح القيد"
+    "openVoucher": "فتح القيد",
+    "selectAccountPlaceholder": "اختر حساباً للتحليل...",
+    "costCenter": "مركز التكلفة",
+    "optional": "اختياري",
+    "allCostCentersPlaceholder": "كل مراكز التكلفة...",
+    "currency": "العملة",
+    "allCurrencies": "كل العملات",
+    "options": "الخيارات",
+    "executeAnalysis": "تنفيذ التحليل"
   },
   "voucherTable": {
     "columns": {
@@ -1013,19 +1101,6 @@
       "close": "إغلاق النافذة"
     }
   },
-  "unsavedChangesModal": {
-    "title": "تغييرات غير محفوظة",
-    "description": "لديك تغييرات غير محفوظة في هذا المستند. هل أنت متأكد أنك تريد الإغلاق دون حفظ؟",
-    "cancel": "متابعة التعديل",
-    "closeWithoutSaving": "تجاهل التغييرات"
-  },
-  "coaTreePreview": {
-    "title": "هيكل شجرة الحسابات",
-    "subtitle": "{{count}} حساب في هذا القالب",
-    "header": "رئيسي",
-    "posting": "فرعي",
-    "noAccounts": "لا توجد حسابات للمعاينة"
-  },
   "currencyExchangeWidget": {
     "labels": {
       "parity": "التكافؤ",
@@ -1040,5 +1115,189 @@
     },
     "baseCurrencyParity": "تكافؤ العملة الأساسية",
     "baseCurrencyParityFormat": "1 {{currency}} = 1.0000 {{baseCurrency}} (تكافؤ العملة الأساسية)"
+  },
+  "accountingDashboard": {
+    "title": "لوحة المحاسبة",
+    "subtitle": "نظرة فورية على العمليات المالية والإجراءات المطلوبة.",
+    "refresh": "تحديث",
+    "totalVouchers": "إجمالي القيود",
+    "vsLastMonth": "{{pct}}% مقارنة بالشهر الماضي",
+    "cashOnHand": "النقد والبنوك",
+    "cashHint": "عبر حسابات النقد والبنوك",
+    "recentJournalEntries": "آخر قيود اليومية",
+    "viewLedger": "عرض دفتر الأستاذ",
+    "openVoucher": "فتح القيد {{voucherNo}}",
+    "noVouchersYet": "لا توجد قيود بعد.",
+    "financialReports": "التقارير المالية",
+    "financialReportsHint": "الوصول إلى الأرباح والخسائر والميزانية وميزان المراجعة.",
+    "newVoucher": "قيد جديد",
+    "unbalancedDrafts": "{{count}} قيد مسودة غير متوازن يحتاج إلى مراجعة.",
+    "currentPeriodStatus": "حالة الفترة الحالية",
+    "reports": {
+      "trialBalance": "ميزان المراجعة",
+      "balanceSheet": "الميزانية العمومية",
+      "profitLoss": "الأرباح والخسائر",
+      "tradingAccount": "حساب المتاجرة",
+      "accountStatement": "كشف حساب",
+      "agingReport": "أعمار الذمم"
+    }
+  },
+  "accountsList": {
+    "filter": "تصفية",
+    "actions": {
+      "expandAll": "توسيع الكل",
+      "collapseAll": "طي الكل",
+      "newAccount": "حساب جديد"
+    },
+    "columns": {
+      "accountCodeName": "رمز واسم الحساب",
+      "class": "التصنيف",
+      "currency": "العملة",
+      "balance": "الرصيد"
+    },
+    "classes": {
+      "all": "كل التصنيفات",
+      "asset": "أصل",
+      "liability": "التزام",
+      "equity": "حقوق ملكية",
+      "revenue": "إيراد",
+      "expense": "مصروف"
+    },
+    "parentWarning": {
+      "title": "اختيار أصل غير صالح",
+      "attempt": "أنت تحاول إنشاء حساب جديد كفرع من",
+      "ruleTitle": "مخالفة قاعدة محاسبية",
+      "accountPrefix": "الحساب",
+      "postingRule": "هو حساب ترحيل (مستوى حركات). في دليل الحسابات المهني، الحسابات الرئيسية فقط يمكن أن تحتوي على فروع.",
+      "instructionLabel": "التوجيه:",
+      "instruction": "لتنظيم الحسابات بشكل صحيح، اختر حساباً رئيسياً (حساب ملخص) قبل الضغط على زر الإنشاء، أو أنشئ حساباً على مستوى الجذر أولاً.",
+      "confirm": "فهمت"
+    },
+    "loading": "جارٍ تحميل الحسابات...",
+    "roles": {
+      "header": "رئيسي",
+      "posting": "ترحيل"
+    },
+    "searchPlaceholder": "ابحث برمز الحساب أو اسمه..."
+  },
+  "tradingAccount": {
+    "title": "حساب المتاجرة (مجمل الربح)",
+    "subtitle": "الإيرادات مقابل التكاليف المباشرة",
+    "netSales": "صافي المبيعات",
+    "costOfSales": "تكلفة المبيعات",
+    "grossProfit": "مجمل الربح",
+    "gpMargin": "هامش مجمل الربح",
+    "periodicFormula": "معادلة المتاجرة الدورية",
+    "salesBreakdown": "تفصيل المبيعات",
+    "netPurchasesBreakdown": "تفصيل صافي المشتريات",
+    "costOfSalesBreakdown": "تفصيل تكلفة المبيعات",
+    "netPurchases": "صافي المشتريات",
+    "openingInventory": "مخزون أول المدة",
+    "closingInventory": "مخزون آخر المدة",
+    "totalNetSales": "إجمالي صافي المبيعات",
+    "totalCostOfSales": "إجمالي تكلفة المبيعات",
+    "summary": "الملخص",
+    "grossProfitMarginPct": "نسبة هامش مجمل الربح",
+    "section": "القسم",
+    "account": "الحساب",
+    "amount": "المبلغ",
+    "periodLine": "الفترة: {{from}} - {{to}}",
+    "sales": "المبيعات"
+  },
+  "costCenterSummary": {
+    "title": "ملخص مراكز التكلفة",
+    "subtitle": "تفصيل الحسابات حسب مركز التكلفة",
+    "costCenter": "مركز التكلفة",
+    "selectCostCenter": "اختر مركز تكلفة...",
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ",
+    "executeAnalysis": "تنفيذ التحليل",
+    "accountCode": "رمز الحساب",
+    "accountName": "اسم الحساب",
+    "classification": "التصنيف",
+    "totalDebit": "إجمالي المدين",
+    "totalCredit": "إجمالي الدائن",
+    "netBalance": "صافي الرصيد",
+    "processing": "جارٍ المعالجة...",
+    "period": "الفترة",
+    "entries": "القيود",
+    "noEntries": "لا توجد قيود",
+    "noEntriesHint": "لا توجد قيود أستاذ تطابق مركز التكلفة ونطاق التاريخ المحددين."
+  },
+  "subgroupTagging": {
+    "title": "أداة وسم المجموعات الفرعية",
+    "subtitle": "وسم الحسابات لاستخدامها في حساب المتاجرة وتقارير الأرباح والخسائر المنظمة.",
+    "partialFailure": "فشلت بعض التحديثات:",
+    "missingAccountId": "(معرّف الحساب مفقود)",
+    "selectAll": "تحديد الكل",
+    "updated": "تم تحديث {{count}} حساب.",
+    "filters": {
+      "classification": "التصنيف",
+      "currentSubgroup": "المجموعة الفرعية الحالية",
+      "search": "بحث",
+      "searchPlaceholder": "الرمز أو الاسم",
+      "all": "الكل"
+    },
+    "bulk": {
+      "selectClassificationFirst": "اختر تصنيفاً واحداً أولاً",
+      "assignSubgroup": "تعيين مجموعة {{classification}} الفرعية",
+      "applyToSelected": "تطبيق على المحدد"
+    },
+    "columns": {
+      "select": "تحديد",
+      "code": "الرمز",
+      "account": "الحساب",
+      "classification": "التصنيف",
+      "subgroup": "المجموعة الفرعية"
+    },
+    "subgroups": {
+      "clear": "(مسح)",
+      "none": "(بدون)",
+      "sales": "المبيعات",
+      "otherRevenue": "إيرادات أخرى",
+      "costOfSales": "تكلفة المبيعات",
+      "operatingExpenses": "مصروفات تشغيلية",
+      "otherExpenses": "مصروفات أخرى",
+      "retainedEarnings": "أرباح محتجزة",
+      "contributedCapital": "رأس المال المساهم",
+      "reserves": "احتياطيات"
+    },
+    "loadingAccounts": "جارٍ تحميل الحسابات...",
+    "noAccountsFound": "لا توجد حسابات لهذا الفلتر.",
+    "unassigned": "غير مخصص",
+    "modified": "معدّل",
+    "errors": {
+      "loadFailed": "فشل تحميل الحسابات",
+      "selectAtLeastOne": "حدد حساباً واحداً على الأقل لتطبيق تغييرات المجموعة الفرعية.",
+      "singleClassification": "يتطلب التعيين الجماعي اختيار التصنيف نفسه أو تطبيق فلتر تصنيف.",
+      "chooseSubgroup": "اختر قيمة المجموعة الفرعية قبل التطبيق.",
+      "multipleClassifications": "الحسابات المحددة تحتوي على عدة تصنيفات. ضيّق التحديد أولاً.",
+      "noPendingChanges": "لا توجد تغييرات مجموعات فرعية معلقة للحفظ.",
+      "saveFailed": "فشل حفظ تحديثات المجموعات الفرعية"
+    },
+    "classificationOptions": {
+      "all": "الكل (إيرادات + مصروفات + حقوق ملكية)",
+      "revenue": "إيرادات",
+      "expense": "مصروفات",
+      "equity": "حقوق ملكية"
+    },
+    "scope": {
+      "eligible": "المؤهلة"
+    },
+    "summary": {
+      "none": "0 حسابات ضمن نطاق {{scope}}",
+      "taggedAs": "{{tagged}} من {{total}} حسابات {{scope}} موسومة كـ {{subgroup}}",
+      "unassigned": "{{count}} من {{total}} حسابات {{scope}} غير مخصصة",
+      "tagged": "{{count}} من {{total}} حسابات {{scope}} موسومة"
+    },
+    "accounts": "حساب",
+    "selected": "المحدد",
+    "pendingChanges": "التغييرات المعلقة",
+    "saving": "جارٍ الحفظ...",
+    "confirmTitle": "تأكيد الحفظ",
+    "confirmBody": "تحديث {{count}} حساب بتعيينات المجموعات الفرعية الجديدة؟",
+    "cancel": "إلغاء",
+    "confirmYes": "نعم، حدّث",
+    "prepared": "تم تجهيز تحديث المجموعة الفرعية لـ {{count}} حساب."
   }
 }

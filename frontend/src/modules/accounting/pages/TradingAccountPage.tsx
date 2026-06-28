@@ -212,26 +212,36 @@ const TradingAccountReportContent: React.FC<{ params: TradingAccountParams }> = 
               {data.periodicComputation && (
                 <div className="bg-white border rounded-xl p-5 shadow-sm space-y-3">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-bold text-slate-900">Periodic Trading Formula</h3>
+                    <h3 className="text-lg font-bold text-slate-900">
+                      {t('tradingAccount.periodicFormula', { defaultValue: 'Periodic Trading Formula' })}
+                    </h3>
                     <span className="text-xs font-bold uppercase tracking-widest text-fuchsia-700 bg-fuchsia-50 border border-fuchsia-200 rounded-full px-2 py-1">
                       {data.periodicComputation.pricingPolicy.replace('_', ' ')}
                     </span>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-slate-500">Opening Inventory</div>
+                      <div className="text-xs font-semibold uppercase text-slate-500">
+                        {t('tradingAccount.openingInventory', { defaultValue: 'Opening Inventory' })}
+                      </div>
                       <div className="font-mono text-lg font-bold text-slate-900">{moneyFmt(data.periodicComputation.openingInventory, currency)}</div>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-slate-500">Net Purchases</div>
+                      <div className="text-xs font-semibold uppercase text-slate-500">
+                        {t('tradingAccount.netPurchases', { defaultValue: 'Net Purchases' })}
+                      </div>
                       <div className="font-mono text-lg font-bold text-slate-900">{moneyFmt(data.periodicComputation.netPurchases, currency)}</div>
                     </div>
                     <div className="rounded-lg border border-slate-200 bg-slate-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-slate-500">Closing Inventory</div>
+                      <div className="text-xs font-semibold uppercase text-slate-500">
+                        {t('tradingAccount.closingInventory', { defaultValue: 'Closing Inventory' })}
+                      </div>
                       <div className="font-mono text-lg font-bold text-slate-900">{moneyFmt(data.periodicComputation.closingInventory, currency)}</div>
                     </div>
                     <div className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-3">
-                      <div className="text-xs font-semibold uppercase text-rose-600">Cost of Sales</div>
+                      <div className="text-xs font-semibold uppercase text-rose-600">
+                        {t('tradingAccount.costOfSales', { defaultValue: 'Cost of Sales' })}
+                      </div>
                       <div className="font-mono text-lg font-bold text-rose-700">{moneyFmt(data.costOfSales, currency)}</div>
                     </div>
                   </div>
@@ -249,7 +259,11 @@ const TradingAccountReportContent: React.FC<{ params: TradingAccountParams }> = 
                   currency={currency}
                 />
                 <BreakdownCard
-                  title={data.periodicComputation ? 'Net Purchases Breakdown' : t('tradingAccount.costOfSalesBreakdown', { defaultValue: 'Cost of Sales Breakdown' })}
+                  title={
+                    data.periodicComputation
+                      ? t('tradingAccount.netPurchasesBreakdown', { defaultValue: 'Net Purchases Breakdown' })
+                      : t('tradingAccount.costOfSalesBreakdown', { defaultValue: 'Cost of Sales Breakdown' })
+                  }
                   rows={data.periodicComputation?.purchaseBreakdown || data.cogsByAccount}
                   totalLabel={t('profitLoss.total', { defaultValue: 'Total' })}
                   total={data.periodicComputation?.netPurchases ?? data.costOfSales}
@@ -305,17 +319,17 @@ const TradingAccountPage: React.FC = () => {
     costBreakdown.forEach((acc) =>
       rows.push({
         section: response.periodicComputation
-          ? 'Net Purchases'
+            ? t('tradingAccount.netPurchases', { defaultValue: 'Net Purchases' })
           : t('tradingAccount.costOfSales', { defaultValue: 'Cost of Sales' }),
         account: acc.accountName || acc.accountId,
         amount: acc.amount,
       })
     );
     if (response.periodicComputation) {
-      rows.push({ section: 'Periodic Formula', account: 'Opening Inventory', amount: response.periodicComputation.openingInventory });
-      rows.push({ section: 'Periodic Formula', account: 'Net Purchases', amount: response.periodicComputation.netPurchases });
-      rows.push({ section: 'Periodic Formula', account: 'Closing Inventory', amount: -response.periodicComputation.closingInventory });
-      rows.push({ section: 'Periodic Formula', account: t('tradingAccount.totalCostOfSales', { defaultValue: 'Total Cost of Sales' }), amount: response.costOfSales });
+      rows.push({ section: t('tradingAccount.periodicFormula', { defaultValue: 'Periodic Formula' }), account: t('tradingAccount.openingInventory', { defaultValue: 'Opening Inventory' }), amount: response.periodicComputation.openingInventory });
+      rows.push({ section: t('tradingAccount.periodicFormula', { defaultValue: 'Periodic Formula' }), account: t('tradingAccount.netPurchases', { defaultValue: 'Net Purchases' }), amount: response.periodicComputation.netPurchases });
+      rows.push({ section: t('tradingAccount.periodicFormula', { defaultValue: 'Periodic Formula' }), account: t('tradingAccount.closingInventory', { defaultValue: 'Closing Inventory' }), amount: -response.periodicComputation.closingInventory });
+      rows.push({ section: t('tradingAccount.periodicFormula', { defaultValue: 'Periodic Formula' }), account: t('tradingAccount.totalCostOfSales', { defaultValue: 'Total Cost of Sales' }), amount: response.costOfSales });
     } else {
       rows.push({
         section: t('tradingAccount.costOfSales', { defaultValue: 'Cost of Sales' }),

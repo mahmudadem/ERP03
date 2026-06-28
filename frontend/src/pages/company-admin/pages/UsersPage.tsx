@@ -224,7 +224,7 @@ export const UsersPage: React.FC = () => {
                       {user.isOwner ? (
                         <div className="flex items-center text-gray-900 font-medium bg-gray-100 px-2 py-1 rounded">
                           <Shield size={14} className="mr-1.5 text-purple-500" />
-                          {user.roleName}
+                          {t('companyAdmin.users.owner', { defaultValue: 'Owner' })}
                         </div>
                       ) : (
                         <>

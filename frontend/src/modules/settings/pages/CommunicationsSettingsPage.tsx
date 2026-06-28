@@ -195,7 +195,7 @@ const CommunicationsSettingsPage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center text-gray-400 dark:text-[var(--color-text-muted)]">
-        {t('common.loading', 'Loading…')}
+        {t('loading', 'Loading...')}
       </div>
     );
   }
@@ -219,7 +219,7 @@ const CommunicationsSettingsPage: React.FC = () => {
           {!dirty && (
             <div className="flex items-center gap-3">
               <Button onClick={handleSave} isLoading={saving} disabled={!dirty || saving}>
-                {t('common.saveChanges', 'Save Changes')}
+                {t('saveChanges', 'Save Changes')}
               </Button>
             </div>
           )}
@@ -256,6 +256,8 @@ const CommunicationsSettingsPage: React.FC = () => {
         {CHANNELS.map((def) => {
           const Icon = def.icon;
           const list = accounts.filter((a) => a.channel === def.id);
+          const channelKey = def.id.toLowerCase();
+          const channelLabel = t(`communications.channel.${channelKey}.title`, { defaultValue: def.label });
           return (
             <section
               key={def.id}
@@ -268,13 +270,13 @@ const CommunicationsSettingsPage: React.FC = () => {
                   </span>
                   <div>
                     <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-900 dark:text-[var(--color-text-primary)]">
-                      {t(`communications.channel.${def.id}.title`, `${def.label}`)}
+                      {channelLabel}
                       <span className="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500 dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-muted)]">
                         {list.length}
                       </span>
                     </h2>
                     <p className="mt-0.5 text-xs text-gray-500 dark:text-[var(--color-text-muted)]">
-                      {t(`communications.channel.${def.id}.description`, channelHint(def.id))}
+                      {t(`communications.channel.${channelKey}.description`, { defaultValue: channelHint(def.id) })}
                     </p>
                   </div>
                 </div>
@@ -295,7 +297,7 @@ const CommunicationsSettingsPage: React.FC = () => {
                     <p className="text-sm text-gray-500 dark:text-[var(--color-text-muted)]">
                       {t('communications.noChannelAccounts', {
                         defaultValue: 'No {{channel}} accounts yet.',
-                        channel: def.label,
+                        channel: channelLabel,
                       })}
                     </p>
                     <button
@@ -303,7 +305,7 @@ const CommunicationsSettingsPage: React.FC = () => {
                       onClick={() => add(def)}
                       className="cursor-pointer text-sm font-medium text-primary-600 hover:text-primary-700 dark:text-primary-400"
                     >
-                      {t('communications.addFirst', { defaultValue: 'Add a {{channel}} account', channel: def.label })}
+                      {t('communications.addFirst', { defaultValue: 'Add a {{channel}} account', channel: channelLabel })}
                     </button>
                   </div>
                 ) : (

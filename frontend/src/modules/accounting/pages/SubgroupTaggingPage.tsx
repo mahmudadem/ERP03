@@ -122,6 +122,12 @@ const SubgroupTaggingPage: React.FC = () => {
     return t('subgroupTagging.classificationOptions.equity', { defaultValue: 'Equity' });
   };
 
+  const accountRoleLabel = (role?: string | null) => {
+    if (role === 'HEADER') return t('accountsList.roles.header', { defaultValue: 'Header' });
+    if (role === 'POSTING') return t('accountsList.roles.posting', { defaultValue: 'Posting' });
+    return role || t('accountsList.roles.posting', { defaultValue: 'Posting' });
+  };
+
   const loadAccounts = async () => {
     setLoading(true);
     setError(null);
@@ -628,7 +634,7 @@ const SubgroupTaggingPage: React.FC = () => {
                       <td className="px-4 py-3 align-top">
                         <div className="font-medium text-slate-900 dark:text-slate-100">{account.name}</div>
                         <div className="text-xs text-slate-500 mt-0.5 dark:text-slate-300">
-                          {account.accountRole || t('accountsList.roles.posting', { defaultValue: 'Posting' })}
+                          {accountRoleLabel(account.accountRole)}
                           {unassigned && (
                             <span className="ml-2 inline-flex items-center gap-1 text-amber-700 dark:text-amber-300">
                               <AlertTriangle className="w-3 h-3" />
