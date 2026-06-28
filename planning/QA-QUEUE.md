@@ -18,6 +18,16 @@
 
 ## 🧪 Ready to Test
 
+### Catalog/POS — UOM Barcodes and Translated UOM Names
+**Added by:** Codex (Task 277)
+**What to test:**
+- Define `PCS` and `BOX`, including English, Arabic, and Turkish names.
+- Add `1 BOX = 12 PCS` to an item, then assign different PCS and BOX barcodes.
+- Confirm another item cannot reuse either barcode.
+- Scan each barcode in POS; expected unit and UOM price must be selected.
+- Switch EN/AR/TR and confirm UOM selectors show the localized name.
+- Post stock using BOX, then confirm its conversion factor cannot be changed or deleted.
+
 ### Purchases — Whole-Invoice Charges & Discounts (Allocation Grid, PI↔SI parity)
 **Added by:** Claude (Opus 4.8) — report 210
 **What to test:**

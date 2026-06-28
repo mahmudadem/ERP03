@@ -2483,6 +2483,11 @@
     "SAVE": "تم الحفظ بنجاح"
   },
   "inventory": {
+    "uom": {
+      "fields": {
+        "localizedName": "الاسم المترجم"
+      }
+    },
     "settings": {
       "accountingMode": {
         "label": "نمط المحاسبة",
@@ -4707,6 +4712,9 @@
       "saveFailed": "تعذر حفظ تفضيلات المظهر."
     }
   },
+  "Barcodes by Unit of Measure": "الباركود حسب وحدة القياس",
+  "Save the item and configure its units before assigning unit barcodes.": "احفظ الصنف واضبط وحداته قبل تعيين باركودات الوحدات.",
+  "Comma-separated barcodes": "باركودات مفصولة بفواصل",
   "saveChanges": "حفظ التغييرات",
   "loading": "جارٍ التحميل..."
 }

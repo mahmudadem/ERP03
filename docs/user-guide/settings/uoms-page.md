@@ -54,3 +54,13 @@ Every save and load outcome emits a toast in the bottom-right corner:
 
 - [Inventory Items Page](../../inventory/inventory-items-page.md) — uses base UOM + item-level conversion factors.
 - [Item UOM Conversions](../../inventory/item-uom-conversion.md) — how items map alternate UOMs back to the base UOM.
+# Translated unit names
+
+Each UOM has a stable code and a default name. English, Arabic, and Turkish
+localized names can be entered on the UOM page. The code does not change when
+the application language changes; only the displayed name changes. If a
+translation is empty, the default name is shown.
+
+Once a conversion factor has been used in a posted stock transaction, it cannot
+be changed or deleted. Correct the source transaction through an approved
+reversal workflow instead of rewriting the historical factor.
