@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ClipboardList, FileText, ShoppingCart, Undo2 } from 'lucide-react';
 import { companyModulesApi } from '../../../api/companyModules';
@@ -43,7 +44,8 @@ const StatsCard = ({
   </Card>
 );
 
-const PurchaseHomePage: React.FC = () => {
+const PurchaseHomePage: React.FC = () => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const { companyId } = useCompanyAccess();
 
@@ -193,8 +195,8 @@ const PurchaseHomePage: React.FC = () => {
   if (loading && initialized === null) {
     return (
       <div className="space-y-6 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Overview</h1>
-        <Card className="p-6">Loading purchases module...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseHomePage.purchasesOverview", "Purchases Overview")}</h1>
+        <Card className="p-6">{t("auto.PurchaseHomePage.loadingPurchasesModule", "Loading purchases module...")}</Card>
       </div>
     );
   }
@@ -202,7 +204,7 @@ const PurchaseHomePage: React.FC = () => {
   if (loadError && initialized === null) {
     return (
       <div className="space-y-6 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchases Overview</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseHomePage.purchasesOverview2", "Purchases Overview")}</h1>
         <Card className="p-6 text-sm text-red-700">{loadError}</Card>
       </div>
     );
@@ -229,16 +231,10 @@ const PurchaseHomePage: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
-                Purchases Overview Module
-              </h1>
-              <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">
-                Module Dashboard
-              </span>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{t("auto.PurchaseHomePage.purchasesOverviewModule", "Purchases Overview Module")}</h1>
+              <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">{t("auto.PurchaseHomePage.moduleDashboard", "Module Dashboard")}</span>
             </div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Manage vendors, track purchase orders and receipts, and process vendor invoices.
-            </div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("auto.PurchaseHomePage.manageVendorsTrackPurchaseOrdersAndReceiptsAnd", "Manage vendors, track purchase orders and receipts, and process vendor invoices.")}</div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -253,9 +249,7 @@ const PurchaseHomePage: React.FC = () => {
             type="button"
             onClick={() => navigate('/purchases/settings')}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          >
-            Settings
-          </button>
+          >{t("auto.PurchaseHomePage.settings", "Settings")}</button>
         </div>
       </div>
 
@@ -347,7 +341,7 @@ const PurchaseHomePage: React.FC = () => {
             </button>
           ))}
           {!loading && recentActivity.length === 0 && (
-            <div className="py-4 text-center text-sm text-slate-500">No recent activity yet.</div>
+            <div className="py-4 text-center text-sm text-slate-500">{t("auto.PurchaseHomePage.noRecentActivityYet", "No recent activity yet.")}</div>
           )}
         </div>
       </Card>

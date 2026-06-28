@@ -128,7 +128,7 @@ const statusBadgeClass = (status: POStatus): string => {
 
 const PurchaseOrderDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
-  const { t } = useTranslation();
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const isCreateMode = !params.id || params.id === 'new';
@@ -323,7 +323,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.poDetail.loadFailed')
+          t('poDetail.loadFailed')
       );
     } finally {
       setLoading(false);
@@ -545,19 +545,19 @@ const PurchaseOrderDetailPage: React.FC = () => {
     Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId);
 
   const validateBeforeSave = (): string | null => {
-    if (!form.vendorId) return t('purchases.poDetail.vendorRequired');
-    if (!form.orderDate) return t('purchases.poDetail.orderDateRequired');
-    if (!form.currency.trim()) return t('purchases.poDetail.currencyRequired');
-    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('purchases.poDetail.exchangeRatePositive');
+    if (!form.vendorId) return t('poDetail.vendorRequired');
+    if (!form.orderDate) return t('poDetail.orderDateRequired');
+    if (!form.currency.trim()) return t('poDetail.currencyRequired');
+    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('poDetail.exchangeRatePositive');
     // Validate only filled lines — ignore the line table's trailing empty working row.
     const filled = form.lines.filter(isFilledLine);
-    if (!filled.length) return t('purchases.poDetail.minLines');
+    if (!filled.length) return t('poDetail.minLines');
 
     for (let i = 0; i < filled.length; i += 1) {
       const line = filled[i];
-      if (!line.itemId) return t('purchases.poDetail.lineItemRequired', { lineNum: i + 1 });
-      if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return t('purchases.poDetail.lineQtyPositive', { lineNum: i + 1 });
-      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('purchases.poDetail.lineUnitPriceNonNegative', { lineNum: i + 1 });
+      if (!line.itemId) return t('poDetail.lineItemRequired', { lineNum: i + 1 });
+      if (Number.isNaN(line.orderedQty) || line.orderedQty <= 0) return t('poDetail.lineQtyPositive', { lineNum: i + 1 });
+      if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) return t('poDetail.lineUnitPriceNonNegative', { lineNum: i + 1 });
     }
 
     return null;
@@ -621,7 +621,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.poDetail.saveFailed')
+          t('poDetail.saveFailed')
       );
       return null;
     } finally {
@@ -640,7 +640,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.poDetail.actionFailed')
+          t('poDetail.actionFailed')
       );
     } finally {
       setActionBusy(false);
@@ -693,8 +693,8 @@ const PurchaseOrderDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('purchases.poDetail.title')}</h1>
-        <Card className="p-6">{t('purchases.poDetail.loading')}</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('poDetail.title')}</h1>
+        <Card className="p-6">{t('poDetail.loading')}</Card>
       </div>
     );
   }
@@ -702,9 +702,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
   const footerSummary = (
     <DocumentFooterTotalsStrip
       totals={[
-        { label: t('purchases.poDetail.subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-        { label: t('purchases.poDetail.tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-        { label: t('purchases.poDetail.grand'), value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+        { label: t('poDetail.subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+        { label: t('poDetail.tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: t('poDetail.grand'), value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
       ]}
     />
   );
@@ -719,7 +719,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={saveOrder}
             disabled={saving || actionBusy}
           >
-            {saving ? t('purchases.poDetail.saving') : t('purchases.poDetail.save')}
+            {saving ? t('poDetail.saving') : t('poDetail.save')}
           </button>
           <button
             type="button"
@@ -727,7 +727,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={confirmOrder}
             disabled={saving || actionBusy}
           >
-            {t('purchases.poDetail.confirm')}
+            {t('poDetail.confirm')}
           </button>
           <button
             type="button"
@@ -735,7 +735,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             onClick={deleteDraft}
             disabled={saving || actionBusy}
           >
-            {t('purchases.poDetail.delete')}
+            {t('poDetail.delete')}
           </button>
         </>
       )}
@@ -749,7 +749,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={() => navigate(`/purchases/goods-receipts/new?${downstreamActionQuery}`)}
               disabled={!form.id}
             >
-              {t('purchases.poDetail.receiveGoods')}
+              {t('poDetail.receiveGoods')}
             </button>
           )}
           {canCreateInvoice && (
@@ -759,7 +759,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={() => navigate(`/purchases/invoices/new?${downstreamActionQuery}`)}
               disabled={!form.id}
             >
-              {t('purchases.poDetail.createInvoice')}
+              {t('poDetail.createInvoice')}
             </button>
           )}
           {canCancelOrder && (
@@ -769,7 +769,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={cancelOrder}
               disabled={saving || actionBusy}
             >
-              {t('purchases.poDetail.cancel')}
+              {t('poDetail.cancel')}
             </button>
           )}
           {canCloseOrder && (
@@ -779,28 +779,28 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onClick={closeOrder}
               disabled={saving || actionBusy}
             >
-              {t('purchases.poDetail.close')}
+              {t('poDetail.close')}
             </button>
           )}
         </>
       )}
 
       {!isDraft && !(canReceiveGoods || canCreateInvoice || canCloseOrder || canCancelOrder) && (
-        <span className="text-xs font-semibold text-slate-500">{t('purchases.poDetail.readOnlyStatus', { status: form.status })}</span>
+        <span className="text-xs font-semibold text-slate-500">{t('poDetail.readOnlyStatus', { status: form.status })}</span>
       )}
     </>
   );
 
   const railSections: DocumentScaffoldRailSections = {
     info: {
-      title: t('purchases.poDetail.procurementStatus'),
+      title: t('poDetail.procurementStatus'),
       content: (
         <DocumentRailKeyValueList
           items={[
-            { label: t('purchases.poDetail.linesCount'), value: form.lines.length },
-            { label: t('purchases.poDetail.vendor'), value: form.vendorName || '-' },
+            { label: t('poDetail.linesCount'), value: form.lines.length },
+            { label: t('poDetail.vendor'), value: form.vendorName || '-' },
             {
-              label: t('purchases.poDetail.workflow'),
+              label: t('poDetail.workflow'),
               value: (
                 <DocumentPill tone={isDraft ? 'slate' : form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : 'amber'}>
                   {form.status}
@@ -812,20 +812,20 @@ const PurchaseOrderDetailPage: React.FC = () => {
       ),
     },
     totals: {
-      title: t('purchases.poDetail.orderTotals'),
+      title: t('poDetail.orderTotals'),
       action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
       content: (
         <DocumentRailTotals
           rows={[
-            { label: t('purchases.poDetail.subtotalWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-            { label: t('purchases.poDetail.subtotalBase'), value: totals.subtotalBase.toFixed(2) },
-            { label: t('purchases.poDetail.taxWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
-            { label: t('purchases.poDetail.taxBase'), value: totals.taxTotalBase.toFixed(2) },
+            { label: t('poDetail.subtotalWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+            { label: t('poDetail.subtotalBase'), value: totals.subtotalBase.toFixed(2) },
+            { label: t('poDetail.taxWithCurrency', { currency: form.currency }), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
+            { label: t('poDetail.taxBase'), value: totals.taxTotalBase.toFixed(2) },
           ]}
           grand={{
-            label: t('purchases.poDetail.grandTotal'),
+            label: t('poDetail.grandTotal'),
             value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
-            subLabel: t('purchases.poDetail.baseSuffix'),
+            subLabel: t('poDetail.baseSuffix'),
             subValue: totals.grandTotalBase.toFixed(2),
           }}
         />
@@ -835,10 +835,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
 
   return (
     <DocumentDetailScaffold
-      title={form.orderNumber || t('purchases.poDetail.newPurchaseOrder')}
-      subtitle={t('purchases.poDetail.subtitle')}
+      title={form.orderNumber || t('poDetail.newPurchaseOrder')}
+      subtitle={t('poDetail.subtitle')}
       icon={FileText}
-      backLabel={t('purchases.poDetail.backToList')}
+      backLabel={t('poDetail.backToList')}
       onBack={() => navigate('/purchases/orders')}
       badges={
         <DocumentPill tone={form.status === 'CONFIRMED' ? 'blue' : form.status === 'CLOSED' ? 'green' : form.status === 'CANCELLED' ? 'rose' : 'slate'}>
@@ -846,10 +846,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
         </DocumentPill>
       }
       railSections={railSections}
-      railTitle={t('purchases.poDetail.sideRailTitle')}
+      railTitle={t('poDetail.sideRailTitle')}
       newAction={{
-        label: t('purchases.poDetail.newPurchaseOrder', 'New Purchase Order'),
-        title: t('purchases.poDetail.newPurchaseOrder', 'New Purchase Order'),
+        label: t('poDetail.newPurchaseOrder', 'New Purchase Order'),
+        title: t('poDetail.newPurchaseOrder', 'New Purchase Order'),
         hasUnsavedChanges: hasUnsavedDocumentChanges,
         onNew: openNewOrderForm,
       }}
@@ -867,7 +867,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           content: (
       <Card className="overflow-visible p-0">
         <DocumentHeaderGrid>
-          <DocumentHeaderField label={t('purchases.poDetail.vendorLabel')}>
+          <DocumentHeaderField label={t('poDetail.vendorLabel')}>
             <PartySelector 
               className={documentHeaderSelectorClass}
               value={form.vendorId}
@@ -882,7 +882,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               }}
             />
           </DocumentHeaderField>
-          <DocumentHeaderField label={t('purchases.poDetail.orderDate')}>
+          <DocumentHeaderField label={t('poDetail.orderDate')}>
             <DatePicker 
               className="w-full"
               inputClassName={documentHeaderControlClass}
@@ -891,7 +891,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onChange={(val) => setForm((prev) => ({ ...prev, orderDate: val }))}
             />
           </DocumentHeaderField>
-          <DocumentHeaderField label={t('purchases.poDetail.expectedDelivery')}>
+          <DocumentHeaderField label={t('poDetail.expectedDelivery')}>
             <DatePicker 
               className="w-full"
               inputClassName={documentHeaderControlClass}
@@ -900,7 +900,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               onChange={(val) => setForm((prev) => ({ ...prev, expectedDeliveryDate: val }))}
             />
           </DocumentHeaderField>
-          <DocumentHeaderField label={t('purchases.poDetail.currency')}>
+          <DocumentHeaderField label={t('poDetail.currency')}>
             <CurrencySelector
               className={documentHeaderSelectorClass}
               value={form.currency}
@@ -908,7 +908,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
               disabled={isReadOnly || saving || actionBusy}
             />
           </DocumentHeaderField>
-          <DocumentHeaderField label={t('purchases.poDetail.exchangeRate')}>
+          <DocumentHeaderField label={t('poDetail.exchangeRate')}>
             <CurrencyExchangeWidget
               currency={form.currency}
               baseCurrency={company?.baseCurrency || 'USD'}
@@ -937,7 +937,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           content: (
       <ClassicLineItemsTable<EditableLine>
         tableId="purchases.order.lines"
-        title={t('purchases.poDetail.lineItems')}
+        title={t('poDetail.lineItems')}
         rows={form.lines}
         disabled={isReadOnly}
         onRowChange={setLine}
@@ -946,7 +946,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         createEmptyRow={createEmptyLine}
         isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.warehouseId)}
         onRowAdd={!isReadOnly ? addLine : undefined}
-        addLabel={t('purchases.poDetail.addLine')}
+        addLabel={t('poDetail.addLine')}
         minTableWidth="1160px"
         columnContextMenus={!isReadOnly ? {
           unitPrice: createDocumentPriceOverrideMenuItems({
@@ -979,7 +979,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
         columns={[
           {
             id: 'item',
-            label: t('purchases.poDetail.itemColumn'),
+            label: t('poDetail.itemColumn'),
             kind: 'custom',
             width: '260px',
             render: (line, index) => (
@@ -987,7 +987,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 value={line.itemId}
                 disabled={isReadOnly}
                 noBorder
-                placeholder={t('purchases.poDetail.selectItem')}
+                placeholder={t('poDetail.selectItem')}
                 onChange={(item) => {
                   if (!item) {
                     // Clearing item resets the whole row to defaults.
@@ -1024,10 +1024,10 @@ const PurchaseOrderDetailPage: React.FC = () => {
               />
             ),
           } as ColumnDef<EditableLine>,
-          { id: 'qty', label: t('purchases.poDetail.qtyColumn'), kind: 'number', width: '90px', accessor: (line) => line.orderedQty, setter: (value) => ({ orderedQty: Number(value) }) },
+          { id: 'qty', label: t('poDetail.qtyColumn'), kind: 'number', width: '90px', accessor: (line) => line.orderedQty, setter: (value) => ({ orderedQty: Number(value) }) },
           {
             id: 'uom',
-            label: t('purchases.poDetail.uomColumn'),
+            label: t('poDetail.uomColumn'),
             kind: 'custom',
             width: '95px',
             render: (line, index) => (
@@ -1045,7 +1045,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'unitPrice',
-            label: t('purchases.poDetail.unitPriceColumn'),
+            label: t('poDetail.unitPriceColumn'),
             kind: 'custom',
             width: '130px',
             labelExtras:
@@ -1096,7 +1096,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'discountType',
-            label: t('purchases.poDetail.discountTypeColumn', 'Discount Type'),
+            label: t('poDetail.discountTypeColumn', 'Discount Type'),
             kind: 'custom',
             width: '64px',
             render: (line, index) => (
@@ -1111,7 +1111,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'discountValue',
-            label: t('purchases.poDetail.discountColumn', 'Discount'),
+            label: t('poDetail.discountColumn', 'Discount'),
             kind: 'number',
             width: '70px',
             accessor: (line) => line.discountValue || 0,
@@ -1119,7 +1119,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'taxCode',
-            label: t('purchases.poDetail.taxCodeColumn'),
+            label: t('poDetail.taxCodeColumn'),
             kind: 'custom',
             width: '120px',
             render: (line, index) => (
@@ -1128,8 +1128,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 options={purchaseTaxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
                 valueId={line.taxCodeId}
                 disabled={isReadOnly || !line.itemId}
-                emptySetupMessage={t(
-                  'purchases.poDetail.taxCodeEmptyHint',
+                emptySetupMessage={t('poDetail.taxCodeEmptyHint',
                   'No purchase tax codes set up. Create one with scope PURCHASE or BOTH to use it here.',
                 )}
                 onChange={(option) => setLine(index, { taxCodeId: option?.id })}
@@ -1138,7 +1137,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'warehouse',
-            label: t('purchases.poDetail.warehouseColumn'),
+            label: t('poDetail.warehouseColumn'),
             kind: 'custom',
             width: '190px',
             render: (line, index) => (
@@ -1146,14 +1145,14 @@ const PurchaseOrderDetailPage: React.FC = () => {
                 value={line.warehouseId}
                 disabled={isReadOnly}
                 noBorder
-                placeholder={t('purchases.poDetail.warehousePlaceholder')}
+                placeholder={t('poDetail.warehousePlaceholder')}
                 onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
               />
             ),
           },
           {
             id: 'lineTotal',
-            label: t('purchases.poDetail.lineTotalColumn'),
+            label: t('poDetail.lineTotalColumn'),
             kind: 'computed',
             width: '115px',
             compute: (_line, index) => computedLines[index]?.lineTotalDoc || 0,
@@ -1176,9 +1175,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
               return { unitPriceDoc: value / q };
             },
           },
-          { id: 'tax', label: t('purchases.poDetail.taxColumn'), kind: 'computed', width: '100px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
-          { id: 'base', label: t('purchases.poDetail.lineBaseColumn'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.lineTotalBase || 0 },
-          { id: 'statusQty', label: t('purchases.poDetail.statusQtyColumn'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('purchases.poDetail.statusQtyFormat', { received: line.receivedQty, invoiced: line.invoicedQty, returned: line.returnedQty }) },
+          { id: 'tax', label: t('poDetail.taxColumn'), kind: 'computed', width: '100px', compute: (_line, index) => computedLines[index]?.taxAmountDoc || 0, formatter: (value) => `${form.currency} ${Number(value).toFixed(2)}` },
+          { id: 'base', label: t('poDetail.lineBaseColumn'), kind: 'computed', width: '110px', compute: (_line, index) => computedLines[index]?.lineTotalBase || 0 },
+          { id: 'statusQty', label: t('poDetail.statusQtyColumn'), kind: 'computed', width: '150px', align: 'left', compute: (line) => t('poDetail.statusQtyFormat', { received: line.receivedQty, invoiced: line.invoicedQty, returned: line.returnedQty }) },
         ]}
       />
           ),
@@ -1188,7 +1187,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-2">
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{t('purchases.poDetail.vendorNotes')}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('poDetail.vendorNotes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1198,7 +1197,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">{t('purchases.poDetail.internalNotes')}</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t('poDetail.internalNotes')}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
@@ -1214,12 +1213,12 @@ const PurchaseOrderDetailPage: React.FC = () => {
         custom: {
           content: !isCreateMode && form.id ? (
         <Card className="p-5">
-          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('purchases.poDetail.linkedDocuments')}</h3>
+          <h3 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t('poDetail.linkedDocuments')}</h3>
           <div className="grid gap-6 md:grid-cols-3">
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">{t('purchases.poDetail.goodsReceipts')}</div>
+              <div className="mb-2 text-sm font-medium text-slate-700">{t('poDetail.goodsReceipts')}</div>
               <div className="space-y-2">
-                {relatedGRNs.length === 0 && <div className="text-sm text-slate-500">{t('purchases.poDetail.noLinkedGRNs')}</div>}
+                {relatedGRNs.length === 0 && <div className="text-sm text-slate-500">{t('poDetail.noLinkedGRNs')}</div>}
                 {relatedGRNs.map((grn) => (
                   <button
                     key={grn.id}
@@ -1233,9 +1232,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">{t('purchases.poDetail.purchaseInvoices')}</div>
+              <div className="mb-2 text-sm font-medium text-slate-700">{t('poDetail.purchaseInvoices')}</div>
               <div className="space-y-2">
-                {relatedPIs.length === 0 && <div className="text-sm text-slate-500">{t('purchases.poDetail.noLinkedInvoices')}</div>}
+                {relatedPIs.length === 0 && <div className="text-sm text-slate-500">{t('poDetail.noLinkedInvoices')}</div>}
                 {relatedPIs.map((invoice) => (
                   <button
                     key={invoice.id}
@@ -1249,9 +1248,9 @@ const PurchaseOrderDetailPage: React.FC = () => {
               </div>
             </div>
             <div>
-              <div className="mb-2 text-sm font-medium text-slate-700">{t('purchases.poDetail.purchaseReturns')}</div>
+              <div className="mb-2 text-sm font-medium text-slate-700">{t('poDetail.purchaseReturns')}</div>
               <div className="space-y-2">
-                {relatedReturns.length === 0 && <div className="text-sm text-slate-500">{t('purchases.poDetail.noLinkedReturns')}</div>}
+                {relatedReturns.length === 0 && <div className="text-sm text-slate-500">{t('poDetail.noLinkedReturns')}</div>}
                 {relatedReturns.map((entry) => (
                   <button
                     key={entry.id}

@@ -1,12 +1,14 @@
 
 import React, { useEffect, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { PartyDTO, sharedApi } from '../../../api/sharedApi';
 import { Card } from '../../../components/ui/Card';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 
-const VendorsListPage: React.FC = () => {
+const VendorsListPage: React.FC = () => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const location = useLocation();
   const { openWindow } = useWindowManager();
@@ -60,29 +62,27 @@ const VendorsListPage: React.FC = () => {
   return (
     <div className="space-y-6 p-4">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight">Vendors (Suppliers)</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100 uppercase tracking-tight">{t("auto.VendorsListPage.vendorsSuppliers", "Vendors (Suppliers)")}</h1>
         <button
           className="rounded bg-primary-600 px-5 py-2 text-xs font-bold text-white hover:bg-primary-700 transition-all uppercase tracking-widest"
           onClick={handleAddVendor}
           type="button"
-        >
-          Add Vendor
-        </button>
+        >{t("auto.VendorsListPage.addVendor", "Add Vendor")}</button>
       </div>
 
       <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800">
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse tracking-widest font-mono">Loading Supply Chain Records...</div>
+          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse tracking-widest font-mono">{t("auto.VendorsListPage.loadingSupplyChainRecords", "Loading Supply Chain Records...")}</div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Code</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Display Name</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Phone</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">Email</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest text-right">Status</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t("auto.VendorsListPage.code", "Code")}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t("auto.VendorsListPage.displayName", "Display Name")}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t("auto.VendorsListPage.phone", "Phone")}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t("auto.VendorsListPage.email", "Email")}</th>
+                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest text-right">{t("auto.VendorsListPage.status", "Status")}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -105,9 +105,7 @@ const VendorsListPage: React.FC = () => {
                 ))}
                 {vendors.length === 0 && (
                   <tr>
-                    <td className="py-20 text-center text-slate-400 font-medium" colSpan={5}>
-                      No Vendor records identified.
-                    </td>
+                    <td className="py-20 text-center text-slate-400 font-medium" colSpan={5}>{t("auto.VendorsListPage.noVendorRecordsIdentified", "No Vendor records identified.")}</td>
                   </tr>
                 )}
               </tbody>

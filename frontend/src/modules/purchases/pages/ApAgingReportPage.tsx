@@ -11,6 +11,7 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface ApAgingParams {
   asOfDate: string;
@@ -29,6 +30,7 @@ const Initiator: React.FC<{
   onSubmit: (p: ApAgingParams) => void;
   initialParams?: ApAgingParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation(['purchases', 'common']);
   const [asOfDate, setAsOfDate]     = useState(initialParams?.asOfDate || today());
   const [vendorId, setVendorId]     = useState(initialParams?.vendorId || '');
   const [vendorLabel, setVendorLabel] = useState(initialParams?.vendorLabel || '');
@@ -48,17 +50,13 @@ const Initiator: React.FC<{
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            As Of Date
-          </label>
+            <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />{t("auto.ApAgingReportPage.asOfDate", "As Of Date")}</label>
           <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
         </div>
 
         <div className="md:col-span-8 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Vendor (optional)
-          </label>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />{t("auto.ApAgingReportPage.vendorOptional", "Vendor (optional)")}</label>
           <PartySelector
             value={vendorId}
             role="VENDOR"
@@ -71,7 +69,7 @@ const Initiator: React.FC<{
               setVendorId(party.id);
               setVendorLabel(party.displayName || party.legalName || party.id);
             }}
-            placeholder="All vendors"
+            placeholder={t("auto.ApAgingReportPage.allVendors", "All vendors")}
           />
         </div>
       </div>
@@ -81,9 +79,7 @@ const Initiator: React.FC<{
           type="submit"
           className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
         >
-          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
-            <ChevronRight className="w-4 h-4" />
+          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">{t("auto.ApAgingReportPage.generateReport", "Generate Report")}<ChevronRight className="w-4 h-4" />
           </span>
         </Button>
       </div>
@@ -94,6 +90,7 @@ const Initiator: React.FC<{
 // ─── Expandable vendor row ─────────────────────────────────────────────────
 
 const VendorRow: React.FC<{ row: ApAgingVendorRowDTO; cellPad: string }> = ({ row, cellPad }) => {
+  const { t } = useTranslation(['purchases', 'common']);
   const [open, setOpen] = useState(false);
   return (
     <>
@@ -163,6 +160,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+  const { t } = useTranslation(['purchases', 'common']);
   const [report, setReport] = useState<ApAgingReportDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -189,8 +187,7 @@ const ReportContent: React.FC<{
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
-            <CalendarDays className="w-3 h-3 text-blue-600" />
-            As of {report?.asOfDate ?? params.asOfDate}
+            <CalendarDays className="w-3 h-3 text-blue-600" />{t("auto.ApAgingReportPage.asOf", "As of")}{report?.asOfDate ?? params.asOfDate}
           </span>
           {params.vendorLabel && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
@@ -198,8 +195,7 @@ const ReportContent: React.FC<{
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            {report?.rows.length ?? 0} vendor{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
-            Total AP: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
+            {report?.rows.length ?? 0}{t("auto.ApAgingReportPage.vendor", "vendor")}{(report?.rows.length ?? 0) === 1 ? '' : 's'}{t("auto.ApAgingReportPage.totalAP", "· Total AP:")}<span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
           </span>
         </div>
       </div>
@@ -213,12 +209,12 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading aging...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t("auto.ApAgingReportPage.loadingAging", "Loading aging...")}</p>
             </div>
           </div>
         ) : !report || report.rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 text-center">
-            <p className="text-sm font-bold text-slate-600">No outstanding payables as of {report?.asOfDate ?? params.asOfDate}</p>
+            <p className="text-sm font-bold text-slate-600">{t("auto.ApAgingReportPage.noOutstandingPayablesAsOf", "No outstanding payables as of")}{report?.asOfDate ?? params.asOfDate}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
@@ -237,7 +233,7 @@ const ReportContent: React.FC<{
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900">
-                  <td className={cellPad}>Totals</td>
+                  <td className={cellPad}>{t("auto.ApAgingReportPage.totals", "Totals")}</td>
                   <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.current)}</td>
                   <td className={`${cellPad} text-right tabular-nums text-amber-700`}>{fmt(report.totals.days1_30)}</td>
                   <td className={`${cellPad} text-right tabular-nums text-orange-700`}>{fmt(report.totals.days31_60)}</td>
@@ -256,14 +252,18 @@ const ReportContent: React.FC<{
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-const ApAgingReportPage: React.FC = () => (
-  <ReportContainer<ApAgingParams>
-    title="AP Aging"
-    subtitle="Accounts payable by aging bucket"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: false }}
-  />
-);
+const ApAgingReportPage: React.FC = () => {
+  const { t } = useTranslation(['purchases', 'common']);
+
+  return (
+    <ReportContainer<ApAgingParams>
+      title={t("auto.ApAgingReportPage.aPAging", "AP Aging")}
+      subtitle={t("auto.ApAgingReportPage.accountsPayableByAgingBucket", "Accounts payable by aging bucket")}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: false }}
+    />
+  );
+};
 
 export default ApAgingReportPage;

@@ -191,12 +191,12 @@ const PurchaseOrdersListPage: React.FC = () => {
 
   const statusFilterConfig = useMemo(() => ({
     options: [
-      { value: 'DRAFT', label: t('purchases.ordersList.status.DRAFT', 'Draft'), color: 'slate' },
-      { value: 'CONFIRMED', label: t('purchases.ordersList.status.CONFIRMED', 'Confirmed'), color: 'indigo' },
-      { value: 'PARTIALLY_RECEIVED', label: t('purchases.ordersList.status.PARTIALLY_RECEIVED', 'Partially Received'), color: 'amber' },
-      { value: 'FULLY_RECEIVED', label: t('purchases.ordersList.status.FULLY_RECEIVED', 'Fully Received'), color: 'emerald' },
-      { value: 'CLOSED', label: t('purchases.ordersList.status.CLOSED', 'Closed'), color: 'gray' },
-      { value: 'CANCELLED', label: t('purchases.ordersList.status.CANCELLED', 'Cancelled'), color: 'rose' },
+      { value: 'DRAFT', label: t('ordersList.status.DRAFT', 'Draft'), color: 'slate' },
+      { value: 'CONFIRMED', label: t('ordersList.status.CONFIRMED', 'Confirmed'), color: 'indigo' },
+      { value: 'PARTIALLY_RECEIVED', label: t('ordersList.status.PARTIALLY_RECEIVED', 'Partially Received'), color: 'amber' },
+      { value: 'FULLY_RECEIVED', label: t('ordersList.status.FULLY_RECEIVED', 'Fully Received'), color: 'emerald' },
+      { value: 'CLOSED', label: t('ordersList.status.CLOSED', 'Closed'), color: 'gray' },
+      { value: 'CANCELLED', label: t('ordersList.status.CANCELLED', 'Cancelled'), color: 'rose' },
     ],
     activeValue: statusFilter,
     onChange: (val: string) => {
@@ -291,7 +291,7 @@ const PurchaseOrdersListPage: React.FC = () => {
     () => [
       {
         key: 'orderNumber',
-        label: 'Order #',
+        label: t('purchaseOrdersList.labels.order', 'Order #'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -302,7 +302,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'vendorName',
-        label: 'Customer/Party',
+        label: t('purchaseOrdersList.labels.customerParty', 'Customer/Party'),
         width: '200px',
         priority: 1,
         sortable: true,
@@ -313,7 +313,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'orderDate',
-        label: 'Order Date and time',
+        label: t('purchaseOrdersList.labels.orderDateAndTime', 'Order Date and time'),
         width: '180px',
         priority: 1,
         sortable: true,
@@ -329,7 +329,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'grandTotalDoc',
-        label: 'Grand Total',
+        label: t('purchaseOrdersList.labels.grandTotal', 'Grand Total'),
         width: '130px',
         priority: 1,
         sortable: true,
@@ -343,7 +343,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'currency',
-        label: 'Currency',
+        label: t('purchaseOrdersList.labels.currency', 'Currency'),
         width: '80px',
         priority: 1,
         sortable: true,
@@ -355,7 +355,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'status',
-        label: 'Status',
+        label: t('purchaseOrdersList.labels.status', 'Status'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -373,7 +373,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'createdBy',
-        label: 'Created By',
+        label: t('purchaseOrdersList.labels.createdBy', 'Created By'),
         width: '150px',
         priority: 2,
         accessor: 'createdBy',
@@ -390,14 +390,14 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'expectedDeliveryDate',
-        label: 'Expected Delivery',
+        label: t('purchaseOrdersList.labels.expectedDelivery', 'Expected Delivery'),
         width: '140px',
         priority: 2,
         accessor: 'expectedDeliveryDate',
       },
       {
         key: 'confirmedAt',
-        label: 'Confirmed At',
+        label: t('purchaseOrdersList.labels.confirmedAt', 'Confirmed At'),
         width: '120px',
         priority: 3,
         accessor: 'confirmedAt',
@@ -410,14 +410,14 @@ const PurchaseOrdersListPage: React.FC = () => {
     () => [
       {
         key: 'view',
-        label: 'View',
+        label: t('purchaseOrdersList.labels.view', 'View'),
         icon: Eye,
         onClick: (row) => handleOpenOrder(row.id),
         primary: false,
       },
       {
         key: 'print',
-        label: 'Print',
+        label: t('purchaseOrdersList.labels.print', 'Print'),
         icon: Printer,
         onClick: (row) => {
           toast.success(`Printing order ${row.orderNumber}...`);
@@ -431,11 +431,11 @@ const PurchaseOrdersListPage: React.FC = () => {
 
   return (
     <OperationalListLayout<PurchaseOrderDTO>
-      title="Purchase Orders"
+      title={t('purchaseOrdersList.title', 'Purchase Orders')}
       subtitle=""
       compactHeader
       statusFilterConfig={statusFilterConfig}
-      newButtonLabel="New PO"
+      newButtonLabel={t('purchaseOrdersList.newButton', 'New PO')}
       onNewClick={() => navigate('/purchases/orders/new')}
       onRefresh={loadOrders}
       loading={loading}
@@ -449,7 +449,7 @@ const PurchaseOrdersListPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
-              placeholder={t('purchases.ordersList.filters.searchPlaceholder', 'Order #, vendor, user...')}
+              placeholder={t('ordersList.filters.searchPlaceholder', 'Order #, vendor, user...')}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
@@ -463,7 +463,7 @@ const PurchaseOrdersListPage: React.FC = () => {
               role="VENDOR"
               value={localVendor === 'ALL' ? '' : localVendor}
               onChange={(party) => setLocalVendor(party ? party.id : 'ALL')}
-              placeholder={t('purchases.ordersList.filters.allVendors', 'All Vendors')}
+              placeholder={t('ordersList.filters.allVendors', 'All Vendors')}
             />
           </div>
 
@@ -476,7 +476,7 @@ const PurchaseOrdersListPage: React.FC = () => {
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status.value} value={status.value}>
-                  {status.value === 'ALL' ? t('purchases.ordersList.filters.statusPlaceholder', 'Status') : status.label}
+                  {status.value === 'ALL' ? t('ordersList.filters.statusPlaceholder', 'Status') : status.label}
                 </option>
               ))}
             </select>
@@ -488,14 +488,14 @@ const PurchaseOrdersListPage: React.FC = () => {
               className="w-32"
               value={localDateFrom}
               onChange={setLocalDateFrom}
-              placeholder={t('purchases.ordersList.filters.dateFrom', 'Date From')}
+              placeholder={t('ordersList.filters.dateFrom', 'Date From')}
             />
             <span className="text-slate-400 font-medium">-</span>
             <DatePicker
               className="w-32"
               value={localDateTo}
               onChange={setLocalDateTo}
-              placeholder={t('purchases.ordersList.filters.dateTo', 'Date To')}
+              placeholder={t('ordersList.filters.dateTo', 'Date To')}
             />
           </div>
 
@@ -507,13 +507,13 @@ const PurchaseOrdersListPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
-              <span>{t('purchases.ordersList.filters.apply', 'Apply')}</span>
+              <span>{t('ordersList.filters.apply', 'Apply')}</span>
             </button>
             <button
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title={t('purchases.ordersList.filters.clear', 'Clear')}
+              title={t('ordersList.filters.clear', 'Clear')}
             >
               <RotateCcw size={16} />
             </button>
@@ -522,7 +522,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       }
       columns={columns}
       data={paginatedData}
-      emptyMessage="No purchase orders found."
+      emptyMessage={t('purchaseOrdersList.emptyMessage', 'No purchase orders found.')}
       onRowClick={(row) => handleOpenOrder(row.id)}
       sorting={{
         field: sortField,

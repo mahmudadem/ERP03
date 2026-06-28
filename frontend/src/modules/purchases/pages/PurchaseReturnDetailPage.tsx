@@ -33,7 +33,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['purchases', 'common']);
   const isCreateMode = !params.id || params.id === 'new';
 
   const [purchaseReturn, setPurchaseReturn] = useState<PurchaseReturnDTO | null>(null);
@@ -671,8 +671,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchase Return</h1>
-        <Card className="p-6">Loading purchase return...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseReturnDetailPage.purchaseReturn", "Purchase Return")}</h1>
+        <Card className="p-6">{t("auto.PurchaseReturnDetailPage.loadingPurchaseReturn", "Loading purchase return...")}</Card>
       </div>
     );
   }
@@ -733,14 +733,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
     return (
       <div className="space-y-6 p-4">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">New Purchase Return</h1>
+          <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseReturnDetailPage.newPurchaseReturn", "New Purchase Return")}</h1>
           <button
             type="button"
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
             onClick={() => navigate('/purchases/returns')}
-          >
-            Back to List
-          </button>
+          >{t("auto.PurchaseReturnDetailPage.backToList", "Back to List")}</button>
         </div>
 
         {error && <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">{error}</div>}
@@ -748,12 +746,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
         <Card className="overflow-visible p-0">
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.returnMode')}</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.returnMode')}</label>
               <div className="grid h-9 grid-cols-3 rounded border border-slate-200 bg-slate-50 p-0.5 text-[11px] font-bold">
                 {([
-                  ['DIRECT', t('purchases.returnDetail.modeDirect')],
-                  ['FROM_PI', t('purchases.returnDetail.modeFromPi')],
-                  ['FROM_GRN', t('purchases.returnDetail.modeFromGrn')],
+                  ['DIRECT', t('returnDetail.modeDirect')],
+                  ['FROM_PI', t('returnDetail.modeFromPi')],
+                  ['FROM_GRN', t('returnDetail.modeFromGrn')],
                 ] as const).map(([mode, label]) => (
                   <button
                     key={mode}
@@ -771,37 +769,37 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
             {sourceMode === 'FROM_PI' && (
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.purchaseInvoice')}</label>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.purchaseInvoice')}</label>
                 <button
                   type="button"
                   className="h-9 w-full rounded border border-indigo-200 bg-indigo-50 px-3 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                   onClick={openPurchaseInvoicePicker}
                   disabled={busy}
                 >
-                  {sourceDocument?.invoiceNumber || purchaseInvoiceId || t('purchases.returnDetail.selectPostedPi')}
+                  {sourceDocument?.invoiceNumber || purchaseInvoiceId || t('returnDetail.selectPostedPi')}
                 </button>
               </div>
             )}
             {sourceMode === 'FROM_GRN' && (
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.goodsReceipt')}</label>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.goodsReceipt')}</label>
                 <button
                   type="button"
                   className="h-9 w-full rounded border border-indigo-200 bg-indigo-50 px-3 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                   onClick={openGoodsReceiptPicker}
                   disabled={busy}
                 >
-                  {sourceDocument?.grnNumber || goodsReceiptId || t('purchases.returnDetail.selectPostedGrn')}
+                  {sourceDocument?.grnNumber || goodsReceiptId || t('returnDetail.selectPostedGrn')}
                 </button>
               </div>
             )}
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.vendor')}</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.vendor')}</label>
               <PartySelector 
                 value={vendorId}
                 role="VENDOR"
                 disabled={sourceMode !== 'DIRECT'}
-                placeholder={t('purchases.returnDetail.selectVendor')}
+                placeholder={t('returnDetail.selectVendor')}
                 onChange={(party) => {
                   setVendorId(party?.id || '');
                   if (party) {
@@ -814,7 +812,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Purchase Order ID (optional)</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.PurchaseReturnDetailPage.purchaseOrderIDOptional", "Purchase Order ID (optional)")}</label>
               <input
                 type="text"
                 className="h-9 w-full rounded border border-slate-300 bg-white px-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
@@ -823,21 +821,21 @@ const PurchaseReturnDetailPage: React.FC = () => {
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Return Date</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.PurchaseReturnDetailPage.returnDate", "Return Date")}</label>
               <DatePicker 
                 value={returnDate}
                 onChange={(val) => setReturnDate(val)}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Warehouse</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.PurchaseReturnDetailPage.warehouse", "Warehouse")}</label>
               <WarehouseSelector
                 value={warehouseId}
                 onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
               />
             </div>
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Context</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.PurchaseReturnDetailPage.context", "Context")}</label>
               <div className="flex h-9 items-center rounded border border-slate-200 bg-slate-50 px-2 text-xs font-bold">
                 {contextLabel}
               </div>
@@ -847,7 +845,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             <div className="col-span-full mt-2 border-t border-slate-100 pt-3">
               <ClassicLineItemsTable<any>
                 tableId="purchases.return.create.lines"
-                title="Return Items"
+                title={t("auto.PurchaseReturnDetailPage.returnItems", "Return Items")}
                 rows={selectedLines}
                 onRowChange={(index, patch) => {
                   setSelectedLines((prev) => prev.map((line, i) => (i === index ? { ...line, ...patch } : line)));
@@ -882,7 +880,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                         value={line.itemId}
                         onChange={(e) => handleItemSelect(index, e.target.value)}
                       >
-                        <option value="">Select item from source...</option>
+                        <option value="">{t("auto.PurchaseReturnDetailPage.selectItemFromSource", "Select item from source...")}</option>
                         {sourceDocument.lines.map((sl: any) => (
                           <option key={sl.lineId} value={sl.itemId}>
                             {sl.itemCode} - {sl.itemName}
@@ -893,7 +891,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                       <ItemSelector
                         value={line.itemId}
                         noBorder
-                        placeholder="Search item..."
+                        placeholder={t("auto.PurchaseReturnDetailPage.searchItem", "Search item...")}
                         onChange={(item) => handleItemSelect(index, item?.id || '')}
                       />
                     ),
@@ -947,8 +945,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
                         valueId={line.taxCodeId}
                         noBorder
                         disabled={sourceMode !== 'DIRECT'}
-                        placeholder="Tax"
-                        emptySetupMessage={t('purchases.returnDetail.noPurchaseTaxCodes')}
+                        placeholder={t("auto.PurchaseReturnDetailPage.tax", "Tax")}
+                        emptySetupMessage={t('returnDetail.noPurchaseTaxCodes')}
                         onChange={(option) => handleTaxCodeChange(line.lineId, option)}
                       />
                     ),
@@ -965,17 +963,17 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
 
           <div className="mt-8 border-t border-slate-100 pt-8">
-            <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">Currency & Exchange</h3>
+            <h3 className="mb-4 text-sm font-bold uppercase tracking-wider text-slate-500">{t("auto.PurchaseReturnDetailPage.currencyAndExchange", "Currency & Exchange")}</h3>
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Currency</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t("auto.PurchaseReturnDetailPage.currency", "Currency")}</label>
                 <select
                   className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm bg-white focus:ring-1 focus:ring-indigo-500 outline-none"
                   value={currency}
                   onChange={(e) => setCurrency(e.target.value.toUpperCase())}
                   disabled={busy}
                 >
-                  <option value="SYP">SYP - Syrian Pound</option>
+                  <option value="SYP">{t("auto.PurchaseReturnDetailPage.sYPSyrianPound", "SYP - Syrian Pound")}</option>
                   {currencies.map((c) => (
                     <option key={c.code} value={c.code}>
                       {c.code} - {c.name}
@@ -984,7 +982,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                 </select>
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium text-slate-700">Exchange Rate</label>
+                <label className="mb-1 block text-sm font-medium text-slate-700">{t("auto.PurchaseReturnDetailPage.exchangeRate", "Exchange Rate")}</label>
                 <CurrencyExchangeWidget
                   currency={currency}
                   baseCurrency={company?.baseCurrency || 'SYP'}
@@ -997,17 +995,17 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
           </div>
           <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Reason</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t("auto.PurchaseReturnDetailPage.reason", "Reason")}</label>
             <input
               type="text"
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
               value={reason}
               onChange={(e) => setReason(e.target.value)}
-              placeholder="e.g. Damaged goods, Incorrect item"
+              placeholder={t("auto.PurchaseReturnDetailPage.eGDamagedGoodsIncorrectItem", "e.g. Damaged goods, Incorrect item")}
             />
           </div>
           <div className="mt-4">
-            <label className="mb-1 block text-sm font-medium text-slate-700">Notes</label>
+            <label className="mb-1 block text-sm font-medium text-slate-700">{t("auto.PurchaseReturnDetailPage.notes", "Notes")}</label>
             <textarea
               rows={3}
               className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:ring-1 focus:ring-indigo-500 outline-none"
@@ -1016,7 +1014,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             />
           </div>
           <div className="mt-6 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">
-            <p className="font-semibold mb-1 uppercase tracking-wider text-slate-600">Information</p>
+            <p className="font-semibold mb-1 uppercase tracking-wider text-slate-600">{t("auto.PurchaseReturnDetailPage.information", "Information")}</p>
             {selectedLines.length === 0 
               ? "Start by adding items manually or fetch from a source document." 
               : "Items already fetched from source are restricted to source quantities. Manual entries can search from the full catalog."}
@@ -1044,17 +1042,15 @@ const PurchaseReturnDetailPage: React.FC = () => {
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">Select Purchase Invoice</h3>
-                  <p className="text-xs text-slate-500">Latest posted invoices. Choose one to pull lines into this return.</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{t("auto.PurchaseReturnDetailPage.selectPurchaseInvoice", "Select Purchase Invoice")}</h3>
+                  <p className="text-xs text-slate-500">{t("auto.PurchaseReturnDetailPage.latestPostedInvoicesChooseOneToPullLines", "Latest posted invoices. Choose one to pull lines into this return.")}</p>
                 </div>
                 <button
                   type="button"
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
                   onClick={() => setShowPiPicker(false)}
                   disabled={piPickerLoading}
-                >
-                  Close
-                </button>
+                >{t("auto.PurchaseReturnDetailPage.close", "Close")}</button>
               </div>
 
               <div className="max-h-[60vh] overflow-auto p-4">
@@ -1065,23 +1061,19 @@ const PurchaseReturnDetailPage: React.FC = () => {
                 )}
 
                 {piPickerLoading ? (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    Loading purchase invoices...
-                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">{t("auto.PurchaseReturnDetailPage.loadingPurchaseInvoices", "Loading purchase invoices...")}</div>
                 ) : piOptions.length === 0 ? (
-                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    No posted purchase invoices found.
-                  </div>
+                  <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">{t("auto.PurchaseReturnDetailPage.noPostedPurchaseInvoicesFound", "No posted purchase invoices found.")}</div>
                 ) : (
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left">Pick</th>
-                        <th className="px-3 py-2 text-left">Invoice No</th>
-                        <th className="px-3 py-2 text-left">Vendor</th>
-                        <th className="px-3 py-2 text-left">Invoice Date</th>
-                        <th className="px-3 py-2 text-left">Currency</th>
-                        <th className="px-3 py-2 text-right">Grand Total</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.pick", "Pick")}</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.invoiceNo", "Invoice No")}</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.vendor", "Vendor")}</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.invoiceDate", "Invoice Date")}</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.currency2", "Currency")}</th>
+                        <th className="px-3 py-2 text-right">{t("auto.PurchaseReturnDetailPage.grandTotal", "Grand Total")}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1122,17 +1114,13 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                   onClick={() => setShowPiPicker(false)}
                   disabled={piPickerLoading}
-                >
-                  Cancel
-                </button>
+                >{t("auto.PurchaseReturnDetailPage.cancel", "Cancel")}</button>
                 <button
                   type="button"
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   onClick={handlePullSelectedPI}
                   disabled={piPickerLoading || !selectedPiId}
-                >
-                  Pull Selected Invoice
-                </button>
+                >{t("auto.PurchaseReturnDetailPage.pullSelectedInvoice", "Pull Selected Invoice")}</button>
               </div>
             </div>
           </div>
@@ -1149,17 +1137,15 @@ const PurchaseReturnDetailPage: React.FC = () => {
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">{t('purchases.returnDetail.selectGoodsReceiptTitle')}</h3>
-                  <p className="text-xs text-slate-500">{t('purchases.returnDetail.selectGoodsReceiptHint')}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{t('returnDetail.selectGoodsReceiptTitle')}</h3>
+                  <p className="text-xs text-slate-500">{t('returnDetail.selectGoodsReceiptHint')}</p>
                 </div>
                 <button
                   type="button"
                   className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700"
                   onClick={() => setShowGrnPicker(false)}
                   disabled={grnPickerLoading}
-                >
-                  Close
-                </button>
+                >{t("auto.PurchaseReturnDetailPage.close2", "Close")}</button>
               </div>
 
               <div className="max-h-[60vh] overflow-auto p-4">
@@ -1171,22 +1157,22 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
                 {grnPickerLoading ? (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    {t('purchases.returnDetail.loadingGoodsReceipts')}
+                    {t('returnDetail.loadingGoodsReceipts')}
                   </div>
                 ) : grnOptions.length === 0 ? (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    {t('purchases.returnDetail.noPostedGoodsReceipts')}
+                    {t('returnDetail.noPostedGoodsReceipts')}
                   </div>
                 ) : (
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50">
                       <tr>
-                        <th className="px-3 py-2 text-left">Pick</th>
-                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.grnNo')}</th>
-                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.vendor')}</th>
-                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.receiptDate')}</th>
-                        <th className="px-3 py-2 text-left">Warehouse</th>
-                        <th className="px-3 py-2 text-right">{t('purchases.returnDetail.lines')}</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.pick2", "Pick")}</th>
+                        <th className="px-3 py-2 text-left">{t('returnDetail.grnNo')}</th>
+                        <th className="px-3 py-2 text-left">{t('returnDetail.vendor')}</th>
+                        <th className="px-3 py-2 text-left">{t('returnDetail.receiptDate')}</th>
+                        <th className="px-3 py-2 text-left">{t("auto.PurchaseReturnDetailPage.warehouse2", "Warehouse")}</th>
+                        <th className="px-3 py-2 text-right">{t('returnDetail.lines')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1222,16 +1208,14 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700"
                   onClick={() => setShowGrnPicker(false)}
                   disabled={grnPickerLoading}
-                >
-                  Cancel
-                </button>
+                >{t("auto.PurchaseReturnDetailPage.cancel2", "Cancel")}</button>
                 <button
                   type="button"
                   className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white disabled:opacity-50"
                   onClick={handlePullSelectedGRN}
                   disabled={grnPickerLoading || !selectedGrnId}
                 >
-                  {t('purchases.returnDetail.pullSelectedReceipt')}
+                  {t('returnDetail.pullSelectedReceipt')}
                 </button>
               </div>
             </div>
@@ -1244,8 +1228,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
   if (!purchaseReturn) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Purchase Return</h1>
-        <Card className="p-6 text-sm text-red-700">Purchase return not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseReturnDetailPage.purchaseReturn2", "Purchase Return")}</h1>
+        <Card className="p-6 text-sm text-red-700">{t("auto.PurchaseReturnDetailPage.purchaseReturnNotFound", "Purchase return not found.")}</Card>
       </div>
     );
   }
@@ -1326,9 +1310,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             className="rounded border border-indigo-300 bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-100 disabled:opacity-50"
             onClick={enterEditMode}
             disabled={busy}
-          >
-            Edit Return
-          </button>
+          >{t("auto.PurchaseReturnDetailPage.editReturn", "Edit Return")}</button>
         </>
       )}
       {purchaseReturn.status === 'POSTED' && (
@@ -1339,7 +1321,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             onClick={() => setGlImpactOpen(true)}
             disabled={busy}
           >
-            {t('purchases.returnDetail.glImpact')}
+            {t('returnDetail.glImpact')}
           </button>
           <button
             type="button"
@@ -1366,7 +1348,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         <>
           <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>
           <DocumentPill tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'}>{purchaseReturn.status}</DocumentPill>
-          {isEditMode && <DocumentPill tone="amber">Editing</DocumentPill>}
+          {isEditMode && <DocumentPill tone="amber">{t("auto.PurchaseReturnDetailPage.editing", "Editing")}</DocumentPill>}
         </>
       }
       newAction={{
@@ -1402,7 +1384,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       <Card className="overflow-visible p-0">
         <DocumentHeaderGrid>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Return Date</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.PurchaseReturnDetailPage.returnDate2", "Return Date")}</div>
             {isEditMode ? (
               <DatePicker 
                 value={editReturnDate}
@@ -1414,7 +1396,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.PurchaseReturnDetailPage.warehouse3", "Warehouse")}</div>
             {isEditMode ? (
               <div className="mt-1">
                 <WarehouseSelector 
@@ -1427,7 +1409,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Reason</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.PurchaseReturnDetailPage.reason2", "Reason")}</div>
             {isEditMode ? (
               <input type="text" className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editReason} onChange={(e) => setEditReason(e.target.value)} />
             ) : (
@@ -1435,16 +1417,16 @@ const PurchaseReturnDetailPage: React.FC = () => {
             )}
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Currency</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.PurchaseReturnDetailPage.currency3", "Currency")}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.currency}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Exchange Rate</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.PurchaseReturnDetailPage.exchangeRate2", "Exchange Rate")}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{purchaseReturn.exchangeRate.toFixed(4)}</div>
           </div>
           {isEditMode && (
             <div>
-              <div className="text-xs uppercase tracking-wide text-slate-500">Notes</div>
+              <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.PurchaseReturnDetailPage.notes2", "Notes")}</div>
               <textarea rows={2} className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-1.5 text-sm" value={editNotes} onChange={(e) => setEditNotes(e.target.value)} />
             </div>
           )}
@@ -1456,7 +1438,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
           content: (
       <ClassicLineItemsTable<any>
         tableId="purchases.return.view.lines"
-        title="Lines"
+        title={t("auto.PurchaseReturnDetailPage.lines", "Lines")}
         rows={isEditMode ? editLines : purchaseReturn.lines}
         disabled={!isEditMode}
         onRowChange={(index, patch) => {
@@ -1566,7 +1548,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       <Card className="p-5">
         <div className="grid gap-2 text-sm md:grid-cols-2">
           <div className="flex justify-between">
-            <span className="text-slate-600">Subtotal</span>
+            <span className="text-slate-600">{t("auto.PurchaseReturnDetailPage.subtotal", "Subtotal")}</span>
             <span className="font-medium">
               {purchaseReturn.currency} {isEditMode
                 ? editLines.reduce((s, l) => {
@@ -1583,13 +1565,13 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </span>
           </div>
           <div className="flex justify-between">
-            <span className="text-slate-600">Tax</span>
+            <span className="text-slate-600">{t("auto.PurchaseReturnDetailPage.tax2", "Tax")}</span>
             <span className="font-medium">
               {purchaseReturn.currency} {purchaseReturn.taxTotalDoc.toFixed(2)}
             </span>
           </div>
           <div className="flex justify-between border-t border-slate-200 pt-2">
-            <span className="font-semibold text-slate-900 dark:text-slate-100">Grand Total</span>
+            <span className="font-semibold text-slate-900 dark:text-slate-100">{t("auto.PurchaseReturnDetailPage.grandTotal2", "Grand Total")}</span>
             <span className="font-semibold text-slate-900 dark:text-slate-100">
               {purchaseReturn.currency} {isEditMode
                 ? editLines.reduce((s, l) => {
@@ -1614,7 +1596,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
-        title="Unpost Purchase Return"
+        title={t("auto.PurchaseReturnDetailPage.unpostPurchaseReturn", "Unpost Purchase Return")}
         message="This will reverse all accounting and inventory entries posted for this purchase return. The action is auditable but cannot be undone in place. Continue?"
         confirmLabel="Unpost Return"
         cancelLabel="Cancel"

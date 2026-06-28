@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { CalendarDays, ChevronRight, ExternalLink, FileText, ReceiptText } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 import { purchasesApi, VendorStatementDTO, VendorStatementLineDTO } from '../../../api/purchasesApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
@@ -59,7 +60,10 @@ const VendorLedgerTable: React.FC<{
   cellPad: string;
   onOpenSource: (line: VendorStatementLineDTO) => void;
   onOpenVoucher: (line: VendorStatementLineDTO) => void;
-}> = ({ title, openingBalance, closingBalance, lines, cellPad, onOpenSource, onOpenVoucher }) => (
+}> = ({ title, openingBalance, closingBalance, lines, cellPad, onOpenSource, onOpenVoucher }) => {
+  const { t } = useTranslation(['purchases', 'common']);
+
+  return (
   <div className="overflow-auto rounded-xl border bg-white shadow-sm">
     <div className="border-b bg-slate-50/50 px-6 py-3">
       <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{title}</p>
@@ -72,14 +76,14 @@ const VendorLedgerTable: React.FC<{
           ))}
         </tr>
         <tr className="border-b border-slate-100 bg-slate-50/40">
-          <td className={`${cellPad} text-[11px] font-bold uppercase tracking-widest text-slate-700`} colSpan={6}>Opening Balance</td>
+          <td className={`${cellPad} text-[11px] font-bold uppercase tracking-widest text-slate-700`} colSpan={6}>{t("auto.VendorStatementPage.openingBalance", "Opening Balance")}</td>
           <td className={`${cellPad} text-right text-xs font-bold tabular-nums text-slate-700`}>{fmt(openingBalance)}</td>
         </tr>
       </thead>
       <tbody>
         {lines.length === 0 ? (
           <tr>
-            <td colSpan={7} className="py-10 text-center text-sm text-slate-400">No posted vendor activity in this period.</td>
+            <td colSpan={7} className="py-10 text-center text-sm text-slate-400">{t("auto.VendorStatementPage.noPostedVendorActivityInThisPeriod", "No posted vendor activity in this period.")}</td>
           </tr>
         ) : (
           lines.map((line, idx) => {
@@ -115,9 +119,7 @@ const VendorLedgerTable: React.FC<{
                         onClick={() => onOpenSource(line)}
                         className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 hover:bg-indigo-100"
                       >
-                        <ExternalLink className="h-3 w-3" />
-                        Source
-                      </button>
+                        <ExternalLink className="h-3 w-3" />{t("auto.VendorStatementPage.source", "Source")}</button>
                     )}
                     {canOpenVoucher && (
                       <button
@@ -125,9 +127,7 @@ const VendorLedgerTable: React.FC<{
                         onClick={() => onOpenVoucher(line)}
                         className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
                       >
-                        <ReceiptText className="h-3 w-3" />
-                        Voucher
-                      </button>
+                        <ReceiptText className="h-3 w-3" />{t("auto.VendorStatementPage.voucher", "Voucher")}</button>
                     )}
                   </div>
                 </td>
@@ -138,18 +138,20 @@ const VendorLedgerTable: React.FC<{
       </tbody>
       <tfoot>
         <tr className="border-t-2 border-slate-200 bg-slate-100">
-          <td className={`${cellPad} text-xs font-black uppercase tracking-widest text-slate-700`} colSpan={6}>Closing Balance</td>
+          <td className={`${cellPad} text-xs font-black uppercase tracking-widest text-slate-700`} colSpan={6}>{t("auto.VendorStatementPage.closingBalance", "Closing Balance")}</td>
           <td className={`${cellPad} text-right text-xs font-black tabular-nums text-slate-900`}>{fmt(closingBalance)}</td>
         </tr>
       </tfoot>
     </table>
   </div>
-);
+  );
+};
 
 const Initiator: React.FC<{
   onSubmit: (p: StatementParams) => void;
   initialParams?: StatementParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation(['purchases', 'common']);
   const [mode, setMode] = useState<Mode>(initialParams?.mode || 'STATEMENT');
   const [vendorId, setVendorId] = useState(initialParams?.vendorId || '');
   const [vendorLabel, setVendorLabel] = useState(initialParams?.vendorLabel || '');
@@ -171,23 +173,20 @@ const Initiator: React.FC<{
       <div className="grid grid-cols-1 items-end gap-5 md:grid-cols-12">
         <div className="space-y-2 md:col-span-4">
           <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />
-            View
-          </label>
+            <span className="h-1.5 w-1.5 rounded-full bg-indigo-500" />{t("auto.VendorStatementPage.view", "View")}</label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Mode)}
             className="w-full rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-semibold outline-none transition-all hover:border-indigo-300 hover:bg-white focus:border-indigo-500 focus:bg-white focus:ring-4 focus:ring-indigo-500/10"
           >
-            <option value="STATEMENT">Statement (period summary)</option>
-            <option value="LEDGER">Full Ledger (all posted events)</option>
+            <option value="STATEMENT">{t("auto.VendorStatementPage.statementPeriodSummary", "Statement (period summary)")}</option>
+            <option value="LEDGER">{t("auto.VendorStatementPage.fullLedgerAllPostedEvents", "Full Ledger (all posted events)")}</option>
           </select>
         </div>
 
         <div className="space-y-2 md:col-span-8">
           <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
-            Vendor <span className="text-rose-500">*</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />{t("auto.VendorStatementPage.vendor", "Vendor")}<span className="text-rose-500">*</span>
           </label>
           <PartySelector
             value={vendorId}
@@ -201,23 +200,19 @@ const Initiator: React.FC<{
               setVendorId(party.id);
               setVendorLabel(party.displayName || party.legalName || party.id);
             }}
-            placeholder="Select a vendor..."
+            placeholder={t("auto.VendorStatementPage.selectAVendor", "Select a vendor...")}
           />
         </div>
 
         <div className="space-y-2 md:col-span-6">
           <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-            From Date
-          </label>
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{t("auto.VendorStatementPage.fromDate", "From Date")}</label>
           <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
         </div>
 
         <div className="space-y-2 md:col-span-6">
           <label className="flex items-center gap-1.5 text-[10px] font-black uppercase tracking-widest text-slate-500">
-            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />
-            To Date
-          </label>
+            <span className="h-1.5 w-1.5 rounded-full bg-blue-500" />{t("auto.VendorStatementPage.toDate", "To Date")}</label>
           <DatePicker value={toDate} onChange={setToDate} className="w-full" />
         </div>
 
@@ -229,12 +224,8 @@ const Initiator: React.FC<{
             className="mt-1 h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
           />
           <span>
-            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Include open commitments
-            </span>
-            <span className="text-xs text-slate-500">
-              Shows open purchase orders separately for procurement follow-up. These amounts do not affect the vendor statement balance.
-            </span>
+            <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">{t("auto.VendorStatementPage.includeOpenCommitments", "Include open commitments")}</span>
+            <span className="text-xs text-slate-500">{t("auto.VendorStatementPage.showsOpenPurchaseOrdersSeparatelyForProcurementFollow", "Shows open purchase orders separately for procurement follow-up. These amounts do not affect the vendor statement balance.")}</span>
           </span>
         </label>
       </div>
@@ -245,9 +236,7 @@ const Initiator: React.FC<{
           disabled={!canSubmit}
           className="rounded-xl bg-slate-900 px-10 py-3 text-white shadow-lg shadow-slate-900/10 transition-all hover:bg-black hover:shadow-xl disabled:opacity-50"
         >
-          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
-            <ChevronRight className="h-4 w-4" />
+          <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">{t("auto.VendorStatementPage.generateReport", "Generate Report")}<ChevronRight className="h-4 w-4" />
           </span>
         </Button>
       </div>
@@ -260,6 +249,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const [statement, setStatement] = useState<VendorStatementDTO | null>(null);
   const [loading, setLoading] = useState(false);
@@ -315,14 +305,10 @@ const ReportContent: React.FC<{
           </span>
           <span className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-slate-800">
             <CalendarDays className="h-3 w-3 text-blue-600" />
-            {params.fromDate} to {params.toDate}
+            {params.fromDate}{t("auto.VendorStatementPage.to", "to")}{params.toDate}
           </span>
           {statement && (
-            <span className="ml-auto text-xs font-bold text-slate-500">
-              Billed: <span className="font-black text-blue-700">{fmt(statement.totalBilled)}</span> ·
-              Paid: <span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span> ·
-              Debit notes: <span className="font-black text-amber-700">{fmt(statement.totalDebited)}</span> ·
-              Closing owed: <span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
+            <span className="ml-auto text-xs font-bold text-slate-500">{t("auto.VendorStatementPage.billed", "Billed:")}<span className="font-black text-blue-700">{fmt(statement.totalBilled)}</span>{t("auto.VendorStatementPage.paid", "· Paid:")}<span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span>{t("auto.VendorStatementPage.debitNotes", "· Debit notes:")}<span className="font-black text-amber-700">{fmt(statement.totalDebited)}</span>{t("auto.VendorStatementPage.closingOwed", "· Closing owed:")}<span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
             </span>
           )}
         </div>
@@ -331,7 +317,7 @@ const ReportContent: React.FC<{
       <div className="min-h-0 flex-1 overflow-auto p-6">
         <div className="mx-auto max-w-6xl space-y-6">
           {error && <div className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-red-700">{error}</div>}
-          {loading && <div className="py-20 text-center text-sm text-slate-400 animate-pulse">Loading report...</div>}
+          {loading && <div className="py-20 text-center text-sm text-slate-400 animate-pulse">{t("auto.VendorStatementPage.loadingReport", "Loading report...")}</div>}
 
           {!loading && statement && (
             <>
@@ -348,8 +334,7 @@ const ReportContent: React.FC<{
               {statement.openBills.length > 0 && (
                 <div className="overflow-auto rounded-xl border bg-white shadow-sm">
                   <div className="border-b bg-slate-50/50 px-6 py-3">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                      Open Bills ({statement.openBills.length})
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{t("auto.VendorStatementPage.openBills", "Open Bills (")}{statement.openBills.length})
                     </p>
                   </div>
                   <table className="min-w-full text-sm">
@@ -379,9 +364,7 @@ const ReportContent: React.FC<{
               {statement.openCommitments && statement.openCommitments.length > 0 && (
                 <div className="overflow-auto rounded-xl border bg-white shadow-sm">
                   <div className="border-b bg-slate-50/50 px-6 py-3">
-                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                      Open Commitments ({statement.openCommitments.length}) · Not included in balance
-                    </p>
+                    <p className="text-xs font-bold uppercase tracking-widest text-slate-500">{t("auto.VendorStatementPage.openCommitments", "Open Commitments (")}{statement.openCommitments.length}{t("auto.VendorStatementPage.notIncludedInBalance", ") · Not included in balance")}</p>
                   </div>
                   <table className="min-w-full text-sm">
                     <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-widest text-slate-500">
@@ -422,7 +405,7 @@ const ReportContent: React.FC<{
               <div className="inline-flex rounded-full bg-slate-50 p-6 text-slate-300">
                 <FileText size={48} />
               </div>
-              <p className="text-sm font-bold text-slate-600">No data.</p>
+              <p className="text-sm font-bold text-slate-600">{t("auto.VendorStatementPage.noData", "No data.")}</p>
             </div>
           )}
         </div>
@@ -431,14 +414,18 @@ const ReportContent: React.FC<{
   );
 };
 
-const VendorStatementPage: React.FC = () => (
-  <ReportContainer<StatementParams>
-    title="Vendor Statement"
-    subtitle="Posted AP statement and ledger for a vendor"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: false }}
-  />
-);
+const VendorStatementPage: React.FC = () => {
+  const { t } = useTranslation(['purchases', 'common']);
+
+  return (
+    <ReportContainer<StatementParams>
+      title={t("auto.VendorStatementPage.vendorStatement", "Vendor Statement")}
+      subtitle={t("auto.VendorStatementPage.postedAPStatementAndLedgerForAVendor", "Posted AP statement and ledger for a vendor")}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: false }}
+    />
+  );
+};
 
 export default VendorStatementPage;

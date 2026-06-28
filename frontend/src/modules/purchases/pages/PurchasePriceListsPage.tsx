@@ -35,6 +35,7 @@ interface LineRowProps {
 }
 
 const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) => {
+  const { t } = useTranslation(['purchases', 'common']);
   const set = (patch: Partial<PurchasePriceListLineDTO>) => onChange({ ...line, ...patch });
   return (
     <tr className="border-b border-slate-100 dark:border-slate-800">
@@ -45,7 +46,7 @@ const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) =>
             value={line.itemId}
             onChange={e => set({ itemId: e.target.value })}
           >
-            <option value="">— select item —</option>
+            <option value="">{t("auto.PurchasePriceListsPage.selectItem", "— select item —")}</option>
             {items.map(i => (
               <option key={i.id} value={i.id}>{i.code} – {i.name}</option>
             ))}
@@ -53,7 +54,7 @@ const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) =>
         ) : (
           <input
             className="w-full text-xs border border-slate-200 dark:border-slate-700 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-            placeholder="Item ID"
+            placeholder={t("auto.PurchasePriceListsPage.itemID", "Item ID")}
             value={line.itemId}
             onChange={e => set({ itemId: e.target.value })}
           />
@@ -93,7 +94,7 @@ const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) =>
       <td className="py-2 pr-2">
         <input
           className="w-full text-xs border border-slate-200 dark:border-slate-700 rounded px-2 py-1 bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
-          placeholder="Comment"
+          placeholder={t("auto.PurchasePriceListsPage.comment", "Comment")}
           value={line.comment ?? ''}
           onChange={e => set({ comment: e.target.value || undefined })}
         />
@@ -102,7 +103,7 @@ const LineRow: React.FC<LineRowProps> = ({ line, items, onChange, onDelete }) =>
         <button
           onClick={onDelete}
           className="p-1 text-red-400 hover:text-red-600 transition-colors"
-          title="Remove line"
+          title={t("auto.PurchasePriceListsPage.removeLine", "Remove line")}
         >
           <Trash2 size={14} />
         </button>
@@ -131,7 +132,7 @@ const emptyForm = (): Omit<PurchasePriceListDTO, 'id' | 'companyId' | 'createdBy
 });
 
 const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['purchases', 'common']);
   const [form, setForm] = useState(() =>
     initial
       ? {
@@ -164,7 +165,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      setError(t('purchases.priceLists.validation.nameRequired', 'Price list name is required.'));
+      setError(t('priceLists.validation.nameRequired', 'Price list name is required.'));
       return;
     }
 
@@ -173,14 +174,14 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
     try {
       if (initial) {
         await purchasesApi.updatePurchasePriceList(initial.id, form);
-        toast.success(t('purchases.priceLists.messages.updated', 'Purchase price list updated'));
+        toast.success(t('priceLists.messages.updated', 'Purchase price list updated'));
       } else {
         await purchasesApi.createPurchasePriceList(form);
-        toast.success(t('purchases.priceLists.messages.created', 'Purchase price list created'));
+        toast.success(t('priceLists.messages.created', 'Purchase price list created'));
       }
       onSaved();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? t('purchases.priceLists.messages.saveFailed', 'Save failed');
+      const msg = err?.response?.data?.message ?? err?.message ?? t('priceLists.messages.saveFailed', 'Save failed');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -205,10 +206,10 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
             </div>
             <div>
               <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                {initial ? t('purchases.priceLists.editTitle', 'Edit Purchase Price List') : t('purchases.priceLists.newTitle', 'New Purchase Price List')}
+                {initial ? t('priceLists.editTitle', 'Edit Purchase Price List') : t('priceLists.newTitle', 'New Purchase Price List')}
               </h1>
               <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">
-                {t('purchases.priceLists.subtitle', 'Purchase Price List Configuration')}
+                {t('priceLists.subtitle', 'Purchase Price List Configuration')}
               </p>
             </div>
           </div>
@@ -249,7 +250,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                   className="w-full border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm bg-white dark:bg-slate-800 text-slate-900 dark:text-slate-100"
                   value={form.name}
                   onChange={e => set({ name: e.target.value })}
-                  placeholder="e.g. Standard Vendor USD"
+                  placeholder={t("auto.PurchasePriceListsPage.eGStandardVendorUSD", "e.g. Standard Vendor USD")}
                 />
               </div>
               <div>
@@ -257,7 +258,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                 <CurrencySelector
                   value={form.currency}
                   onChange={code => set({ currency: code })}
-                  placeholder="USD"
+                  placeholder={t("auto.PurchasePriceListsPage.uSD", "USD")}
                 />
               </div>
               <div>
@@ -294,7 +295,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                   className="w-4 h-4 rounded border-slate-300 text-blue-600"
                 />
                 <label htmlFor="isDefault" className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                  {t('purchases.priceLists.setAsDefault', 'Set as default price list for this currency')}
+                  {t('priceLists.setAsDefault', 'Set as default price list for this currency')}
                 </label>
               </div>
             </div>
@@ -302,17 +303,17 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('purchases.priceLists.lines', 'Price Lines')}</p>
+              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('priceLists.lines', 'Price Lines')}</p>
               <button
                 onClick={addLine}
                 className="flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-700 transition-colors uppercase tracking-widest"
               >
-                <Plus size={13} /> {t('purchases.priceLists.addLine', 'Add Line')}
+                <Plus size={13} /> {t('priceLists.addLine', 'Add Line')}
               </button>
             </div>
             <div className="p-6 overflow-x-auto">
               {form.lines.length === 0 ? (
-                <p className="text-xs text-slate-400 text-center py-6">{t('purchases.priceLists.noLines', 'No lines yet. Click Add Line to begin.')}</p>
+                <p className="text-xs text-slate-400 text-center py-6">{t('priceLists.noLines', 'No lines yet. Click Add Line to begin.')}</p>
               ) : (
                 <table className="w-full">
                   <thead>
@@ -346,7 +347,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 // ─── List Page ────────────────────────────────────────────────────────────────
 
 const PurchasePriceListsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['purchases', 'common']);
   const [priceLists, setPriceLists] = useState<PurchasePriceListDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -382,10 +383,10 @@ const PurchasePriceListsPage: React.FC = () => {
     if (!deletingId) return;
     try {
       await purchasesApi.deletePurchasePriceList(deletingId);
-      toast.success(t('purchases.priceLists.messages.deleted', 'Price list deleted successfully'));
+      toast.success(t('priceLists.messages.deleted', 'Price list deleted successfully'));
       load();
     } catch (err: any) {
-      const msg = err?.response?.data?.message ?? err?.message ?? t('purchases.priceLists.messages.deleteFailed', 'Failed to delete price list');
+      const msg = err?.response?.data?.message ?? err?.message ?? t('priceLists.messages.deleteFailed', 'Failed to delete price list');
       toast.error(msg);
     } finally {
       setDeletingId(null);
@@ -414,15 +415,15 @@ const PurchasePriceListsPage: React.FC = () => {
               <Tag size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t('purchases.priceLists.title', 'Purchase Price Lists')}</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t('purchases.priceLists.listSubtitle', 'Vendor Pricing Rules & Agreements')}</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t('priceLists.title', 'Purchase Price Lists')}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t('priceLists.listSubtitle', 'Vendor Pricing Rules & Agreements')}</p>
             </div>
           </div>
           <button
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
           >
-            <Plus size={16} /> {t('purchases.priceLists.newBtn', 'New Price List')}
+            <Plus size={16} /> {t('priceLists.newBtn', 'New Price List')}
           </button>
         </div>
       </div>
@@ -432,7 +433,7 @@ const PurchasePriceListsPage: React.FC = () => {
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                <Search size={14} /> {t('purchases.priceLists.directory', 'Price List Directory')}
+                <Search size={14} /> {t('priceLists.directory', 'Price List Directory')}
               </div>
               {loading && <div className="text-[10px] text-blue-500 font-black animate-pulse uppercase tracking-tighter">{t('common.loading', 'Loading...')}</div>}
             </div>
@@ -444,8 +445,8 @@ const PurchasePriceListsPage: React.FC = () => {
                     <Tag size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t('purchases.priceLists.empty', 'No Price Lists Found')}</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t('purchases.priceLists.emptySub', 'Configure a purchase price list to manage vendor pricing rules.')}</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t('priceLists.empty', 'No Price Lists Found')}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t('priceLists.emptySub', 'Configure a purchase price list to manage vendor pricing rules.')}</p>
                   </div>
                 </div>
               ) : (
@@ -469,7 +470,7 @@ const PurchasePriceListsPage: React.FC = () => {
                             {pl.isDefault && <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest pl-1">{t('common.default', 'DEFAULT')}</span>}
                           </div>
                           <div className="text-[11px] text-slate-400">
-                            {pl.lines.length} {pl.lines.length === 1 ? t('purchases.priceLists.line', 'line') : t('purchases.priceLists.linesPlural', 'lines')}
+                            {pl.lines.length} {pl.lines.length === 1 ? t('priceLists.line', 'line') : t('priceLists.linesPlural', 'lines')}
                             {pl.validFrom && ` · from ${pl.validFrom}`}
                             {pl.validTo && ` to ${pl.validTo}`}
                           </div>
@@ -512,8 +513,8 @@ const PurchasePriceListsPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={!!deletingId}
-        title={t('purchases.priceLists.confirmDeleteTitle', 'Delete Price List')}
-        message={t('purchases.priceLists.confirmDeleteMessage', 'Are you sure you want to delete this price list? This action cannot be undone.')}
+        title={t('priceLists.confirmDeleteTitle', 'Delete Price List')}
+        message={t('priceLists.confirmDeleteMessage', 'Are you sure you want to delete this price list? This action cannot be undone.')}
         confirmLabel={t('common.delete', 'Delete')}
         cancelLabel={t('common.cancel', 'Cancel')}
         onConfirm={handleDelete}

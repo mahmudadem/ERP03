@@ -6,6 +6,7 @@ import { GRNStatus, GoodsReceiptDTO, purchasesApi } from '../../../api/purchases
 import { OperationalListLayout } from '../../../components/shared/OperationalListLayout';
 import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/types';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -29,7 +30,8 @@ const statusChipClasses = (status: GRNStatus): string => {
   }
 };
 
-const GoodsReceiptsListPage: React.FC = () => {
+const GoodsReceiptsListPage: React.FC = () => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<GRNStatus | 'ALL'>('ALL');
   const [localSearch, setLocalSearch] = useState('');
@@ -99,13 +101,13 @@ const GoodsReceiptsListPage: React.FC = () => {
 
   const columns = useMemo<ColumnDefinition<GoodsReceiptDTO>[]>(
     () => [
-      { key: 'grnNumber', label: 'GRN #', width: '150px', priority: 1, sortable: true, accessor: 'grnNumber', align: 'center', render: (value) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{value}</span> },
-      { key: 'vendorName', label: 'Vendor', width: '220px', priority: 1, sortable: true, accessor: 'vendorName', align: 'center', render: (value) => <span className="font-medium text-slate-900 dark:text-slate-100">{value}</span> },
-      { key: 'receiptDate', label: 'Receipt Date', width: '150px', priority: 1, sortable: true, accessor: 'receiptDate', align: 'center' },
-      { key: 'warehouseId', label: 'Warehouse', width: '220px', priority: 1, accessor: 'warehouseId', align: 'center', render: (value) => warehouseNameById[value] || value || '-' },
+      { key: 'grnNumber', label: t('goodsReceiptsList.labels.gRN', 'GRN #'), width: '150px', priority: 1, sortable: true, accessor: 'grnNumber', align: 'center', render: (value) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{value}</span> },
+      { key: 'vendorName', label: t('goodsReceiptsList.labels.vendor', 'Vendor'), width: '220px', priority: 1, sortable: true, accessor: 'vendorName', align: 'center', render: (value) => <span className="font-medium text-slate-900 dark:text-slate-100">{value}</span> },
+      { key: 'receiptDate', label: t('goodsReceiptsList.labels.receiptDate', 'Receipt Date'), width: '150px', priority: 1, sortable: true, accessor: 'receiptDate', align: 'center' },
+      { key: 'warehouseId', label: t('goodsReceiptsList.labels.warehouse', 'Warehouse'), width: '220px', priority: 1, accessor: 'warehouseId', align: 'center', render: (value) => warehouseNameById[value] || value || '-' },
       {
         key: 'status',
-        label: 'Status',
+        label: t('goodsReceiptsList.labels.status', 'Status'),
         width: '130px',
         priority: 1,
         sortable: true,
@@ -123,7 +125,7 @@ const GoodsReceiptsListPage: React.FC = () => {
 
   const rowActions = useMemo<RowAction<GoodsReceiptDTO>[]>(
     () => [
-      { key: 'open', label: 'Open', icon: Eye, onClick: (row) => navigate(`/purchases/goods-receipts/${row.id}`), primary: false },
+      { key: 'open', label: t('goodsReceiptsList.labels.open', 'Open'), icon: Eye, onClick: (row) => navigate(`/purchases/goods-receipts/${row.id}`), primary: false },
     ],
     [navigate],
   );
@@ -144,10 +146,10 @@ const GoodsReceiptsListPage: React.FC = () => {
 
   return (
     <OperationalListLayout<GoodsReceiptDTO>
-      title="Goods Receipts"
+      title={t('goodsReceiptsList.title', 'Goods Receipts')}
       subtitle=""
       compactHeader
-      newButtonLabel="New GRN"
+      newButtonLabel={t('goodsReceiptsList.newButton', 'New GRN')}
       onNewClick={() => navigate('/purchases/goods-receipts/new')}
       onRefresh={load}
       loading={loading}
@@ -162,7 +164,7 @@ const GoodsReceiptsListPage: React.FC = () => {
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
-              placeholder="GRN #, vendor, warehouse..."
+              placeholder={t("auto.GoodsReceiptsListPage.gRNVendorWarehouse", "GRN #, vendor, warehouse...")}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
@@ -193,13 +195,13 @@ const GoodsReceiptsListPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
-              <span>Apply</span>
+              <span>{t("auto.GoodsReceiptsListPage.apply", "Apply")}</span>
             </button>
             <button
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title="Clear"
+              title={t('goodsReceiptsList.title', 'Clear')}
             >
               <RotateCcw size={16} />
             </button>
@@ -221,7 +223,7 @@ const GoodsReceiptsListPage: React.FC = () => {
       data={pagedReceipts}
       rowActions={rowActions}
       onRowClick={(row) => navigate(`/purchases/goods-receipts/${row.id}`)}
-      emptyMessage="No goods receipts found."
+      emptyMessage={t('goodsReceiptsList.emptyMessage', 'No goods receipts found.')}
       pagination={{
         page,
         pageSize,

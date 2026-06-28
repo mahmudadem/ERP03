@@ -20,7 +20,7 @@ type FormState = {
 };
 
 const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['purchases', 'common']);
   const [form, setForm] = useState<FormState>(() => ({
     name: initial?.name ?? '',
     description: initial?.description ?? '',
@@ -33,7 +33,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
 
   const handleSave = async () => {
     if (!form.name.trim()) {
-      setError(t('purchases.vendorGroups.validation.nameRequired', 'Group name is required.'));
+      setError(t('vendorGroups.validation.nameRequired', 'Group name is required.'));
       return;
     }
 
@@ -47,14 +47,14 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
       };
       if (initial) {
         await purchasesApi.updateVendorGroup(initial.id, payload);
-        toast.success(t('purchases.vendorGroups.messages.updated', 'Vendor group updated'));
+        toast.success(t('vendorGroups.messages.updated', 'Vendor group updated'));
       } else {
         await purchasesApi.createVendorGroup(payload);
-        toast.success(t('purchases.vendorGroups.messages.created', 'Vendor group created'));
+        toast.success(t('vendorGroups.messages.created', 'Vendor group created'));
       }
       onSaved();
     } catch (err: any) {
-      const message = err?.response?.data?.message ?? err?.message ?? t('purchases.vendorGroups.messages.saveFailed', 'Save failed');
+      const message = err?.response?.data?.message ?? err?.message ?? t('vendorGroups.messages.saveFailed', 'Save failed');
       setError(message);
       toast.error(message);
     } finally {
@@ -79,11 +79,11 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
                 {initial
-                  ? t('purchases.vendorGroups.editTitle', 'Edit Vendor Group')
-                  : t('purchases.vendorGroups.newTitle', 'New Vendor Group')}
+                  ? t('vendorGroups.editTitle', 'Edit Vendor Group')
+                  : t('vendorGroups.newTitle', 'New Vendor Group')}
               </h1>
               <p className="text-xs font-medium uppercase tracking-[0.15em] text-slate-500">
-                {t('purchases.vendorGroups.subtitle', 'Supplier segmentation')}
+                {t('vendorGroups.subtitle', 'Supplier segmentation')}
               </p>
             </div>
           </div>
@@ -115,36 +115,36 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
           <Card className="overflow-hidden border-slate-200 p-0 shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:shadow-none">
             <div className="border-b bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
               <p className="text-xs font-bold uppercase tracking-widest text-slate-500">
-                {t('purchases.vendorGroups.details', 'Group details')}
+                {t('vendorGroups.details', 'Group details')}
               </p>
             </div>
             <div className="grid grid-cols-2 gap-4 p-6">
               <div className="col-span-2">
                 <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  {t('purchases.vendorGroups.fields.name', 'Name')}
+                  {t('vendorGroups.fields.name', 'Name')}
                 </label>
                 <input
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   value={form.name}
                   onChange={(e) => set({ name: e.target.value })}
-                  placeholder={t('purchases.vendorGroups.placeholders.name', 'e.g. Local Suppliers')}
+                  placeholder={t('vendorGroups.placeholders.name', 'e.g. Local Suppliers')}
                 />
               </div>
               <div className="col-span-2">
                 <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  {t('purchases.vendorGroups.fields.description', 'Description')}
+                  {t('vendorGroups.fields.description', 'Description')}
                 </label>
                 <textarea
                   rows={3}
                   className="w-full resize-none rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
                   value={form.description}
                   onChange={(e) => set({ description: e.target.value })}
-                  placeholder={t('purchases.vendorGroups.placeholders.description', 'Optional notes about this supplier segment')}
+                  placeholder={t('vendorGroups.placeholders.description', 'Optional notes about this supplier segment')}
                 />
               </div>
               <div>
                 <label className="mb-1 block text-xs font-bold uppercase tracking-widest text-slate-500">
-                  {t('purchases.vendorGroups.fields.status', 'Status')}
+                  {t('vendorGroups.fields.status', 'Status')}
                 </label>
                 <select
                   className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
@@ -164,7 +164,7 @@ const Editor: React.FC<EditorProps> = ({ initial, onClose, onSaved }) => {
 };
 
 const VendorGroupsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['purchases', 'common']);
   const [groups, setGroups] = useState<VendorGroupDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -178,7 +178,7 @@ const VendorGroupsPage: React.FC = () => {
       const result = await purchasesApi.listVendorGroups({ includeInactive: true });
       setGroups(result ?? []);
     } catch (err: any) {
-      const message = err?.response?.data?.message ?? t('purchases.vendorGroups.messages.loadFailed', 'Failed to load vendor groups');
+      const message = err?.response?.data?.message ?? t('vendorGroups.messages.loadFailed', 'Failed to load vendor groups');
       toast.error(message);
     } finally {
       setLoading(false);
@@ -198,11 +198,11 @@ const VendorGroupsPage: React.FC = () => {
     try {
       setDeleting(true);
       await purchasesApi.deleteVendorGroup(pendingDelete.id);
-      toast.success(t('purchases.vendorGroups.messages.deleted', 'Vendor group deleted'));
+      toast.success(t('vendorGroups.messages.deleted', 'Vendor group deleted'));
       setPendingDelete(null);
       await load();
     } catch (err: any) {
-      const message = err?.response?.data?.message ?? err?.message ?? t('purchases.vendorGroups.messages.deleteFailed', 'Delete failed');
+      const message = err?.response?.data?.message ?? err?.message ?? t('vendorGroups.messages.deleteFailed', 'Delete failed');
       toast.error(message);
     } finally {
       setDeleting(false);
@@ -234,10 +234,10 @@ const VendorGroupsPage: React.FC = () => {
             </div>
             <div>
               <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
-                {t('purchases.vendorGroups.title', 'Vendor Groups')}
+                {t('vendorGroups.title', 'Vendor Groups')}
               </h1>
               <p className="text-xs font-medium uppercase tracking-[0.15em] text-slate-500">
-                {t('purchases.vendorGroups.listSubtitle', 'Reporting and filtering segments')}
+                {t('vendorGroups.listSubtitle', 'Reporting and filtering segments')}
               </p>
             </div>
           </div>
@@ -245,7 +245,7 @@ const VendorGroupsPage: React.FC = () => {
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-2 rounded-lg bg-emerald-600 px-5 py-2 text-xs font-bold uppercase tracking-widest text-white shadow-md transition-all hover:bg-emerald-700"
           >
-            <Plus size={16} /> {t('purchases.vendorGroups.actions.new', 'New Group')}
+            <Plus size={16} /> {t('vendorGroups.actions.new', 'New Group')}
           </button>
         </div>
       </div>
@@ -255,7 +255,7 @@ const VendorGroupsPage: React.FC = () => {
           <Card className="overflow-hidden border-slate-200 p-0 shadow-xl shadow-slate-200/50 dark:border-slate-800 dark:shadow-none">
             <div className="flex items-center justify-between border-b bg-slate-50/50 px-6 py-4 dark:border-slate-800 dark:bg-slate-900/50">
               <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest text-slate-500">
-                <Search size={14} /> {t('purchases.vendorGroups.directory', 'Group directory')}
+                <Search size={14} /> {t('vendorGroups.directory', 'Group directory')}
               </div>
               {loading && (
                 <div className="animate-pulse text-[10px] font-black uppercase tracking-tighter text-emerald-500">
@@ -272,10 +272,10 @@ const VendorGroupsPage: React.FC = () => {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-slate-600 dark:text-slate-400">
-                      {t('purchases.vendorGroups.emptyTitle', 'No Vendor Groups')}
+                      {t('vendorGroups.emptyTitle', 'No Vendor Groups')}
                     </p>
                     <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400">
-                      {t('purchases.vendorGroups.emptyHelp', 'Create your first vendor group to segment suppliers for filtering and reporting.')}
+                      {t('vendorGroups.emptyHelp', 'Create your first vendor group to segment suppliers for filtering and reporting.')}
                     </p>
                   </div>
                 </div>
@@ -295,7 +295,7 @@ const VendorGroupsPage: React.FC = () => {
                             <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{group.name}</span>
                           </div>
                           <div className="text-[11px] text-slate-400">
-                            {group.description || t('purchases.vendorGroups.noDescription', 'No description')}
+                            {group.description || t('vendorGroups.noDescription', 'No description')}
                           </div>
                         </div>
                       </div>
@@ -334,9 +334,8 @@ const VendorGroupsPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={!!pendingDelete}
-        title={t('purchases.vendorGroups.confirmDeleteTitle', 'Delete vendor group?')}
-        message={t(
-          'purchases.vendorGroups.confirmDeleteMessage',
+        title={t('vendorGroups.confirmDeleteTitle', 'Delete vendor group?')}
+        message={t('vendorGroups.confirmDeleteMessage',
           'This removes the vendor group only if no vendors still reference it.'
         )}
         confirmLabel={t('common.delete', 'Delete')}
