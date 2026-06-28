@@ -72,7 +72,7 @@ const normalizePurchaseDirectPolicy = (settings: PurchaseSettingsDTO | null): Pu
 type TabId = 'policy' | 'accounts' | 'numbering' | 'governance' | 'controls';
 
 const PurchaseSettingsPage: React.FC = () => {
-  const { t } = useTranslation();
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<TabId>('policy');
   const [settings, setSettings] = useState<PurchaseSettingsDTO | null>(null);
@@ -106,7 +106,7 @@ const PurchaseSettingsPage: React.FC = () => {
         setInvSettings(invSettingsData);
       } catch (err: any) {
         console.error('Failed to load purchase settings', err);
-        errorHandler.showError('Failed to load purchase settings.');
+        errorHandler.showError(t('purchaseSettings.messages.loadFailed', 'Failed to load purchase settings.'));
       } finally {
         setLoading(false);
       }
@@ -215,11 +215,11 @@ const PurchaseSettingsPage: React.FC = () => {
   const handleSave = async () => {
     if (!settings) return;
     if (!settings.defaultAPAccountId) {
-      errorHandler.showError('Default Accounts Payable account is required.');
+      errorHandler.showError(t('purchaseSettings.messages.defaultAPRequired', 'Default Accounts Payable account is required.'));
       return;
     }
     if (accountingMode === 'PERPETUAL' && !settings.defaultGRNIAccountId) {
-      errorHandler.showError('Default GRNI account is required for perpetual purchasing workflows.');
+      errorHandler.showError(t('purchaseSettings.messages.defaultGRNIRequired', 'Default GRNI account is required for perpetual purchasing workflows.'));
       return;
     }
 
@@ -272,10 +272,10 @@ const PurchaseSettingsPage: React.FC = () => {
       const saved = unwrap<PurchaseSettingsDTO>(result);
       setSettings(saved);
       setOriginalSettings(saved);
-      errorHandler.showSuccess('Purchase settings updated successfully.');
+      errorHandler.showSuccess(t('purchaseSettings.messages.updated', 'Purchase settings updated successfully.'));
     } catch (err: any) {
       console.error('Failed to save purchase settings', err);
-      errorHandler.showError(err?.response?.data?.error?.message || 'Failed to save purchase settings.');
+      errorHandler.showError(err?.response?.data?.error?.message || t('purchaseSettings.messages.saveFailed', 'Failed to save purchase settings.'));
     } finally {
       setSaving(false);
     }
@@ -317,7 +317,7 @@ const PurchaseSettingsPage: React.FC = () => {
         onSave={handleSave}
         onDiscard={() => {
           setSettings(originalSettings);
-          toast('Changes discarded', { icon: 'ℹ️' });
+          toast(t('purchaseSettings.messages.discarded', 'Changes discarded'), { icon: 'ℹ️' });
         }}
         saving={saving}
       >
@@ -340,7 +340,7 @@ const PurchaseSettingsPage: React.FC = () => {
             <div className="grid gap-8 md:grid-cols-2">
               <div className="space-y-4">
                 <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
-                  <div className="mb-3 text-sm font-bold text-gray-900">Workflow Mode</div>
+                  <div className="mb-3 text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.workflowMode", "Workflow Mode")}</div>
                   <div className="space-y-3">
                     <label className={`flex items-start gap-3 rounded-lg border p-4 ${simpleWorkflowDisabled ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${settings.workflowMode === 'SIMPLE' ? 'border-indigo-500' : 'border-gray-200 hover:border-indigo-200'}`}>
                       <input
@@ -351,8 +351,8 @@ const PurchaseSettingsPage: React.FC = () => {
                         disabled={simpleWorkflowDisabled}
                       />
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Simple</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Show invoices and returns only.</div>
+                        <div className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.simple", "Simple")}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t("auto.PurchaseSettingsPage.showInvoicesAndReturnsOnly", "Show invoices and returns only.")}</div>
                       </div>
                     </label>
 
@@ -364,16 +364,14 @@ const PurchaseSettingsPage: React.FC = () => {
                         onChange={() => applyWorkflowMode('OPERATIONAL')}
                       />
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Operational</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Expose orders and goods receipts.</div>
+                        <div className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.operational", "Operational")}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t("auto.PurchaseSettingsPage.exposeOrdersAndGoodsReceipts", "Expose orders and goods receipts.")}</div>
                       </div>
                     </label>
                   </div>
 
                   {simpleWorkflowDisabled && (
-                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      Perpetual accounting requires the operational workflow because Goods Receipts create inventory accounting.
-                    </div>
+                    <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">{t("auto.PurchaseSettingsPage.perpetualAccountingRequiresTheOperationalWorkflowBecauseGoods", "Perpetual accounting requires the operational workflow because Goods Receipts create inventory accounting.")}</div>
                   )}
                 </div>
 
@@ -381,8 +379,8 @@ const PurchaseSettingsPage: React.FC = () => {
                   <>
                     <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Allow Direct Invoicing</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Invoice vendors without a preceding PO/GRN.</div>
+                        <div className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.allowDirectInvoicing", "Allow Direct Invoicing")}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t("auto.PurchaseSettingsPage.invoiceVendorsWithoutAPrecedingPOGRN", "Invoice vendors without a preceding PO/GRN.")}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -394,8 +392,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
                     <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                       <div>
-                        <div className="text-sm font-bold text-gray-900">Require PO For Stock Items</div>
-                        <div className="text-xs uppercase tracking-tight text-gray-500">Force stock-item procurement to start from a Purchase Order.</div>
+                        <div className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.requirePOForStockItems", "Require PO For Stock Items")}</div>
+                        <div className="text-xs uppercase tracking-tight text-gray-500">{t("auto.PurchaseSettingsPage.forceStockItemProcurementToStartFromA", "Force stock-item procurement to start from a Purchase Order.")}</div>
                       </div>
                       <input
                         type="checkbox"
@@ -406,16 +404,14 @@ const PurchaseSettingsPage: React.FC = () => {
                     </label>
                   </>
                 ) : (
-                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">
-                    Simple workflow automatically enables direct invoicing and hides Purchase Orders and Goods Receipts from end users.
-                  </div>
+                  <div className="rounded-xl border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-700 shadow-sm">{t("auto.PurchaseSettingsPage.simpleWorkflowAutomaticallyEnablesDirectInvoicingAndHides", "Simple workflow automatically enables direct invoicing and hides Purchase Orders and Goods Receipts from end users.")}</div>
                 )}
 
               </div>
 
               <div className="space-y-6">
                 <div>
-                  <label className="mb-1 block text-sm font-medium text-gray-700">Default Payment Terms (Days)</label>
+                  <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.defaultPaymentTermsDays", "Default Payment Terms (Days)")}</label>
                   <input
                     type="number"
                     min={0}
@@ -427,7 +423,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Over-delivery (%)</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.overDelivery", "Over-delivery (%)")}</label>
                     <input
                       type="number"
                       step={0.01}
@@ -437,7 +433,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Over-invoice (%)</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.overInvoice", "Over-invoice (%)")}</label>
                     <input
                       type="number"
                       step={0.01}
@@ -450,8 +446,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
                 <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                   <div className="pr-4">
-                    <div className="text-sm font-bold text-gray-900">Allow over-payment</div>
-                    <div className="text-xs text-gray-500">When on, a payment may exceed the invoice total. The extra becomes a credit on the vendor's account (their AP balance goes negative) and offsets their future bills.</div>
+                    <div className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.allowOverPayment", "Allow over-payment")}</div>
+                    <div className="text-xs text-gray-500">{t("auto.PurchaseSettingsPage.whenOnAPaymentMayExceedTheInvoice", "When on, a payment may exceed the invoice total. The extra becomes a credit on the vendor's account (their AP balance goes negative) and offsets their future bills.")}</div>
                   </div>
                   <input
                     type="checkbox"
@@ -463,8 +459,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
                 <label className="flex cursor-pointer items-center justify-between rounded-xl border border-gray-100 bg-white p-4 shadow-sm transition hover:border-indigo-200">
                   <div className="pr-4">
-                    <div className="text-sm font-bold text-gray-900">Derive remembered prices across UOM</div>
-                    <div className="text-xs text-gray-500">When on, same-vendor same-currency price memory can convert between item UOMs. It never converts across currencies.</div>
+                    <div className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.deriveRememberedPricesAcrossUOM", "Derive remembered prices across UOM")}</div>
+                    <div className="text-xs text-gray-500">{t("auto.PurchaseSettingsPage.whenOnSameVendorSameCurrencyPriceMemory", "When on, same-vendor same-currency price memory can convert between item UOMs. It never converts across currencies.")}</div>
                   </div>
                   <input
                     type="checkbox"
@@ -493,22 +489,22 @@ const PurchaseSettingsPage: React.FC = () => {
               <div className="grid gap-8 md:grid-cols-2">
                 <div className="space-y-6">
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Default Accounts Payable</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.defaultAccountsPayable", "Default Accounts Payable")}</label>
                     <AccountSelector
                       value={settings.defaultAPAccountId || ''}
                       onChange={(account: any) => updateSetting('defaultAPAccountId', account?.id || '')}
                       accounts={liabilityAccounts}
-                      placeholder="Select AP account"
+                      placeholder={t("auto.PurchaseSettingsPage.selectAPAccount", "Select AP account")}
                     />
-                    <p className="mt-1.5 text-xs italic text-gray-500">Primary vendor liability account.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">{t("auto.PurchaseSettingsPage.primaryVendorLiabilityAccount", "Primary vendor liability account.")}</p>
                   </div>
 
                   <div className="rounded-lg border border-indigo-100 bg-indigo-50/40 px-3 py-2">
                     <p className="text-xs font-semibold text-indigo-900">
-                      {t('purchases.settings.apGeneration.title', 'AP Sub-account Generation')}
+                      {t('settings.apGeneration.title', 'AP Sub-account Generation')}
                     </p>
                     <p className="mt-1 text-[11px] text-indigo-700">
-                      {t('purchases.settings.apGeneration.description', 'Configure how vendor-specific AP sub-accounts are generated during vendor creation.')}
+                      {t('settings.apGeneration.description', 'Configure how vendor-specific AP sub-accounts are generated during vendor creation.')}
                     </p>
                     <div className="mt-2">
                       <button
@@ -517,31 +513,31 @@ const PurchaseSettingsPage: React.FC = () => {
                         onClick={() => setShowBackfillConfirm(true)}
                         disabled={backfilling}
                       >
-                        {t('purchases.settings.apGeneration.backfillButton', 'Backfill vendor AP sub-accounts')}
+                        {t('settings.apGeneration.backfillButton', 'Backfill vendor AP sub-accounts')}
                       </button>
                     </div>
                   </div>
 
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                      {t('purchases.settings.apParent.label', 'AP Parent Account')}
+                      {t('settings.apParent.label', 'AP Parent Account')}
                     </label>
                     <AccountSelector
                       value={settings.apParentAccountId || ''}
                       onChange={(account: any) => updateSetting('apParentAccountId', account?.id || undefined)}
-                      placeholder={t('purchases.settings.apParent.placeholder', 'Select AP parent account')}
+                      placeholder={t('settings.apParent.placeholder', 'Select AP parent account')}
                       allowedClassifications={['LIABILITY']}
-                      contextLabel={t('purchases.settings.apParent.context', 'Liability')}
+                      contextLabel={t('settings.apParent.context', 'Liability')}
                       enforceClassification
                     />
                     <p className="mt-1.5 text-xs italic text-gray-500">
-                      {t('purchases.settings.apParent.help', 'Parent account under which per-vendor AP sub-accounts are generated.')}
+                      {t('settings.apParent.help', 'Parent account under which per-vendor AP sub-accounts are generated.')}
                     </p>
                   </div>
 
                   <div>
                     <label className="mb-1 block text-sm font-medium text-gray-700">
-                      {t('purchases.settings.partyAccountFormat.label', 'AP Sub-account Code Format')}
+                      {t('settings.partyAccountFormat.label', 'AP Sub-account Code Format')}
                     </label>
                     {(() => {
                       const raw = (settings.partyAccountCodeFormat ?? '').trim();
@@ -562,7 +558,7 @@ const PurchaseSettingsPage: React.FC = () => {
                             {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
                               <option key={p.template} value={p.template}>{p.label}</option>
                             ))}
-                            <option value="CUSTOM">{t('purchases.settings.partyAccountFormat.custom', 'Custom…')}</option>
+                            <option value="CUSTOM">{t('settings.partyAccountFormat.custom', 'Custom…')}</option>
                           </select>
                           {showCustom && (
                             <input
@@ -578,42 +574,42 @@ const PurchaseSettingsPage: React.FC = () => {
                       );
                     })()}
                     <p className="mt-1.5 text-xs italic text-gray-500">
-                      {t('purchases.settings.partyAccountFormat.help', 'Applied to every new vendor AP sub-account. Tokens: {parent}, {partyCode}, {seq3}.')}
+                      {t('settings.partyAccountFormat.help', 'Applied to every new vendor AP sub-account. Tokens: {parent}, {partyCode}, {seq3}.')}
                     </p>
                   </div>
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">Default Purchase Expense</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.defaultPurchaseExpense", "Default Purchase Expense")}</label>
                     <AccountSelector
                       value={settings.defaultPurchaseExpenseAccountId || ''}
                       onChange={(account: any) => updateSetting('defaultPurchaseExpenseAccountId', account?.id || undefined)}
                       accounts={expenseAccounts}
-                      placeholder="Select expense fallback for non-stock items"
+                      placeholder={t("auto.PurchaseSettingsPage.selectExpenseFallbackForNonStockItems", "Select expense fallback for non-stock items")}
                     />
-                    <p className="mt-1.5 text-xs italic text-gray-500">Optional fallback for service and non-stock posting.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">{t("auto.PurchaseSettingsPage.optionalFallbackForServiceAndNonStockPosting", "Optional fallback for service and non-stock posting.")}</p>
                   </div>
 
                   {accountingMode === 'PERPETUAL' && (
                     <div>
-                      <label className="mb-1 block text-sm font-medium text-gray-700">Default GRNI</label>
+                      <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.defaultGRNI", "Default GRNI")}</label>
                       <AccountSelector
                         value={settings.defaultGRNIAccountId || ''}
                         onChange={(account: any) => updateSetting('defaultGRNIAccountId', account?.id || undefined)}
                         accounts={liabilityAccounts}
-                        placeholder="Select GRNI account"
+                        placeholder={t("auto.PurchaseSettingsPage.selectGRNIAccount", "Select GRNI account")}
                       />
-                      <p className="mt-1.5 text-xs italic text-gray-500">Required for perpetual receipt accrual posting.</p>
+                      <p className="mt-1.5 text-xs italic text-gray-500">{t("auto.PurchaseSettingsPage.requiredForPerpetualReceiptAccrualPosting", "Required for perpetual receipt accrual posting.")}</p>
                     </div>
                   )}
 
                   <div>
-                    <label className="mb-1 block text-sm font-medium text-gray-700">FX Gain/Loss Account</label>
+                    <label className="mb-1 block text-sm font-medium text-gray-700">{t("auto.PurchaseSettingsPage.fXGainLossAccount", "FX Gain/Loss Account")}</label>
                     <AccountSelector
                       value={settings.exchangeGainLossAccountId || ''}
                       onChange={(account: any) => updateSetting('exchangeGainLossAccountId', account?.id || undefined)}
-                      placeholder="Select FX account"
+                      placeholder={t("auto.PurchaseSettingsPage.selectFXAccount", "Select FX account")}
                     />
-                    <p className="mt-1.5 text-xs italic text-gray-500">Used for posting supplier exchange differences.</p>
+                    <p className="mt-1.5 text-xs italic text-gray-500">{t("auto.PurchaseSettingsPage.usedForPostingSupplierExchangeDifferences", "Used for posting supplier exchange differences.")}</p>
                   </div>
                 </div>
 
@@ -622,15 +618,15 @@ const PurchaseSettingsPage: React.FC = () => {
                     <div className="rounded-lg bg-indigo-50 p-1.5">
                       <Settings size={14} className="text-indigo-600" />
                     </div>
-                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-800">Linked Inventory Context</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-widest text-slate-800">{t("auto.PurchaseSettingsPage.linkedInventoryContext", "Linked Inventory Context")}</h3>
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Mode:</span>
+                      <span className="text-slate-500">{t("auto.PurchaseSettingsPage.mode", "Mode:")}</span>
                       <span className="font-bold text-indigo-700">{getAccountingModeLabel(accountingMode)}</span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Inventory Asset:</span>
+                      <span className="text-slate-500">{t("auto.PurchaseSettingsPage.inventoryAsset", "Inventory Asset:")}</span>
                       <span className="font-medium text-slate-700">
                         {invSettings?.defaultInventoryAssetAccountId
                           ? getAccountById(invSettings.defaultInventoryAssetAccountId)?.name || 'Account Assigned'
@@ -638,16 +634,14 @@ const PurchaseSettingsPage: React.FC = () => {
                       </span>
                     </div>
                     <div className="flex items-center justify-between text-xs">
-                      <span className="text-slate-500">Workflow:</span>
+                      <span className="text-slate-500">{t("auto.PurchaseSettingsPage.workflow", "Workflow:")}</span>
                       <span className="font-medium text-slate-700">{getWorkflowModeLabel(settings.workflowMode)}</span>
                     </div>
                   </div>
                   <div className="mt-4 border-t border-slate-100 pt-4">
                     <div className="flex gap-2">
                       <Info size={14} className="mt-0.5 flex-shrink-0 text-slate-400" />
-                      <p className="text-[10px] italic leading-relaxed text-slate-500">
-                        Purchase posting follows the inventory accounting mode chosen during inventory setup. Perpetual mode requires GRNI for receipt accruals.
-                      </p>
+                      <p className="text-[10px] italic leading-relaxed text-slate-500">{t("auto.PurchaseSettingsPage.purchasePostingFollowsTheInventoryAccountingModeChosen", "Purchase posting follows the inventory accounting mode chosen during inventory setup. Perpetual mode requires GRNI for receipt accruals.")}</p>
                     </div>
                   </div>
                 </div>
@@ -667,8 +661,7 @@ const PurchaseSettingsPage: React.FC = () => {
           hideSaveButton={true}
         >
           <Card className="p-6">
-            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">
-              Workflow mode: <span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
+            <div className="mb-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700">{t("auto.PurchaseSettingsPage.workflowMode2", "Workflow mode:")}<span className="font-semibold">{getWorkflowModeLabel(settings.workflowMode)}</span>
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
               {[
@@ -682,7 +675,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     {doc.label}
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Prefix</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.PurchaseSettingsPage.prefix", "Prefix")}</label>
                     <input
                       type="text"
                       className="w-full rounded-lg border border-slate-200 px-3 py-1.5 text-sm font-bold uppercase focus:ring-1 focus:ring-indigo-500"
@@ -691,7 +684,7 @@ const PurchaseSettingsPage: React.FC = () => {
                     />
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Next Number</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.PurchaseSettingsPage.nextNumber", "Next Number")}</label>
                     <input
                       type="number"
                       min={1}
@@ -720,8 +713,7 @@ const PurchaseSettingsPage: React.FC = () => {
             <Card className="p-6 border-indigo-100 bg-indigo-50/30">
               <div className="flex items-center gap-2 mb-4">
                 <Shield className="h-5 w-5 text-indigo-600" />
-                <h3 className="text-sm font-bold text-gray-900">
-                  Base Policy (Workflow: {settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
+                <h3 className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.basePolicyWorkflow", "Base Policy (Workflow:")}{settings.workflowMode === 'SIMPLE' ? 'Simple' : 'Operational'})
                 </h3>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
@@ -735,36 +727,32 @@ const PurchaseSettingsPage: React.FC = () => {
                     {p.allowed ? (
                       <div className="flex items-center gap-1.5 text-green-600">
                         <CheckCircle2 className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase">Allow</span>
+                        <span className="text-xs font-bold uppercase">{t("auto.PurchaseSettingsPage.allow", "Allow")}</span>
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5 text-red-600">
                         <XCircle className="h-4 w-4" />
-                        <span className="text-xs font-bold uppercase">Block</span>
+                        <span className="text-xs font-bold uppercase">{t("auto.PurchaseSettingsPage.block", "Block")}</span>
                       </div>
                     )}
                   </div>
                 ))}
               </div>
-              <p className="mt-4 text-xs text-gray-500 italic">
-                Base policies are derived from your active workflow mode. Use governance rules below to override these defaults.
-              </p>
+              <p className="mt-4 text-xs text-gray-500 italic">{t("auto.PurchaseSettingsPage.basePoliciesAreDerivedFromYourActiveWorkflow", "Base policies are derived from your active workflow mode. Use governance rules below to override these defaults.")}</p>
             </Card>
 
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
                 <div>
-                  <h3 className="text-sm font-bold text-gray-900">Active Overrides</h3>
-                  <p className="text-xs text-gray-500">Specific rules that change the base policy behavior.</p>
+                  <h3 className="text-sm font-bold text-gray-900">{t("auto.PurchaseSettingsPage.activeOverrides", "Active Overrides")}</h3>
+                  <p className="text-xs text-gray-500">{t("auto.PurchaseSettingsPage.specificRulesThatChangeTheBasePolicyBehavior", "Specific rules that change the base policy behavior.")}</p>
                 </div>
                 {!showAddRule && (
                   <button
                     onClick={() => setShowAddRule(true)}
                     className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition"
                   >
-                    <Plus className="h-4 w-4" />
-                    Add Rule
-                  </button>
+                    <Plus className="h-4 w-4" />{t("auto.PurchaseSettingsPage.addRule", "Add Rule")}</button>
                 )}
               </div>
 
@@ -772,38 +760,38 @@ const PurchaseSettingsPage: React.FC = () => {
                 <div className="mb-6 rounded-xl border border-indigo-100 bg-indigo-50/50 p-4 animate-in fade-in slide-in-from-top-2 duration-200">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Persona</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("auto.PurchaseSettingsPage.persona", "Persona")}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.persona}
                         onChange={(e) => setNewRule({ ...newRule, persona: e.target.value as any })}
                       >
-                        <option value="direct">Direct</option>
-                        <option value="linked">Linked</option>
-                        <option value="service">Service</option>
+                        <option value="direct">{t("auto.PurchaseSettingsPage.direct", "Direct")}</option>
+                        <option value="linked">{t("auto.PurchaseSettingsPage.linked", "Linked")}</option>
+                        <option value="service">{t("auto.PurchaseSettingsPage.service", "Service")}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Action</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("auto.PurchaseSettingsPage.action", "Action")}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.action}
                         onChange={(e) => setNewRule({ ...newRule, action: e.target.value as any })}
                       >
-                        <option value="allow">Allow</option>
-                        <option value="block">Block</option>
+                        <option value="allow">{t("auto.PurchaseSettingsPage.allow2", "Allow")}</option>
+                        <option value="block">{t("auto.PurchaseSettingsPage.block2", "Block")}</option>
                       </select>
                     </div>
                     <div>
-                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Scope</label>
+                      <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("auto.PurchaseSettingsPage.scope", "Scope")}</label>
                       <select
                         className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                         value={newRule.scope}
                         onChange={(e) => setNewRule({ ...newRule, scope: e.target.value as any })}
                       >
-                        <option value="company">Company</option>
-                        <option value="branch">Branch</option>
-                        <option value="form">Form</option>
+                        <option value="company">{t("auto.PurchaseSettingsPage.company", "Company")}</option>
+                        <option value="branch">{t("auto.PurchaseSettingsPage.branch", "Branch")}</option>
+                        <option value="form">{t("auto.PurchaseSettingsPage.form", "Form")}</option>
                       </select>
                     </div>
                   </div>
@@ -811,10 +799,10 @@ const PurchaseSettingsPage: React.FC = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                     {newRule.scope === 'branch' && (
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Branch ID</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("auto.PurchaseSettingsPage.branchID", "Branch ID")}</label>
                         <input
                           type="text"
-                          placeholder="e.g. branch-001"
+                          placeholder={t("auto.PurchaseSettingsPage.eGBranch001", "e.g. branch-001")}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           value={newRule.branchId || ''}
                           onChange={(e) => setNewRule({ ...newRule, branchId: e.target.value })}
@@ -823,10 +811,10 @@ const PurchaseSettingsPage: React.FC = () => {
                     )}
                     {newRule.scope === 'form' && (
                       <div>
-                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">Form Type</label>
+                        <label className="block text-[10px] font-bold text-gray-500 uppercase mb-1">{t("auto.PurchaseSettingsPage.formType", "Form Type")}</label>
                         <input
                           type="text"
-                          placeholder="e.g. purchase_invoice_direct"
+                          placeholder={t("auto.PurchaseSettingsPage.eGPurchaseInvoiceDirect", "e.g. purchase_invoice_direct")}
                           className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500"
                           value={newRule.formType || ''}
                           onChange={(e) => setNewRule({ ...newRule, formType: e.target.value })}
@@ -839,15 +827,11 @@ const PurchaseSettingsPage: React.FC = () => {
                     <button
                       onClick={() => setShowAddRule(false)}
                       className="rounded-lg px-4 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100 transition"
-                    >
-                      Cancel
-                    </button>
+                    >{t("auto.PurchaseSettingsPage.cancel", "Cancel")}</button>
                     <button
                       onClick={addRule}
                       className="rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition"
-                    >
-                      Add Override Rule
-                    </button>
+                    >{t("auto.PurchaseSettingsPage.addOverrideRule", "Add Override Rule")}</button>
                   </div>
                 </div>
               )}
@@ -856,11 +840,11 @@ const PurchaseSettingsPage: React.FC = () => {
                 <table className="w-full text-left text-sm">
                   <thead className="bg-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-widest">
                     <tr>
-                      <th className="px-4 py-3">Persona</th>
-                      <th className="px-4 py-3">Scope</th>
-                      <th className="px-4 py-3">Target</th>
-                      <th className="px-4 py-3">Action</th>
-                      <th className="px-4 py-3 text-right">Actions</th>
+                      <th className="px-4 py-3">{t("auto.PurchaseSettingsPage.persona2", "Persona")}</th>
+                      <th className="px-4 py-3">{t("auto.PurchaseSettingsPage.scope2", "Scope")}</th>
+                      <th className="px-4 py-3">{t("auto.PurchaseSettingsPage.target", "Target")}</th>
+                      <th className="px-4 py-3">{t("auto.PurchaseSettingsPage.action2", "Action")}</th>
+                      <th className="px-4 py-3 text-right">{t("auto.PurchaseSettingsPage.actions", "Actions")}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-gray-100">
@@ -889,9 +873,7 @@ const PurchaseSettingsPage: React.FC = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500 italic">
-                          No override rules defined. Base policy applies to all documents.
-                        </td>
+                        <td colSpan={5} className="px-4 py-8 text-center text-gray-500 italic">{t("auto.PurchaseSettingsPage.noOverrideRulesDefinedBasePolicyAppliesTo", "No override rules defined. Base policy applies to all documents.")}</td>
                       </tr>
                     )}
                   </tbody>
@@ -913,12 +895,11 @@ const PurchaseSettingsPage: React.FC = () => {
       </ModuleSettingsLayout>
       <ConfirmDialog
         isOpen={showBackfillConfirm}
-        title={t('purchases.settings.apGeneration.confirmTitle', 'Backfill Vendor AP Sub-accounts')}
-        message={t(
-          'purchases.settings.apGeneration.confirmMessage',
+        title={t('settings.apGeneration.confirmTitle', 'Backfill Vendor AP Sub-accounts')}
+        message={t('settings.apGeneration.confirmMessage',
           'This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.'
         )}
-        confirmLabel={t('purchases.settings.apGeneration.confirmAction', 'Run Backfill')}
+        confirmLabel={t('settings.apGeneration.confirmAction', 'Run Backfill')}
         cancelLabel={t('common.cancel', 'Cancel')}
         onConfirm={handleBackfillApAccounts}
         onCancel={() => setShowBackfillConfirm(false)}

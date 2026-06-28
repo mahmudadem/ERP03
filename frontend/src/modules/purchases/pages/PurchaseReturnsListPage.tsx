@@ -160,7 +160,7 @@ const PurchaseReturnsListPage: React.FC = () => {
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
-              placeholder="Return #, vendor, status..."
+              placeholder={t("auto.PurchaseReturnsListPage.returnVendorStatus", "Return #, vendor, status...")}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
@@ -209,13 +209,13 @@ const PurchaseReturnsListPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
-              <span>Apply</span>
+              <span>{t("auto.PurchaseReturnsListPage.apply", "Apply")}</span>
             </button>
             <button
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title="Clear"
+              title={t("auto.PurchaseReturnsListPage.clear", "Clear")}
             >
               <RotateCcw size={16} />
             </button>

@@ -510,8 +510,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Goods Receipt</h1>
-        <Card className="p-6">Loading goods receipt...</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.GoodsReceiptDetailPage.goodsReceipt", "Goods Receipt")}</h1>
+        <Card className="p-6">{t("auto.GoodsReceiptDetailPage.loadingGoodsReceipt", "Loading goods receipt...")}</Card>
       </div>
     );
   }
@@ -587,7 +587,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         icon={Truck}
         backLabel={isEditMode ? 'Cancel edit' : 'Back to goods receipts'}
         onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
-        badges={<DocumentPill tone="slate">Draft</DocumentPill>}
+        badges={<DocumentPill tone="slate">{t("auto.GoodsReceiptDetailPage.draft", "Draft")}</DocumentPill>}
         railSections={draftRailSections}
         railTitle="Goods receipt side rail"
         newAction={{
@@ -636,7 +636,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 className={documentHeaderControlClass}
                 value={form.purchaseOrderId}
                 onChange={(e) => setForm((prev) => ({ ...prev, purchaseOrderId: e.target.value }))}
-                placeholder="purchaseOrderId"
+                placeholder={t("auto.GoodsReceiptDetailPage.purchaseOrderId", "purchaseOrderId")}
               />
             </DocumentHeaderField>
             <DocumentHeaderField label="Vendor (standalone only)">
@@ -670,7 +670,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
           </DocumentHeaderGrid>
 
           <div className="px-3 pb-3">
-            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Notes</label>
+            <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t("auto.GoodsReceiptDetailPage.notes", "Notes")}</label>
             <textarea
               rows={3}
               className="w-full rounded border border-slate-300 bg-white px-2 py-2 text-xs text-slate-900 outline-none focus:ring-1 focus:ring-primary-500"
@@ -679,9 +679,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             />
           </div>
 
-          <div className="px-3 pb-3 text-xs text-slate-500">
-            If PO is provided, lines are pre-filled from open stock lines using server-side rules.
-          </div>
+          <div className="px-3 pb-3 text-xs text-slate-500">{t("auto.GoodsReceiptDetailPage.ifPOIsProvidedLinesArePreFilled", "If PO is provided, lines are pre-filled from open stock lines using server-side rules.")}</div>
         </Card>
             ),
           },
@@ -723,7 +721,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                   value={line.itemId}
                   disabled={!!form.purchaseOrderId || busy}
                   noBorder
-                  placeholder="Select item"
+                  placeholder={t("auto.GoodsReceiptDetailPage.selectItem", "Select item")}
                   trackInventoryOnly
                   onChange={(item) => {
                     if (!item) {
@@ -771,7 +769,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                   value={line.warehouseId}
                   disabled={busy}
                   noBorder
-                  placeholder="Select Warehouse"
+                  placeholder={t("auto.GoodsReceiptDetailPage.selectWarehouse", "Select Warehouse")}
                   onChange={(warehouse) => setLine(index, { warehouseId: warehouse?.id })}
                 />
               ),
@@ -788,8 +786,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
   if (!grn) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Goods Receipt</h1>
-        <Card className="p-6 text-sm text-red-700">Goods receipt not found.</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.GoodsReceiptDetailPage.goodsReceipt2", "Goods Receipt")}</h1>
+        <Card className="p-6 text-sm text-red-700">{t("auto.GoodsReceiptDetailPage.goodsReceiptNotFound", "Goods receipt not found.")}</Card>
       </div>
     );
   }
@@ -868,18 +866,14 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 type="button"
                 className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
                 onClick={() => navigate('/purchases/goods-receipts')}
-              >
-                Back to List
-              </button>
+              >{t("auto.GoodsReceiptDetailPage.backToList", "Back to List")}</button>
               {grn.status === 'DRAFT' && (
                 <button
                   type="button"
                   className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 disabled:opacity-50"
                   onClick={toggleEdit}
                   disabled={busy}
-                >
-                  Edit Draft
-                </button>
+                >{t("auto.GoodsReceiptDetailPage.editDraft", "Edit Draft")}</button>
               )}
               {grn.status === 'DRAFT' && (
                 <button
@@ -897,9 +891,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                   className="rounded border border-indigo-300 bg-white px-4 py-2 text-xs font-bold text-indigo-700 transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-50"
                   onClick={() => navigate(createReturnHref)}
                   disabled={!canCreateReturn}
-                >
-                  Create Return
-                </button>
+                >{t("auto.GoodsReceiptDetailPage.createReturn", "Create Return")}</button>
               )}
               {grn.status === 'POSTED' && (
                 <button
@@ -927,17 +919,17 @@ const GoodsReceiptDetailPage: React.FC = () => {
       <Card className="p-5">
         <div className="grid gap-4 md:grid-cols-3">
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Receipt Date</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.GoodsReceiptDetailPage.receiptDate", "Receipt Date")}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">{grn.receiptDate}</div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Warehouse</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.GoodsReceiptDetailPage.warehouse", "Warehouse")}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {warehouseLabelById[grn.warehouseId] || grn.warehouseId}
             </div>
           </div>
           <div>
-            <div className="text-xs uppercase tracking-wide text-slate-500">Created</div>
+            <div className="text-xs uppercase tracking-wide text-slate-500">{t("auto.GoodsReceiptDetailPage.created", "Created")}</div>
             <div className="mt-1 font-medium text-slate-900 dark:text-slate-100">
               {new Date(grn.createdAt).toLocaleString()}
             </div>
@@ -949,16 +941,16 @@ const GoodsReceiptDetailPage: React.FC = () => {
         lines: {
           content: (
       <Card className="p-5">
-        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">Lines</h2>
+        <h2 className="mb-3 text-lg font-semibold text-slate-900 dark:text-slate-100">{t("auto.GoodsReceiptDetailPage.lines", "Lines")}</h2>
         <div className="overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 pr-4 text-left">Item</th>
-                <th className="py-2 px-4 text-right">Received Qty</th>
-                <th className="py-2 px-4 text-left">UOM</th>
-                <th className="py-2 px-4 text-right">Unit Cost</th>
-                <th className="py-2 pl-4 text-left">Currency</th>
+                <th className="py-2 pr-4 text-left">{t("auto.GoodsReceiptDetailPage.item", "Item")}</th>
+                <th className="py-2 px-4 text-right">{t("auto.GoodsReceiptDetailPage.receivedQty", "Received Qty")}</th>
+                <th className="py-2 px-4 text-left">{t("auto.GoodsReceiptDetailPage.uOM", "UOM")}</th>
+                <th className="py-2 px-4 text-right">{t("auto.GoodsReceiptDetailPage.unitCost", "Unit Cost")}</th>
+                <th className="py-2 pl-4 text-left">{t("auto.GoodsReceiptDetailPage.currency", "Currency")}</th>
               </tr>
             </thead>
             <tbody>

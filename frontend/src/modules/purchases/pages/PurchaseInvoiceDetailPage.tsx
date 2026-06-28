@@ -2076,8 +2076,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                     options={purchaseTaxCodes.map((tc) => ({ id: tc.id, code: tc.code, name: tc.name, rate: tc.rate }))}
                     valueId={row.taxCodeId}
                     disabled={busy || !row.itemId}
-                    emptySetupMessage={t(
-                      'purchases.invoiceDetail.taxCodeEmptyHint',
+                    emptySetupMessage={t('invoiceDetail.taxCodeEmptyHint',
                       'No purchase tax codes set up. Create one with scope PURCHASE or BOTH to use it here.',
                     )}
                     onChange={(option) => setLine(index, { taxCodeId: option?.id })}
