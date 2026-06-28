@@ -305,7 +305,7 @@ const openPrintLayoutWindow = (payload: Record<string, any>, template: PurchaseI
 const PurchaseInvoiceDetailPage: React.FC = () => {
   const { company } = useCompanyAccess();
   const { getAccountById } = useAccounts();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -359,9 +359,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const [railFocus, setRailFocus] = useState<PurchaseInvoiceRailFocus>(() => ({
     kind: 'vendor',
     code: 'AP',
-    title: t('purchases.invoiceDetail.rail.vendorFocusTitle', 'Vendor'),
-    subtitle: t('purchases.invoiceDetail.rail.vendorFocusSubtitle', 'Select a vendor to review AP context.'),
-    note: t('purchases.invoiceDetail.rail.vendorFocusNote', 'Vendor focus controls AP settlement, payment terms, currency, and purchase history.'),
+    title: t('invoiceDetail.rail.vendorFocusTitle', 'Vendor'),
+    subtitle: t('invoiceDetail.rail.vendorFocusSubtitle', 'Select a vendor to review AP context.'),
+    note: t('invoiceDetail.rail.vendorFocusNote', 'Vendor focus controls AP settlement, payment terms, currency, and purchase history.'),
   }));
 
   const vendorNameById = useMemo(
@@ -411,13 +411,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const focusVendor = (vendorId = form.vendorId, vendorName = form.vendorName) => {
     const vendor = vendorId ? vendors.find((candidate) => candidate.id === vendorId) : undefined;
-    const title = vendor?.displayName || vendorName || t('purchases.invoiceDetail.rail.vendorFocusTitle', 'Vendor');
+    const title = vendor?.displayName || vendorName || t('invoiceDetail.rail.vendorFocusTitle', 'Vendor');
     setRailFocus({
       kind: 'vendor',
       code: vendorId || 'AP',
       title,
-      subtitle: form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorFocusSubtitle', 'Vendor bill and AP account context'),
-      note: t('purchases.invoiceDetail.rail.vendorFocusNote', 'Vendor focus controls AP settlement, payment terms, currency, and purchase history.'),
+      subtitle: form.vendorInvoiceNumber || t('invoiceDetail.rail.vendorFocusSubtitle', 'Vendor bill and AP account context'),
+      note: t('invoiceDetail.rail.vendorFocusNote', 'Vendor focus controls AP settlement, payment terms, currency, and purchase history.'),
     });
   };
 
@@ -427,9 +427,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     setRailFocus({
       kind: 'warehouse',
       code: effectiveWarehouseId || 'WH',
-      title: warehouse?.name || t('purchases.invoiceDetail.rail.warehouseFocusTitle', 'Warehouse'),
-      subtitle: warehouse?.code || t('purchases.invoiceDetail.rail.warehouseFocusSubtitle', 'Direct PI stock receipt location'),
-      note: t('purchases.invoiceDetail.rail.warehouseFocusNote', 'For direct purchase invoices, this header warehouse is applied to stock lines that do not come from a purchase order.'),
+      title: warehouse?.name || t('invoiceDetail.rail.warehouseFocusTitle', 'Warehouse'),
+      subtitle: warehouse?.code || t('invoiceDetail.rail.warehouseFocusSubtitle', 'Direct PI stock receipt location'),
+      note: t('invoiceDetail.rail.warehouseFocusNote', 'For direct purchase invoices, this header warehouse is applied to stock lines that do not come from a purchase order.'),
     });
   };
 
@@ -440,11 +440,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     setRailFocus({
       kind: 'item',
       code: line.itemCode || item?.code || line.itemId || 'ITEM',
-      title: line.itemName || item?.name || t('purchases.invoiceDetail.rail.itemFocusTitle', 'Item line'),
+      title: line.itemName || item?.name || t('invoiceDetail.rail.itemFocusTitle', 'Item line'),
       subtitle: `${line.invoicedQty || 0} ${line.uom || item?.purchaseUom || item?.baseUom || ''}`.trim(),
       note: warehouse
-        ? t('purchases.invoiceDetail.rail.itemFocusNoteWithWarehouse', 'This line receives into {{warehouse}} unless the source document already fixed the warehouse.', { warehouse: warehouse.name })
-        : t('purchases.invoiceDetail.rail.itemFocusNote', 'Select a header warehouse before posting stock items on a direct purchase invoice.'),
+        ? t('invoiceDetail.rail.itemFocusNoteWithWarehouse', 'This line receives into {{warehouse}} unless the source document already fixed the warehouse.', { warehouse: warehouse.name })
+        : t('invoiceDetail.rail.itemFocusNote', 'Select a header warehouse before posting stock items on a direct purchase invoice.'),
     });
   };
 
@@ -657,7 +657,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.invoiceDetail.errors.poLoadFailed', 'Failed to load purchase order lines.')
+          t('invoiceDetail.errors.poLoadFailed', 'Failed to load purchase order lines.')
       );
     } finally {
       setOrderLineLoading(false);
@@ -690,7 +690,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.invoiceDetail.errors.loadFailed', 'Failed to load purchase invoice.')
+          t('invoiceDetail.errors.loadFailed', 'Failed to load purchase invoice.')
       );
     } finally {
       setLoading(false);
@@ -949,8 +949,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         return charge.accountId;
       }
       return charge.kind === 'DISCOUNT'
-        ? t('purchases.invoiceDetail.charges.defaultDiscountAccount', 'Default discount account')
-        : t('purchases.invoiceDetail.charges.defaultAccount', 'Default expense account');
+        ? t('invoiceDetail.charges.defaultDiscountAccount', 'Default discount account')
+        : t('invoiceDetail.charges.defaultAccount', 'Default expense account');
     };
     const rows: ChargeAllocationRow[] = form.charges.map((charge, index) => ({
       key: charge.chargeId || String(index),
@@ -997,26 +997,26 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue);
 
   const validateBeforeSave = (): string | null => {
-    if (!form.vendorId) return t('purchases.invoiceDetail.validation.vendorRequired', 'Vendor is required.');
-    if (!form.invoiceDate) return t('purchases.invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
-    if (!form.currency.trim()) return t('purchases.invoiceDetail.validation.currencyRequired', 'Currency is required.');
-    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('purchases.invoiceDetail.validation.exchangeRateInvalid', 'Exchange rate must be greater than 0.');
+    if (!form.vendorId) return t('invoiceDetail.validation.vendorRequired', 'Vendor is required.');
+    if (!form.invoiceDate) return t('invoiceDetail.validation.invoiceDateRequired', 'Invoice date is required.');
+    if (!form.currency.trim()) return t('invoiceDetail.validation.currencyRequired', 'Currency is required.');
+    if (Number.isNaN(form.exchangeRate) || form.exchangeRate <= 0) return t('invoiceDetail.validation.exchangeRateInvalid', 'Exchange rate must be greater than 0.');
     // Validate only filled lines — ignore the line table's trailing empty working row.
     const filled = form.lines.filter(isFilledLine);
-    if (!filled.length) return t('purchases.invoiceDetail.validation.linesRequired', 'At least one line is required.');
+    if (!filled.length) return t('invoiceDetail.validation.linesRequired', 'At least one line is required.');
 
     for (let i = 0; i < filled.length; i += 1) {
       const line = filled[i];
       const item = itemById[line.itemId];
-      if (!line.itemId) return t('purchases.invoiceDetail.validation.lineItemRequired', 'Line {{n}}: item is required.', { n: i + 1 });
-      if (Number.isNaN(line.invoicedQty) || line.invoicedQty <= 0) return t('purchases.invoiceDetail.validation.lineQtyInvalid', 'Line {{n}}: quantity must be greater than 0.', { n: i + 1 });
+      if (!line.itemId) return t('invoiceDetail.validation.lineItemRequired', 'Line {{n}}: item is required.', { n: i + 1 });
+      if (Number.isNaN(line.invoicedQty) || line.invoicedQty <= 0) return t('invoiceDetail.validation.lineQtyInvalid', 'Line {{n}}: quantity must be greater than 0.', { n: i + 1 });
       if (Number.isNaN(line.unitPriceDoc) || line.unitPriceDoc < 0) {
-        return t('purchases.invoiceDetail.validation.lineUnitCostInvalid', 'Line {{n}}: unit cost must be greater than or equal to 0.', { n: i + 1 });
+        return t('invoiceDetail.validation.lineUnitCostInvalid', 'Line {{n}}: unit cost must be greater than or equal to 0.', { n: i + 1 });
       }
       // Warehouse is mandatory for stock items when direct invoicing is enabled
       const isStockItem = item?.trackInventory ?? true; // Default to true if unsure
       if (isStockItem && !(line.warehouseId || (!line.poLineId && form.warehouseId))) {
-        return t('purchases.invoiceDetail.validation.lineWarehouseRequired', 'Line {{n}}: Warehouse is required for stock item "{{name}}".', { n: i + 1, name: item?.name || line.itemId });
+        return t('invoiceDetail.validation.lineWarehouseRequired', 'Line {{n}}: Warehouse is required for stock item "{{name}}".', { n: i + 1, name: item?.name || line.itemId });
       }
     }
 
@@ -1052,13 +1052,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
   const validateAttachmentFile = (file: File, currentCount: number): string | null => {
     if (currentCount >= MAX_ATTACHMENT_FILES) {
-      return t('purchases.invoices.attachments.limitError', 'Maximum 5 files per invoice.');
+      return t('invoices.attachments.limitError', 'Maximum 5 files per invoice.');
     }
     if (file.size > MAX_ATTACHMENT_SIZE) {
-      return t('purchases.invoices.attachments.sizeError', 'File must be 10 MB or smaller.');
+      return t('invoices.attachments.sizeError', 'File must be 10 MB or smaller.');
     }
     if (!ALLOWED_ATTACHMENT_TYPES.includes(file.type)) {
-      return t('purchases.invoices.attachments.typeError', 'Unsupported file type.');
+      return t('invoices.attachments.typeError', 'Unsupported file type.');
     }
     return null;
   };
@@ -1077,13 +1077,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
     if (failed.length > 0) {
       errorHandler.showError(
-        t('purchases.invoices.attachments.pendingUploadPartialError', {
+        t('invoices.attachments.pendingUploadPartialError', {
           defaultValue: 'Invoice saved, but some attachments failed to upload: {{files}}',
           files: failed.join(', '),
         })
       );
     } else {
-      errorHandler.showSuccess(t('purchases.invoices.attachments.pendingUploadSuccess', 'Invoice saved and attachments uploaded.'));
+      errorHandler.showSuccess(t('invoices.attachments.pendingUploadSuccess', 'Invoice saved and attachments uploaded.'));
       setPendingAttachmentFiles([]);
     }
   };
@@ -1135,7 +1135,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.invoiceDetail.errors.saveFailed', 'Failed to save purchase invoice.')
+          t('invoiceDetail.errors.saveFailed', 'Failed to save purchase invoice.')
       );
     } finally {
       setBusy(false);
@@ -1200,7 +1200,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.invoiceDetail.errors.createAndPostFailed', 'Failed to create and post purchase invoice.')
+          t('invoiceDetail.errors.createAndPostFailed', 'Failed to create and post purchase invoice.')
       );
     } finally {
       setBusy(false);
@@ -1277,7 +1277,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       // (see docs/architecture/posting-authority.md §4.1 and Task 167).
       if (invoice.status === 'PENDING_APPROVAL') {
         setError(
-          t('purchases.invoiceDetail.errors.soDGuard', 'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.'),
+          t('invoiceDetail.errors.soDGuard', 'This invoice is waiting for accounting approval. Approve it from Accounting → Approval Center.'),
         );
         return;
       }
@@ -1289,7 +1289,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.invoiceDetail.errors.postFailed', 'Failed to post purchase invoice.')
+          t('invoiceDetail.errors.postFailed', 'Failed to post purchase invoice.')
       );
     } finally {
       setBusy(false);
@@ -1322,7 +1322,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          t('purchases.invoiceDetail.errors.unpostFailed', 'Failed to unpost purchase invoice.')
+          t('invoiceDetail.errors.unpostFailed', 'Failed to unpost purchase invoice.')
       );
     } finally {
       setBusy(false);
@@ -1353,7 +1353,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
     if (!invoice?.id) {
       setPendingAttachmentFiles((current) => [...current, file]);
-      errorHandler.showSuccess(t('purchases.invoices.attachments.queued', 'Attachment queued for upload when the invoice is saved.'));
+      errorHandler.showSuccess(t('invoices.attachments.queued', 'Attachment queued for upload when the invoice is saved.'));
       return;
     }
 
@@ -1362,13 +1362,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       setError(null);
       await purchasesApi.uploadInvoiceAttachment(invoice.id, file);
       await refreshAttachments();
-      errorHandler.showSuccess(t('purchases.invoices.attachments.uploadSuccess', 'Attachment uploaded successfully.'));
+      errorHandler.showSuccess(t('invoices.attachments.uploadSuccess', 'Attachment uploaded successfully.'));
     } catch (err: any) {
       const message =
         err?.response?.data?.error?.message ||
         err?.response?.data?.message ||
         err?.message ||
-        t('purchases.invoices.attachments.uploadError', 'Failed to upload attachment.');
+        t('invoices.attachments.uploadError', 'Failed to upload attachment.');
       setError(message);
       errorHandler.showError(message);
     } finally {
@@ -1383,14 +1383,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       setError(null);
       await purchasesApi.removeInvoiceAttachment(invoice.id, attachmentPendingDelete.id);
       await refreshAttachments();
-      errorHandler.showSuccess(t('purchases.invoices.attachments.removeSuccess', 'Attachment removed successfully.'));
+      errorHandler.showSuccess(t('invoices.attachments.removeSuccess', 'Attachment removed successfully.'));
       setAttachmentPendingDelete(null);
     } catch (err: any) {
       const message =
         err?.response?.data?.error?.message ||
         err?.response?.data?.message ||
         err?.message ||
-        t('purchases.invoices.attachments.removeError', 'Failed to remove attachment.');
+        t('invoices.attachments.removeError', 'Failed to remove attachment.');
       setError(message);
       errorHandler.showError(message);
     } finally {
@@ -1405,7 +1405,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       const result = await purchasesApi.getInvoiceAttachmentDownloadLink(invoice.id, attachmentId);
       const payload = unwrap<{ url?: string }>(result);
       if (!payload?.url) {
-        throw new Error(t('purchases.invoices.attachments.downloadError', 'Failed to generate download link.'));
+        throw new Error(t('invoices.attachments.downloadError', 'Failed to generate download link.'));
       }
       window.open(payload.url, '_blank', 'noopener,noreferrer');
     } catch (err: any) {
@@ -1413,7 +1413,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         err?.response?.data?.error?.message ||
         err?.response?.data?.message ||
         err?.message ||
-        t('purchases.invoices.attachments.downloadError', 'Failed to generate download link.');
+        t('invoices.attachments.downloadError', 'Failed to generate download link.');
       setError(message);
       errorHandler.showError(message);
     }
@@ -1427,13 +1427,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       const result = await purchasesApi.printPI(invoice.id);
       const payload = unwrap<PurchaseInvoicePrintResultDTO>(result);
       openPrintLayoutWindow(payload.payload, payload.printTemplate);
-      errorHandler.showSuccess(t('purchases.invoiceDetail.printStarted', 'Print preview opened.'));
+      errorHandler.showSuccess(t('invoiceDetail.printStarted', 'Print preview opened.'));
     } catch (err: any) {
       const message =
         err?.response?.data?.error?.message ||
         err?.response?.data?.message ||
         err?.message ||
-        t('purchases.invoiceDetail.printFailed', 'Failed to print purchase invoice.');
+        t('invoiceDetail.printFailed', 'Failed to print purchase invoice.');
       setError(message);
       errorHandler.showError(message);
     } finally {
@@ -1444,8 +1444,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   if (loading) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('purchases.invoiceDetail.loadingTitle', 'Purchase Invoice')}</h1>
-        <Card className="p-6">{t('purchases.invoiceDetail.loadingMessage', 'Loading purchase invoice...')}</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('invoiceDetail.loadingTitle', 'Purchase Invoice')}</h1>
+        <Card className="p-6">{t('invoiceDetail.loadingMessage', 'Loading purchase invoice...')}</Card>
       </div>
     );
   }
@@ -1513,41 +1513,41 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     const draftFooterSummary = (
       <DocumentFooterTotalsStrip
         totals={[
-          { label: t('purchases.invoiceDetail.footer.subtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-          { label: t('purchases.invoiceDetail.footer.tax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-          { label: t('purchases.invoiceDetail.footer.grand', 'Grand'), value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+          { label: t('invoiceDetail.footer.subtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+          { label: t('invoiceDetail.footer.tax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+          { label: t('invoiceDetail.footer.grand', 'Grand'), value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`, tone: 'green' },
         ]}
       />
     );
     const draftRailSections: DocumentScaffoldRailSections = {
       info: {
-        title: t('purchases.invoiceDetail.rail.info', 'Info'),
+        title: t('invoiceDetail.rail.info', 'Info'),
         action: (
           <DocumentPill tone={railFocus.kind === 'item' ? 'blue' : railFocus.kind === 'warehouse' ? 'amber' : 'slate'}>
             {railFocus.kind === 'item'
-              ? t('purchases.invoiceDetail.rail.item', 'Item')
+              ? t('invoiceDetail.rail.item', 'Item')
               : railFocus.kind === 'warehouse'
-                ? t('purchases.invoiceDetail.rail.warehouse', 'Warehouse')
-                : t('purchases.invoiceDetail.rail.vendor', 'Vendor')}
+                ? t('invoiceDetail.rail.warehouse', 'Warehouse')
+                : t('invoiceDetail.rail.vendor', 'Vendor')}
           </DocumentPill>
         ),
         content: (
           <DocumentRailFocus
-            code={railFocus.code || (form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : t('purchases.invoiceDetail.rail.directBill', 'Direct bill'))}
+            code={railFocus.code || (form.purchaseOrderId ? selectedPurchaseOrder?.orderNumber || form.purchaseOrderId : t('invoiceDetail.rail.directBill', 'Direct bill'))}
             title={railFocus.title || selectedVendorName}
-            subtitle={railFocus.subtitle || selectedWarehouseName || form.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
-            note={railFocus.note || t('purchases.invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
+            subtitle={railFocus.subtitle || selectedWarehouseName || form.vendorInvoiceNumber || t('invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
+            note={railFocus.note || t('invoiceDetail.rail.helpDraft', 'Select or hover over an item line to review purchasing details, warehouse, tax, and AP impact.')}
           />
         ),
       },
       readiness: {
-        title: t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
+        title: t('invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
         content: (
           <DocumentRailChecklist
             items={[
-              { state: draftHasVendor && draftHasLines && draftBalanced ? 'ok' : 'warn', label: t('purchases.invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview') },
-              { state: draftTaxResolved ? 'ok' : 'warn', label: t('purchases.invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved') },
-              { state: 'info', label: t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active') },
+              { state: draftHasVendor && draftHasLines && draftBalanced ? 'ok' : 'warn', label: t('invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview') },
+              { state: draftTaxResolved ? 'ok' : 'warn', label: t('invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved') },
+              { state: 'info', label: t('invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active') },
             ]}
           />
         ),
@@ -1566,20 +1566,20 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         ),
       },
       totals: {
-        title: t('purchases.invoiceDetail.rail.totalsTitle', 'Totals'),
+        title: t('invoiceDetail.rail.totalsTitle', 'Totals'),
         action: <DocumentPill tone="slate">{form.currency}</DocumentPill>,
         content: (
           <DocumentRailTotals
             rows={[
-              { label: t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
-              { label: t('purchases.invoiceDetail.rail.totalsTax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
+              { label: t('invoiceDetail.rail.totalsSubtotal', 'Subtotal'), value: `${form.currency} ${totals.subtotalDoc.toFixed(2)}` },
+              { label: t('invoiceDetail.rail.totalsTax', 'Tax'), value: `${form.currency} ${totals.taxTotalDoc.toFixed(2)}` },
             ]}
             grand={{
-              label: t('purchases.invoiceDetail.rail.totalsGrandTotal', 'Grand Total'),
+              label: t('invoiceDetail.rail.totalsGrandTotal', 'Grand Total'),
               value: `${form.currency} ${totals.grandTotalDoc.toFixed(2)}`,
               ...(form.currency !== baseCurrency
                 ? {
-                    subLabel: t('purchases.invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)'),
+                    subLabel: t('invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)'),
                     subValue: `${baseCurrency} ${totals.grandTotalBase.toFixed(2)}`,
                   }
                 : {}),
@@ -1592,22 +1592,22 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     return (
       <>
       <DocumentDetailScaffold
-        title={isCreateMode ? t('purchases.invoiceDetail.createTitle', 'New Purchase Invoice') : t('purchases.invoiceDetail.editTitle', 'Edit {{number}}', { number: invoice?.invoiceNumber })}
-        subtitle={t('purchases.invoiceDetail.subtitle', 'Vendor bill document. Posting creates AP and purchase/inventory entries.')}
+        title={isCreateMode ? t('invoiceDetail.createTitle', 'New Purchase Invoice') : t('invoiceDetail.editTitle', 'Edit {{number}}', { number: invoice?.invoiceNumber })}
+        subtitle={t('invoiceDetail.subtitle', 'Vendor bill document. Posting creates AP and purchase/inventory entries.')}
         icon={FileText}
-        backLabel={t('purchases.invoiceDetail.backLabel', 'Back to purchase invoices')}
+        backLabel={t('invoiceDetail.backLabel', 'Back to purchase invoices')}
         onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/invoices'))}
         badges={
           <>
-            <DocumentPill tone="slate">{isEditMode ? t('purchases.invoiceDetail.editDraftPill', 'Edit Draft') : t('purchases.invoiceDetail.draftPill', 'Draft')}</DocumentPill>
-            {activeSourceMode === 'po' && <DocumentPill tone="blue">{t('purchases.invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
+            <DocumentPill tone="slate">{isEditMode ? t('invoiceDetail.editDraftPill', 'Edit Draft') : t('invoiceDetail.draftPill', 'Draft')}</DocumentPill>
+            {activeSourceMode === 'po' && <DocumentPill tone="blue">{t('invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
           </>
         }
         railSections={draftRailSections}
-        railTitle={t('purchases.invoiceDetail.railTitle', 'Purchase invoice side rail')}
+        railTitle={t('invoiceDetail.railTitle', 'Purchase invoice side rail')}
         newAction={{
-          label: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
-          title: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
+          label: t('invoiceDetail.newInvoice', 'New Invoice'),
+          title: t('invoiceDetail.newInvoice', 'New Invoice'),
           hasUnsavedChanges: hasUnsavedDocumentChanges,
           onNew: openNewInvoiceForm,
         }}
@@ -1616,7 +1616,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             content: ({ showInlineRail, railDrawerOpen }) =>
               showInlineRail || railDrawerOpen ? (
                 <div className="text-xs text-slate-500">
-                  {t('purchases.invoiceDetail.footer.draftWorking', 'Editing draft purchase invoice.')}
+                  {t('invoiceDetail.footer.draftWorking', 'Editing draft purchase invoice.')}
                 </div>
               ) : (
                 draftFooterSummary
@@ -1631,7 +1631,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={saveInvoice}
               disabled={busy || orderLineLoading}
             >
-              {busy ? t('purchases.invoiceDetail.saving', 'Saving...') : isCreateMode ? t('purchases.invoiceDetail.saveDraft', 'Save Draft') : t('purchases.invoiceDetail.updateDraft', 'Update Draft')}
+              {busy ? t('invoiceDetail.saving', 'Saving...') : isCreateMode ? t('invoiceDetail.saveDraft', 'Save Draft') : t('invoiceDetail.updateDraft', 'Update Draft')}
             </button>
             {isCreateMode && (
               <button
@@ -1647,14 +1647,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                   // Inline SettlementBlock holds the rows; gate on validity, then post.
                   // (#193 retired the old settlement modal — re-opening it wiped the entry.)
                   if (settlementMode !== 'DEFERRED' && !settlementValidity.ok) {
-                    setError(settlementValidity.message || t('purchases.invoiceDetail.settlementNeedsAttention', 'Settlement needs attention.'));
+                    setError(settlementValidity.message || t('invoiceDetail.settlementNeedsAttention', 'Settlement needs attention.'));
                     return;
                   }
                   createAndPostDraft();
                 }}
                 disabled={busy || orderLineLoading}
               >
-                {busy ? t('purchases.invoiceDetail.savingAndPosting', 'Saving & Posting...') : t('purchases.invoiceDetail.saveAndPost', 'Save & Post')}
+                {busy ? t('invoiceDetail.savingAndPosting', 'Saving & Posting...') : t('invoiceDetail.saveAndPost', 'Save & Post')}
               </button>
             )}
           </>
@@ -1677,7 +1677,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                   active={activeSourceMode === 'direct'}
                   disabled={busy || orderLineLoading || isEditMode}
                   icon={FileText}
-                  label={t('purchases.invoiceDetail.sourceDirect', 'Direct')}
+                  label={t('invoiceDetail.sourceDirect', 'Direct')}
                   onClick={() => {
                     setRequestedSourceMode('direct');
                     setForm((prev) => ({ ...prev, purchaseOrderId: '' }));
@@ -1687,7 +1687,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                   active={activeSourceMode === 'po'}
                   disabled={busy || orderLineLoading || isEditMode}
                   icon={Link2}
-                  label={t('purchases.invoiceDetail.sourceFromPO', 'From PO')}
+                  label={t('invoiceDetail.sourceFromPO', 'From PO')}
                   onClick={() => setRequestedSourceMode('po')}
                 />
               </DocumentSegmentedGroup>
@@ -1697,7 +1697,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 className="inline-flex h-7 items-center gap-1.5 rounded border border-slate-200 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
               >
                 <Link2 className="h-3.5 w-3.5" />
-                {activeSourceMode === 'po' ? t('purchases.invoiceDetail.sourcePickPO', 'Pick PO in header') : t('purchases.invoiceDetail.sourceDirectHeaderDriven', 'Direct header driven')}
+                {activeSourceMode === 'po' ? t('invoiceDetail.sourcePickPO', 'Pick PO in header') : t('invoiceDetail.sourceDirectHeaderDriven', 'Direct header driven')}
               </button>
             </div>
 
@@ -1711,27 +1711,27 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 disabled={attachmentBusy || (!invoice?.id && pendingAttachmentFiles.length >= MAX_ATTACHMENT_FILES)}
               />
               <DocumentIconButton
-                title={t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+                title={t('invoices.attachments.upload', 'Upload Attachment')}
                 onClick={() => document.getElementById(draftAttachmentInputId)?.click()}
                 disabled={attachmentBusy || (!invoice?.id && pendingAttachmentFiles.length >= MAX_ATTACHMENT_FILES)}
               >
                 <Paperclip className="h-3.5 w-3.5" />
               </DocumentIconButton>
               <DocumentIconButton
-                title={t('purchases.invoiceDetail.downloadExcel', 'Download Excel')}
-                onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.excelNotConnected', 'Purchase invoice line export is not connected yet.'))}
+                title={t('invoiceDetail.downloadExcel', 'Download Excel')}
+                onClick={() => errorHandler.showWarning(t('invoiceDetail.excelNotConnected', 'Purchase invoice line export is not connected yet.'))}
               >
                 <FileSpreadsheet className="h-3.5 w-3.5" />
               </DocumentIconButton>
               <DocumentIconButton
-                title={t('purchases.invoiceDetail.uploadFromFile', 'Upload from file')}
-                onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.importNotConnected', 'Purchase invoice file import is not connected yet.'))}
+                title={t('invoiceDetail.uploadFromFile', 'Upload from file')}
+                onClick={() => errorHandler.showWarning(t('invoiceDetail.importNotConnected', 'Purchase invoice file import is not connected yet.'))}
               >
                 <Upload className="h-3.5 w-3.5" />
               </DocumentIconButton>
               <DocumentIconButton
-                title={t('purchases.invoiceDetail.readFromImage', 'Read from image')}
-                onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.imageNotConnected', 'Purchase invoice image reading is not connected yet.'))}
+                title={t('invoiceDetail.readFromImage', 'Read from image')}
+                onClick={() => errorHandler.showWarning(t('invoiceDetail.imageNotConnected', 'Purchase invoice image reading is not connected yet.'))}
               >
                 <FileImage className="h-3.5 w-3.5" />
               </DocumentIconButton>
@@ -1741,18 +1741,18 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             ),
           },
           header: {
-            title: activeSourceMode === 'po' ? t('purchases.invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('purchases.invoiceDetail.header.directBill', 'Header - Direct Bill'),
+            title: activeSourceMode === 'po' ? t('invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('invoiceDetail.header.directBill', 'Header - Direct Bill'),
             cardClassName: 'overflow-visible',
             action: (
             <div className="flex items-center gap-1.5">
               <DocumentPill tone={activeSourceMode === 'po' ? 'blue' : 'slate'}>
-                {activeSourceMode === 'po' ? t('purchases.invoiceDetail.fromPOPill', 'From PO') : t('purchases.invoiceDetail.sourceDirect', 'Direct')}
+                {activeSourceMode === 'po' ? t('invoiceDetail.fromPOPill', 'From PO') : t('invoiceDetail.sourceDirect', 'Direct')}
               </DocumentPill>
               <DocumentPill tone="slate">{form.currency}</DocumentPill>
               {draftHasVendor && (
                 <DocumentPill tone="green">
                   <ShieldCheck className="h-3 w-3" />
-                  {t('purchases.invoiceDetail.header.apReady', 'AP Ready')}
+                  {t('invoiceDetail.header.apReady', 'AP Ready')}
                 </DocumentPill>
               )}
             </div>
@@ -1762,7 +1762,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             {activeSourceMode === 'po' ? (
               <>
                 <div className={headerFieldWrapperClass}>
-                  <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.purchaseOrder', 'Purchase Order')}</label>
+                  <label className={headerLabelClass}>{t('invoiceDetail.header.purchaseOrder', 'Purchase Order')}</label>
                   <select
                     className={headerControlClass}
                     value={form.purchaseOrderId}
@@ -1777,7 +1777,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                     }}
                     disabled={busy || orderLineLoading || isEditMode}
                   >
-                    <option value="">{t('purchases.invoiceDetail.header.selectPO', 'Select invoiceable purchase order...')}</option>
+                    <option value="">{t('invoiceDetail.header.selectPO', 'Select invoiceable purchase order...')}</option>
                     {invoiceablePurchaseOrders.map((order) => (
                       <option key={order.id} value={order.id}>
                         {order.orderNumber} - {vendorNameById[order.vendorId] || order.vendorName} ({order.status})
@@ -1785,14 +1785,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                     ))}
                   </select>
                 </div>
-                <DocumentField label={t('purchases.invoiceDetail.header.vendor', 'Vendor')} value={selectedVendorName} locked />
+                <DocumentField label={t('invoiceDetail.header.vendor', 'Vendor')} value={selectedVendorName} locked />
               </>
             ) : (
               <div className={headerFieldWrapperClass} onFocus={() => focusVendor()} onMouseEnter={() => focusVendor()}>
-                <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.vendor', 'Vendor')}</label>
+                <label className={headerLabelClass}>{t('invoiceDetail.header.vendor', 'Vendor')}</label>
                 <PartySelector
                   role="VENDOR"
-                  placeholder={t('purchases.invoiceDetail.header.selectVendor', 'Select vendor...')}
+                  placeholder={t('invoiceDetail.header.selectVendor', 'Select vendor...')}
                   className={headerSelectorClass}
                   value={form.vendorId}
                   onChange={(party) => {
@@ -1809,7 +1809,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             )}
 
             <div className={headerFieldWrapperClass}>
-              <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.vendorInvoiceNumber', 'Vendor Invoice / Ref')}</label>
+              <label className={headerLabelClass}>{t('invoiceDetail.header.vendorInvoiceNumber', 'Vendor Invoice / Ref')}</label>
               <input
                 type="text"
                 className={headerControlClass}
@@ -1819,7 +1819,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
 
             <div className={headerFieldWrapperClass}>
-              <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.invoiceDate', 'Invoice Date')}</label>
+              <label className={headerLabelClass}>{t('invoiceDetail.header.invoiceDate', 'Invoice Date')}</label>
               <DatePicker
                 className="w-full"
                 inputClassName={clsx(headerControlClass, 'pr-8')}
@@ -1829,7 +1829,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
 
             <div className={headerFieldWrapperClass}>
-              <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.dueDate', 'Due Date')}</label>
+              <label className={headerLabelClass}>{t('invoiceDetail.header.dueDate', 'Due Date')}</label>
               <DatePicker
                 className="w-full"
                 inputClassName={clsx(headerControlClass, 'pr-8')}
@@ -1839,7 +1839,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
 
             <div className={headerFieldWrapperClass}>
-              <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.currency', 'Currency')}</label>
+              <label className={headerLabelClass}>{t('invoiceDetail.header.currency', 'Currency')}</label>
               <CurrencySelector
                 className={headerSelectorClass}
                 value={form.currency}
@@ -1849,7 +1849,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             </div>
 
             <div className={headerFieldWrapperClass}>
-              <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.exchangeRate', 'Exchange Rate')}</label>
+              <label className={headerLabelClass}>{t('invoiceDetail.header.exchangeRate', 'Exchange Rate')}</label>
               <div className="[&>div]:h-9 [&>div]:rounded">
                 <CurrencyExchangeWidget
                   currency={form.currency}
@@ -1864,7 +1864,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
             {activeSourceMode === 'direct' && (
               <div className={headerFieldWrapperClass} onFocus={() => focusWarehouse()} onMouseEnter={() => focusWarehouse()}>
-                <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.mainWarehouse', 'Main Warehouse')}</label>
+                <label className={headerLabelClass}>{t('invoiceDetail.header.mainWarehouse', 'Main Warehouse')}</label>
                 <WarehouseSelector
                   className={headerSelectorClass}
                   value={form.warehouseId || settings?.defaultWarehouseId}
@@ -1899,7 +1899,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             />
 
             <div className="min-w-0 md:col-span-2 xl:col-span-2">
-              <label className={headerLabelClass}>{t('purchases.invoiceDetail.header.notes', 'Notes')}</label>
+              <label className={headerLabelClass}>{t('invoiceDetail.header.notes', 'Notes')}</label>
               <textarea
                 rows={1}
                 className={clsx(headerControlClass, 'h-9 resize-none py-2')}
@@ -1922,11 +1922,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             createEmptyRow={createEmptyLine}
             isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue)}
             onRowAdd={addLine}
-            addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
+            addLabel={t('invoiceDetail.columns.addLabel', 'Add Item')}
             columns={[
               {
                 id: 'item',
-                label: t('purchases.invoiceDetail.columns.item', 'Item'),
+                label: t('invoiceDetail.columns.item', 'Item'),
                 kind: 'custom',
                 width: '240px',
                 render: (row, index) => (
@@ -1965,7 +1965,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'qty',
-                label: t('purchases.invoiceDetail.columns.qty', 'Qty'),
+                label: t('invoiceDetail.columns.qty', 'Qty'),
                 kind: 'number',
                 width: '80px',
                 accessor: (row) => row.invoicedQty,
@@ -1973,7 +1973,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'uom',
-                label: t('purchases.invoiceDetail.columns.uom', 'UOM'),
+                label: t('invoiceDetail.columns.uom', 'UOM'),
                 kind: 'custom',
                 width: '90px',
                 render: (row, index) => {
@@ -1993,7 +1993,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'unitCost',
-                label: t('purchases.invoiceDetail.columns.unitCost', 'Unit Cost'),
+                label: t('invoiceDetail.columns.unitCost', 'Unit Cost'),
                 kind: 'custom',
                 width: '130px',
                 labelExtras:
@@ -2044,7 +2044,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'discountType',
-                label: t('purchases.invoiceDetail.columns.discountType', 'Discount Type'),
+                label: t('invoiceDetail.columns.discountType', 'Discount Type'),
                 kind: 'custom',
                 width: '64px',
                 render: (row, _index, onChange) => (
@@ -2059,7 +2059,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'discountValue',
-                label: t('purchases.invoiceDetail.columns.discount', 'Discount'),
+                label: t('invoiceDetail.columns.discount', 'Discount'),
                 kind: 'number',
                 width: '70px',
                 accessor: (row) => row.discountValue || 0,
@@ -2067,7 +2067,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'taxCode',
-                label: t('purchases.invoiceDetail.columns.taxCode', 'Tax Code'),
+                label: t('invoiceDetail.columns.taxCode', 'Tax Code'),
                 kind: 'custom',
                 width: '120px',
                 render: (row, index) => (
@@ -2086,7 +2086,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'lineTotal',
-                label: t('purchases.invoiceDetail.columns.lineTotal', 'Line Total'),
+                label: t('invoiceDetail.columns.lineTotal', 'Line Total'),
                 kind: 'computed',
                 width: '110px',
                 compute: (_row, index) => computedLines[index]?.lineGrossDoc ?? 0,
@@ -2094,7 +2094,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'net',
-                label: t('purchases.invoiceDetail.columns.net', 'Net'),
+                label: t('invoiceDetail.columns.net', 'Net'),
                 kind: 'computed',
                 width: '100px',
                 compute: (_row, index) => computedLines[index]?.lineTotalDoc ?? 0,
@@ -2102,14 +2102,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               },
               {
                 id: 'tax',
-                label: t('purchases.invoiceDetail.columns.tax', 'Tax'),
+                label: t('invoiceDetail.columns.tax', 'Tax'),
                 kind: 'computed',
                 width: '90px',
                 compute: (_row, index) => computedLines[index]?.taxAmountDoc ?? 0,
               },
               {
                 id: 'netBase',
-                label: t('purchases.invoiceDetail.columns.netBase', 'Net Base'),
+                label: t('invoiceDetail.columns.netBase', 'Net Base'),
                 kind: 'computed',
                 width: '110px',
                 compute: (_row, index) => computedLines[index]?.lineTotalBase ?? 0,
@@ -2155,13 +2155,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             content: (
         <div className="grid gap-2 md:grid-cols-2">
           <DocumentCompactCard
-            title={t('purchases.invoices.attachments.title', 'Attachments')}
+            title={t('invoices.attachments.title', 'Attachments')}
             action={
               <label
                 htmlFor={draftAttachmentInputId}
                 className="inline-flex h-6 cursor-pointer items-center rounded border border-slate-200 px-2 text-[10px] font-black uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
               >
-                {attachmentBusy ? t('purchases.invoices.attachments.uploading', 'Uploading...') : t('purchases.invoices.attachments.upload', 'Upload')}
+                {attachmentBusy ? t('invoices.attachments.uploading', 'Uploading...') : t('invoices.attachments.upload', 'Upload')}
               </label>
             }
           >
@@ -2170,12 +2170,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 <Paperclip className="h-4 w-4 text-slate-500" />
                 <div className="min-w-0">
                   <div className="font-black text-slate-900 dark:text-slate-100">
-                    {draftAttachmentCount} {t('purchases.invoiceDetail.attachmentCount', { defaultValue: 'file', count: draftAttachmentCount })}
+                    {draftAttachmentCount} {t('invoiceDetail.attachmentCount', { defaultValue: 'file', count: draftAttachmentCount })}
                   </div>
                   <div className="truncate text-[11px] text-slate-500">
                     {invoice?.id
-                      ? t('purchases.invoices.attachments.help', 'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.')
-                      : t('purchases.invoices.attachments.unsavedHelp', 'Files selected here are queued locally and uploaded automatically when the invoice is saved.')}
+                      ? t('invoices.attachments.help', 'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.')
+                      : t('invoices.attachments.unsavedHelp', 'Files selected here are queued locally and uploaded automatically when the invoice is saved.')}
                   </div>
                 </div>
               </div>
@@ -2195,7 +2195,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                         className="shrink-0 text-[10px] font-black uppercase text-rose-600"
                         onClick={() => setPendingAttachmentFiles((current) => current.filter((_, idx) => idx !== index))}
                       >
-                        {t('purchases.invoices.attachments.remove', 'Remove')}
+                        {t('invoices.attachments.remove', 'Remove')}
                       </button>
                     </div>
                   ))}
@@ -2205,17 +2205,17 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           </DocumentCompactCard>
 
           <DocumentCompactCard
-            title={t('purchases.invoiceDetail.audit.title', 'Audit & Warnings')}
-            action={<DocumentPill tone={draftHasVendor && draftHasLines ? 'green' : 'amber'}>{draftHasVendor && draftHasLines ? t('purchases.invoiceDetail.audit.ready', 'Ready') : t('purchases.invoiceDetail.audit.open', 'Open')}</DocumentPill>}
+            title={t('invoiceDetail.audit.title', 'Audit & Warnings')}
+            action={<DocumentPill tone={draftHasVendor && draftHasLines ? 'green' : 'amber'}>{draftHasVendor && draftHasLines ? t('invoiceDetail.audit.ready', 'Ready') : t('invoiceDetail.audit.open', 'Open')}</DocumentPill>}
           >
             <div className="flex min-h-[56px] items-center gap-2 p-2.5 text-xs">
               <History className="h-4 w-4 text-slate-500" />
               <div className="min-w-0">
                 <div className="font-black text-slate-900 dark:text-slate-100">
-                  {t('purchases.invoiceDetail.audit.draftChecks', 'Draft checks')}
+                  {t('invoiceDetail.audit.draftChecks', 'Draft checks')}
                 </div>
                 <div className="truncate text-[11px] text-slate-500">
-                  {t('purchases.invoiceDetail.audit.draftDescription', 'Vendor, line, warehouse, tax, AP, and attachment warnings remain visible before saving.')}
+                  {t('invoiceDetail.audit.draftDescription', 'Vendor, line, warehouse, tax, AP, and attachment warnings remain visible before saving.')}
                 </div>
               </div>
             </div>
@@ -2251,8 +2251,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   if (!invoice) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('purchases.invoiceDetail.notFoundTitle', 'Purchase Invoice')}</h1>
-        <Card className="p-6 text-sm text-red-700">{t('purchases.invoiceDetail.notFoundMessage', 'Purchase invoice not found.')}</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('invoiceDetail.notFoundTitle', 'Purchase Invoice')}</h1>
+        <Card className="p-6 text-sm text-red-700">{t('invoiceDetail.notFoundMessage', 'Purchase invoice not found.')}</Card>
       </div>
     );
   }
@@ -2274,10 +2274,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       const dto = ((res as any)?.invoice ?? res) as PurchaseInvoiceDTO;
       setInvoice(dto);
       setRecordPaymentOpen(false);
-      errorHandler.showSuccess(t('purchases.invoiceDetail.recordPaymentSuccess', 'Payment recorded.'));
+      errorHandler.showSuccess(t('invoiceDetail.recordPaymentSuccess', 'Payment recorded.'));
       window.dispatchEvent(new CustomEvent('documents-updated', { detail: { type: 'PI' } }));
     } catch (err: any) {
-      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('purchases.invoiceDetail.recordPaymentFailed', 'Failed to record payment.'));
+      errorHandler.showError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('invoiceDetail.recordPaymentFailed', 'Failed to record payment.'));
     } finally {
       setRecordPaymentBusy(false);
     }
@@ -2290,60 +2290,60 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
   const viewFooterSummary = (
     <DocumentFooterTotalsStrip
       totals={[
-        { label: t('purchases.invoiceDetail.footer.subtotal', 'Subtotal'), value: `${invoice.currency} ${invoice.subtotalDoc.toFixed(2)}` },
-        { label: t('purchases.invoiceDetail.footer.tax', 'Tax'), value: `${invoice.currency} ${invoice.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-        { label: t('purchases.invoiceDetail.footer.outstanding', 'Outstanding'), value: `${company?.baseCurrency || 'Base'} ${invoice.outstandingAmountBase.toFixed(2)}`, tone: 'amber' },
-        { label: t('purchases.invoiceDetail.footer.grand', 'Grand'), value: `${invoice.currency} ${invoice.grandTotalDoc.toFixed(2)}`, tone: 'green' },
+        { label: t('invoiceDetail.footer.subtotal', 'Subtotal'), value: `${invoice.currency} ${invoice.subtotalDoc.toFixed(2)}` },
+        { label: t('invoiceDetail.footer.tax', 'Tax'), value: `${invoice.currency} ${invoice.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+        { label: t('invoiceDetail.footer.outstanding', 'Outstanding'), value: `${company?.baseCurrency || 'Base'} ${invoice.outstandingAmountBase.toFixed(2)}`, tone: 'amber' },
+        { label: t('invoiceDetail.footer.grand', 'Grand'), value: `${invoice.currency} ${invoice.grandTotalDoc.toFixed(2)}`, tone: 'green' },
       ]}
     />
   );
   const viewRailSections: DocumentScaffoldRailSections = {
     info: {
-      title: t('purchases.invoiceDetail.rail.info', 'Info'),
+      title: t('invoiceDetail.rail.info', 'Info'),
       action: (
         <DocumentPill tone={railFocus.kind === 'item' ? 'blue' : railFocus.kind === 'warehouse' ? 'amber' : 'slate'}>
           {railFocus.kind === 'item'
-            ? t('purchases.invoiceDetail.rail.item', 'Item')
+            ? t('invoiceDetail.rail.item', 'Item')
             : railFocus.kind === 'warehouse'
-              ? t('purchases.invoiceDetail.rail.warehouse', 'Warehouse')
-              : t('purchases.invoiceDetail.rail.vendor', 'Vendor')}
+              ? t('invoiceDetail.rail.warehouse', 'Warehouse')
+              : t('invoiceDetail.rail.vendor', 'Vendor')}
         </DocumentPill>
       ),
       content: (
         <DocumentRailFocus
           code={railFocus.code || invoice.purchaseOrderId || invoice.invoiceNumber}
           title={railFocus.title || viewVendorName}
-          subtitle={railFocus.subtitle || invoice.vendorInvoiceNumber || t('purchases.invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
-          note={railFocus.note || t('purchases.invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
+          subtitle={railFocus.subtitle || invoice.vendorInvoiceNumber || t('invoiceDetail.rail.vendorInvoiceMissing', 'Vendor invoice/reference not entered')}
+          note={railFocus.note || t('invoiceDetail.rail.helpView', 'Review the vendor bill, stock cost, tax, AP balance, and legal posting actions from this view.')}
         />
       ),
     },
     readiness: {
-      title: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.docStatusTitle', 'Document Status') : t('purchases.invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
+      title: invoice.status === 'POSTED' ? t('invoiceDetail.rail.docStatusTitle', 'Document Status') : t('invoiceDetail.rail.readinessTitle', 'Posting Readiness'),
       content: (
         <DocumentRailChecklist
           items={[
-            { state: viewPostingOk ? 'ok' : 'warn', label: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.readinessLedgerCreated', 'Ledger voucher created') : t('purchases.invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview') },
-            { state: viewTaxResolved ? 'ok' : 'warn', label: invoice.status === 'POSTED' ? t('purchases.invoiceDetail.rail.readinessTaxLinesPosted', 'Purchase tax lines posted') : t('purchases.invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved') },
-            { state: 'info', label: t('purchases.invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active') },
+            { state: viewPostingOk ? 'ok' : 'warn', label: invoice.status === 'POSTED' ? t('invoiceDetail.rail.readinessLedgerCreated', 'Ledger voucher created') : t('invoiceDetail.rail.readinessBalanced', 'Balanced AP posting preview') },
+            { state: viewTaxResolved ? 'ok' : 'warn', label: invoice.status === 'POSTED' ? t('invoiceDetail.rail.readinessTaxLinesPosted', 'Purchase tax lines posted') : t('invoiceDetail.rail.readinessTaxResolved', 'Purchase tax accounts resolved') },
+            { state: 'info', label: t('invoiceDetail.rail.readinessPolicyActive', 'AP, inventory, and approval policy active') },
           ]}
         />
       ),
     },
     settlement: {
-      title: t('purchases.invoiceDetail.rail.settlementTitle', 'Settlement'),
+      title: t('invoiceDetail.rail.settlementTitle', 'Settlement'),
       action: (
           <DocumentPill tone={invoice.paymentStatus === 'PAID' ? 'green' : invoice.paymentStatus === 'PARTIALLY_PAID' ? 'amber' : 'slate'}>
-            {invoice.paymentStatus === 'UNPAID' ? t('purchases.invoiceDetail.rail.settlementCredit', 'Credit') : invoice.paymentStatus}
+            {invoice.paymentStatus === 'UNPAID' ? t('invoiceDetail.rail.settlementCredit', 'Credit') : invoice.paymentStatus}
           </DocumentPill>
       ),
       content: (
         <>
         <div className="grid grid-cols-2 gap-1.5 border-b border-slate-100 p-2 dark:border-slate-800">
-          <DocumentRailStat label={t('purchases.invoiceDetail.rail.settlementPaid', 'Paid')} value={invoice.paidAmountBase.toFixed(2)} tone="green" />
-          <DocumentRailStat label={t('purchases.invoiceDetail.rail.settlementRemaining', 'Remaining')} value={invoice.outstandingAmountBase.toFixed(2)} tone={invoice.outstandingAmountBase > 0 ? 'amber' : 'green'} />
+          <DocumentRailStat label={t('invoiceDetail.rail.settlementPaid', 'Paid')} value={invoice.paidAmountBase.toFixed(2)} tone="green" />
+          <DocumentRailStat label={t('invoiceDetail.rail.settlementRemaining', 'Remaining')} value={invoice.outstandingAmountBase.toFixed(2)} tone={invoice.outstandingAmountBase > 0 ? 'amber' : 'green'} />
           <div className="col-span-2 rounded border border-slate-200 px-2 py-1.5 text-[11px] dark:border-slate-800">
-            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('purchases.invoiceDetail.rail.settlementAffectedAccount', 'Affected Account')}</div>
+            <div className="text-[9px] font-black uppercase tracking-wide text-slate-400">{t('invoiceDetail.rail.settlementAffectedAccount', 'Affected Account')}</div>
             <div className="truncate font-bold text-slate-800 dark:text-slate-100">{viewVendorName}</div>
             <div className="truncate font-mono text-[10px] text-slate-500">
               {viewBaseCurrency} {invoice.outstandingAmountBase.toFixed(2)}
@@ -2354,20 +2354,20 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       ),
     },
     totals: {
-      title: t('purchases.invoiceDetail.rail.totalsTitle', 'Totals'),
+      title: t('invoiceDetail.rail.totalsTitle', 'Totals'),
       action: <DocumentPill tone="slate">{invoice.currency}</DocumentPill>,
       content: (
         <DocumentRailTotals
           rows={[
-            { label: t('purchases.invoiceDetail.rail.totalsSubtotal', 'Subtotal'), value: `${invoice.currency} ${invoice.subtotalDoc.toFixed(2)}` },
-            { label: t('purchases.invoiceDetail.rail.totalsTax', 'Tax'), value: `${invoice.currency} ${invoice.taxTotalDoc.toFixed(2)}` },
+            { label: t('invoiceDetail.rail.totalsSubtotal', 'Subtotal'), value: `${invoice.currency} ${invoice.subtotalDoc.toFixed(2)}` },
+            { label: t('invoiceDetail.rail.totalsTax', 'Tax'), value: `${invoice.currency} ${invoice.taxTotalDoc.toFixed(2)}` },
           ]}
           grand={{
-            label: t('purchases.invoiceDetail.rail.totalsGrandTotal', 'Grand Total'),
+            label: t('invoiceDetail.rail.totalsGrandTotal', 'Grand Total'),
             value: `${invoice.currency} ${invoice.grandTotalDoc.toFixed(2)}`,
             ...(invoice.currency !== viewBaseCurrency
               ? {
-                  subLabel: t('purchases.invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)'),
+                  subLabel: t('invoiceDetail.rail.totalsGrandTotalBase', 'Grand Total (Base)'),
                   subValue: `${viewBaseCurrency} ${invoice.grandTotalBase.toFixed(2)}`,
                 }
               : {}),
@@ -2382,40 +2382,40 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
     <DocumentDetailScaffold
       title={invoice.invoiceNumber}
       subtitle={invoice.vendorInvoiceNumber
-        ? `${t('purchases.invoiceDetail.viewSubtitleVendor', 'Vendor: {{name}}', { name: vendorNameById[invoice.vendorId] || invoice.vendorName })}${t('purchases.invoiceDetail.viewSubtitleRef', ' | Vendor Invoice / Ref: {{ref}}', { ref: invoice.vendorInvoiceNumber })}`
-        : t('purchases.invoiceDetail.viewSubtitleVendor', 'Vendor: {{name}}', { name: vendorNameById[invoice.vendorId] || invoice.vendorName })}
+        ? `${t('invoiceDetail.viewSubtitleVendor', 'Vendor: {{name}}', { name: vendorNameById[invoice.vendorId] || invoice.vendorName })}${t('invoiceDetail.viewSubtitleRef', ' | Vendor Invoice / Ref: {{ref}}', { ref: invoice.vendorInvoiceNumber })}`
+        : t('invoiceDetail.viewSubtitleVendor', 'Vendor: {{name}}', { name: vendorNameById[invoice.vendorId] || invoice.vendorName })}
       icon={FileText}
-      backLabel={t('purchases.invoiceDetail.backLabel', 'Back to purchase invoices')}
+      backLabel={t('invoiceDetail.backLabel', 'Back to purchase invoices')}
       onBack={() => navigate('/purchases/invoices')}
       badges={
         <>
           <DocumentPill tone={invoice.status === 'POSTED' ? 'green' : invoice.status === 'PENDING_APPROVAL' ? 'amber' : invoice.status === 'CANCELLED' ? 'rose' : 'slate'}>
-            {invoice.status === 'PENDING_APPROVAL' ? t('purchases.invoiceDetail.pendingApprovalBadge', 'PENDING APPROVAL') : invoice.status}
+            {invoice.status === 'PENDING_APPROVAL' ? t('invoiceDetail.pendingApprovalBadge', 'PENDING APPROVAL') : invoice.status}
           </DocumentPill>
           <DocumentPill tone={invoice.paymentStatus === 'PAID' ? 'green' : invoice.paymentStatus === 'PARTIALLY_PAID' ? 'amber' : 'rose'}>
             {invoice.paymentStatus}
           </DocumentPill>
-          {invoice.purchaseOrderId && <DocumentPill tone="blue">{t('purchases.invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
+          {invoice.purchaseOrderId && <DocumentPill tone="blue">{t('invoiceDetail.fromPOPill', 'From PO')}</DocumentPill>}
         </>
       }
       newAction={{
-        label: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
-        title: t('purchases.invoiceDetail.newInvoice', 'New Invoice'),
+        label: t('invoiceDetail.newInvoice', 'New Invoice'),
+        title: t('invoiceDetail.newInvoice', 'New Invoice'),
         hasUnsavedChanges: false,
         onNew: openNewInvoiceForm,
       }}
       railSections={viewRailSections}
-      railTitle={t('purchases.invoiceDetail.railTitle', 'Purchase invoice side rail')}
+      railTitle={t('invoiceDetail.railTitle', 'Purchase invoice side rail')}
       footerSections={{
         totals: {
           content: ({ showInlineRail, railDrawerOpen }) =>
             showInlineRail || railDrawerOpen ? (
               <div className="text-xs text-slate-500">
                 {invoice.status === 'PENDING_APPROVAL'
-                  ? t('purchases.invoiceDetail.footer.pendingApprovalReadonly', 'Invoice is locked while waiting for accounting approval.')
+                  ? t('invoiceDetail.footer.pendingApprovalReadonly', 'Invoice is locked while waiting for accounting approval.')
                   : invoice.status === 'POSTED'
-                    ? t('purchases.invoiceDetail.footer.postedReadonly', 'Posted document is read-only.')
-                    : t('purchases.invoiceDetail.footer.draftSaved', 'Saved draft. Use Edit Draft to modify.')}
+                    ? t('invoiceDetail.footer.postedReadonly', 'Posted document is read-only.')
+                    : t('invoiceDetail.footer.draftSaved', 'Saved draft. Use Edit Draft to modify.')}
               </div>
             ) : (
               viewFooterSummary
@@ -2429,7 +2429,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
             onClick={() => navigate('/purchases/invoices')}
           >
-            {t('purchases.invoiceDetail.backToList', 'Back to List')}
+            {t('invoiceDetail.backToList', 'Back to List')}
           </button>
           <button
             type="button"
@@ -2437,7 +2437,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
             onClick={printInvoice}
             disabled={printBusy}
           >
-            {printBusy ? t('purchases.invoiceDetail.printing', 'Printing...') : t('purchases.invoiceDetail.print', 'Print')}
+            {printBusy ? t('invoiceDetail.printing', 'Printing...') : t('invoiceDetail.print', 'Print')}
           </button>
           {invoice.status === 'DRAFT' && (
             <button
@@ -2446,7 +2446,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={toggleEdit}
               disabled={busy}
             >
-              {t('purchases.invoiceDetail.editDraftBtn', 'Edit Draft')}
+              {t('invoiceDetail.editDraftBtn', 'Edit Draft')}
             </button>
           )}
           {invoice.status === 'DRAFT' && (
@@ -2456,7 +2456,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={handlePostClick}
               disabled={busy}
             >
-              {busy ? t('purchases.invoiceDetail.posting', 'Posting...') : t('purchases.invoiceDetail.postInvoice', 'Post Invoice')}
+              {busy ? t('invoiceDetail.posting', 'Posting...') : t('invoiceDetail.postInvoice', 'Post Invoice')}
             </button>
           )}
           {invoice.status === 'POSTED' && (
@@ -2465,7 +2465,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50"
               onClick={() => setGlImpactOpen(true)}
             >
-              {t('purchases.invoiceDetail.glImpact', 'GL Impact')}
+              {t('invoiceDetail.glImpact', 'GL Impact')}
             </button>
           )}
           {invoice.status === 'POSTED' && (
@@ -2475,7 +2475,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={() => navigate(createReturnHref)}
               disabled={!canCreateReturn}
             >
-              {t('purchases.invoiceDetail.createReturn', 'Create Return')}
+              {t('invoiceDetail.createReturn', 'Create Return')}
             </button>
           )}
           {invoice.status === 'POSTED' && (
@@ -2485,7 +2485,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={() => setRecordPaymentOpen(true)}
               disabled={!canCreatePayment}
             >
-              {t('purchases.invoiceDetail.createPayment', 'Create Payment')}
+              {t('invoiceDetail.createPayment', 'Create Payment')}
             </button>
           )}
           {invoice.status === 'POSTED' && (invoice.paidAmountBase || 0) > 0 && (
@@ -2494,7 +2494,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               className="rounded border border-slate-300 bg-white px-4 py-2 text-xs font-bold text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
               onClick={() => setPaymentHistoryOpen(true)}
             >
-              {t('purchases.invoiceDetail.viewPayments', 'Payments')}
+              {t('invoiceDetail.viewPayments', 'Payments')}
             </button>
           )}
           {invoice.status === 'POSTED' && (
@@ -2504,7 +2504,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               onClick={() => setUnpostConfirmOpen(true)}
               disabled={busy || canCreatePayment === false || invoice.paymentStatus !== 'UNPAID'}
             >
-              {busy ? t('purchases.invoiceDetail.unposting', 'Unposting...') : t('purchases.invoiceDetail.unpostInvoice', 'Unpost Invoice')}
+              {busy ? t('invoiceDetail.unposting', 'Unposting...') : t('invoiceDetail.unpostInvoice', 'Unpost Invoice')}
             </button>
           )}
         </>
@@ -2522,10 +2522,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               */}
               {invoice.status === 'PENDING_APPROVAL' && (
                 <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-                  <div className="font-semibold mb-0.5">{t('purchases.invoiceDetail.pendingApproval.title', '⏳ Awaiting accounting approval')}</div>
+                  <div className="font-semibold mb-0.5">{t('invoiceDetail.pendingApproval.title', '⏳ Awaiting accounting approval')}</div>
                   <div className="text-amber-800">
-                    {t('purchases.invoiceDetail.pendingApproval.body1', 'This invoice was submitted and is waiting for accounting to approve the ledger effect.')}
-                    {' '}{t('purchases.invoiceDetail.pendingApproval.body2', 'You cannot edit it while it is pending. The decision will appear here when it is made.')}
+                    {t('invoiceDetail.pendingApproval.body1', 'This invoice was submitted and is waiting for accounting to approve the ledger effect.')}
+                    {' '}{t('invoiceDetail.pendingApproval.body2', 'You cannot edit it while it is pending. The decision will appear here when it is made.')}
                   </div>
                 </div>
               )}
@@ -2539,8 +2539,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
           <div className="flex flex-wrap items-center justify-between gap-2">
             <DocumentSegmentedGroup>
-              <DocumentSegmentButton active={!invoice.purchaseOrderId} disabled icon={FileText} label={t('purchases.invoiceDetail.sourceDirect', 'Direct')} />
-              <DocumentSegmentButton active={!!invoice.purchaseOrderId} disabled icon={Link2} label={t('purchases.invoiceDetail.sourceFromPO', 'From PO')} />
+              <DocumentSegmentButton active={!invoice.purchaseOrderId} disabled icon={FileText} label={t('invoiceDetail.sourceDirect', 'Direct')} />
+              <DocumentSegmentButton active={!!invoice.purchaseOrderId} disabled icon={Link2} label={t('invoiceDetail.sourceFromPO', 'From PO')} />
             </DocumentSegmentedGroup>
             <button
               type="button"
@@ -2548,7 +2548,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               className="inline-flex h-7 items-center gap-1.5 rounded border border-slate-200 bg-white px-2 text-[10px] font-black uppercase tracking-wide text-slate-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-950 dark:text-slate-400"
             >
               <Link2 className="h-3.5 w-3.5" />
-              {invoice.purchaseOrderId ? t('purchases.invoiceDetail.sourceLockedPO', 'Source locked from PO') : t('purchases.invoiceDetail.sourceDirectHeaderDriven', 'Direct header driven')}
+              {invoice.purchaseOrderId ? t('invoiceDetail.sourceLockedPO', 'Source locked from PO') : t('invoiceDetail.sourceDirectHeaderDriven', 'Direct header driven')}
             </button>
           </div>
 
@@ -2562,26 +2562,26 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               disabled={attachmentBusy}
             />
             <DocumentIconButton
-              title={t('purchases.invoices.attachments.upload', 'Upload Attachment')}
+              title={t('invoices.attachments.upload', 'Upload Attachment')}
               onClick={() => document.getElementById(viewAttachmentInputId)?.click()}
               disabled={attachmentBusy}
             >
               <Paperclip className="h-3.5 w-3.5" />
             </DocumentIconButton>
-            <DocumentIconButton title={t('purchases.invoiceDetail.downloadExcel', 'Download Excel')} onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.excelNotConnected', 'Purchase invoice line export is not connected yet.'))}>
+            <DocumentIconButton title={t('invoiceDetail.downloadExcel', 'Download Excel')} onClick={() => errorHandler.showWarning(t('invoiceDetail.excelNotConnected', 'Purchase invoice line export is not connected yet.'))}>
               <FileSpreadsheet className="h-3.5 w-3.5" />
             </DocumentIconButton>
             <DocumentIconButton
-              title={printBusy ? t('purchases.invoiceDetail.printing', 'Printing...') : t('purchases.invoiceDetail.print', 'Print')}
+              title={printBusy ? t('invoiceDetail.printing', 'Printing...') : t('invoiceDetail.print', 'Print')}
               onClick={printInvoice}
               disabled={printBusy}
             >
               <Printer className="h-3.5 w-3.5" />
             </DocumentIconButton>
-            <DocumentIconButton title={t('purchases.invoiceDetail.uploadFromFile', 'Upload from file')} onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.importNotConnected', 'Purchase invoice file import is not connected yet.'))}>
+            <DocumentIconButton title={t('invoiceDetail.uploadFromFile', 'Upload from file')} onClick={() => errorHandler.showWarning(t('invoiceDetail.importNotConnected', 'Purchase invoice file import is not connected yet.'))}>
               <Upload className="h-3.5 w-3.5" />
             </DocumentIconButton>
-            <DocumentIconButton title={t('purchases.invoiceDetail.readFromImage', 'Read from image')} onClick={() => errorHandler.showWarning(t('purchases.invoiceDetail.imageNotConnected', 'Purchase invoice image reading is not connected yet.'))}>
+            <DocumentIconButton title={t('invoiceDetail.readFromImage', 'Read from image')} onClick={() => errorHandler.showWarning(t('invoiceDetail.imageNotConnected', 'Purchase invoice image reading is not connected yet.'))}>
               <FileImage className="h-3.5 w-3.5" />
             </DocumentIconButton>
           </div>
@@ -2590,31 +2590,31 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           ),
         },
         header: {
-          title: invoice.purchaseOrderId ? t('purchases.invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('purchases.invoiceDetail.header.directBill', 'Header - Direct Bill'),
+          title: invoice.purchaseOrderId ? t('invoiceDetail.header.fromPO', 'Header - From Purchase Order') : t('invoiceDetail.header.directBill', 'Header - Direct Bill'),
           action: (
           <div className="flex items-center gap-1.5">
-            <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('purchases.invoiceDetail.fromPOPill', 'From PO') : t('purchases.invoiceDetail.sourceDirect', 'Direct')}</DocumentPill>
+            <DocumentPill tone={invoice.purchaseOrderId ? 'blue' : 'slate'}>{invoice.purchaseOrderId ? t('invoiceDetail.fromPOPill', 'From PO') : t('invoiceDetail.sourceDirect', 'Direct')}</DocumentPill>
             <DocumentPill tone="slate">{invoice.currency}</DocumentPill>
             {invoice.status === 'POSTED' && (
               <DocumentPill tone="green">
                 <ShieldCheck className="h-3 w-3" />
-                {t('purchases.invoiceDetail.policyOK', 'Policy OK')}
+                {t('invoiceDetail.policyOK', 'Policy OK')}
               </DocumentPill>
             )}
           </div>
           ),
           content: (
         <DocumentHeaderGrid>
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.invoiceNo', 'Invoice No.')} value={invoice.invoiceNumber} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.source', 'Source')} value={invoice.purchaseOrderId || t('purchases.invoiceDetail.viewHeader.direct', 'Direct')} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.vendor', 'Vendor')} value={viewVendorName} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.vendorInvoiceNumber', 'Vendor Invoice / Ref')} value={invoice.vendorInvoiceNumber || '-'} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.invoiceDate', 'Invoice Date')} value={invoice.invoiceDate} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.dueDate', 'Due Date')} value={invoice.dueDate || '-'} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.currency', 'Currency')} value={invoice.currency} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.exchangeRate', 'Exchange Rate')} value={invoice.exchangeRate} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.paymentTerms', 'Payment Terms')} value={`${invoice.paymentTermsDays}${t('purchases.invoiceDetail.viewHeader.days', ' days')}`} plain />
-          <DocumentField label={t('purchases.invoiceDetail.viewHeader.directInvoicing', 'Direct Invoicing')} value={settings ? (settings.allowDirectInvoicing ? t('purchases.invoiceDetail.viewHeader.enabled', 'Enabled') : t('purchases.invoiceDetail.viewHeader.disabled', 'Disabled')) : '-'} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.invoiceNo', 'Invoice No.')} value={invoice.invoiceNumber} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.source', 'Source')} value={invoice.purchaseOrderId || t('invoiceDetail.viewHeader.direct', 'Direct')} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.vendor', 'Vendor')} value={viewVendorName} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.vendorInvoiceNumber', 'Vendor Invoice / Ref')} value={invoice.vendorInvoiceNumber || '-'} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.invoiceDate', 'Invoice Date')} value={invoice.invoiceDate} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.dueDate', 'Due Date')} value={invoice.dueDate || '-'} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.currency', 'Currency')} value={invoice.currency} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.exchangeRate', 'Exchange Rate')} value={invoice.exchangeRate} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.paymentTerms', 'Payment Terms')} value={`${invoice.paymentTermsDays}${t('invoiceDetail.viewHeader.days', ' days')}`} plain />
+          <DocumentField label={t('invoiceDetail.viewHeader.directInvoicing', 'Direct Invoicing')} value={settings ? (settings.allowDirectInvoicing ? t('invoiceDetail.viewHeader.enabled', 'Enabled') : t('invoiceDetail.viewHeader.disabled', 'Disabled')) : '-'} plain />
         </DocumentHeaderGrid>
           ),
         },
@@ -2626,11 +2626,11 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           disabled
           onRowChange={() => undefined}
           isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.taxCodeId || line.invoicedQty || line.unitPriceDoc || line.discountValue)}
-          addLabel={t('purchases.invoiceDetail.columns.addLabel', 'Add Item')}
+          addLabel={t('invoiceDetail.columns.addLabel', 'Add Item')}
           columns={[
             {
               id: 'item',
-              label: t('purchases.invoiceDetail.columns.item', 'Item'),
+              label: t('invoiceDetail.columns.item', 'Item'),
               kind: 'custom',
               width: '260px',
               render: (row) => (
@@ -2644,14 +2644,14 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                 </div>
               ),
             },
-            { id: 'qty', label: t('purchases.invoiceDetail.columns.qty', 'Qty'), kind: 'computed', width: '80px', compute: (row) => row.invoicedQty },
-            { id: 'uom', label: t('purchases.invoiceDetail.columns.uom', 'UOM'), kind: 'custom', width: '90px', render: (row) => <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{row.uom}</div> },
-            { id: 'unitCost', label: t('purchases.invoiceDetail.columns.unitCost', 'Unit Cost'), kind: 'computed', width: '110px', compute: (row) => row.unitPriceDoc },
-            { id: 'taxCode', label: t('purchases.invoiceDetail.columns.taxCode', 'Tax Code'), kind: 'custom', width: '140px', render: (row) => <div className="flex h-9 items-center px-2 text-xs text-slate-700 dark:text-slate-200">{row.taxCode || row.taxCodeId || t('purchases.invoiceDetail.columns.noTax', 'No Tax')}</div> },
-            { id: 'lineTotal', label: t('purchases.invoiceDetail.columns.lineTotal', 'Line Total'), kind: 'computed', width: '110px', compute: (row) => row.lineTotalDoc + row.taxAmountDoc },
-            { id: 'net', label: t('purchases.invoiceDetail.columns.net', 'Net'), kind: 'computed', width: '100px', compute: (row) => row.lineTotalDoc },
-            { id: 'tax', label: t('purchases.invoiceDetail.columns.tax', 'Tax'), kind: 'computed', width: '90px', compute: (row) => row.taxAmountDoc },
-            { id: 'netBase', label: t('purchases.invoiceDetail.columns.netBase', 'Net Base'), kind: 'computed', width: '110px', compute: (row) => row.lineTotalBase },
+            { id: 'qty', label: t('invoiceDetail.columns.qty', 'Qty'), kind: 'computed', width: '80px', compute: (row) => row.invoicedQty },
+            { id: 'uom', label: t('invoiceDetail.columns.uom', 'UOM'), kind: 'custom', width: '90px', render: (row) => <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{row.uom}</div> },
+            { id: 'unitCost', label: t('invoiceDetail.columns.unitCost', 'Unit Cost'), kind: 'computed', width: '110px', compute: (row) => row.unitPriceDoc },
+            { id: 'taxCode', label: t('invoiceDetail.columns.taxCode', 'Tax Code'), kind: 'custom', width: '140px', render: (row) => <div className="flex h-9 items-center px-2 text-xs text-slate-700 dark:text-slate-200">{row.taxCode || row.taxCodeId || t('invoiceDetail.columns.noTax', 'No Tax')}</div> },
+            { id: 'lineTotal', label: t('invoiceDetail.columns.lineTotal', 'Line Total'), kind: 'computed', width: '110px', compute: (row) => row.lineTotalDoc + row.taxAmountDoc },
+            { id: 'net', label: t('invoiceDetail.columns.net', 'Net'), kind: 'computed', width: '100px', compute: (row) => row.lineTotalDoc },
+            { id: 'tax', label: t('invoiceDetail.columns.tax', 'Tax'), kind: 'computed', width: '90px', compute: (row) => row.taxAmountDoc },
+            { id: 'netBase', label: t('invoiceDetail.columns.netBase', 'Net Base'), kind: 'computed', width: '110px', compute: (row) => row.lineTotalBase },
           ]}
           minRows={1}
           className="flex-1 [&>div:first-child]:h-full [&>div:first-child]:max-h-none"
@@ -2665,13 +2665,13 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
           content: (
       <div className="grid gap-2 md:grid-cols-2">
         <DocumentCompactCard
-          title={t('purchases.invoices.attachments.title', 'Attachments')}
+          title={t('invoices.attachments.title', 'Attachments')}
           action={
             <label
               htmlFor={viewAttachmentInputId}
               className="inline-flex h-6 cursor-pointer items-center rounded border border-slate-200 px-2 text-[10px] font-black uppercase tracking-wide text-slate-700 transition-colors hover:bg-slate-50 dark:border-slate-800 dark:text-slate-300 dark:hover:bg-slate-800"
             >
-              {attachmentBusy ? t('purchases.invoices.attachments.uploading', 'Uploading...') : t('purchases.invoices.attachments.upload', 'Upload')}
+              {attachmentBusy ? t('invoices.attachments.uploading', 'Uploading...') : t('invoices.attachments.upload', 'Upload')}
             </label>
           }
         >
@@ -2680,10 +2680,10 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
               <Paperclip className="h-4 w-4 text-slate-500" />
               <div className="min-w-0">
                 <div className="font-black text-slate-900 dark:text-slate-100">
-                  {attachments.length} {t('purchases.invoiceDetail.attachmentCountView', { defaultValue: 'file', count: attachments.length })}
+                  {attachments.length} {t('invoiceDetail.attachmentCountView', { defaultValue: 'file', count: attachments.length })}
                 </div>
                 <div className="truncate text-[11px] text-slate-500">
-                  {t('purchases.invoices.attachments.help', 'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.')}
+                  {t('invoices.attachments.help', 'Allowed: PDF, PNG, JPG, DOCX, XLSX. Max 10 MB per file, 5 files per invoice.')}
                 </div>
               </div>
             </div>
@@ -2703,7 +2703,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                         className="text-[10px] font-black uppercase text-slate-600"
                         onClick={() => downloadAttachment(attachment.id)}
                       >
-                        {t('purchases.invoices.attachments.open', 'Open')}
+                        {t('invoices.attachments.open', 'Open')}
                       </button>
                       <button
                         type="button"
@@ -2712,8 +2712,8 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
                         disabled={attachmentDeletingId === attachment.id}
                       >
                         {attachmentDeletingId === attachment.id
-                          ? t('purchases.invoices.attachments.removing', 'Removing...')
-                          : t('purchases.invoices.attachments.remove', 'Remove')}
+                          ? t('invoices.attachments.removing', 'Removing...')
+                          : t('invoices.attachments.remove', 'Remove')}
                       </button>
                     </div>
                   </div>
@@ -2724,15 +2724,15 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
         </DocumentCompactCard>
 
         <DocumentCompactCard
-          title={t('purchases.invoiceDetail.audit.title', 'Audit & Warnings')}
+          title={t('invoiceDetail.audit.title', 'Audit & Warnings')}
           action={<DocumentPill tone={invoice.status === 'POSTED' ? 'green' : invoice.status === 'PENDING_APPROVAL' ? 'amber' : 'slate'}>{invoice.status}</DocumentPill>}
         >
           <div className="flex min-h-[56px] items-center gap-2 p-2.5 text-xs">
             <History className="h-4 w-4 text-slate-500" />
             <div className="min-w-0">
-              <div className="font-black text-slate-900 dark:text-slate-100">{t('purchases.invoiceDetail.audit.documentChecks', 'Document checks')}</div>
+              <div className="font-black text-slate-900 dark:text-slate-100">{t('invoiceDetail.audit.documentChecks', 'Document checks')}</div>
               <div className="truncate text-[11px] text-slate-500">
-                {t('purchases.invoiceDetail.audit.documentDescription', 'Status, payment, AP, inventory, and attachment warnings stay visible before legal actions.')}
+                {t('invoiceDetail.audit.documentDescription', 'Status, payment, AP, inventory, and attachment warnings stay visible before legal actions.')}
               </div>
             </div>
           </div>
@@ -2745,9 +2745,9 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
-        title={t('purchases.invoices.unpost.confirmTitle', 'Unpost Purchase Invoice')}
-        message={t('purchases.invoices.unpost.confirmMessage', 'This will reverse all accounting and inventory entries posted for this invoice. The action is auditable but cannot be undone in place. Continue?')}
-        confirmLabel={t('purchases.invoices.unpost.confirmAction', 'Unpost Invoice')}
+        title={t('invoices.unpost.confirmTitle', 'Unpost Purchase Invoice')}
+        message={t('invoices.unpost.confirmMessage', 'This will reverse all accounting and inventory entries posted for this invoice. The action is auditable but cannot be undone in place. Continue?')}
+        confirmLabel={t('invoices.unpost.confirmAction', 'Unpost Invoice')}
         cancelLabel={t('common.cancel', 'Cancel')}
         tone="danger"
         isConfirming={busy}
@@ -2757,12 +2757,12 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={!!attachmentPendingDelete}
-        title={t('purchases.invoices.attachments.confirmRemoveTitle', 'Remove Attachment')}
-        message={t('purchases.invoices.attachments.confirmRemoveMessage', {
+        title={t('invoices.attachments.confirmRemoveTitle', 'Remove Attachment')}
+        message={t('invoices.attachments.confirmRemoveMessage', {
           defaultValue: 'Remove {{name}} from this purchase invoice?',
-          name: attachmentPendingDelete?.name || t('purchases.invoices.attachments.thisFile', 'this file'),
+          name: attachmentPendingDelete?.name || t('invoices.attachments.thisFile', 'this file'),
         })}
-        confirmLabel={t('purchases.invoices.attachments.remove', 'Remove')}
+        confirmLabel={t('invoices.attachments.remove', 'Remove')}
         cancelLabel={t('common.cancel', 'Cancel')}
         tone="danger"
         isConfirming={!!attachmentDeletingId}

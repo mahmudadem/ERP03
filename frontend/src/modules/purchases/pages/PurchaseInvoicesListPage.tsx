@@ -54,7 +54,7 @@ const paymentChipClasses = (status: PaymentStatus): string => {
 
 const PurchaseInvoicesListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['purchases', 'common']);
 
 
   const [statusFilter, setStatusFilter] = useState<PIStatusFilter>('ALL');
@@ -218,10 +218,10 @@ const PurchaseInvoicesListPage: React.FC = () => {
 
   const statusFilterConfig = useMemo(() => ({
     options: [
-      { value: 'DRAFT', label: t('purchases.invoicesList.statusOptions.DRAFT', 'Draft'), color: 'slate' },
-      { value: 'PENDING_APPROVAL', label: t('purchases.invoicesList.statusOptions.PENDING_APPROVAL', 'Pending Approval'), color: 'amber' },
-      { value: 'POSTED', label: t('purchases.invoicesList.statusOptions.POSTED', 'Posted'), color: 'emerald' },
-      { value: 'CANCELLED', label: t('purchases.invoicesList.statusOptions.CANCELLED', 'Cancelled'), color: 'rose' },
+      { value: 'DRAFT', label: t('invoicesList.statusOptions.DRAFT', 'Draft'), color: 'slate' },
+      { value: 'PENDING_APPROVAL', label: t('invoicesList.statusOptions.PENDING_APPROVAL', 'Pending Approval'), color: 'amber' },
+      { value: 'POSTED', label: t('invoicesList.statusOptions.POSTED', 'Posted'), color: 'emerald' },
+      { value: 'CANCELLED', label: t('invoicesList.statusOptions.CANCELLED', 'Cancelled'), color: 'rose' },
     ],
     activeValue: statusFilter,
     onChange: (val: string) => {
@@ -321,7 +321,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
     () => [
       {
         key: 'invoiceNumber',
-        label: 'Invoice #',
+        label: t('invoicesList.columns.invoiceNumber', 'Invoice #'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -332,7 +332,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'vendorName',
-        label: 'Customer/Party',
+        label: t('invoicesList.columns.vendorName', 'Customer/Party'),
         width: '200px',
         priority: 1,
         sortable: true,
@@ -343,7 +343,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'invoiceDate',
-        label: 'Invoice Date and time',
+        label: t('invoicesList.columns.invoiceDate', 'Invoice Date and time'),
         width: '180px',
         priority: 1,
         sortable: true,
@@ -359,7 +359,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'grandTotalDoc',
-        label: 'Grand Total',
+        label: t('invoicesList.columns.grandTotal', 'Grand Total'),
         width: '130px',
         priority: 1,
         sortable: true,
@@ -373,7 +373,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'currency',
-        label: 'Currency',
+        label: t('invoicesList.columns.currency', 'Currency'),
         width: '80px',
         priority: 1,
         sortable: true,
@@ -385,7 +385,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'persona',
-        label: 'Invoice Type/Persona',
+        label: t('invoicesList.columns.persona', 'Invoice Type/Persona'),
         width: '140px',
         priority: 1,
         sortable: true,
@@ -399,7 +399,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'paymentStatus',
-        label: 'Payments',
+        label: t('invoicesList.columns.payments', 'Payments'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -411,13 +411,13 @@ const PurchaseInvoicesListPage: React.FC = () => {
               paymentChipClasses(val as any)
             )}
           >
-            {t(`purchases.invoicesList.paymentOptions.${val}`, val)}
+            {t(`invoicesList.paymentOptions.${val}`, val)}
           </span>
         ),
       },
       {
         key: 'status',
-        label: 'Status',
+        label: t('invoicesList.columns.status', 'Status'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -429,13 +429,13 @@ const PurchaseInvoicesListPage: React.FC = () => {
               statusChipClasses(val as any)
             )}
           >
-            {t(`purchases.invoicesList.statusOptions.${val}`, val)}
+            {t(`invoicesList.statusOptions.${val}`, val)}
           </span>
         ),
       },
       {
         key: 'createdBy',
-        label: 'Created By',
+        label: t('invoicesList.columns.createdBy', 'Created By'),
         width: '150px',
         priority: 2,
         accessor: 'createdBy',
@@ -452,14 +452,14 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'dueDate',
-        label: 'Due Date',
+        label: t('invoicesList.columns.dueDate', 'Due Date'),
         width: '120px',
         priority: 2,
         accessor: 'dueDate',
       },
       {
         key: 'postedAt',
-        label: 'Posted At',
+        label: t('invoicesList.columns.postedAt', 'Posted At'),
         width: '150px',
         priority: 3,
         accessor: 'postedAt',
@@ -485,17 +485,17 @@ const PurchaseInvoicesListPage: React.FC = () => {
     () => [
       {
         key: 'view',
-        label: 'View',
+        label: t('invoicesList.actions.view', 'View'),
         icon: Eye,
         onClick: (row) => handleOpenInvoice(row.id),
         primary: false,
       },
       {
         key: 'print',
-        label: 'Print',
+        label: t('invoicesList.actions.print', 'Print'),
         icon: Printer,
         onClick: (row) => {
-          toast.success(`Printing invoice ${row.invoiceNumber}...`);
+          toast.success(t('invoicesList.actions.printingToast', 'Printing invoice {{invoiceNumber}}...', { invoiceNumber: row.invoiceNumber }));
           window.print();
         },
         primary: false,
@@ -506,11 +506,11 @@ const PurchaseInvoicesListPage: React.FC = () => {
 
   return (
     <OperationalListLayout<PurchaseInvoiceDTO>
-      title={t('purchases.invoicesList.title')}
+      title={t('invoicesList.title')}
       subtitle=""
       compactHeader
       statusFilterConfig={statusFilterConfig}
-      newButtonLabel={t('purchases.invoicesList.new')}
+      newButtonLabel={t('invoicesList.new')}
       onNewClick={() => navigate('/purchases/invoices/new')}
       onRefresh={load}
       loading={loading}
@@ -524,7 +524,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
-              placeholder={t('purchases.invoicesList.filters.searchPlaceholder', 'Invoice #, vendor, user...')}
+              placeholder={t('invoicesList.filters.searchPlaceholder', 'Invoice #, vendor, user...')}
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
@@ -538,7 +538,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
               role="VENDOR"
               value={localVendor === 'ALL' ? '' : localVendor}
               onChange={(party) => setLocalVendor(party ? party.id : 'ALL')}
-              placeholder={t('purchases.invoicesList.allVendors', 'All Vendors')}
+              placeholder={t('invoicesList.allVendors', 'All Vendors')}
             />
           </div>
 
@@ -549,9 +549,9 @@ const PurchaseInvoicesListPage: React.FC = () => {
               onChange={(e) => setLocalPersona(e.target.value)}
               className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none cursor-pointer"
             >
-              <option value="ALL">{t('purchases.invoicesList.filters.allTypes', 'Type')}</option>
-              <option value="DIRECT">{t('purchases.invoicesList.filters.direct', 'Direct')}</option>
-              <option value="POS">{t('purchases.invoicesList.filters.pos', 'POS')}</option>
+              <option value="ALL">{t('invoicesList.filters.allTypes', 'Type')}</option>
+              <option value="DIRECT">{t('invoicesList.filters.direct', 'Direct')}</option>
+              <option value="POS">{t('invoicesList.filters.pos', 'POS')}</option>
             </select>
           </div>
 
@@ -564,7 +564,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
             >
               {STATUS_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {value === 'ALL' ? t('purchases.invoicesList.filters.statusPlaceholder', 'Status') : t(`purchases.invoicesList.statusOptions.${value}`, value)}
+                  {value === 'ALL' ? t('invoicesList.filters.statusPlaceholder', 'Status') : t(`invoicesList.statusOptions.${value}`, value)}
                 </option>
               ))}
             </select>
@@ -579,7 +579,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
             >
               {PAYMENT_VALUES.map((value) => (
                 <option key={value} value={value}>
-                  {value === 'ALL' ? t('purchases.invoicesList.filters.paymentPlaceholder', 'Payment') : t(`purchases.invoicesList.paymentOptions.${value}`, value)}
+                  {value === 'ALL' ? t('invoicesList.filters.paymentPlaceholder', 'Payment') : t(`invoicesList.paymentOptions.${value}`, value)}
                 </option>
               ))}
             </select>
@@ -591,14 +591,14 @@ const PurchaseInvoicesListPage: React.FC = () => {
               className="w-32"
               value={localDateFrom}
               onChange={setLocalDateFrom}
-              placeholder={t('purchases.invoicesList.filters.dateFrom', 'Date From')}
+              placeholder={t('invoicesList.filters.dateFrom', 'Date From')}
             />
             <span className="text-slate-400 font-medium">-</span>
             <DatePicker
               className="w-32"
               value={localDateTo}
               onChange={setLocalDateTo}
-              placeholder={t('purchases.invoicesList.filters.dateTo', 'Date To')}
+              placeholder={t('invoicesList.filters.dateTo', 'Date To')}
             />
           </div>
 
@@ -610,13 +610,13 @@ const PurchaseInvoicesListPage: React.FC = () => {
               className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white hover:bg-primary-700 transition-all hover:shadow-md hover:shadow-primary-600/10 active:scale-[0.98] duration-200"
             >
               <Filter size={16} />
-              <span>{t('purchases.invoicesList.filters.apply', 'Apply')}</span>
+              <span>{t('invoicesList.filters.apply', 'Apply')}</span>
             </button>
             <button
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title={t('purchases.invoicesList.filters.clear', 'Clear')}
+              title={t('invoicesList.filters.clear', 'Clear')}
             >
               <RotateCcw size={16} />
             </button>
@@ -625,7 +625,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       }
       columns={columns}
       data={paginatedData}
-      emptyMessage={t('purchases.invoicesList.emptyTitle')}
+      emptyMessage={t('invoicesList.emptyTitle')}
       onRowClick={(row) => handleOpenInvoice(row.id)}
       sorting={{
         field: sortField,
