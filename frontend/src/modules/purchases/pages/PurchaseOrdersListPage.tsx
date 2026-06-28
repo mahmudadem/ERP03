@@ -291,7 +291,7 @@ const PurchaseOrdersListPage: React.FC = () => {
     () => [
       {
         key: 'orderNumber',
-        label: 'Order #',
+        label: t('purchaseOrdersList.labels.order', 'Order #'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -302,7 +302,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'vendorName',
-        label: 'Customer/Party',
+        label: t('purchaseOrdersList.labels.customerParty', 'Customer/Party'),
         width: '200px',
         priority: 1,
         sortable: true,
@@ -313,7 +313,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'orderDate',
-        label: 'Order Date and time',
+        label: t('purchaseOrdersList.labels.orderDateAndTime', 'Order Date and time'),
         width: '180px',
         priority: 1,
         sortable: true,
@@ -329,7 +329,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'grandTotalDoc',
-        label: 'Grand Total',
+        label: t('purchaseOrdersList.labels.grandTotal', 'Grand Total'),
         width: '130px',
         priority: 1,
         sortable: true,
@@ -343,7 +343,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'currency',
-        label: 'Currency',
+        label: t('purchaseOrdersList.labels.currency', 'Currency'),
         width: '80px',
         priority: 1,
         sortable: true,
@@ -355,7 +355,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'status',
-        label: 'Status',
+        label: t('purchaseOrdersList.labels.status', 'Status'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -373,7 +373,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'createdBy',
-        label: 'Created By',
+        label: t('purchaseOrdersList.labels.createdBy', 'Created By'),
         width: '150px',
         priority: 2,
         accessor: 'createdBy',
@@ -390,14 +390,14 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'expectedDeliveryDate',
-        label: 'Expected Delivery',
+        label: t('purchaseOrdersList.labels.expectedDelivery', 'Expected Delivery'),
         width: '140px',
         priority: 2,
         accessor: 'expectedDeliveryDate',
       },
       {
         key: 'confirmedAt',
-        label: 'Confirmed At',
+        label: t('purchaseOrdersList.labels.confirmedAt', 'Confirmed At'),
         width: '120px',
         priority: 3,
         accessor: 'confirmedAt',
@@ -410,14 +410,14 @@ const PurchaseOrdersListPage: React.FC = () => {
     () => [
       {
         key: 'view',
-        label: 'View',
+        label: t('purchaseOrdersList.labels.view', 'View'),
         icon: Eye,
         onClick: (row) => handleOpenOrder(row.id),
         primary: false,
       },
       {
         key: 'print',
-        label: 'Print',
+        label: t('purchaseOrdersList.labels.print', 'Print'),
         icon: Printer,
         onClick: (row) => {
           toast.success(`Printing order ${row.orderNumber}...`);
@@ -431,11 +431,11 @@ const PurchaseOrdersListPage: React.FC = () => {
 
   return (
     <OperationalListLayout<PurchaseOrderDTO>
-      title="Purchase Orders"
+      title={t('purchaseOrdersList.title', 'Purchase Orders')}
       subtitle=""
       compactHeader
       statusFilterConfig={statusFilterConfig}
-      newButtonLabel="New PO"
+      newButtonLabel={t('purchaseOrdersList.newButton', 'New PO')}
       onNewClick={() => navigate('/purchases/orders/new')}
       onRefresh={loadOrders}
       loading={loading}
@@ -522,7 +522,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       }
       columns={columns}
       data={paginatedData}
-      emptyMessage="No purchase orders found."
+      emptyMessage={t('purchaseOrdersList.emptyMessage', 'No purchase orders found.')}
       onRowClick={(row) => handleOpenOrder(row.id)}
       sorting={{
         field: sortField,

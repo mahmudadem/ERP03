@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom'; import { CheckCircle2, ChevronLeft, ChevronRight, AlertTriangle, ShoppingCart} from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { Account, useAccounts } from '../../../context/AccountsContext';
@@ -13,7 +14,8 @@ const stepTitles = ['Impact Assessment', 'Account Mappings', 'Review & Confirm']
 
 const accountLabel = (account: Account): string => `${account.code} - ${account.name}`;
 
-export const PurchaseFinancialIntegrationWizard: React.FC = () => {
+export const PurchaseFinancialIntegrationWizard: React.FC = () => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const { accounts, isLoading: loadingAccounts } = useAccounts();
   const { isModuleInitialized, loading: modulesLoading } = useCompanyModules();
