@@ -74,20 +74,20 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
   };
 
   const actionLabels: Record<PosShortcutAction, string> = {
-    SEARCH_ITEMS: t('shortcuts.actions.searchItems', 'Search Items'),
-    CHECKOUT: t('shortcuts.actions.checkout', 'Checkout / Pay'),
-    VOID_SALE: t('shortcuts.actions.voidSale', 'Void Sale'),
-    HOLD_CART: t('shortcuts.actions.holdCart', 'Hold Cart'),
-    ADD_CUSTOM_ITEM: t('shortcuts.actions.addCustomItem', 'Add Custom Item'),
-    APPLY_DISCOUNT: t('shortcuts.actions.applyDiscount', 'Apply Global Discount'),
-    CASH_PAYMENT: t('shortcuts.actions.cashPayment', 'Quick Cash Payment'),
-    CARD_PAYMENT: t('shortcuts.actions.cardPayment', 'Quick Card Payment'),
+    SEARCH_ITEMS: t('shortcuts.actions.searchItems', { defaultValue: 'Search Items' }),
+    CHECKOUT: t('shortcuts.actions.checkout', { defaultValue: 'Checkout / Pay' }),
+    VOID_SALE: t('shortcuts.actions.voidSale', { defaultValue: 'Void Sale' }),
+    HOLD_CART: t('shortcuts.actions.holdCart', { defaultValue: 'Hold Cart' }),
+    ADD_CUSTOM_ITEM: t('shortcuts.actions.addCustomItem', { defaultValue: 'Add Custom Item' }),
+    APPLY_DISCOUNT: t('shortcuts.actions.applyDiscount', { defaultValue: 'Apply Global Discount' }),
+    CASH_PAYMENT: t('shortcuts.actions.cashPayment', { defaultValue: 'Quick Cash Payment' }),
+    CARD_PAYMENT: t('shortcuts.actions.cardPayment', { defaultValue: 'Quick Card Payment' }),
   };
 
   const actions = Object.keys(DEFAULT_POS_SHORTCUTS) as PosShortcutAction[];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title || t('shortcuts.title', 'Keyboard Shortcuts')}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title || t('shortcuts.title', { defaultValue: 'Keyboard Shortcuts' })}>
       <div className="p-4 space-y-4">
         {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
         
@@ -116,7 +116,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
                         : 'bg-white dark:bg-gray-900 border border-gray-300 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-800'
                     }`}
                   >
-                    {isCapturing ? t('shortcuts.listening', 'Press key...') : currentKey}
+                    {isCapturing ? t('shortcuts.listening', { defaultValue: 'Press key...' }) : currentKey}
                   </button>
                   {shortcuts[action] && (
                     <button
@@ -127,7 +127,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
                         setShortcuts(newShortcuts);
                       }}
                       className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
-                      title={t('shortcuts.resetAction', 'Reset to default')}
+                      title={t('shortcuts.resetAction', { defaultValue: 'Reset to default' })}
                     >
                       <X className="w-4 h-4" />
                     </button>
@@ -145,7 +145,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
           className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 flex items-center gap-2"
         >
           <RotateCcw className="w-4 h-4" />
-          {t('shortcuts.resetAll', 'Reset All')}
+          {t('shortcuts.resetAll', { defaultValue: 'Reset All' })}
         </button>
         <div className="flex space-x-3">
           <button
@@ -153,7 +153,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            {t('common.cancel', 'Cancel')}
+            {t('common.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button
             type="button"
@@ -161,7 +161,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {t('common.save', 'Save')}
+            {t('common.save', { defaultValue: 'Save' })}
           </button>
         </div>
       </div>
