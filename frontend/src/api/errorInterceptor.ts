@@ -67,6 +67,7 @@ export function setupErrorInterceptor() {
           errorMessage.toLowerCase().includes('invalid authentication token') ||
           errorMessage.toLowerCase().includes('unauthorized') ||
           errorMessage.toLowerCase().includes('authentication') ||
+          errorMessage.toLowerCase().includes('authorization header') ||
           (error.response?.status === 401 && errorMessage === ''); // Empty message on 401 usually means token validation failed
 
         if (isAuthTokenFailure) {

@@ -53,7 +53,7 @@ interface ConversationSummary {
 export const GlobalAiWidget: React.FC = () => {
   const { t, i18n } = useTranslation('aiAssistant');
   const { hasPermission, isOwner, isSuperAdmin } = useRBAC();
-  const { permissionsLoaded } = useCompanyAccess();
+  const { permissionsLoaded, moduleBundles } = useCompanyAccess();
   const location = useLocation();
 
   const [messages, setMessages] = useState<DisplayMessage[]>([]);
@@ -81,8 +81,9 @@ export const GlobalAiWidget: React.FC = () => {
 
   const canChat = hasPermission('ai-assistant.chat.use');
   const isAiPage = location.pathname.startsWith('/ai-assistant');
+  const hasAiModule = (moduleBundles || []).some((moduleId) => moduleId === 'ai-assistant');
   const canUseAssistant = canChat || isOwner || isSuperAdmin;
-  const shouldFetchWidgetPreferences = permissionsLoaded && canUseAssistant && !isAiPage;
+  const shouldFetchWidgetPreferences = permissionsLoaded && hasAiModule && canUseAssistant && !isAiPage;
   const shouldRenderWidget = shouldFetchWidgetPreferences
     && widgetPreferences !== null
     && widgetPreferences.isEnabled !== false

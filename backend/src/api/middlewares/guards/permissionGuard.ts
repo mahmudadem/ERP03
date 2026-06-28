@@ -9,8 +9,7 @@ export function permissionGuard(requiredPermission: string) {
       return next(ApiError.internal('Tenant context not initialized'));
     }
 
-    // Owners bypass all permission checks
-    if (context.isOwner) {
+    if (context.isOwner || ((req as any).user && (req as any).user.isSuperAdmin)) {
       return next();
     }
 
@@ -41,7 +40,7 @@ export function anyPermissionGuard(requiredPermissions: string[]) {
       return next(ApiError.internal('Tenant context not initialized'));
     }
 
-    if (context.isOwner) {
+    if (context.isOwner || ((req as any).user && (req as any).user.isSuperAdmin)) {
       return next();
     }
 

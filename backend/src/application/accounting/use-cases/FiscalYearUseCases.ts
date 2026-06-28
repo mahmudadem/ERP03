@@ -75,7 +75,9 @@ export class CreateFiscalYearUseCase {
     const spCount = 0;
 
     const periods = FiscalPeriodGenerator.generate(startDate, endDate, scheme, spCount);
-    const fyId = `FY${endDate.getFullYear()}`; 
+    // Scope the id to the company — FiscalYear.id is a global PK and 'FY2026'
+    // repeats across companies. Lookups always pass (companyId, id).
+    const fyId = `${companyId}_FY${endDate.getFullYear()}`;
 
     const fiscalYear = new FiscalYear(
       fyId,

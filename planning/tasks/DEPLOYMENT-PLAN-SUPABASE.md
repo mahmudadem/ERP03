@@ -115,6 +115,15 @@ The owner explicitly asked the CTO to make these technical calls. Decisions are 
 3. **Backend host → RAILWAY.** Simplest fit for a Node + Postgres app, cheap at our scale, connects cleanly to Supabase. (Render is the equivalent fallback.) CTO sets this up during Phase 3 — no owner action needed.
 4. **Attachments & push notifications → KEEP ON FIREBASE for v1.** Storage and FCM stay as-is to shrink launch scope. Revisit post-launch.
 
+### Final v1 hosting stack — LOCKED
+
+| Layer | Locked provider | Notes |
+| --- | --- | --- |
+| Frontend | Vercel free | Vite static frontend deployment. |
+| Backend | Railway | Free 30-day trial, then expected low monthly cost; use an always-on Node service to avoid cold starts. |
+| Database | Supabase | Managed PostgreSQL; this is the durable production financial database for v1. |
+| Login / files / notifications | Firebase | Keep Firebase Auth, Firebase Storage, and Firebase Cloud Messaging because these are already built and tested. |
+
 **Net effect:** Supabase = Postgres only. Firebase retained for Auth + Storage + push. AI off. This cuts remaining repo work from ~27 to ~15 and removes the riskiest pieces from the launch path.
 
 ---

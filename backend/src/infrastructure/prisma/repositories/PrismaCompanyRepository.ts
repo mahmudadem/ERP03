@@ -30,7 +30,9 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                 id: company.id,
                 name: company.name,
                 ownerId: company.ownerId,
-                taxId: company.taxId,
+                // Empty tax IDs must be stored as NULL: taxId is @unique, and Postgres
+                // allows multiple NULLs but only one '' — see CompleteCompanyCreationUseCase.
+                taxId: company.taxId || null,
                 address: company.address || null,
                 country: company.country || null,
                 logoUrl: company.logoUrl || null,

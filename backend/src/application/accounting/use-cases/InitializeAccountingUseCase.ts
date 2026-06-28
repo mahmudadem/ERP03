@@ -212,8 +212,11 @@ export class InitializeAccountingUseCase {
       const existingYears = await this.fiscalYearRepo.findByCompany(companyId);
       if (existingYears.length === 0) {
         const periods = FiscalPeriodGenerator.generate(startDate, endDate, scheme, 0);
-        const fyId = `FY${endDate.getFullYear()}`;
-        
+        // Scope the id to the company: 'FY2026' repeats for every company and
+        // FiscalYear.id is a global PK, so the bare form collided across companies.
+        // Fiscal years are always looked up by (companyId, id), so this is transparent.
+        const fyId = `${companyId}_FY${endDate.getFullYear()}`;
+
         const fiscalYear = new FiscalYear(
           fyId,
           companyId,
@@ -331,9 +334,15 @@ export class InitializeAccountingUseCase {
         continue;
       }
 
-      // Create a copy for this company
+      // Create a copy for this company.
+      // The copied id is scoped to the company: the system template id is shared
+      // by every company, and VoucherTypeDefinition.id is a global PK, so reusing
+      // it verbatim collided across companies (and with the SYSTEM template rows).
+      // Every lookup goes through (companyId, id) or (companyId, code), so a scoped
+      // id is transparent to callers. The logical identity stays (companyId, code, module).
+      const scopedTypeId = `${companyId}__${systemTemplate.id}`;
       const companyVoucherType = new VoucherTypeDefinition(
-        systemTemplate.id,
+        scopedTypeId,
         companyId,
         systemTemplate.name,
         systemTemplate.code,
@@ -354,7 +363,8 @@ export class InitializeAccountingUseCase {
       );
 
       await this.voucherTypeRepo.createVoucherType(companyVoucherType);
-      copiedTypes.push({ id: systemTemplate.id, data: companyVoucherType });
+      // Push the scoped id so default forms reference the company's copy, not the template.
+      copiedTypes.push({ id: scopedTypeId, data: companyVoucherType });
     }
 
     console.log(`[InitializeAccountingUseCase] Copied ${copiedTypes.length} default voucher types to company ${companyId}`);
@@ -411,7 +421,10 @@ export class InitializeAccountingUseCase {
 const form: VoucherFormDefinition = {
         id: formId,
         companyId,
-        typeId: baseType || type.id,
+        // typeId is the FK to the company's VoucherTypeDefinition row, so it must be
+        // that row's actual id (now company-scoped), not the canonical code `baseType`.
+        // The canonical code is still carried separately on `voucherType`/`baseType`.
+        typeId: type.id,
         name: type.data.name || type.id,
         code: type.data.code || baseType || type.id,
         description: `Default form for ${type.data.name || type.id}`,

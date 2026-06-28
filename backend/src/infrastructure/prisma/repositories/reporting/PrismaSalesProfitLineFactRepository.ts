@@ -225,7 +225,7 @@ export class PrismaSalesProfitLineFactRepository implements ISalesProfitLineFact
         where: { id: fact.id },
         create: {
           id: fact.id,
-          companyId: fact.companyId,
+          // companyId is set via the `company` relation connect below.
           documentType: fact.documentType,
           documentId: fact.documentId,
           documentNumber: fact.documentNumber,

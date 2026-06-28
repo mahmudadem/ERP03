@@ -14,6 +14,7 @@ import { PrismaClient } from '@prisma/client';
 const IMPLEMENTED_MODULES = new Set([
   'accounting',
   'inventory',
+  'pos',
   'purchase',
   'sales',
 ]);
@@ -27,6 +28,7 @@ const MODULE_REGISTRY_DATA = [
   { code: 'manufacturing', name: 'Manufacturing', description: 'Core Manufacturing module' },
   { code: 'projects',      name: 'Projects',      description: 'Core Projects module' },
   { code: 'purchase',      name: 'Purchase',      description: 'Core Purchase module' },
+  { code: 'sales',         name: 'Sales',         description: 'Core Sales module' },
   { code: 'companyAdmin',  name: 'CompanyAdmin',  description: 'Core CompanyAdmin module' },
   { code: 'system',        name: 'System',        description: 'Core System module' },
 ];
@@ -36,9 +38,19 @@ export async function seedModuleRegistry(prisma: PrismaClient): Promise<void> {
   await prisma.moduleRegistry.deleteMany({ where: { code: 'ai-assistant' } });
   for (const mod of MODULE_REGISTRY_DATA) {
     const isImplemented = IMPLEMENTED_MODULES.has(mod.code);
+    const existing = await prisma.moduleRegistry.findUnique({ where: { code: mod.code } });
+
+    // 275 SQL launch fix: code modules are keyed by stable ids such as "sales"
+    // and "pos". Older SQL seed runs created UUID ids, which made Super Admin
+    // think the DB row and code implementation were different modules.
+    if (existing && existing.id !== mod.code) {
+      await prisma.moduleRegistry.delete({ where: { id: existing.id } });
+    }
+
     await prisma.moduleRegistry.upsert({
       where: { code: mod.code },
       create: {
+        id: mod.code,
         code: mod.code,
         name: mod.name,
         description: mod.description,

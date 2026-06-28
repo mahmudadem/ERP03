@@ -29,9 +29,46 @@ async function initServer() {
   serverReady = true;
 }
 
-initServer().catch((error) => {
-  console.error('Failed to initialize server:', error);
-});
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Run initServer() with retry + exponential backoff.
+ *
+ * Startup validation reads from the database, so a DB that is briefly
+ * unreachable at boot (common after a host reboot, or a not-yet-ready managed
+ * Postgres on Supabase/Railway) would otherwise throw once and brick the
+ * process into a permanent 503 with no recovery. Retrying lets the server
+ * self-heal as soon as the database accepts connections.
+ */
+async function initServerWithRetry(): Promise<void> {
+  const baseDelayMs = 2000;
+  const maxDelayMs = 30000;
+  let attempt = 0;
+
+  // Keep trying indefinitely: a worker that can never reach its DB is useless,
+  // but staying alive and becoming ready the moment the DB comes up is strictly
+  // better than dying on the first failed attempt.
+  // eslint-disable-next-line no-constant-condition
+  while (true) {
+    attempt += 1;
+    try {
+      await initServer();
+      if (attempt > 1) {
+        console.log(`✓ Server initialized successfully on attempt ${attempt}.`);
+      }
+      return;
+    } catch (error) {
+      const delayMs = Math.min(baseDelayMs * 2 ** (attempt - 1), maxDelayMs);
+      console.error(
+        `Failed to initialize server (attempt ${attempt}); retrying in ${delayMs}ms:`,
+        error
+      );
+      await sleep(delayMs);
+    }
+  }
+}
+
+initServerWithRetry();
 
 export const api = functions.https.onRequest(async (req: any, res: any) => {
   if (!serverReady || !server) {

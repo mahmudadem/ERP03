@@ -21,7 +21,8 @@
     "seed:business-domains": "ts-node --transpile-only src/seeder/seedBusinessDomains.ts",
     "seed:vouchers": "ts-node --transpile-only src/scripts/seedDefaultVoucherTypes.ts",
     "reset:accounting": "ts-node --transpile-only src/seeder/resetAccountingModule.ts",
-    "seed:sql": "ts-node --transpile-only prisma/seeds/runSqlSeed.ts"
+    "seed:sql": "ts-node --transpile-only prisma/seeds/runSqlSeed.ts",
+    "smoke:companies": "ts-node --transpile-only src/scripts/smokeTwoCompanies.ts"
   },
   "engines": {
     "node": "18"

@@ -35,6 +35,7 @@ const CostCenterSummaryPage = lazy(() => import('../modules/accounting/pages/Cos
 // Initialization Wizards
 const AccountingInitializationWizard = lazy(() => import('../modules/accounting/wizards/AccountingInitializationWizard'));
 const CompanyAdminInitializationWizard = lazy(() => import('../modules/company-admin/wizards/CompanyAdminInitializationWizard'));
+const InventoryInitializationWizard = lazy(() => import('../modules/inventory/wizards/InventoryInitializationWizard').then(m => ({ default: m.InventoryInitializationWizard })));
 const InventoryFinancialIntegrationWizard = lazy(() => import('../modules/inventory/wizards/InventoryFinancialIntegrationWizard').then(m => ({ default: m.InventoryFinancialIntegrationWizard })));
 const PurchaseFinancialIntegrationWizard = lazy(() => import('../modules/purchases/wizards/PurchaseFinancialIntegrationWizard').then(m => ({ default: m.PurchaseFinancialIntegrationWizard })));
 const SalesFinancialIntegrationWizard = lazy(() => import('../modules/sales/wizards/SalesFinancialIntegrationWizard').then(m => ({ default: m.SalesFinancialIntegrationWizard })));
@@ -214,6 +215,7 @@ export const routesConfig: AppRoute[] = [
   // MODULE INITIALIZATION WIZARDS (No module/permission requirements)
   { path: '/accounting/setup', label: 'Accounting Setup', component: AccountingInitializationWizard, section: 'SETUP', hideInMenu: true },
   { path: '/companyAdmin/setup', label: 'Company Admin Setup', component: CompanyAdminInitializationWizard, section: 'SETUP', hideInMenu: true },
+  { path: '/inventory/setup', label: 'Inventory Setup', component: InventoryInitializationWizard, section: 'SETUP', hideInMenu: true },
   { path: '/inventory/financial-integration', label: 'Inventory Financial Integration', component: InventoryFinancialIntegrationWizard, section: 'SETUP', hideInMenu: true },
   { path: '/purchases/financial-integration', label: 'Purchase Financial Integration', component: PurchaseFinancialIntegrationWizard, section: 'SETUP', hideInMenu: true },
   { path: '/sales/financial-integration', label: 'Sales Financial Integration', component: SalesFinancialIntegrationWizard, section: 'SETUP', hideInMenu: true },

@@ -154,7 +154,7 @@ export class PrismaCompanyAdminRepository implements ICompanyAdminRepository {
     if ((updates as any).explicitPermissions !== undefined) data.permissions = (updates as any).explicitPermissions as any;
 
     const updated = await this.prisma.companyRole.update({
-      where: { id: roleId },
+      where: { companyId_id: { companyId, id: roleId } },
       data
     });
 
@@ -172,7 +172,7 @@ export class PrismaCompanyAdminRepository implements ICompanyAdminRepository {
   
   async deleteRole(companyId: string, roleId: string): Promise<void> {
     await this.prisma.companyRole.delete({
-      where: { id: roleId, companyId }
+      where: { companyId_id: { companyId, id: roleId } }
     });
   }
   
