@@ -250,20 +250,42 @@ const PosTerminalPage: React.FC<Props> = () => {
       if (ctx.state === 'suspended') void ctx.resume();
 
       const now = ctx.currentTime;
+      if (source === 'barcode') {
+        const playTone = (startOffset: number, frequency: number) => {
+          const primary = ctx.createOscillator();
+          const primaryGain = ctx.createGain();
+          const start = now + startOffset;
+          const stop = start + 0.07;
+
+          primary.type = 'square';
+          primary.frequency.setValueAtTime(frequency, start);
+
+          primaryGain.gain.setValueAtTime(0.0001, start);
+          primaryGain.gain.exponentialRampToValueAtTime(0.18, start + 0.003);
+          primaryGain.gain.exponentialRampToValueAtTime(0.0001, stop);
+
+          primary.connect(primaryGain);
+          primaryGain.connect(ctx.destination);
+          primary.start(start);
+          primary.stop(stop);
+        };
+
+        playTone(0, 2700);
+        playTone(0.095, 2700);
+        return;
+      }
+
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
-      oscillator.type = source === 'barcode' ? 'square' : 'sine';
-      oscillator.frequency.setValueAtTime(source === 'barcode' ? 1120 : 760, now);
-      if (source === 'barcode') {
-        oscillator.frequency.setValueAtTime(880, now + 0.055);
-      }
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(760, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(source === 'barcode' ? 0.055 : 0.035, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + (source === 'barcode' ? 0.11 : 0.08));
+      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
       oscillator.connect(gain);
       gain.connect(ctx.destination);
       oscillator.start(now);
-      oscillator.stop(now + (source === 'barcode' ? 0.12 : 0.09));
+      oscillator.stop(now + 0.09);
     } catch {
       // Audio feedback is best-effort; the cart update remains authoritative.
     }
