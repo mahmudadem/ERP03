@@ -46,28 +46,73 @@ export class PrismaStockLevelRepository implements IStockLevelRepository {
   }
 
   async upsertLevel(level: StockLevel): Promise<void> {
-    await this.prisma.stockLevel.update({
+    await this.persistLevel(this.prisma, level);
+  }
+
+  private mutableLevelData(level: StockLevel): any {
+    return {
+      qtyOnHand: level.qtyOnHand,
+      reservedQty: level.reservedQty,
+      avgCostBase: level.avgCostBase,
+      avgCostCCY: level.avgCostCCY,
+      lastCostBase: level.lastCostBase,
+      lastCostCCY: level.lastCostCCY,
+      postingSeq: level.postingSeq,
+      maxBusinessDate: level.maxBusinessDate,
+      totalMovements: level.totalMovements,
+      lastMovementId: level.lastMovementId || null,
+      version: level.version,
+    };
+  }
+
+  /**
+   * Create-or-update with optimistic concurrency. The Firestore impl uses a blind
+   * `.set()` (create-or-replace); a plain Prisma `update` cannot create the first
+   * row, so the initial persistence of a brand-new level (version 1, with no prior
+   * version-0 row) threw RecordNotFound — breaking stock receipt in SQL mode.
+   *
+   * This mirrors the upsert while KEEPING the version guard the SQL path intends:
+   *   - row matches version-1  -> update (normal optimistic-concurrency path)
+   *   - no row at all          -> insert (first persistence of a new level)
+   *   - row exists, version off -> real concurrency conflict (throw)
+   */
+  private async persistLevel(client: any, level: StockLevel): Promise<void> {
+    const updated = await client.stockLevel.updateMany({
+      where: {
+        companyId: level.companyId,
+        itemId: level.itemId,
+        warehouseId: level.warehouseId,
+        version: level.version - 1,
+      },
+      data: this.mutableLevelData(level),
+    });
+    if (updated.count > 0) return;
+
+    const existing = await client.stockLevel.findUnique({
       where: {
         companyId_itemId_warehouseId: {
           companyId: level.companyId,
           itemId: level.itemId,
           warehouseId: level.warehouseId,
         },
-        version: level.version - 1,
       },
+      select: { version: true },
+    });
+    if (existing) {
+      throw new Error(
+        `StockLevel optimistic concurrency conflict for ${level.companyId}/${level.itemId}/${level.warehouseId}: ` +
+          `expected version ${level.version - 1}, found ${existing.version}`
+      );
+    }
+
+    await client.stockLevel.create({
       data: {
-        qtyOnHand: level.qtyOnHand,
-        reservedQty: level.reservedQty,
-        avgCostBase: level.avgCostBase,
-        avgCostCCY: level.avgCostCCY,
-        lastCostBase: level.lastCostBase,
-        lastCostCCY: level.lastCostCCY,
-        postingSeq: level.postingSeq,
-        maxBusinessDate: level.maxBusinessDate,
-        totalMovements: level.totalMovements,
-        lastMovementId: level.lastMovementId || null,
-        version: level.version,
-      } as any,
+        id: level.id,
+        companyId: level.companyId,
+        itemId: level.itemId,
+        warehouseId: level.warehouseId,
+        ...this.mutableLevelData(level),
+      },
     });
   }
 
@@ -98,30 +143,7 @@ export class PrismaStockLevelRepository implements IStockLevelRepository {
   }
 
   async upsertLevelInTransaction(transaction: unknown, level: StockLevel): Promise<void> {
-    const tx = transaction as any;
-    await tx.stockLevel.update({
-      where: {
-        companyId_itemId_warehouseId: {
-          companyId: level.companyId,
-          itemId: level.itemId,
-          warehouseId: level.warehouseId,
-        },
-        version: level.version - 1,
-      },
-      data: {
-        qtyOnHand: level.qtyOnHand,
-        reservedQty: level.reservedQty,
-        avgCostBase: level.avgCostBase,
-        avgCostCCY: level.avgCostCCY,
-        lastCostBase: level.lastCostBase,
-        lastCostCCY: level.lastCostCCY,
-        postingSeq: level.postingSeq,
-        maxBusinessDate: level.maxBusinessDate,
-        totalMovements: level.totalMovements,
-        lastMovementId: level.lastMovementId || null,
-        version: level.version,
-      } as any,
-    });
+    await this.persistLevel(transaction as any, level);
   }
 
   private toDomain(record: any): StockLevel {

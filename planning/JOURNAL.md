@@ -2,6 +2,61 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 — 275a/275b audit TODO resolution)
+
+- **Goal:** Execute `planning/handoff-275ab-codex.md`: resolve the remaining 275a SQL seed and 275b SQL settings resolver audit markers before 275f deploy.
+- **What happened:** Removed all `TODO(275a-audit)` / `TODO(275b-audit)` markers. Added nullable `ChartOfAccountsTemplate.code` and re-keyed SQL COA template seeding to stable codes with legacy name claiming. Confirmed the company wizard reads live COA options through `ChartOfAccountsTemplateRepository`, while `system_metadata.coa_templates` remains a legacy manifest. Kept AI off for v1 by excluding AI module/permissions from SQL seeds and aligning role templates. Deleted `SettingsResolverSQL` and its test after verifying no live runtime path consumed it. Hydrated voucher template `voucherType` / `persona` / `sidebarGroup` from `layout._meta` in the Prisma voucher-type repo.
+- **Accounting/ERP impact:** Seed/schema/read-shape cleanup only. No posting math, tax, costing, stock valuation, ledger balancing, tenant isolation, or Firestore persistence behavior changed. The stable COA template code reduces launch seed drift if display names change.
+- **Verification:** `prisma db push --skip-generate` passed; Prisma client generation passed; clean DB `prisma db push --force-reset --skip-generate` passed; full SQL seed passed; SQL integration harness passed with `ALL 25 INTEGRATION CHECKS PASSED`; `node_modules/.bin/tsc --noEmit` passed; audit TODO grep returned zero.
+- **Docs/planning:** Added `planning/done/275ab-audit-resolution.md`, updated `docs/architecture/accounting.md`, `planning/ACTIVE.md`, and `planning/PRIORITIES.md`.
+- **Time spent:** ~1.4h. Estimate was 2-3h.
+- **Next:** Ask owner to approve committing this audit cleanup on `feat/275-supabase-integration`. Do not merge to `main`; after commit approval, continue 275f deploy.
+
+### Session: 2026-06-28 (Epic 275 — Task 275e: sales + purchases slices + 3 more SQL bug fixes)
+
+- **Goal:** Continue 275e into the Sales (SI) and Purchases (PI) money-path round-trips.
+- **What happened:** Extended `scripts/sql-integration-275e.ts` with Sales Invoice and Purchase Invoice create + read-back (header + line, reusing the inventory item). 15 checks total now, green, run 2×.
+- **Caught + fixed 3 more launch-blocking SQL bugs** (running total: 7 across 4 modules):
+  5. `PrismaSalesInvoiceRepository.create` and `PrismaPurchaseInvoiceRepository.create` passed both scalar `companyId` and `company: { connect }` under a nested `lines.create` (checked input) → "Unknown argument companyId". Every SI/PI create threw. Fixed: dropped the redundant scalar.
+  6. `SalesInvoice`/`PurchaseInvoice` Prisma models had no `voucherType` column, but the SI domain *requires* it (throws) and both persist it in Firestore via toJSON → SI read-back threw, value lost for PI. Fixed: added `voucherType` + `voucherTypeId` columns to both + mapped in create/update/toDomain.
+  7. `PurchaseInvoiceLine` model was missing 6 columns the repo writes (`trackInventory`, `uomId`, `taxCode`, `grnLineId`, `accountId`, `stockMovementId`) → PI was never persistable in SQL. Fixed: added the 6 columns (SalesInvoiceLine already had its equivalents).
+- **⚠️ Schema changed** (3 invoice models gained columns) → a `prisma db push` is needed after pulling the branch; pre-alpha so no data migration.
+- **Accounting/ERP impact:** Fixes are persistence shape/schema only; no posting/tax/cost math changed; Firestore path untouched.
+- **Verification:** `tsc --noEmit` clean; 15 checks pass twice. Report: `planning/done/275e-sql-integration-tests.md`.
+- **Next:** RBAC/Core/POS flows, then 275f (deploy). Branch `feat/275-supabase-integration` stays unmerged.
+
+### Session: 2026-06-28 (Epic 275 — Task 275e: inventory slice + 2 more SQL bug fixes)
+
+- **Goal:** Continue 275e into the inventory money-path.
+- **What happened:** Extended `scripts/sql-integration-275e.ts` with an inventory flow — create item + warehouse, append a `PURCHASE_RECEIPT` stock movement, create a new stock level then blend-cost-update it under the version guard. 11 checks total now, green, run 2×.
+- **Caught + fixed 2 more launch-blocking SQL bugs** (running total: 4):
+  3. `PrismaStockLevelRepository.upsertLevel`/`upsertLevelInTransaction` were update-only (Firestore uses blind `.set()`), so the first persistence of a new stock level (v1, no prior row) threw RecordNotFound → receiving stock for any new item/warehouse broke. Fixed to a true create-or-update that keeps the optimistic-concurrency guard.
+  4. `PrismaStockMovementRepository.toDomain` mapped NULL settlement columns to `null`; the domain treats a present wrong-direction settlement field as an error → reading back ANY IN/OUT movement threw. Fixed: coalesce the 5 settlement fields NULL→undefined.
+- **Accounting/ERP impact:** Fixes are Prisma read/write shape only; no inventory costing/valuation math changed; Firestore path untouched.
+- **Verification:** `tsc --noEmit` clean; 11 checks pass twice. Report updated: `planning/done/275e-sql-integration-tests.md`.
+- **Next:** Sales (SI) + Purchases (PI) round-trips, then RBAC/Core/POS. Branch `feat/275-supabase-integration` stays unmerged.
+
+### Session: 2026-06-28 (Epic 275 — Task 275e: SQL integration tests — accounting slice + 2 bug fixes)
+
+- **Goal:** Continue Epic 275 into 275e — real-Postgres integration tests of the service-level posting flows. Owner wants a QA-able SQL build.
+- **What happened:** Built a repeatable integration harness (`backend/scripts/sql-integration-275e.ts`) and the accounting flow: post a balanced Journal Entry through the `PostingGateway` (the mandatory ledger choke point) → `PrismaLedgerRepository`, then assert ledger rows tie, trial balance balances to zero, and resync (`replaceForVoucher`) doesn't duplicate. 7 checks, green, run 2× (isolated/repeatable).
+- **Caught + fixed 2 launch-blocking SQL bugs** (would have broken ALL of SQL mode — exactly the schema-strictness risk this epic exists for):
+  1. `PrismaAccountRepository.create` mixed Prisma's checked input (`company: { connect }`) with a raw scalar `parentId` → "Unknown argument parentId". Every account create threw. Fixed to `parent: { connect }`.
+  2. `PrismaLedgerRepository.recordForVoucher` used `createMany` with relation `connect` (createMany takes scalars only) → "Argument companyId is missing". Every ledger post threw. Fixed to scalar `companyId`/`accountId`.
+  - Scanned sibling self-relation repos (ItemCategory, Warehouse, CostCenter) — all fine (they use the all-scalar unchecked input). Bug was Account-specific.
+- **Accounting/ERP impact:** Fixes are Prisma write-shape only; no accounting math changed; Firestore path untouched. The integration test now proves balancing + ledger + trial balance execute correctly on Postgres.
+- **Verification:** `tsc --noEmit` clean; integration test passes twice. See `planning/done/275e-sql-integration-tests.md`.
+- **Next:** Extend the harness to the remaining 6 modules (inventory/sales/purchases/RBAC/core/POS) — expect more schema-strictness bugs. Then 275f (deploy). Branch `feat/275-supabase-integration` stays unmerged.
+
+### Session: 2026-06-28 (Epic 275 — Task 275c: integrate SQL branches + first real-Postgres run)
+
+- **Goal:** Owner: "get things done so we QA everything." Drive the SQL path to a QA-able state. A spawned 275c agent hit the session usage limit and produced nothing, so the CTO (Claude/Opus) did the integration + smoke test directly.
+- **What happened:** Merged the three completed SQL branches (275d schema/repos, 275a seeders, 275b settings resolver) into `feat/275-supabase-integration` — clean, no conflicts (disjoint files). Fixed the FK bug 275a surfaced by adding `seedSystemCompany.ts` (reserved SYSTEM sentinel Company, no memberships → no UI pollution) as seed step 0.
+- **First time the SQL path ran on real Postgres** (local portable PG 16, port 5433, `erp_db`): `prisma db push` → 128 tables in sync; `npm run seed:sql` runs all 10 seeders and is **idempotent** (ran 2×, no dupes — vouchers stay 16); `tsc --noEmit` clean on the merged tree; new runtime smoke test `backend/scripts/sql-smoke-275c.ts` passes — Company round-trip, a 275d-new Salesperson repo with its companyId FK, and the IdempotencyKey store (offline-sync infra) incl. replay no-op.
+- **Accounting/ERP impact:** Infrastructure only. Service-level posting flows (SI/PI → ledger/stock) NOT yet exercised — deferred to **275e** (SQL integration tests), which is the behavioral safety net for posting math.
+- **Verification:** see QA script in `planning/done/275c-local-sql-smoke-test.md`. All green.
+- **Next:** 275e — module integration tests against the live local Postgres; also clears the 5×275a + 7×275b audit TODOs against the now-live schema. Then 275f (provision Supabase + deploy). Branch `feat/275-supabase-integration` stays unmerged until 275e passes + owner go.
+
 ### Session: 2026-06-28 (Epic 275 planning — Supabase/PostgreSQL launch + offline-sync design)
 
 - **Goal:** Owner asked to plan the deployment and assess the gap to running on Supabase. Turned into a deep architecture session on DB choice, deployment modes, offline behavior, and conflict/sync.
@@ -5285,3 +5340,14 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused backend print-layout test passed (4/4). Backend build passed. Frontend typecheck passed.
 - **Time spent:** ~2.0h.
 - **Next:** Owner QA via `planning/done/274-purchase-invoice-native-header-rail-print.md`, then review and commit branch if accepted.
+
+### Session: 2026-06-28 (Task 275e — RBAC/Core/POS SQL integration completion)
+
+- **Goal:** Finish Task 275e by extending the real-Postgres harness with RBAC, Core, and POS flows on branch `feat/275-supabase-integration`.
+- **What was done:** Added `flowRBAC`, `flowCore`, and `flowPOS` to `backend/scripts/sql-integration-275e.ts`. RBAC creates real SQL users/roles/company membership and checks grant/deny through `PermissionChecker`. Core writes company settings and enables/initializes `accounting` + `pos` company modules. POS opens a shift, completes a cash sale through `CompletePosSaleUseCase`/`PostPosSaleUseCase`, verifies receipt/payment/ledger/stock effects, and closes the shift reconciled.
+- **Bug found/fixed:** `PrismaVoucherSequenceRepository` mixed `company: { connect }` with raw nullable `fiscalYearId` on create, so first POS terminal receipt numbering failed in SQL mode. Fixed by writing scalar `companyId` with `fiscalYearId` in the Prisma repo. This is Prisma-path only; no Firestore or accounting math changed.
+- **Accounting/ERP impact:** POS SQL mode now proves the approved path: Numbering Engine, Policy Engine, Tax Engine, Inventory Core facade, `IAccountingBridge`, voucher persistence, ledger rows, stock decrement, and shift cash totals. This protects launch from a cashier sale failing before receipt numbering or silently skipping ledger/stock.
+- **Verification:** Harness passed twice on real Postgres: `ALL 25 INTEGRATION CHECKS PASSED`. Backend `node_modules/.bin/tsc --noEmit` passed.
+- **Docs/planning:** Updated `planning/done/275e-sql-integration-tests.md`, `docs/architecture/accounting.md`, `docs/architecture/pos.md`, `planning/ACTIVE.md`, and `planning/PRIORITIES.md`.
+- **Time spent:** ~1.4h. Estimate was 2.5-4.0h.
+- **Next:** Ask owner to approve committing Task 275e. Do not start the 5x `TODO(275a-audit)` + 7x `TODO(275b-audit)` live-schema audit cleanup without owner go.

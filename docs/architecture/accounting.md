@@ -48,11 +48,19 @@ Implementation source:
 - `backend/src/application/accounting/templates/COATemplates.ts`
 - `backend/src/application/accounting/templates/IndustryCOATemplates.ts`
 - `backend/src/seeder/seedSystemMetadata.ts`
+- SQL launch seed: `backend/prisma/seeds/seedCOATemplates.ts`
 
 Notes:
 - Channel- or industry-specific accounts remain available and can still override defaults.
 - Simplified template keeps a lean structure, but now includes a GRNI default (`203`) for setup compatibility.
 - Wizard/account-mapping steps should still validate required defaults at runtime and surface actionable warnings if a required mapping does not resolve.
+- In SQL mode, `ChartOfAccountsTemplate.code` is the stable seed identity. The company wizard reads live template options from `ChartOfAccountsTemplateRepository`; `system_metadata.coa_templates` is retained only as a lightweight legacy manifest whose ids mirror the stable codes.
+
+## SQL Launch Seed Decisions (Epic 275)
+
+The v1 SQL seed catalog deliberately excludes the AI Assistant module and `ai-assistant.*` permissions because AI is off for the first Supabase/PostgreSQL launch. The seed also deletes stale AI module/permission rows left by earlier pre-audit seed runs so a fresh or reused launch database has the same v1 catalog.
+
+SYSTEM voucher type definitions store display-only extras (`voucherType`, `persona`, and `sidebarGroup`) in `layout._meta` rather than separate columns. `PrismaVoucherTypeDefinitionRepository` hydrates those fields from `_meta` when SYSTEM templates are copied into tenant voucher types/forms, so the document/form sidebar behavior remains available without duplicating schema fields.
 
 ## Architectural Principles
 
@@ -380,6 +388,10 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - PERIODIC mode remains a no-GL path; the sub-ledger average cost is still updated and the revaluation document links no GL voucher.
 - An architecture guard (`267-F (Inventory Revaluation)` in `SystemCoreBoundaries.test.ts`) pins this: `InventoryRevaluationUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
 - Golden voucher-output tests (`InventoryRevaluationGoldenVoucher.test.ts`, 5 tests) capture exact write-up/write-down Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
+
+### SQL voucher sequence write shape (Task 275e)
+
+Receipt/voucher numbering in SQL mode uses `NumberingEngine` -> `PrismaVoucherSequenceRepository`. Prisma 5 checked create inputs do not allow mixing `company: { connect }` with raw scalar FKs like nullable `fiscalYearId`. Sequence creation therefore writes scalar `companyId` and `fiscalYearId` together. This preserves the same unique key (`companyId`, `voucherType`, `fiscalYearId`) while keeping POS terminal receipt numbering and other scoped sequences valid on PostgreSQL.
 
 ## What Is NOT Implemented
 

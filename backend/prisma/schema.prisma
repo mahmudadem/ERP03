@@ -100,6 +100,28 @@ model Company {
   aiProviderConfig AiProviderConfig?
   aiUsageLogs      AiUsageLog[]
   salesProfitLineFacts SalesProfitLineFact[]
+  commissionEntries CommissionEntry[]
+  creditOverrides   CreditOverride[]
+  customerGroups    CustomerGroup[]
+  vendorGroups      VendorGroup[]
+  salespersons      Salesperson[]
+  priceLists        PriceList[]
+  purchasePriceLists PurchasePriceList[]
+  promotionRules    PromotionRule[]
+  quotes            Quote[]
+  recurringInvoiceTemplates RecurringInvoiceTemplate[]
+  postingLogs       PostingLog[]
+  periodLockOverrides PeriodLockOverride[]
+  recordChangeLogs  RecordChangeLog[]
+  idempotencyKeys   IdempotencyKey[]
+  policyConfig      PolicyConfig?
+  sellingPolicy     SellingPolicy?
+  posProductShortcutLayouts PosProductShortcutLayout[]
+  posProductShortcutNodes   PosProductShortcutNode[]
+  posControlButtonLayouts   PosControlButtonLayout[]
+  posControlButtons         PosControlButton[]
+  printLayoutTemplates      PrintLayoutTemplate[]
+  communicationsSettings    CommunicationsSettings?
 
   @@index([ownerId])
   @@map("companies")
@@ -1145,6 +1167,8 @@ model PurchaseInvoice {
   paymentTermsDays Int?
   paidAmountBase   Float    @default(0)
   outstandingAmountBase Float @default(0)
+  voucherType      String?
+  voucherTypeId    String?
   voucherId        String?
   subtotalBase     Float    @default(0)
   taxTotalBase     Float    @default(0)
@@ -1177,18 +1201,24 @@ model PurchaseInvoiceLine {
   itemId          String
   itemCode        String
   itemName        String
+  trackInventory  Boolean  @default(false)
   invoicedQty     Float
+  uomId           String?
   uom             String
   unitPriceDoc    Float
   lineTotalDoc    Float
   unitPriceBase   Float
   lineTotalBase   Float
   taxCodeId       String?
+  taxCode         String?
   taxRate         Float    @default(0)
   taxAmountDoc    Float    @default(0)
   taxAmountBase   Float    @default(0)
   warehouseId     String?
   description     String?
+  grnLineId       String?
+  accountId       String?
+  stockMovementId String?
 
   invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   item    Item            @relation(fields: [itemId], references: [id])
@@ -1405,6 +1435,8 @@ model SalesInvoice {
   paymentTermsDays     Int?
   paidAmountBase       Float    @default(0)
   outstandingAmountBase Float   @default(0)
+  voucherType          String?
+  voucherTypeId        String?
   voucherId            String?
   cogsVoucherId        String?
   subtotalBase         Float    @default(0)
@@ -2226,6 +2258,7 @@ model RoleTemplateRegistry {
 
 model ChartOfAccountsTemplate {
   id        String   @id @default(uuid())
+  code      String?
   country   String?
   industry  String?
   name      String
@@ -2234,6 +2267,7 @@ model ChartOfAccountsTemplate {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([code])
   @@index([country])
   @@index([industry])
   @@map("chart_of_accounts_templates")
@@ -2504,4 +2538,523 @@ model SalesProfitLineFact {
   @@index([companyId, documentType, documentDate])
   @@index([companyId, status])
   @@map("sales_profit_line_facts")
+}
+
+// ============================================================
+// Task 275d — Ports of Firestore-only repositories [SQL toggle]
+// ============================================================
+
+model CommissionEntry {
+  id                    String   @id
+  companyId             String
+  salespersonId         String
+  sourceType            String   // 'SALES_INVOICE'
+  sourceId              String
+  sourceNumber          String
+  customerId            String
+  customerName          String
+  invoiceDate           String   // YYYY-MM-DD
+  baseAmount            Float
+  commissionPct         Float
+  commissionAmountBase  Float
+  currency              String
+  status                String   // 'ACCRUED' | 'PAID' | 'CANCELLED'
+  accruedAt             DateTime
+  paidAt                DateTime?
+  paymentReference      String?
+  notes                 String?
+  createdBy             String
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, salespersonId])
+  @@index([companyId, sourceType, sourceId])
+  @@index([companyId, status])
+  @@index([companyId, invoiceDate])
+  @@map("commission_entries")
+}
+
+model CreditOverride {
+  id                  String   @id
+  companyId           String
+  customerId          String
+  sourceType          String
+  sourceId            String
+  sourceNumber        String
+  creditLimit         Float
+  currentExposure     Float
+  orderAmount         Float
+  projectedExposure   Float
+  reason              String
+  overriddenBy        String
+  overriddenAt        DateTime
+  createdAt           DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, customerId])
+  @@index([companyId, sourceId])
+  @@index([companyId, createdAt])
+  @@map("credit_overrides")
+}
+
+model CustomerGroup {
+  id                      String   @id
+  companyId               String
+  name                    String
+  description             String?
+  defaultPriceListId      String?
+  defaultPaymentTermsDays Int?
+  defaultCreditLimit      Float?
+  taxExempt               Boolean  @default(false)
+  status                  String   @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  createdBy               String
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId, status])
+  @@map("customer_groups")
+}
+
+model VendorGroup {
+  id          String   @id
+  companyId   String
+  name        String
+  description String?
+  status      String   @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId, status])
+  @@map("vendor_groups")
+}
+
+model Salesperson {
+  id                          String   @id
+  companyId                   String
+  code                        String
+  name                        String
+  email                       String?
+  defaultCommissionPct        Float    @default(0)
+  commissionPayableAccountId  String?
+  status                      String   @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  createdBy                   String
+  createdAt                   DateTime @default(now())
+  updatedAt                   DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, code])
+  @@index([companyId, status])
+  @@map("salespersons")
+}
+
+model PriceList {
+  id        String   @id
+  companyId String
+  name      String
+  currency  String
+  status    String   @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  validFrom DateTime?
+  validTo   DateTime?
+  isDefault Boolean  @default(false)
+  lines     Json     @default("[]") // PriceListLine[]
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId, status])
+  @@index([companyId, currency])
+  @@map("price_lists")
+}
+
+model PurchasePriceList {
+  id        String   @id
+  companyId String
+  name      String
+  currency  String
+  status    String   @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  validFrom DateTime?
+  validTo   DateTime?
+  isDefault Boolean  @default(false)
+  lines     Json     @default("[]") // PurchasePriceListLine[]
+  createdBy String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, name])
+  @@index([companyId, status])
+  @@index([companyId, currency])
+  @@map("purchase_price_lists")
+}
+
+model PromotionRule {
+  id                  String   @id
+  companyId           String
+  name                String
+  description         String?
+  type                String   // 'BUY_X_GET_Y' | 'THRESHOLD_DISCOUNT'
+  status              String   @default("ACTIVE") // 'ACTIVE' | 'INACTIVE'
+  priority            Int      @default(0)
+  validFrom           String?  // YYYY-MM-DD
+  validTo             String?  // YYYY-MM-DD
+  scope               String   // 'ALL' | 'ITEMS' | 'CATEGORIES'
+  itemIds             String[] @default([])
+  categoryIds         String[] @default([])
+  buyXGetY            Json?    // BuyXGetYConfig
+  thresholdDiscount   Json?    // ThresholdDiscountConfig
+  createdBy           String
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status, priority])
+  @@index([companyId, type])
+  @@map("promotion_rules")
+}
+
+model Quote {
+  id              String   @id
+  companyId       String
+  quoteNumber     String
+  customerId      String
+  customerName    String
+  salespersonId   String?
+  status          String
+  version         Int      @default(1)
+  originQuoteId   String?
+  quoteDate       String   // YYYY-MM-DD
+  validUntil      String?  // YYYY-MM-DD
+  currency        String
+  exchangeRate    Float    @default(1)
+  lines           Json     @default("[]") // QuoteLine[]
+  subtotalDoc     Float    @default(0)
+  taxTotalDoc     Float    @default(0)
+  grandTotalDoc   Float    @default(0)
+  subtotalBase    Float    @default(0)
+  taxTotalBase    Float    @default(0)
+  grandTotalBase  Float    @default(0)
+  notes           String?
+  convertedToType String?
+  convertedToId   String?
+  createdBy       String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, quoteNumber])
+  @@index([companyId, status])
+  @@index([companyId, customerId])
+  @@index([companyId, quoteDate])
+  @@map("quotes")
+}
+
+model RecurringInvoiceTemplate {
+  id                    String   @id
+  companyId             String
+  name                  String
+  sourceInvoiceId       String?
+  customerId            String
+  customerName          String
+  currency              String
+  exchangeRate          Float    @default(1)
+  lines                 Json     @default("[]") // RecurringInvoiceLine[]
+  notes                 String?
+  paymentTermsDays      Int      @default(0)
+  frequency             String   // 'WEEKLY' | 'MONTHLY' | 'QUARTERLY' | 'YEARLY'
+  dayOfMonth            Int?
+  dayOfWeek             Int?
+  startDate             String   // YYYY-MM-DD
+  endDate               String?  // YYYY-MM-DD
+  maxOccurrences        Int?
+  occurrencesGenerated  Int      @default(0)
+  nextGenerationDate    String   // YYYY-MM-DD
+  status                String   @default("ACTIVE")
+  createdBy             String
+  updatedBy             String?
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, status])
+  @@index([companyId, customerId])
+  @@index([companyId, nextGenerationDate])
+  @@map("recurring_invoice_templates")
+}
+
+// Posting audit log — one record per document posting event
+model PostingLog {
+  id              String   @id
+  companyId       String
+  sourceModule    String   // 'sales' | 'purchases' | 'inventory' | 'accounting' | 'pos'
+  sourceType      String
+  sourceId        String
+  sourceDocNumber String?
+  strategy        String
+  voucherIds      String[] @default([])
+  decisions       Json     @default("[]") // LineDecision[]
+  warnings        String[] @default([])
+  idempotencyKey  String?
+  postedAt        DateTime
+  postedBy        String
+  createdAt       DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, sourceId])
+  @@index([companyId, sourceModule, sourceType])
+  @@map("posting_logs")
+}
+
+// Period-lock override audit record
+model PeriodLockOverride {
+  id                String   @id
+  companyId         String
+  sourceModule      String   // 'sales'
+  sourceType        String
+  sourceId          String
+  sourceNumber      String
+  documentDate      String
+  lockedThroughDate String
+  reason            String
+  overriddenBy      String
+  overriddenAt      DateTime
+  createdAt         DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, sourceId])
+  @@index([companyId, createdAt])
+  @@map("period_lock_overrides")
+}
+
+// Record change audit log
+model RecordChangeLog {
+  id           String   @id
+  companyId    String
+  entityType   String
+  entityId     String
+  entityNumber String?
+  action       String
+  changes      Json     @default("[]") // FieldChange[]
+  userId       String
+  userEmail    String?
+  timestamp    DateTime
+  metadata     Json?
+  createdAt    DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, entityType, entityId])
+  @@index([companyId, timestamp])
+  @@index([companyId, action])
+  @@map("record_change_logs")
+}
+
+// Idempotency key store — prevents duplicate processing
+model IdempotencyKey {
+  companyId    String
+  key          String
+  method       String
+  path         String
+  bodyHash     String
+  statusCode   Int
+  responseBody Json
+  createdAt    DateTime
+  expiresAt    DateTime
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@id([companyId, key])
+  @@index([companyId, expiresAt])
+  @@map("idempotency_keys")
+}
+
+// Engine-owned policy config (one per company, neutral store)
+model PolicyConfig {
+  companyId String   @id
+  rules     Json     @default("[]") // PolicyRule[]
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("policy_configs")
+}
+
+// Company-wide selling policy
+model SellingPolicy {
+  companyId            String   @id
+  belowCostMode        String   @default("REQUIRE_APPROVAL")
+  minMarginPercent     Float?
+  allowManagerOverride Boolean  @default(true)
+  updatedAt            DateTime @updatedAt
+  createdAt            DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("selling_policies")
+}
+
+// POS product shortcut layouts
+model PosProductShortcutLayout {
+  id         String   @id
+  companyId  String
+  name       String
+  scopeType  String   // 'COMPANY' | 'BRANCH' | 'REGISTER' | 'USER'
+  scopeId    String?
+  isDefault  Boolean  @default(false)
+  isActive   Boolean  @default(true)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("pos_product_shortcut_layouts")
+}
+
+// POS product shortcut nodes (items/groups in a layout)
+model PosProductShortcutNode {
+  id             String   @id
+  companyId      String
+  layoutId       String
+  parentId       String?
+  nodeType       String   // 'GROUP' | 'ITEM'
+  label          String
+  secondaryLabel String?
+  itemId         String?
+  variantId      String?
+  unitId         String?
+  predefinedQty  Float?
+  sortOrder      Int      @default(0)
+  isActive       Boolean  @default(true)
+  color          String?
+  icon           String?
+  imageUrl       String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, layoutId])
+  @@map("pos_product_shortcut_nodes")
+}
+
+// POS control button layouts
+model PosControlButtonLayout {
+  id        String   @id
+  companyId String
+  name      String
+  scopeType String
+  scopeId   String?
+  isDefault Boolean  @default(false)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId])
+  @@map("pos_control_button_layouts")
+}
+
+// POS control buttons
+model PosControlButton {
+  id                 String   @id
+  companyId          String
+  layoutId           String
+  zone               String
+  commandCode        String
+  label              String
+  secondaryLabel     String?
+  icon               String?
+  color              String?
+  sortOrder          Int      @default(0)
+  isVisible          Boolean  @default(true)
+  isActive           Boolean  @default(true)
+  requiredPermission String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, layoutId])
+  @@map("pos_control_buttons")
+}
+
+// Print layout templates
+model PrintLayoutTemplate {
+  id           String   @id
+  companyId    String
+  name         String
+  documentType String
+  layout       Json     // PrintLayoutSchema
+  isDefault    Boolean  @default(false)
+  createdBy    String
+  updatedBy    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@index([companyId, documentType])
+  @@index([companyId, documentType, isDefault])
+  @@map("print_layout_templates")
+}
+
+// Field library — system-tier and company-tier entries
+model FieldLibraryEntry {
+  id             String   @id
+  scope          String   // 'system' | 'company'
+  companyId      String?  // null for system-tier entries
+  label          String
+  type           String
+  fieldClass     String
+  sectionHint    String?
+  alwaysMandatory Boolean @default(false)
+  alwaysShared   Boolean  @default(false)
+  supportedTypes String[] @default([])
+  excludedTypes  String[] @default([])
+  selectorBinding String?
+  deprecated     Boolean  @default(false)
+  version        Int      @default(1)
+  contentHash    String?
+  createdBy      String?
+  updatedBy      String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  @@index([scope])
+  @@index([companyId, scope])
+  @@map("field_library_entries")
+}
+
+// Communications settings (one per company)
+model CommunicationsSettings {
+  companyId         String   @id
+  messagingAccounts Json     @default("[]") // MessagingAccount[]
+  updatedAt         DateTime @updatedAt
+  createdAt         DateTime @default(now())
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+
+  @@map("communications_settings")
 }

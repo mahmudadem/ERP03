@@ -1,5 +1,20 @@
 # 🎯 Current Focus
 
+## Epic 275 — Supabase/PostgreSQL launch — 275a/275b audit COMPLETE, awaiting owner commit/go (2026-06-28)
+
+**Status:** 🔶 Epic in progress. SQL path **runs on real Postgres**; Task 275e proves Accounting, Inventory, Sales, Purchases, RBAC, Core, and POS on live PostgreSQL. The remaining 275a/275b audit TODOs are now resolved locally and not committed.
+
+- **Done so far (all on branch `feat/275-supabase-integration`, not merged):**
+  - 275d (20 Prisma repos + schema +23 models), 275a (10 seeders), 275b (`SettingsResolverSQL`) — merged clean.
+  - 275c — FK fix (`seedSystemCompany.ts` SYSTEM sentinel); `db push` 128 tables; `seed:sql` idempotent (2×); repo smoke test green. Report: `planning/done/275c-local-sql-smoke-test.md`.
+  - 275e — harness `backend/scripts/sql-integration-275e.ts`, **25 checks**, run 2× on real Postgres; `node_modules/.bin/tsc --noEmit` clean. **Found+fixed 8 SQL bugs**: Account.create input mix; Ledger createMany+connect; StockLevel.upsertLevel update-only; StockMovement.toDomain NULL settlement fields; SI/PI create companyId scalar+connect mix; SI/PI missing `voucherType` column; PurchaseInvoiceLine missing 6 columns; VoucherSequence create company connect + raw `fiscalYearId` mix. **⚠️ schema changed earlier in 275e → `prisma db push` needed after pulling this branch.** Report: `planning/done/275e-sql-integration-tests.md`.
+- 275a/275b audit cleanup — all `TODO(275a-audit)` / `TODO(275b-audit)` markers removed; `SettingsResolverSQL` deleted as dead code; SQL COA templates now have stable `code`; AI module/permissions excluded from v1 SQL seed; voucher template `_meta` hydrated by Prisma repo. Clean reset seed, 25-check harness, and `tsc --noEmit` all pass. Report: `planning/done/275ab-audit-resolution.md`.
+- **NEXT:** ask owner for commit approval. Do **not** merge to `main`.
+- **Then 275f:** provision Supabase + deploy backend (Railway) + frontend. Merge `feat/275-supabase-integration` to main only after owner go.
+- **Local env still up:** portable Postgres 16 on `localhost:5433`, db `erp_db`, trust auth (no password). `DATABASE_URL=postgresql://postgres@localhost:5433/erp_db?schema=public`.
+
+---
+
 ## Task 274 — Purchase Invoice native header warehouse, rail focus, and print engine (2026-06-27)
 
 **Status:** ✅ Complete locally on `codex/pi-native-print-rail` (not committed).

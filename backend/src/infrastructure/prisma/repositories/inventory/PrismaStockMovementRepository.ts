@@ -198,11 +198,16 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
       avgCostCCYAfter: record.avgCostCCYAfter,
       qtyBefore: record.qtyBefore,
       qtyAfter: record.qtyAfter,
-      settledQty: record.settledQty,
-      unsettledQty: record.unsettledQty,
-      unsettledCostBasis: record.unsettledCostBasis as any,
-      settlesNegativeQty: record.settlesNegativeQty,
-      newPositiveQty: record.newPositiveQty,
+      // Settlement fields are direction-specific: OUT carries settledQty/unsettledQty,
+      // IN carries settlesNegativeQty/newPositiveQty. The domain treats a *present*
+      // (non-undefined) value of the wrong-direction field as an error, but Postgres
+      // stores the absent ones as NULL. Coalesce NULL -> undefined so reconstruction
+      // matches the Firestore "field absent" semantics.
+      settledQty: record.settledQty ?? undefined,
+      unsettledQty: record.unsettledQty ?? undefined,
+      unsettledCostBasis: (record.unsettledCostBasis ?? undefined) as any,
+      settlesNegativeQty: record.settlesNegativeQty ?? undefined,
+      newPositiveQty: record.newPositiveQty ?? undefined,
       negativeQtyAtPosting: record.negativeQtyAtPosting,
       costSettled: record.costSettled,
       isBackdated: record.isBackdated,

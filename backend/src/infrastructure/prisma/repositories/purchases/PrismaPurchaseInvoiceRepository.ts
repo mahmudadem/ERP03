@@ -10,7 +10,9 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
     await tx.purchaseInvoice.create({
       data: {
         id: invoice.id,
-        companyId: invoice.companyId,
+        // companyId is set via the `company` relation connect below; passing the
+        // scalar too is invalid in Prisma's checked create input (used because of
+        // the nested `lines.create`) -> "Unknown argument companyId".
         invoiceNumber: invoice.invoiceNumber,
         supplierInvoiceNumber: invoice.vendorInvoiceNumber || null,
         purchaseOrderId: invoice.purchaseOrderId || null,
@@ -26,6 +28,8 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         paymentTermsDays: invoice.paymentTermsDays || null,
         paidAmountBase: invoice.paidAmountBase,
         outstandingAmountBase: invoice.outstandingAmountBase,
+        voucherType: invoice.voucherType || null,
+        voucherTypeId: (invoice as any).formType || null,
         voucherId: invoice.voucherId || null,
         subtotalBase: invoice.subtotalBase,
         taxTotalBase: invoice.taxTotalBase,
@@ -89,6 +93,8 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         paymentTermsDays: invoice.paymentTermsDays || null,
         paidAmountBase: invoice.paidAmountBase,
         outstandingAmountBase: invoice.outstandingAmountBase,
+        voucherType: invoice.voucherType || null,
+        voucherTypeId: (invoice as any).formType || null,
         voucherId: invoice.voucherId || null,
         subtotalBase: invoice.subtotalBase,
         taxTotalBase: invoice.taxTotalBase,
@@ -221,6 +227,8 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
       paidAmountBase: record.paidAmountBase,
       outstandingAmountBase: record.outstandingAmountBase,
       status: record.status as PIStatus,
+      voucherType: record.voucherType || undefined,
+      formType: record.voucherTypeId || undefined,
       voucherId: record.voucherId || null,
       attachments: record.attachments || [],
       notes: record.notes || undefined,

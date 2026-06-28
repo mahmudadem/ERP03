@@ -279,7 +279,6 @@ import { PrismaCurrencyRepository as PrismaWizardCurrencyRepository } from '../p
 import { PrismaExchangeRateRepository as PrismaTopExchangeRateRepository } from '../prisma/repositories/PrismaExchangeRateRepository';
 import { getPrismaClient } from '../prisma/prismaClient';
 import { PrismaTransactionManager } from '../prisma/PrismaTransactionManager';
-import { SettingsResolverSQL } from '../prisma/SettingsResolverSQL';
 
 import { PrismaUserRepository } from '../prisma/repositories/core/PrismaUserRepository';
 import { PrismaCompanyUserRepository } from '../prisma/repositories/core/PrismaCompanyUserRepository';
@@ -320,6 +319,7 @@ import { PrismaFormDefinitionRepository } from '../prisma/repositories/designer/
 import { PrismaVoucherFormRepository } from '../prisma/repositories/designer/PrismaVoucherFormRepository';
 import { PrismaFormSettingsRepository } from '../prisma/repositories/designer/PrismaFormSettingsRepository';
 import { PrismaVoucherTypeDefinitionRepository } from '../prisma/repositories/designer/PrismaVoucherTypeDefinitionRepository';
+import { PrismaFieldLibraryRepository } from '../prisma/repositories/designer/PrismaFieldLibraryRepository';
 
 import { PrismaAttendanceRepository } from '../prisma/repositories/hr/PrismaAttendanceRepository';
 import { PrismaEmployeeRepository } from '../prisma/repositories/hr/PrismaEmployeeRepository';
@@ -349,6 +349,7 @@ import { PrismaPosReceiptRepository } from '../prisma/repositories/pos/PrismaPos
 import { PrismaPosPaymentRepository } from '../prisma/repositories/pos/PrismaPosPaymentRepository';
 import { PrismaPosReturnRepository } from '../prisma/repositories/pos/PrismaPosReturnRepository';
 import { PrismaPosHeldCartRepository } from '../prisma/repositories/pos/PrismaPosHeldCartRepository';
+import { PrismaPosLayoutRepository } from '../prisma/repositories/pos/PrismaPosLayoutRepository';
 import { FirestorePosRegisterRepository } from '../firestore/repositories/pos/FirestorePosRegisterRepository';
 import { FirestorePosSettingsRepository } from '../firestore/repositories/pos/FirestorePosSettingsRepository';
 import { FirestorePosPolicyRepository } from '../firestore/repositories/pos/FirestorePosPolicyRepository';
@@ -369,6 +370,8 @@ import { PrismaPurchaseInvoiceRepository } from '../prisma/repositories/purchase
 import { PrismaPurchaseOrderRepository } from '../prisma/repositories/purchases/PrismaPurchaseOrderRepository';
 import { PrismaPurchaseReturnRepository } from '../prisma/repositories/purchases/PrismaPurchaseReturnRepository';
 import { PrismaPurchaseSettingsRepository } from '../prisma/repositories/purchases/PrismaPurchaseSettingsRepository';
+import { PrismaVendorGroupRepository } from '../prisma/repositories/purchases/PrismaVendorGroupRepository';
+import { PrismaPurchasePriceListRepository } from '../prisma/repositories/purchases/PrismaPurchasePriceListRepository';
 
 import { PrismaCompanyRoleRepository } from '../prisma/repositories/rbac/PrismaCompanyRoleRepository';
 import { PrismaPermissionRepository as PrismaRbacPermissionRepository } from '../prisma/repositories/rbac/PrismaPermissionRepository';
@@ -379,6 +382,23 @@ import { PrismaSalesInvoiceRepository } from '../prisma/repositories/sales/Prism
 import { PrismaSalesOrderRepository } from '../prisma/repositories/sales/PrismaSalesOrderRepository';
 import { PrismaSalesReturnRepository } from '../prisma/repositories/sales/PrismaSalesReturnRepository';
 import { PrismaSalesSettingsRepository } from '../prisma/repositories/sales/PrismaSalesSettingsRepository';
+import { PrismaCommissionEntryRepository } from '../prisma/repositories/sales/PrismaCommissionEntryRepository';
+import { PrismaCreditOverrideRepository } from '../prisma/repositories/sales/PrismaCreditOverrideRepository';
+import { PrismaCustomerGroupRepository } from '../prisma/repositories/sales/PrismaCustomerGroupRepository';
+import { PrismaSalespersonRepository } from '../prisma/repositories/sales/PrismaSalespersonRepository';
+import { PrismaPriceListRepository } from '../prisma/repositories/sales/PrismaPriceListRepository';
+import { PrismaPromotionRuleRepository } from '../prisma/repositories/sales/PrismaPromotionRuleRepository';
+import { PrismaQuoteRepository } from '../prisma/repositories/sales/PrismaQuoteRepository';
+import { PrismaRecurringInvoiceTemplateRepository } from '../prisma/repositories/sales/PrismaRecurringInvoiceTemplateRepository';
+
+import { PrismaPostingLogRepository } from '../prisma/repositories/accounting/PrismaPostingLogRepository';
+import { PrismaPeriodLockOverrideRepository } from '../prisma/repositories/accounting/PrismaPeriodLockOverrideRepository';
+import { PrismaRecordChangeLogRepository } from '../prisma/repositories/system/PrismaRecordChangeLogRepository';
+import { PrismaIdempotencyKeyRepository } from '../prisma/repositories/system/PrismaIdempotencyKeyRepository';
+import { PrismaSellingPolicyRepository } from '../prisma/repositories/system-core/PrismaSellingPolicyRepository';
+import { PrismaPolicyConfigRepository } from '../prisma/repositories/system-core/PrismaPolicyConfigRepository';
+import { PrismaPrintLayoutTemplateRepository } from '../prisma/repositories/print-layout/PrismaPrintLayoutTemplateRepository';
+import { PrismaCommunicationsSettingsRepository } from '../prisma/repositories/communications/PrismaCommunicationsSettingsRepository';
 
 import { FirestoreSalesProfitLineFactRepository } from '../firestore/repositories/reporting/FirestoreSalesProfitLineFactRepository';
 import { PrismaSalesProfitLineFactRepository } from '../prisma/repositories/reporting/PrismaSalesProfitLineFactRepository';
@@ -429,7 +449,6 @@ const DB_TYPE = process.env.DB_TYPE || 'FIRESTORE'; // 'FIRESTORE' or 'SQL'
 
 // Shared Services
 const settingsResolver = new SettingsResolver(getDb());
-const settingsResolverSQL = new SettingsResolverSQL();
 
 // REPORTING — Sales Gross Profit Facts recorder (Task 246)
 const profitFactRecorder = new RecordSalesProfitLineFactsUseCase(
@@ -513,20 +532,24 @@ export const diContainer = {
       : new FirestoreAuditLogRepository(getDb());
   },
   get idempotencyKeyRepository(): SysRepo.IIdempotencyKeyRepository {
-    // Firestore-only for now; idempotency rarely needs cross-DB parity.
-    return new FirestoreIdempotencyKeyRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaIdempotencyKeyRepository(getPrismaClient())
+      : new FirestoreIdempotencyKeyRepository(getDb());
   },
   get postingLogRepository(): AccRepo.IPostingLogRepository {
-    // Firestore-only — PostingLog is server-side audit data, not user-facing reporting.
-    return new FirestorePostingLogRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPostingLogRepository(getPrismaClient())
+      : new FirestorePostingLogRepository(getDb());
   },
   get periodLockOverrideRepository(): AccRepo.IPeriodLockOverrideRepository {
-    // Firestore-only — period-lock overrides are audit data.
-    return new FirestorePeriodLockOverrideRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPeriodLockOverrideRepository(getPrismaClient())
+      : new FirestorePeriodLockOverrideRepository(getDb());
   },
   get recordChangeLogRepository(): SysRepo.IRecordChangeLogRepository {
-    // Firestore-only — record change logs are tenant-scoped audit data.
-    return new FirestoreRecordChangeLogRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaRecordChangeLogRepository(getPrismaClient())
+      : new FirestoreRecordChangeLogRepository(getDb());
   },
 
   // ACCOUNTING
@@ -695,16 +718,14 @@ export const diContainer = {
       : new FirestorePurchaseReturnRepository(getDb());
   },
   get vendorGroupRepository(): PurRepo.IVendorGroupRepository {
-    if (DB_TYPE === 'SQL') {
-      throw new Error('VendorGroupRepository: SQL implementation not yet available');
-    }
-    return new FirestoreVendorGroupRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaVendorGroupRepository(getPrismaClient())
+      : new FirestoreVendorGroupRepository(getDb());
   },
   get purchasePriceListRepository(): PurRepo.IPurchasePriceListRepository {
-    if (DB_TYPE === 'SQL') {
-      throw new Error('PurchasePriceListRepository: SQL implementation not yet available');
-    }
-    return new FirestorePurchasePriceListRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPurchasePriceListRepository(getPrismaClient())
+      : new FirestorePurchasePriceListRepository(getDb());
   },
 
   // SALES
@@ -734,59 +755,44 @@ export const diContainer = {
       : new FirestoreSalesReturnRepository(getDb());
   },
   get priceListRepository(): SalRepo.IPriceListRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(A.1): Add PrismaPriceListRepository when SQL support is needed
-      throw new Error('PriceListRepository: SQL implementation not yet available');
-    }
-    return new FirestorePriceListRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPriceListRepository(getPrismaClient())
+      : new FirestorePriceListRepository(getDb());
   },
   get customerGroupRepository(): SalRepo.ICustomerGroupRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(A.2): Add PrismaCustomerGroupRepository when SQL support is needed
-      throw new Error('CustomerGroupRepository: SQL implementation not yet available');
-    }
-    return new FirestoreCustomerGroupRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaCustomerGroupRepository(getPrismaClient())
+      : new FirestoreCustomerGroupRepository(getDb());
   },
   get salespersonRepository(): SalRepo.ISalespersonRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(A.4): Add PrismaSalespersonRepository when SQL support is needed
-      throw new Error('SalespersonRepository: SQL implementation not yet available');
-    }
-    return new FirestoreSalespersonRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaSalespersonRepository(getPrismaClient())
+      : new FirestoreSalespersonRepository(getDb());
   },
   get commissionEntryRepository(): SalRepo.ICommissionEntryRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(A.4): Add PrismaCommissionEntryRepository when SQL support is needed
-      throw new Error('CommissionEntryRepository: SQL implementation not yet available');
-    }
-    return new FirestoreCommissionEntryRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaCommissionEntryRepository(getPrismaClient())
+      : new FirestoreCommissionEntryRepository(getDb());
   },
   get quoteRepository(): SalRepo.IQuoteRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(B.1): Add PrismaQuoteRepository when SQL support is needed
-      throw new Error('QuoteRepository: SQL implementation not yet available');
-    }
-    return new FirestoreQuoteRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaQuoteRepository(getPrismaClient())
+      : new FirestoreQuoteRepository(getDb());
   },
   get creditOverrideRepository(): SalRepo.ICreditOverrideRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(B.2): Add PrismaCreditOverrideRepository when SQL support is needed
-      throw new Error('CreditOverrideRepository: SQL implementation not yet available');
-    }
-    return new FirestoreCreditOverrideRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaCreditOverrideRepository(getPrismaClient())
+      : new FirestoreCreditOverrideRepository(getDb());
   },
   get promotionRuleRepository(): SalRepo.IPromotionRuleRepository {
-    if (DB_TYPE === 'SQL') {
-      // TODO(B.3): Add PrismaPromotionRuleRepository when SQL support is needed
-      throw new Error('PromotionRuleRepository: SQL implementation not yet available');
-    }
-    return new FirestorePromotionRuleRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPromotionRuleRepository(getPrismaClient())
+      : new FirestorePromotionRuleRepository(getDb());
   },
   get recurringInvoiceTemplateRepository(): SalRepo.IRecurringInvoiceTemplateRepository {
-    if (DB_TYPE === 'SQL') {
-      throw new Error('RecurringInvoiceTemplateRepository: SQL implementation not yet available');
-    }
-    return new FirestoreRecurringInvoiceTemplateRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaRecurringInvoiceTemplateRepository(getPrismaClient())
+      : new FirestoreRecurringInvoiceTemplateRepository(getDb());
   },
 
   // HR
@@ -848,10 +854,9 @@ export const diContainer = {
       : new FirestorePosHeldCartRepository(getDb());
   },
   get posLayoutRepository(): PosRepo.IPosLayoutRepository {
-    if (DB_TYPE === 'SQL') {
-      throw new Error('PosLayoutRepository: SQL implementation not yet available');
-    }
-    return new FirestorePosLayoutRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPosLayoutRepository(getPrismaClient())
+      : new FirestorePosLayoutRepository(getDb());
   },
 
 
@@ -876,13 +881,15 @@ export const diContainer = {
       ? new PrismaFormSettingsRepository(getPrismaClient())
       : new FirestoreFormSettingsRepository(getDb());
   },
-  // Phase A of task 135 — Firestore-only for now. Prisma binding will
-  // follow when the Phase B super-admin authoring UI lands.
   get fieldLibraryRepository(): DesRepo.IFieldLibraryRepository {
-    return new FirestoreFieldLibraryRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaFieldLibraryRepository(getPrismaClient())
+      : new FirestoreFieldLibraryRepository(getDb());
   },
   get printLayoutTemplateRepository() {
-    return new FirestorePrintLayoutTemplateRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPrintLayoutTemplateRepository(getPrismaClient())
+      : new FirestorePrintLayoutTemplateRepository(getDb());
   },
 
   // RBAC
@@ -1055,15 +1062,18 @@ export const diContainer = {
     return new LegacyTaxEngineAdapter();
   },
   get sellingPolicyRepository(): ISellingPolicyRepository {
-    // Firestore-only for now (no Prisma/SQL path yet — pre-alpha, no production data).
-    return new FirestoreSellingPolicyRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaSellingPolicyRepository(getPrismaClient())
+      : new FirestoreSellingPolicyRepository(getDb());
   },
   // Task 267-D: engine-owned PolicyConfig (typed precedence model). The same
   // document is read/written by every module's policy doorway (POS / Sales /
   // Purchases / company settings) and is the single source of truth that
-  // `IPolicyEngine.resolveTyped(...)` consults. Firestore-only for now.
+  // `IPolicyEngine.resolveTyped(...)` consults.
   get policyConfigRepository(): IPolicyConfigRepository {
-    return new FirestorePolicyConfigRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaPolicyConfigRepository(getPrismaClient())
+      : new FirestorePolicyConfigRepository(getDb());
   },
   get commercialCore(): ICommercialCore {
     return new LegacyCommercialCoreAdapter(
@@ -1580,7 +1590,9 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   },
 
   get communicationsSettingsRepository(): ICommunicationsSettingsRepository {
-    return new FirestoreCommunicationsSettingsRepository(getDb());
+    return DB_TYPE === 'SQL'
+      ? new PrismaCommunicationsSettingsRepository(getPrismaClient())
+      : new FirestoreCommunicationsSettingsRepository(getDb());
   },
 
   get companyMessagingResolver(): ICompanyMessagingResolver {
