@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, ClipboardList, FileText, ShoppingCart, Undo2 } from 'lucide-react';
 import { companyModulesApi } from '../../../api/companyModules';
@@ -43,7 +44,8 @@ const StatsCard = ({
   </Card>
 );
 
-const PurchaseHomePage: React.FC = () => {
+const PurchaseHomePage: React.FC = () => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const { companyId } = useCompanyAccess();
 

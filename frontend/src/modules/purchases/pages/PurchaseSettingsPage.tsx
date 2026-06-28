@@ -298,18 +298,18 @@ const PurchaseSettingsPage: React.FC = () => {
   };
 
   const tabs = [
-    { id: 'policy', label: 'Procurement Policy', icon: ShieldCheck },
-    { id: 'accounts', label: 'Account Defaults', icon: DollarSign },
-    { id: 'numbering', label: 'No. Series', icon: Hash },
-    { id: 'governance', label: 'Governance', icon: Shield },
+    { id: 'policy', label: t('purchaseSettings.labels.procurementPolicy', 'Procurement Policy'), icon: ShieldCheck },
+    { id: 'accounts', label: t('purchaseSettings.labels.accountDefaults', 'Account Defaults'), icon: DollarSign },
+    { id: 'numbering', label: t('purchaseSettings.labels.noSeries', 'No. Series'), icon: Hash },
+    { id: 'governance', label: t('purchaseSettings.labels.governance', 'Governance'), icon: Shield },
     { id: 'controls', label: t('controls:settingsTabLabel'), icon: ShieldCheck },
   ];
 
   return (
     <>
       <ModuleSettingsLayout
-        title="Purchase Settings"
-        subtitle="Control purchasing workflow, posting defaults, tolerances, and numbering."
+        title={t('purchaseSettings.title', 'Purchase Settings')}
+        subtitle={t('purchaseSettings.title', 'Control purchasing workflow, posting defaults, tolerances, and numbering.')}
         tabs={tabs as any}
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as TabId)}
@@ -329,7 +329,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'policy' && (
         <SettingsSection
-          title="Procurement Policy"
+          title={t('purchaseSettings.title', 'Procurement Policy')}
           description="Define which purchasing documents users can work with and how operational controls behave."
           onSave={handleSave}
           disabled={!hasChanges || saving}
@@ -481,7 +481,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'accounts' && (
         <SettingsSection
-          title="Account Defaults"
+          title={t('purchaseSettings.title', 'Account Defaults')}
           description="Standard general ledger accounts used for purchasing transactions."
           onSave={handleSave}
           disabled={!hasChanges || saving}
@@ -659,7 +659,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'numbering' && (
         <SettingsSection
-          title="Document Numbering"
+          title={t('purchaseSettings.title', 'Document Numbering')}
           description="Prefixes and sequence counters for purchase documents."
           onSave={handleSave}
           disabled={!hasChanges || saving}
@@ -672,10 +672,10 @@ const PurchaseSettingsPage: React.FC = () => {
             </div>
             <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
               {[
-                { id: 'po', label: 'Purchase Orders', prefix: 'poNumberPrefix', seq: 'poNumberNextSeq' },
-                { id: 'grn', label: 'Receipts (GRN)', prefix: 'grnNumberPrefix', seq: 'grnNumberNextSeq' },
-                { id: 'pi', label: 'Invoices (PI)', prefix: 'piNumberPrefix', seq: 'piNumberNextSeq' },
-                { id: 'pr', label: 'Returns (PR)', prefix: 'prNumberPrefix', seq: 'prNumberNextSeq' },
+                { id: 'po', label: t('purchaseSettings.labels.purchaseOrders', 'Purchase Orders'), prefix: 'poNumberPrefix', seq: 'poNumberNextSeq' },
+                { id: 'grn', label: t('purchaseSettings.labels.receiptsGRN', 'Receipts (GRN)'), prefix: 'grnNumberPrefix', seq: 'grnNumberNextSeq' },
+                { id: 'pi', label: t('purchaseSettings.labels.invoicesPI', 'Invoices (PI)'), prefix: 'piNumberPrefix', seq: 'piNumberNextSeq' },
+                { id: 'pr', label: t('purchaseSettings.labels.returnsPR', 'Returns (PR)'), prefix: 'prNumberPrefix', seq: 'prNumberNextSeq' },
               ].map((doc) => (
                 <div key={doc.id} className="space-y-4 rounded-xl border border-slate-100 bg-slate-50 p-4 shadow-sm transition hover:border-indigo-100 hover:shadow-md">
                   <div className="mb-1 w-fit rounded border border-slate-100 bg-white px-2 py-1 text-[10px] font-bold uppercase tracking-widest text-slate-400 shadow-sm">
@@ -709,7 +709,7 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'governance' && (
         <SettingsSection
-          title="Governance Rules"
+          title={t('purchaseSettings.title', 'Governance Rules')}
           description="Override default document policies at the company, branch, or form level."
           onSave={handleSave}
           disabled={!hasChanges || saving}

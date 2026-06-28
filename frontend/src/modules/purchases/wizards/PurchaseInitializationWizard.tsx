@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, ChevronLeft, ChevronRight, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { inventoryApi } from '../../../api/inventoryApi';
@@ -26,7 +27,8 @@ interface PurchaseInitializationWizardProps {
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
 
-const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => {
+const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const queryClient = useQueryClient();
   const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);

@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { InventoryItemDTO, InventoryWarehouseDTO, UomConversionDTO, inventoryApi } from '../../../api/inventoryApi';
 import {
@@ -73,7 +74,8 @@ const createEmptyForm = (purchaseOrderId = '', vendorId = '', warehouseId = ''):
   lines: [createEmptyLine()],
 });
 
-const GoodsReceiptDetailPage: React.FC = () => {
+const GoodsReceiptDetailPage: React.FC = () => { 
+  const { t } = useTranslation(['purchases', 'common']);
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
@@ -544,9 +546,9 @@ const GoodsReceiptDetailPage: React.FC = () => {
         content: (
           <DocumentRailKeyValueList
             items={[
-              { label: 'Lines', value: form.lines.length },
-              { label: 'Received Qty', value: receivedQtyTotal.toFixed(2) },
-              { label: 'Warehouse', value: form.warehouseId || '-' },
+              { label: t('goodsReceiptDetail.labels.lines', 'Lines'), value: form.lines.length },
+              { label: t('goodsReceiptDetail.labels.receivedQty', 'Received Qty'), value: receivedQtyTotal.toFixed(2) },
+              { label: t('goodsReceiptDetail.labels.warehouse', 'Warehouse'), value: form.warehouseId || '-' },
             ]}
           />
         ),
@@ -556,9 +558,9 @@ const GoodsReceiptDetailPage: React.FC = () => {
         content: (
           <DocumentRailChecklist
             items={[
-              { state: 'info', label: 'Draft receipt. Posting will update inventory receipt state through the existing purchase flow.' },
+              { state: 'info', label: t('goodsReceiptDetail.labels.draftReceiptPostingWillUpdateInventoryReceiptStateThroughTheExistingPurchaseFlow', 'Draft receipt. Posting will update inventory receipt state through the existing purchase flow.') },
               ...(form.purchaseOrderId
-                ? [{ state: 'info' as const, label: 'Source PO lines can be loaded into this receipt.' }]
+                ? [{ state: 'info' as const, label: t('goodsReceiptDetail.labels.sourcePOLinesCanBeLoadedIntoThisReceipt', 'Source PO lines can be loaded into this receipt.') }]
                 : []),
             ]}
           />
@@ -569,10 +571,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
         content: (
           <DocumentRailTotals
             rows={[
-              { label: 'Lines', value: form.lines.length },
-              { label: 'Receipt Date', value: form.receiptDate || '-' },
+              { label: t('goodsReceiptDetail.labels.lines', 'Lines'), value: form.lines.length },
+              { label: t('goodsReceiptDetail.labels.receiptDate', 'Receipt Date'), value: form.receiptDate || '-' },
             ]}
-            grand={{ label: 'Received Qty', value: receivedQtyTotal.toFixed(2) }}
+            grand={{ label: t('goodsReceiptDetail.labels.receivedQty', 'Received Qty'), value: receivedQtyTotal.toFixed(2) }}
           />
         ),
       },
@@ -581,7 +583,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
     return (
       <DocumentDetailScaffold
         title={isCreateMode ? 'New Goods Receipt' : `Edit ${grn?.grnNumber}`}
-        subtitle="Warehouse receiving document. Posting records received stock through the existing Purchases flow."
+        subtitle={t('goodsReceiptDetail.title', 'Warehouse receiving document. Posting records received stock through the existing Purchases flow.')}
         icon={Truck}
         backLabel={isEditMode ? 'Cancel edit' : 'Back to goods receipts'}
         onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
@@ -589,7 +591,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         railSections={draftRailSections}
         railTitle="Goods receipt side rail"
         newAction={{
-          label: 'New Goods Receipt',
+          label: t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt'),
           title: 'New Goods Receipt',
           hasUnsavedChanges: hasUnsavedDocumentChanges,
           onNew: openNewGoodsReceiptForm,
@@ -599,8 +601,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
             content: (
           <DocumentFooterTotalsStrip
             totals={[
-              { label: 'Lines', value: form.lines.length },
-              { label: 'Received', value: receivedQtyTotal.toFixed(2), tone: 'green' },
+              { label: t('goodsReceiptDetail.labels.lines', 'Lines'), value: form.lines.length },
+              { label: t('goodsReceiptDetail.labels.received', 'Received'), value: receivedQtyTotal.toFixed(2), tone: 'green' },
             ]}
           />
             ),
@@ -687,7 +689,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             content: (
         <ClassicLineItemsTable<EditableLine>
           tableId="purchases.goodsReceipt.lines"
-          title="Line Items"
+          title={t('goodsReceiptDetail.title', 'Line Items')}
           headerAction={
             form.purchaseOrderId ? (
               <button
@@ -713,7 +715,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
           columns={[
             {
               id: 'item',
-              label: 'Item',
+              label: t('goodsReceiptDetail.labels.item', 'Item'),
               kind: 'custom',
               width: '280px',
               render: (line, index) => (
@@ -740,10 +742,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 />
               ),
             } as ColumnDef<EditableLine>,
-            { id: 'receivedQty', label: 'Received Qty', kind: 'number', width: '130px', accessor: (line) => line.receivedQty, setter: (value) => ({ receivedQty: Number(value) }) },
+            { id: 'receivedQty', label: t('goodsReceiptDetail.labels.receivedQty', 'Received Qty'), kind: 'number', width: '130px', accessor: (line) => line.receivedQty, setter: (value) => ({ receivedQty: Number(value) }) },
             {
               id: 'uom',
-              label: 'UOM',
+              label: t('goodsReceiptDetail.labels.uOM', 'UOM'),
               kind: 'custom',
               width: '110px',
               render: (line, index) => (
@@ -761,7 +763,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             },
             {
               id: 'warehouse',
-              label: 'Warehouse',
+              label: t('goodsReceiptDetail.labels.warehouse', 'Warehouse'),
               kind: 'custom',
               width: '220px',
               render: (line, index) => (
@@ -807,8 +809,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
       content: (
         <DocumentRailKeyValueList
           items={[
-            { label: 'Vendor', value: grn.vendorName },
-            { label: 'Purchase Order', value: grn.purchaseOrderId ? linkedPO?.orderNumber || grn.purchaseOrderId : '-' },
+            { label: t('goodsReceiptDetail.labels.vendor', 'Vendor'), value: grn.vendorName },
+            { label: t('goodsReceiptDetail.labels.purchaseOrder', 'Purchase Order'), value: grn.purchaseOrderId ? linkedPO?.orderNumber || grn.purchaseOrderId : '-' },
           ]}
         />
       ),
@@ -818,10 +820,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
       content: (
         <DocumentRailTotals
           rows={[
-            { label: 'Lines', value: grn.lines.length },
-            { label: 'Receipt Date', value: grn.receiptDate || '-' },
+            { label: t('goodsReceiptDetail.labels.lines', 'Lines'), value: grn.lines.length },
+            { label: t('goodsReceiptDetail.labels.receiptDate', 'Receipt Date'), value: grn.receiptDate || '-' },
           ]}
-          grand={{ label: 'Received Qty', value: viewReceivedQtyTotal.toFixed(2) }}
+          grand={{ label: t('goodsReceiptDetail.labels.receivedQty', 'Received Qty'), value: viewReceivedQtyTotal.toFixed(2) }}
         />
       ),
     },
@@ -841,7 +843,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         </DocumentPill>
       }
       newAction={{
-        label: 'New Goods Receipt',
+        label: t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt'),
         title: 'New Goods Receipt',
         hasUnsavedChanges: false,
         onNew: openNewGoodsReceiptForm,
@@ -853,8 +855,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
           content: (
             <DocumentFooterTotalsStrip
               totals={[
-                { label: 'Lines', value: grn.lines.length },
-                { label: 'Received', value: viewReceivedQtyTotal.toFixed(2), tone: 'green' },
+                { label: t('goodsReceiptDetail.labels.lines', 'Lines'), value: grn.lines.length },
+                { label: t('goodsReceiptDetail.labels.received', 'Received'), value: viewReceivedQtyTotal.toFixed(2), tone: 'green' },
               ]}
             />
           ),
@@ -980,7 +982,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
-        title="Unpost Goods Receipt"
+        title={t('goodsReceiptDetail.title', 'Unpost Goods Receipt')}
         message="This will reverse all inventory movements recorded for this goods receipt. The action is auditable but cannot be undone in place. Continue?"
         confirmLabel="Unpost GRN"
         cancelLabel="Cancel"
