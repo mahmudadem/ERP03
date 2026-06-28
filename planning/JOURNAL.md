@@ -2,6 +2,15 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 — Task 275c: integrate SQL branches + first real-Postgres run)
+
+- **Goal:** Owner: "get things done so we QA everything." Drive the SQL path to a QA-able state. A spawned 275c agent hit the session usage limit and produced nothing, so the CTO (Claude/Opus) did the integration + smoke test directly.
+- **What happened:** Merged the three completed SQL branches (275d schema/repos, 275a seeders, 275b settings resolver) into `feat/275-supabase-integration` — clean, no conflicts (disjoint files). Fixed the FK bug 275a surfaced by adding `seedSystemCompany.ts` (reserved SYSTEM sentinel Company, no memberships → no UI pollution) as seed step 0.
+- **First time the SQL path ran on real Postgres** (local portable PG 16, port 5433, `erp_db`): `prisma db push` → 128 tables in sync; `npm run seed:sql` runs all 10 seeders and is **idempotent** (ran 2×, no dupes — vouchers stay 16); `tsc --noEmit` clean on the merged tree; new runtime smoke test `backend/scripts/sql-smoke-275c.ts` passes — Company round-trip, a 275d-new Salesperson repo with its companyId FK, and the IdempotencyKey store (offline-sync infra) incl. replay no-op.
+- **Accounting/ERP impact:** Infrastructure only. Service-level posting flows (SI/PI → ledger/stock) NOT yet exercised — deferred to **275e** (SQL integration tests), which is the behavioral safety net for posting math.
+- **Verification:** see QA script in `planning/done/275c-local-sql-smoke-test.md`. All green.
+- **Next:** 275e — module integration tests against the live local Postgres; also clears the 5×275a + 7×275b audit TODOs against the now-live schema. Then 275f (provision Supabase + deploy). Branch `feat/275-supabase-integration` stays unmerged until 275e passes + owner go.
+
 ### Session: 2026-06-28 (Epic 275 planning — Supabase/PostgreSQL launch + offline-sync design)
 
 - **Goal:** Owner asked to plan the deployment and assess the gap to running on Supabase. Turned into a deep architecture session on DB choice, deployment modes, offline behavior, and conflict/sync.

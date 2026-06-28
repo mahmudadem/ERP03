@@ -156,6 +156,11 @@ If you are starting work on a priority item, record it here so other agents don'
 | OpenCode | Task 246 - Sales Gross Profit Facts & Reports (type-agnostic, absolute+direction, backend-first) | 2026-06-20 | ✅ Done (PR-ready on `codex/246-sales-gross-profit-facts`) |
 | Codex | Task 259 - POS shortcuts and control buttons | 2026-06-23 | ✅ Done (owner override; verification green) |
 | Codex | Task 271 - Returns layout parity and direct Purchase Return | 2026-06-26 | ✅ Done locally (`codex/271-returns-parity`) |
+| Sonnet agent (CTO-audited) | Epic 275 — Task 275d: port 20 non-AI Prisma repos | 2026-06-28 | ✅ Done & audited (branch `worktree-agent-a3e746de9fc53b3c7`, commit 78bd4bbb; not merged). Schema verified: 128 tables `db push` clean to real Postgres. |
+| Sonnet agent (CTO-audited) | Epic 275 — Task 275b: implement SettingsResolverSQL | 2026-06-28 | ✅ Done (branch `worktree-agent-a6174b30b54ebc701`; tsc clean, 46 tests green). Note: resolver not yet wired into any SQL repo; 7 TODO(275b-audit) model-name guesses. |
+| Sonnet agent (CTO-audited) | Epic 275 — Task 275a: SQL seeders | 2026-06-28 | ✅ Done w/ bug found (branch `worktree-agent-a54d125f17875b2ef`). 10 seeders; ran on real Postgres → surfaced FK bug: voucher-type-def `companyId='SYSTEM'` violates FK (no SYSTEM company). Fix folded into 275c. 5 TODO(275a-audit). |
+| Claude/Opus (CTO) | Epic 275 — Task 275c: integrate 275a+b+d + smoke-test on real Postgres | 2026-06-28 | ✅ Done (branch `feat/275-supabase-integration`, not merged). 3 branches merged clean; FK bug fixed via SYSTEM sentinel company seeder; `db push` 128 tables in sync; `seed:sql` idempotent (run 2×); `tsc` clean; runtime repo smoke test (`scripts/sql-smoke-275c.ts`) passes on real Postgres. Service-level SI/PI posting flows deferred to 275e. Report: `planning/done/275c-local-sql-smoke-test.md`. |
+| — | Epic 275 — Task 275e: SQL integration tests per module (SI/PI posting → ledger/stock) | — | ⬜ NEXT on critical path. Run against the live local Postgres + `feat/275-supabase-integration`. Also resolves the 5×275a + 7×275b audit TODOs against the now-live schema. |
 | Codex | Task 272 - POS terminal barcode capture, focus reset, and add feedback | 2026-06-27 | ✅ Done on `codex/pos-barcode-scanner-audio` |
 
 

@@ -22,6 +22,7 @@
  */
 
 import { PrismaClient } from '@prisma/client';
+import { seedSystemCompany } from './seedSystemCompany';
 import { seedCurrencies } from './seedCurrencies';
 import { seedSystemMetadata } from './seedSystemMetadata';
 import { seedBusinessDomains } from './seedBusinessDomains';
@@ -44,8 +45,12 @@ async function runSqlSeed(): Promise<void> {
   console.log('====================================================\n');
 
   try {
+    // 0. SYSTEM sentinel company (FK anchor for system-template rows) [275c]
+    console.log('Step 0 — SYSTEM sentinel company');
+    await seedSystemCompany(prisma);
+
     // 1. Currencies
-    console.log('Step 1/10 — Currencies');
+    console.log('\nStep 1/10 — Currencies');
     await seedCurrencies(prisma);
 
     // 2. System metadata (currencies manifest + COA template manifest)
