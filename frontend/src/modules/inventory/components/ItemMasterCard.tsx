@@ -127,6 +127,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     });
   };
 
+  const getUomBarcodes = (uom?: InventoryUomDTO | null): string[] => {
+    if (!uom) return [];
+    return (item.uomBarcodes || []).find((entry) =>
+      entry.uomId ? entry.uomId === uom.id : entry.uom.toUpperCase() === uom.code.toUpperCase()
+    )?.barcodes || [];
+  };
+
   useEffect(() => {
     loadCategories();
     loadTaxCodes();
@@ -515,39 +522,6 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                   </div>
                 </Field>
               </div>
-              <div className="col-span-1 sm:col-span-4">
-                <Field label={t('Barcodes by Unit of Measure', 'Barcodes by Unit of Measure')}>
-                  <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                    {itemUomOptions.length === 0 ? (
-                      <p className="text-xs text-slate-500">
-                        {t('Save the item and configure its units before assigning unit barcodes.', 'Save the item and configure its units before assigning unit barcodes.')}
-                      </p>
-                    ) : itemUomOptions.map((uom) => {
-                      const assigned = (item.uomBarcodes || []).find((entry) =>
-                        entry.uomId ? entry.uomId === uom.id : entry.uom.toUpperCase() === uom.code.toUpperCase()
-                      )?.barcodes || [];
-                      return (
-                        <div key={uom.id} className="grid gap-2 sm:grid-cols-[10rem_1fr]">
-                          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                            {uom.code} · {uom.translations?.[i18n.resolvedLanguage || i18n.language]
-                              || uom.translations?.[(i18n.resolvedLanguage || i18n.language).split('-')[0]]
-                              || uom.name}
-                          </div>
-                          <input
-                            className="form-control text-sm"
-                            value={assigned.join(', ')}
-                            onChange={(event) => setUomBarcodes(
-                              uom,
-                              event.target.value.split(',').map((value) => value.trim()).filter(Boolean)
-                            )}
-                            placeholder={t('Comma-separated barcodes', 'Comma-separated barcodes')}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Field>
-              </div>
               <div className="col-span-2"><Field label={t('Name', 'Name')} required><input className="form-control font-medium" value={item.name} onChange={e => setItem(p => ({ ...p, name: e.target.value }))} /></Field></div>
             </div>
           </FormSection>
@@ -814,6 +788,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                       <tr>
                         <th className="px-4 py-2">{t('From', 'From')}</th>
                         <th className="px-4 py-2">{t('To', 'To')}</th>
+                        <th className="px-4 py-2">{t('Unit Barcode(s)', 'Unit Barcode(s)')}</th>
                         <th className="px-4 py-2 text-right">{t('Current Factor', 'Current Factor')}</th>
                         <th className="px-4 py-2 text-right">{t('New Factor', 'New Factor')}</th>
                         <th className="px-4 py-2">{t('Impact', 'Impact')}</th>
@@ -839,6 +814,21 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                               <td className="px-4 py-2">
                                 <span className="text-slate-400">{conversion.toUom}</span>
                                 {toUomObj?.name && <span className="text-slate-900 dark:text-white"> - {toUomObj.name}</span>}
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex items-center gap-1">
+                                  <Barcode size={14} className="text-slate-400 flex-shrink-0" />
+                                  <input
+                                    className="form-control text-xs"
+                                    value={getUomBarcodes(fromUomObj).join(', ')}
+                                    onChange={(e) => fromUomObj && setUomBarcodes(
+                                      fromUomObj,
+                                      e.target.value.split(',').map((v) => v.trim()).filter(Boolean)
+                                    )}
+                                    placeholder={t('Scan or type barcode', 'Scan or type barcode')}
+                                    title={t('Barcode(s) for this unit — scannable at the POS terminal. Separate multiple with commas.', 'Barcode(s) for this unit — scannable at the POS terminal. Separate multiple with commas.')}
+                                  />
+                                </div>
                               </td>
                               <td className="px-4 py-2 text-right">{conversion.factor}</td>
                               <td className="px-4 py-2">
@@ -891,7 +881,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                             </tr>
                             {impact && (
                               <tr className="border-b bg-slate-50/50 last:border-none">
-                                <td className="px-4 py-3" colSpan={6}>
+                                <td className="px-4 py-3" colSpan={7}>
                                   <div className="space-y-2 text-[11px]">
                                     {!impact.used && (
                                       <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
@@ -936,7 +926,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                       })}
                       {conversions.length === 0 && (
                         <tr>
-                          <td className="px-4 py-3 text-slate-400" colSpan={6}>{t('No alternate UOM conversions defined', 'No alternate UOM conversions defined')}</td>
+                          <td className="px-4 py-3 text-slate-400" colSpan={7}>{t('No alternate UOM conversions defined', 'No alternate UOM conversions defined')}</td>
                         </tr>
                       )}
                     </tbody>
