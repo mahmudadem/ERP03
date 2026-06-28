@@ -1,5 +1,23 @@
 # 🎯 Current Focus
 
+## Handoff Prepared — POS fixes and terminal layout (2026-06-27)
+
+**Status:** Ready for another agent to implement from briefs.
+
+- **Branches prepared:**
+  - `codex/pos-fixes-batch` for scanner, notes, multi-barcode, report selectors, credit sale, settings, and POS i18n fixes.
+  - `codex/pos-terminal-layout` for the isolated POS terminal layout restructure only.
+  - `codex/pos-handoff-briefs` for these planning/brief files.
+- **Briefs/tasks created:**
+  - `planning/tasks/272-pos-fixes-batch.md`
+  - `planning/tasks/273-pos-terminal-layout-restructure.md`
+  - `planning/briefs/20260627-pos-fixes-batch-implementation.md`
+  - `planning/briefs/20260627-pos-terminal-layout-implementation.md`
+  - `planning/briefs/20260627-pos-audit-checklist.md`
+- **Recommended next action:** Implementation agent starts with `codex/pos-fixes-batch`; Codex audits after implementation before merge.
+
+---
+
 ## Task 271 — Sales/Purchase Return layout parity and direct Purchase Return (2026-06-26)
 
 **Status:** ✅ Complete locally on `codex/271-returns-parity` (pending PR/merge).
