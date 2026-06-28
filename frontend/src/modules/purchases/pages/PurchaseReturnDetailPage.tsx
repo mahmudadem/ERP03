@@ -33,7 +33,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
   const navigate = useNavigate();
   const params = useParams<{ id: string }>();
   const [searchParams] = useSearchParams();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['purchases', 'common']);
   const isCreateMode = !params.id || params.id === 'new';
 
   const [purchaseReturn, setPurchaseReturn] = useState<PurchaseReturnDTO | null>(null);
@@ -748,12 +748,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
         <Card className="overflow-visible p-0">
           <div className="grid grid-cols-1 gap-2 p-3 sm:grid-cols-2 lg:grid-cols-5">
             <div className="sm:col-span-2">
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.returnMode')}</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.returnMode')}</label>
               <div className="grid h-9 grid-cols-3 rounded border border-slate-200 bg-slate-50 p-0.5 text-[11px] font-bold">
                 {([
-                  ['DIRECT', t('purchases.returnDetail.modeDirect')],
-                  ['FROM_PI', t('purchases.returnDetail.modeFromPi')],
-                  ['FROM_GRN', t('purchases.returnDetail.modeFromGrn')],
+                  ['DIRECT', t('returnDetail.modeDirect')],
+                  ['FROM_PI', t('returnDetail.modeFromPi')],
+                  ['FROM_GRN', t('returnDetail.modeFromGrn')],
                 ] as const).map(([mode, label]) => (
                   <button
                     key={mode}
@@ -771,37 +771,37 @@ const PurchaseReturnDetailPage: React.FC = () => {
             </div>
             {sourceMode === 'FROM_PI' && (
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.purchaseInvoice')}</label>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.purchaseInvoice')}</label>
                 <button
                   type="button"
                   className="h-9 w-full rounded border border-indigo-200 bg-indigo-50 px-3 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                   onClick={openPurchaseInvoicePicker}
                   disabled={busy}
                 >
-                  {sourceDocument?.invoiceNumber || purchaseInvoiceId || t('purchases.returnDetail.selectPostedPi')}
+                  {sourceDocument?.invoiceNumber || purchaseInvoiceId || t('returnDetail.selectPostedPi')}
                 </button>
               </div>
             )}
             {sourceMode === 'FROM_GRN' && (
               <div>
-                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.goodsReceipt')}</label>
+                <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.goodsReceipt')}</label>
                 <button
                   type="button"
                   className="h-9 w-full rounded border border-indigo-200 bg-indigo-50 px-3 text-left text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
                   onClick={openGoodsReceiptPicker}
                   disabled={busy}
                 >
-                  {sourceDocument?.grnNumber || goodsReceiptId || t('purchases.returnDetail.selectPostedGrn')}
+                  {sourceDocument?.grnNumber || goodsReceiptId || t('returnDetail.selectPostedGrn')}
                 </button>
               </div>
             )}
             <div>
-              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('purchases.returnDetail.vendor')}</label>
+              <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('returnDetail.vendor')}</label>
               <PartySelector 
                 value={vendorId}
                 role="VENDOR"
                 disabled={sourceMode !== 'DIRECT'}
-                placeholder={t('purchases.returnDetail.selectVendor')}
+                placeholder={t('returnDetail.selectVendor')}
                 onChange={(party) => {
                   setVendorId(party?.id || '');
                   if (party) {
@@ -948,7 +948,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                         noBorder
                         disabled={sourceMode !== 'DIRECT'}
                         placeholder="Tax"
-                        emptySetupMessage={t('purchases.returnDetail.noPurchaseTaxCodes')}
+                        emptySetupMessage={t('returnDetail.noPurchaseTaxCodes')}
                         onChange={(option) => handleTaxCodeChange(line.lineId, option)}
                       />
                     ),
@@ -1149,8 +1149,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
             >
               <div className="flex items-center justify-between border-b border-slate-200 px-5 py-4">
                 <div>
-                  <h3 className="text-lg font-semibold text-slate-900">{t('purchases.returnDetail.selectGoodsReceiptTitle')}</h3>
-                  <p className="text-xs text-slate-500">{t('purchases.returnDetail.selectGoodsReceiptHint')}</p>
+                  <h3 className="text-lg font-semibold text-slate-900">{t('returnDetail.selectGoodsReceiptTitle')}</h3>
+                  <p className="text-xs text-slate-500">{t('returnDetail.selectGoodsReceiptHint')}</p>
                 </div>
                 <button
                   type="button"
@@ -1171,22 +1171,22 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
                 {grnPickerLoading ? (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    {t('purchases.returnDetail.loadingGoodsReceipts')}
+                    {t('returnDetail.loadingGoodsReceipts')}
                   </div>
                 ) : grnOptions.length === 0 ? (
                   <div className="rounded-lg border border-slate-200 bg-slate-50 p-4 text-sm text-slate-600">
-                    {t('purchases.returnDetail.noPostedGoodsReceipts')}
+                    {t('returnDetail.noPostedGoodsReceipts')}
                   </div>
                 ) : (
                   <table className="min-w-full divide-y divide-slate-200 text-sm">
                     <thead className="bg-slate-50">
                       <tr>
                         <th className="px-3 py-2 text-left">Pick</th>
-                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.grnNo')}</th>
-                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.vendor')}</th>
-                        <th className="px-3 py-2 text-left">{t('purchases.returnDetail.receiptDate')}</th>
+                        <th className="px-3 py-2 text-left">{t('returnDetail.grnNo')}</th>
+                        <th className="px-3 py-2 text-left">{t('returnDetail.vendor')}</th>
+                        <th className="px-3 py-2 text-left">{t('returnDetail.receiptDate')}</th>
                         <th className="px-3 py-2 text-left">Warehouse</th>
-                        <th className="px-3 py-2 text-right">{t('purchases.returnDetail.lines')}</th>
+                        <th className="px-3 py-2 text-right">{t('returnDetail.lines')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-200 bg-white">
@@ -1231,7 +1231,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   onClick={handlePullSelectedGRN}
                   disabled={grnPickerLoading || !selectedGrnId}
                 >
-                  {t('purchases.returnDetail.pullSelectedReceipt')}
+                  {t('returnDetail.pullSelectedReceipt')}
                 </button>
               </div>
             </div>
@@ -1339,7 +1339,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             onClick={() => setGlImpactOpen(true)}
             disabled={busy}
           >
-            {t('purchases.returnDetail.glImpact')}
+            {t('returnDetail.glImpact')}
           </button>
           <button
             type="button"

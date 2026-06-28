@@ -6,6 +6,7 @@ import { OperationalListLayout } from '../../../components/shared/OperationalLis
 import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/types';
 import { formatMoney } from '../../../utils/formatMoney';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -37,6 +38,7 @@ const statusChipClasses = (status: PRStatus): string => {
 
 const PurchaseReturnsListPage: React.FC = () => {
   const navigate = useNavigate();
+  const { t } = useTranslation(['purchases', 'common']);
   const [statusFilter, setStatusFilter] = useState<PRStatus | 'ALL'>('ALL');
   const [contextFilter, setContextFilter] = useState<ReturnContext | 'ALL'>('ALL');
   const [localSearch, setLocalSearch] = useState('');
@@ -93,14 +95,14 @@ const PurchaseReturnsListPage: React.FC = () => {
 
   const columns = useMemo<ColumnDefinition<PurchaseReturnDTO>[]>(
     () => [
-      { key: 'returnNumber', label: 'Return #', width: '150px', priority: 1, sortable: true, accessor: 'returnNumber', align: 'center', render: (value) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{value}</span> },
-      { key: 'vendorName', label: 'Vendor', width: '220px', priority: 1, sortable: true, accessor: 'vendorName', align: 'center', render: (value) => <span className="font-medium text-slate-900 dark:text-slate-100">{value}</span> },
-      { key: 'returnDate', label: 'Return Date', width: '150px', priority: 1, sortable: true, accessor: 'returnDate', align: 'center' },
-      { key: 'returnContext', label: 'Context', width: '150px', priority: 1, sortable: true, accessor: 'returnContext', align: 'center', render: (value) => <span className="whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">{value}</span> },
-      { key: 'grandTotalDoc', label: 'Grand Total', width: '140px', priority: 1, sortable: true, accessor: 'grandTotalDoc', align: 'right', render: (value, row) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{formatMoney(value, row.currency)}</span> },
+      { key: 'returnNumber', label: t('returnsList.columns.returnNumber', 'Return #'), width: '150px', priority: 1, sortable: true, accessor: 'returnNumber', align: 'center', render: (value) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{value}</span> },
+      { key: 'vendorName', label: t('returnsList.columns.vendorName', 'Vendor'), width: '220px', priority: 1, sortable: true, accessor: 'vendorName', align: 'center', render: (value) => <span className="font-medium text-slate-900 dark:text-slate-100">{value}</span> },
+      { key: 'returnDate', label: t('returnsList.columns.returnDate', 'Return Date'), width: '150px', priority: 1, sortable: true, accessor: 'returnDate', align: 'center' },
+      { key: 'returnContext', label: t('returnsList.columns.context', 'Context'), width: '150px', priority: 1, sortable: true, accessor: 'returnContext', align: 'center', render: (value) => <span className="whitespace-nowrap rounded-full bg-blue-50 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-blue-700 ring-1 ring-blue-100">{value}</span> },
+      { key: 'grandTotalDoc', label: t('returnsList.columns.grandTotal', 'Grand Total'), width: '140px', priority: 1, sortable: true, accessor: 'grandTotalDoc', align: 'right', render: (value, row) => <span className="font-mono font-bold text-slate-900 dark:text-slate-100">{formatMoney(value, row.currency)}</span> },
       {
         key: 'status',
-        label: 'Status',
+        label: t('returnsList.columns.status', 'Status'),
         width: '130px',
         priority: 1,
         sortable: true,
@@ -118,7 +120,7 @@ const PurchaseReturnsListPage: React.FC = () => {
 
   const rowActions = useMemo<RowAction<PurchaseReturnDTO>[]>(
     () => [
-      { key: 'open', label: 'Open', icon: Eye, onClick: (row) => navigate(`/purchases/returns/${row.id}`), primary: false },
+      { key: 'open', label: t('returnsList.actions.open', 'Open'), icon: Eye, onClick: (row) => navigate(`/purchases/returns/${row.id}`), primary: false },
     ],
     [navigate],
   );
@@ -140,10 +142,10 @@ const PurchaseReturnsListPage: React.FC = () => {
 
   return (
     <OperationalListLayout<PurchaseReturnDTO>
-      title="Purchase Returns"
+      title={t('returnsList.title', 'Purchase Returns')}
       subtitle=""
       compactHeader
-      newButtonLabel="New Return"
+      newButtonLabel={t('returnsList.newReturn', 'New Return')}
       onNewClick={() => navigate('/purchases/returns/new')}
       onRefresh={load}
       loading={loading}
