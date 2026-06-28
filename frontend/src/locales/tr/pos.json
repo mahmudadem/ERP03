@@ -162,7 +162,6 @@
     "editDiscountAmount": "İndirim tutarını düzenle",
     "edit": "Düzenle",
     "heldCancelled": "Bekleyen satış iptal edildi.",
-    "barcodeNotFound": "Barkod bulunamadı.",
     "barcodeError": "Barkod okutulamadı.",
     "saleNotes": "Notlar",
     "saleNotesPlaceholder": "Satış için isteğe bağlı notlar...",
@@ -420,7 +419,7 @@
     }
   },
   "shortcuts": {
-    "title": "POS Kısayolları",
+    "title": "Klavye Kısayolları",
     "subtitle": "Terminal grupları oluşturun ve her gruba toplu ürün atayın.",
     "loading": "Yükleniyor...",
     "defaultLayoutName": "Varsayılan kısayollar",
@@ -462,7 +461,15 @@
       "disable": "Devre dışı bırak",
       "delete": "Sil",
       "save": "Kaydet",
-      "cancel": "İptal"
+      "cancel": "İptal",
+      "searchItems": "Ürünleri Ara",
+      "checkout": "Ödeme / Kasaya Git",
+      "voidSale": "Satışı İptal Et",
+      "holdCart": "Sepeti Beklet",
+      "addCustomItem": "Özel Ürün Ekle",
+      "applyDiscount": "Genel İndirim Uygula",
+      "cashPayment": "Hızlı Nakit Ödeme",
+      "cardPayment": "Hızlı Kart Ödemesi"
     },
     "errors": {
       "load": "POS kısayolları yüklenemedi.",
@@ -472,7 +479,11 @@
       "addItems": "Ürünler eklenemedi.",
       "updateShortcut": "Kısayol güncellenemedi.",
       "deleteShortcut": "Kısayol silinemedi."
-    }
+    },
+    "resetAll": "Tümünü Sıfırla",
+    "listening": "Tuşa basın...",
+    "resetAction": "Varsayılana sıfırla",
+    "defaultPrefix": "Varsayılan: "
   },
   "report": {
     "dateFrom": "Başlangıç tarihi",

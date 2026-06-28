@@ -87,7 +87,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
   const actions = Object.keys(DEFAULT_POS_SHORTCUTS) as PosShortcutAction[];
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={title || t('shortcuts.title', { defaultValue: 'Keyboard Shortcuts' })}>
+    <Modal isOpen={isOpen} onClose={onClose} title={title || t('shortcuts.title', { defaultValue: 'Keyboard Shortcuts' })} hideFooter={true}>
       <div className="p-4 space-y-4">
         {subtitle && <p className="text-sm text-gray-500">{subtitle}</p>}
         
@@ -103,7 +103,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
                     {actionLabels[action]}
                   </span>
                   <span className="text-xs text-gray-500">
-                    Default: <kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">{DEFAULT_POS_SHORTCUTS[action]}</kbd>
+                    {t('shortcuts.defaultPrefix', { defaultValue: 'Default: ' })}<kbd className="px-1 py-0.5 bg-gray-200 dark:bg-gray-700 rounded">{DEFAULT_POS_SHORTCUTS[action]}</kbd>
                   </span>
                 </div>
                 <div className="flex items-center space-x-2">

@@ -4611,5 +4611,10 @@
     }
   },
   "saveChanges": "Değişiklikleri Kaydet",
-  "loading": "Yükleniyor..."
+  "loading": "Yükleniyor...",
+  "Primary Barcode": "Ana Barkod",
+  "Secondary Barcodes": "İkincil Barkodlar",
+  "Add secondary barcode...": "İkincil barkod ekle...",
+  "Press Enter to add": "Eklemek için Enter'a basın",
+  "Auto-sequence Item Code": "Otomatik Sıralı Ürün Kodu"
 }

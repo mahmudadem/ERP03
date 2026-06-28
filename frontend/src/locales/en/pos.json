@@ -162,7 +162,6 @@
     "editDiscountAmount": "Edit discount amount",
     "edit": "Edit",
     "heldCancelled": "Held sale cancelled.",
-    "barcodeNotFound": "Barcode not found.",
     "barcodeError": "Failed to scan barcode.",
     "saleNotes": "Notes",
     "saleNotesPlaceholder": "Optional sale notes...",
@@ -420,7 +419,7 @@
     }
   },
   "shortcuts": {
-    "title": "POS Shortcuts",
+    "title": "Keyboard Shortcuts",
     "subtitle": "Build terminal groups and bulk-assign items to each group.",
     "loading": "Loading...",
     "defaultLayoutName": "Default shortcuts",
@@ -462,7 +461,15 @@
       "disable": "Disable",
       "delete": "Delete",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "searchItems": "Search Items",
+      "checkout": "Checkout / Pay",
+      "voidSale": "Void Sale",
+      "holdCart": "Hold Cart",
+      "addCustomItem": "Add Custom Item",
+      "applyDiscount": "Apply Global Discount",
+      "cashPayment": "Quick Cash Payment",
+      "cardPayment": "Quick Card Payment"
     },
     "errors": {
       "load": "Failed to load POS shortcuts.",
@@ -472,7 +479,11 @@
       "addItems": "Failed to add items.",
       "updateShortcut": "Failed to update shortcut.",
       "deleteShortcut": "Failed to delete shortcut."
-    }
+    },
+    "resetAll": "Reset All",
+    "listening": "Press key...",
+    "resetAction": "Reset to default",
+    "defaultPrefix": "Default: "
   },
   "report": {
     "dateFrom": "Date from",

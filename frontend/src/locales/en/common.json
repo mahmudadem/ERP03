@@ -4632,5 +4632,9 @@
     }
   },
   "saveChanges": "Save Changes",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "Primary Barcode": "Primary Barcode",
+  "Secondary Barcodes": "Secondary Barcodes",
+  "Add secondary barcode...": "Add secondary barcode...",
+  "Press Enter to add": "Press Enter to add"
 }
