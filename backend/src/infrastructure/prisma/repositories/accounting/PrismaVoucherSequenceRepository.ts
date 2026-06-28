@@ -68,7 +68,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
       const newSequence = await this.prisma.voucherSequence.create({
         data: {
           id: `${prefix}-${year || 'ALL'}`,
-          company: { connect: { id: companyId } },
+          companyId,
           voucherType: prefix,
           prefix,
           currentNumber: 1,
@@ -126,7 +126,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
       await this.prisma.voucherSequence.create({
         data: {
           id: `${prefix}-${year || 'ALL'}`,
-          company: { connect: { id: companyId } },
+          companyId,
           voucherType: prefix,
           prefix,
           currentNumber: nextNumber - 1,

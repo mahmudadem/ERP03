@@ -220,6 +220,7 @@ All UI report pages use the shared `<ReportContainer>` and pass `check-reports.m
   - `ReprintPosReceiptUseCase.test.ts`
   - **Focused POS suites are green through Task 251 slice 13.**
 - **Architecture guards** assert POS imports no Sales application/domain internals, POS financial events go through `IAccountingBridge`, POS uses `ITaxEngine`, POS uses `INumberingEngine`, POS stock refs keep POS identity, and POS uses `IInventoryCore`.
+- **SQL launch integration (Task 275e)** is covered by `backend/scripts/sql-integration-275e.ts`. The POS slice runs against real PostgreSQL and drives `OpenPosShiftUseCase` -> `CompletePosSaleUseCase` -> `ClosePosShiftUseCase`, with real Prisma repositories, `PolicyEngine`, `NumberingEngine`, `TaxEngine`, inventory-core facade, and `LegacyAccountingBridgeAdapter`. It asserts receipt/payment persistence, bridge-backed ledger rows, stock decrement, and reconciled shift totals. This is the required live-Postgres proof before Supabase launch; it does not replace the focused unit suites.
 
 ## 9. Documentation
 

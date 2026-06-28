@@ -381,6 +381,10 @@ The `PostSalesReturnUseCase` previously held a direct `SubledgerVoucherPostingSe
 - An architecture guard (`267-F (Inventory Revaluation)` in `SystemCoreBoundaries.test.ts`) pins this: `InventoryRevaluationUseCases.ts` must not import `SubledgerVoucherPostingService`, must not reference `PostingGateway`, and must not pass a `postingService` fallback.
 - Golden voucher-output tests (`InventoryRevaluationGoldenVoucher.test.ts`, 5 tests) capture exact write-up/write-down Inventory/Revaluation output, period-lock override metadata, minimal-mode null GL link behavior, PERIODIC no-post behavior, and output stability.
 
+### SQL voucher sequence write shape (Task 275e)
+
+Receipt/voucher numbering in SQL mode uses `NumberingEngine` -> `PrismaVoucherSequenceRepository`. Prisma 5 checked create inputs do not allow mixing `company: { connect }` with raw scalar FKs like nullable `fiscalYearId`. Sequence creation therefore writes scalar `companyId` and `fiscalYearId` together. This preserves the same unique key (`companyId`, `voucherType`, `fiscalYearId`) while keeping POS terminal receipt numbering and other scoped sequences valid on PostgreSQL.
+
 ## What Is NOT Implemented
 
 | Feature | Why deferred |

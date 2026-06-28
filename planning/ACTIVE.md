@@ -1,15 +1,15 @@
 # 🎯 Current Focus
 
-## Epic 275 — Supabase/PostgreSQL launch — 275c DONE, 275e accounting slice DONE (2026-06-28)
+## Epic 275 — Supabase/PostgreSQL launch — 275e COMPLETE, awaiting owner commit/go (2026-06-28)
 
-**Status:** 🔶 Epic in progress. SQL path **runs on real Postgres**; accounting posting now **proven correct** there, and 2 launch-blocking bugs found+fixed.
+**Status:** 🔶 Epic in progress. SQL path **runs on real Postgres**; Task 275e now proves Accounting, Inventory, Sales, Purchases, RBAC, Core, and POS on live PostgreSQL.
 
 - **Done so far (all on branch `feat/275-supabase-integration`, not merged):**
   - 275d (20 Prisma repos + schema +23 models), 275a (10 seeders), 275b (`SettingsResolverSQL`) — merged clean.
   - 275c — FK fix (`seedSystemCompany.ts` SYSTEM sentinel); `db push` 128 tables; `seed:sql` idempotent (2×); repo smoke test green. Report: `planning/done/275c-local-sql-smoke-test.md`.
-  - 275e (accounting + inventory + sales + purchases slices) — harness `backend/scripts/sql-integration-275e.ts`, 15 checks, run 2× on real Postgres. **Found+fixed 7 SQL bugs**: Account.create input mix; Ledger createMany+connect; StockLevel.upsertLevel update-only; StockMovement.toDomain NULL settlement fields; SI/PI create companyId scalar+connect mix; SI/PI missing `voucherType` column; PurchaseInvoiceLine missing 6 columns. **⚠️ schema changed → `prisma db push` needed.** Report: `planning/done/275e-sql-integration-tests.md`.
-- **NEXT — finish Task 275e:** extend the harness to **RBAC**, **Core**, **POS**. Each adds a `flowX()` to `sql-integration-275e.ts`. Given 7 bugs in the first 4 modules, expect more. Also clear the 5×`TODO(275a-audit)` + 7×`TODO(275b-audit)` markers against the live schema.
-- **Then 275f:** provision Supabase + deploy backend (Railway) + frontend. Merge `feat/275-supabase-integration` to main only after 275e passes + owner go.
+  - 275e — harness `backend/scripts/sql-integration-275e.ts`, **25 checks**, run 2× on real Postgres; `node_modules/.bin/tsc --noEmit` clean. **Found+fixed 8 SQL bugs**: Account.create input mix; Ledger createMany+connect; StockLevel.upsertLevel update-only; StockMovement.toDomain NULL settlement fields; SI/PI create companyId scalar+connect mix; SI/PI missing `voucherType` column; PurchaseInvoiceLine missing 6 columns; VoucherSequence create company connect + raw `fiscalYearId` mix. **⚠️ schema changed earlier in 275e → `prisma db push` needed after pulling this branch.** Report: `planning/done/275e-sql-integration-tests.md`.
+- **NEXT:** ask owner for commit approval. Do **not** start the 5×`TODO(275a-audit)` + 7×`TODO(275b-audit)` live-schema audit markers without owner go.
+- **Then 275f:** provision Supabase + deploy backend (Railway) + frontend. Merge `feat/275-supabase-integration` to main only after owner go.
 - **Local env still up:** portable Postgres 16 on `localhost:5433`, db `erp_db`, trust auth (no password). `DATABASE_URL=postgresql://postgres@localhost:5433/erp_db?schema=public`.
 
 ---

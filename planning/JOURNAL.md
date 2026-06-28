@@ -5330,3 +5330,14 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Verification:** Focused backend print-layout test passed (4/4). Backend build passed. Frontend typecheck passed.
 - **Time spent:** ~2.0h.
 - **Next:** Owner QA via `planning/done/274-purchase-invoice-native-header-rail-print.md`, then review and commit branch if accepted.
+
+### Session: 2026-06-28 (Task 275e — RBAC/Core/POS SQL integration completion)
+
+- **Goal:** Finish Task 275e by extending the real-Postgres harness with RBAC, Core, and POS flows on branch `feat/275-supabase-integration`.
+- **What was done:** Added `flowRBAC`, `flowCore`, and `flowPOS` to `backend/scripts/sql-integration-275e.ts`. RBAC creates real SQL users/roles/company membership and checks grant/deny through `PermissionChecker`. Core writes company settings and enables/initializes `accounting` + `pos` company modules. POS opens a shift, completes a cash sale through `CompletePosSaleUseCase`/`PostPosSaleUseCase`, verifies receipt/payment/ledger/stock effects, and closes the shift reconciled.
+- **Bug found/fixed:** `PrismaVoucherSequenceRepository` mixed `company: { connect }` with raw nullable `fiscalYearId` on create, so first POS terminal receipt numbering failed in SQL mode. Fixed by writing scalar `companyId` with `fiscalYearId` in the Prisma repo. This is Prisma-path only; no Firestore or accounting math changed.
+- **Accounting/ERP impact:** POS SQL mode now proves the approved path: Numbering Engine, Policy Engine, Tax Engine, Inventory Core facade, `IAccountingBridge`, voucher persistence, ledger rows, stock decrement, and shift cash totals. This protects launch from a cashier sale failing before receipt numbering or silently skipping ledger/stock.
+- **Verification:** Harness passed twice on real Postgres: `ALL 25 INTEGRATION CHECKS PASSED`. Backend `node_modules/.bin/tsc --noEmit` passed.
+- **Docs/planning:** Updated `planning/done/275e-sql-integration-tests.md`, `docs/architecture/accounting.md`, `docs/architecture/pos.md`, `planning/ACTIVE.md`, and `planning/PRIORITIES.md`.
+- **Time spent:** ~1.4h. Estimate was 2.5-4.0h.
+- **Next:** Ask owner to approve committing Task 275e. Do not start the 5x `TODO(275a-audit)` + 7x `TODO(275b-audit)` live-schema audit cleanup without owner go.

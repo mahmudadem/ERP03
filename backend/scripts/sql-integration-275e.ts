@@ -33,6 +33,43 @@ import { PrismaStockMovementRepository } from '../src/infrastructure/prisma/repo
 import { StockLevel } from '../src/domain/inventory/entities/StockLevel';
 import { PrismaSalesInvoiceRepository } from '../src/infrastructure/prisma/repositories/sales/PrismaSalesInvoiceRepository';
 import { PrismaPurchaseInvoiceRepository } from '../src/infrastructure/prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
+import { PrismaUserRepository } from '../src/infrastructure/prisma/repositories/core/PrismaUserRepository';
+import { PrismaCompanyRoleRepository } from '../src/infrastructure/prisma/repositories/rbac/PrismaCompanyRoleRepository';
+import { PrismaRbacCompanyUserRepository } from '../src/infrastructure/prisma/repositories/rbac/PrismaRbacCompanyUserRepository';
+import { GetCurrentUserPermissionsForCompanyUseCase } from '../src/application/rbac/use-cases/GetCurrentUserPermissionsForCompanyUseCase';
+import { PermissionChecker } from '../src/application/rbac/PermissionChecker';
+import { AssignRoleToCompanyUserUseCase } from '../src/application/rbac/use-cases/AssignRoleToCompanyUserUseCase';
+import { PrismaCompanySettingsRepository } from '../src/infrastructure/prisma/repositories/core/PrismaCompanySettingsRepository';
+import { PrismaCompanyModuleRepository } from '../src/infrastructure/prisma/repositories/company/PrismaCompanyModuleRepository';
+import { CompanySettings } from '../src/domain/core/entities/CompanySettings';
+import { CompanyModuleEntity } from '../src/domain/company/entities/CompanyModule';
+import { PrismaPosShiftRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosShiftRepository';
+import { PrismaPosRegisterRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosRegisterRepository';
+import { PrismaPosSettingsRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosSettingsRepository';
+import { PrismaPosPolicyRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosPolicyRepository';
+import { PrismaPosCashMovementRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosCashMovementRepository';
+import { PrismaPosReceiptRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosReceiptRepository';
+import { PrismaPosPaymentRepository } from '../src/infrastructure/prisma/repositories/pos/PrismaPosPaymentRepository';
+import { PrismaPartyRepository } from '../src/infrastructure/prisma/repositories/shared/PrismaPartyRepository';
+import { PrismaTaxCodeRepository } from '../src/infrastructure/prisma/repositories/shared/PrismaTaxCodeRepository';
+import { PrismaInventorySettingsRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaInventorySettingsRepository';
+import { PrismaItemCategoryRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaItemCategoryRepository';
+import { PrismaCompanyCurrencyRepository } from '../src/infrastructure/prisma/repositories/PrismaCompanyCurrencyRepository';
+import { PrismaVoucherSequenceRepository } from '../src/infrastructure/prisma/repositories/accounting/PrismaVoucherSequenceRepository';
+import { PrismaVoucherRepository } from '../src/infrastructure/prisma/repositories/PrismaVoucherRepository';
+import { PrismaPostingLogRepository } from '../src/infrastructure/prisma/repositories/accounting/PrismaPostingLogRepository';
+import { PrismaTransactionManager } from '../src/infrastructure/prisma/PrismaTransactionManager';
+import { OpenPosShiftUseCase, ClosePosShiftUseCase } from '../src/application/pos/use-cases/PosShiftUseCases';
+import { CompletePosSaleUseCase } from '../src/application/pos/use-cases/CompletePosSaleUseCase';
+import { PostPosSaleUseCase } from '../src/application/pos/use-cases/PostPosSaleUseCase';
+import { PolicyEngine, TaxEngine, NumberingEngine, LegacyAccountingBridgeAdapter } from '../src/application/system-core';
+import { SubledgerVoucherPostingService } from '../src/application/accounting/services/SubledgerVoucherPostingService';
+import { PosRegister } from '../src/domain/pos/entities/PosRegister';
+import { PosSettings } from '../src/domain/pos/entities/PosSettings';
+import { POSPolicy } from '../src/domain/pos/entities/POSPolicy';
+import { Party } from '../src/domain/shared/entities/Party';
+import { InventorySettings } from '../src/domain/inventory/entities/InventorySettings';
+import { ensureInventoryCore, resolveInventoryCOGSAccounts, addInventoryCOGSToBucket } from '../src/application/inventory/contracts/InventoryIntegrationContracts';
 
 let passed = 0;
 function check(label: string, ok: boolean): void {
@@ -131,8 +168,8 @@ async function flowInventory(prisma: PrismaClient, cid: string): Promise<void> {
     address: null, active: true, isDefault: true, createdAt: now, updatedAt: now,
   } as any);
   await itemRepo.createItem({
-    id: itemId, companyId: cid, code: 'SKU1', name: 'Widget', type: 'STOCK',
-    baseUom: 'EA', costCurrency: 'USD', costingMethod: 'MOVING_AVERAGE',
+    id: itemId, companyId: cid, code: 'SKU1', name: 'Widget', type: 'PRODUCT',
+    baseUom: 'EA', costCurrency: 'USD', costingMethod: 'MOVING_AVG',
     trackInventory: true, tags: [], active: true, createdBy: 'it',
   } as any);
   check('item + warehouse created (inventory FKs)', true);
@@ -230,9 +267,322 @@ async function flowPurchases(prisma: PrismaClient, cid: string): Promise<void> {
     !!got && (got as any).lines.length === 1 && (got as any).grandTotalBase === 20 && (got as any).invoiceNumber === 'PI-0001');
 }
 
+async function flowRBAC(prisma: PrismaClient, cid: string): Promise<void> {
+  console.log('\nE. RBAC — assign role -> resolve permissions');
+
+  const userRepo = new PrismaUserRepository(prisma);
+  const roleRepo = new PrismaCompanyRoleRepository(prisma);
+  const companyUserRepo = new PrismaRbacCompanyUserRepository(prisma);
+  const permissionReader = new GetCurrentUserPermissionsForCompanyUseCase(userRepo, companyUserRepo, roleRepo);
+  const checker = new PermissionChecker(permissionReader);
+  const assignRole = new AssignRoleToCompanyUserUseCase(companyUserRepo, checker);
+
+  const actorId = `owner-${cid}`;
+  const userId = `cashier-${cid}`;
+  const roleId = `role-pos-${cid}`;
+  await prisma.user.createMany({
+    data: [
+      { id: actorId, email: `${actorId}@example.test`, name: 'Owner', globalRole: 'USER', activeCompanyId: cid },
+      { id: userId, email: `${userId}@example.test`, name: 'Cashier', globalRole: 'USER', activeCompanyId: cid },
+    ],
+  });
+  await companyUserRepo.create({ userId: actorId, companyId: cid, roleId: '', isOwner: true, createdAt: new Date() });
+  await companyUserRepo.create({ userId, companyId: cid, roleId: '', isOwner: false, createdAt: new Date() });
+  await roleRepo.create({
+    id: roleId,
+    companyId: cid,
+    name: 'POS Cashier',
+    permissions: [],
+    explicitPermissions: ['pos.terminal.sell'],
+    resolvedPermissions: ['pos.terminal.sell'],
+  });
+
+  await assignRole.execute({ companyId: cid, targetUserId: userId, roleId, actorId });
+  const assigned = await companyUserRepo.getByUserAndCompany(userId, cid);
+  const gotRole = await roleRepo.getById(cid, roleId);
+  check('role row persists and company user reads back with roleId',
+    !!assigned && assigned.roleId === roleId && !!gotRole && gotRole.resolvedPermissions?.includes('pos.terminal.sell') === true);
+  check('permission checker grants assigned permission',
+    await checker.hasPermission(userId, cid, 'pos.terminal.sell') === true);
+  check('permission checker denies unassigned permission',
+    await checker.hasPermission(userId, cid, 'accounting.vouchers.post') === false);
+}
+
+async function flowCore(prisma: PrismaClient, cid: string): Promise<void> {
+  console.log('\nF. Core — company settings + enabled module round-trip');
+
+  const settingsRepo = new PrismaCompanySettingsRepository(prisma);
+  const moduleRepo = new PrismaCompanyModuleRepository(prisma);
+
+  await settingsRepo.updateSettings(cid, new CompanySettings(
+    cid,
+    true,
+    'windows',
+    'Europe/Istanbul',
+    'DD/MM/YYYY',
+    'en',
+    'USD',
+    '01-01',
+    '12-31',
+    undefined,
+    ['AI']
+  ));
+  const settings = await settingsRepo.getSettings(cid);
+  check('company settings write/read preserves approval, timezone, date format, currency',
+    settings.strictApprovalMode === true
+    && settings.timezone === 'Europe/Istanbul'
+    && settings.dateFormat === 'DD/MM/YYYY'
+    && settings.baseCurrency === 'USD');
+
+  const accountingModule = CompanyModuleEntity.create(cid, 'accounting');
+  accountingModule.enable();
+  accountingModule.markInitialized({ source: 'sql-integration-275e' });
+  await moduleRepo.create(accountingModule);
+
+  const posModule = CompanyModuleEntity.create(cid, 'pos');
+  posModule.enable();
+  posModule.markInitialized({ source: 'sql-integration-275e' });
+  await moduleRepo.create(posModule);
+
+  const modules = await moduleRepo.listByCompany(cid);
+  const accounting = modules.find((m) => m.moduleCode === 'accounting');
+  const pos = modules.find((m) => m.moduleCode === 'pos');
+  check('enabled modules read back as initialized and enabled',
+    accounting?.isEnabled === true && accounting.initialized === true
+    && pos?.isEnabled === true && pos.initialized === true);
+}
+
+async function flowPOS(prisma: PrismaClient, cid: string): Promise<void> {
+  console.log('\nG. POS — open shift -> sale -> ledger -> close shift');
+
+  const accountRepo = new PrismaAccountRepository(prisma);
+  const itemRepo = new PrismaItemRepository(prisma);
+  const itemCategoryRepo = new PrismaItemCategoryRepository(prisma);
+  const levelRepo = new PrismaStockLevelRepository(prisma);
+  const movementRepo = new PrismaStockMovementRepository(prisma);
+  const invSettingsRepo = new PrismaInventorySettingsRepository(prisma);
+  const partyRepo = new PrismaPartyRepository(prisma);
+  const taxRepo = new PrismaTaxCodeRepository(prisma);
+  const currencyRepo = new PrismaCompanyCurrencyRepository(prisma);
+  const moduleRepo = new PrismaCompanyModuleRepository(prisma);
+  const txManager = new PrismaTransactionManager(prisma);
+  const shiftRepo = new PrismaPosShiftRepository(prisma);
+  const registerRepo = new PrismaPosRegisterRepository(prisma);
+  const posSettingsRepo = new PrismaPosSettingsRepository(prisma);
+  const posPolicyRepo = new PrismaPosPolicyRepository(prisma);
+  const cashMovementRepo = new PrismaPosCashMovementRepository(prisma);
+  const receiptRepo = new PrismaPosReceiptRepository(prisma);
+  const paymentRepo = new PrismaPosPaymentRepository(prisma);
+  const ledgerRepo = new PrismaLedgerRepository(prisma, accountRepo);
+  const voucherRepo = new PrismaVoucherRepository(prisma);
+  const postingLogRepo = new PrismaPostingLogRepository(prisma);
+  const accountingBridge = new LegacyAccountingBridgeAdapter(
+    new SubledgerVoucherPostingService(voucherRepo, ledgerRepo, currencyRepo, accountRepo),
+    moduleRepo,
+    postingLogRepo
+  );
+  const policyEngine = new PolicyEngine(posPolicyRepo);
+  const numberingEngine = new NumberingEngine(new PrismaVoucherSequenceRepository(prisma));
+  const inventoryCore = ensureInventoryCore({
+    processOUT: async () => { throw new Error('processOUT not used by POS integration flow'); },
+    processIN: async () => { throw new Error('processIN not used by POS integration flow'); },
+    deleteMovement: async (companyId: string, id: string, transaction?: unknown) => movementRepo.deleteMovement(companyId, id, transaction),
+    preFetchStockLevel: (companyId: string, itemId: string, warehouseId: string) => levelRepo.getLevel(companyId, itemId, warehouseId),
+    preFetchLevelsByItem: (companyId: string, itemId: string) => levelRepo.getLevelsByItem(companyId, itemId),
+    writeStockMovement: (movement: any, transaction?: unknown) => movementRepo.recordMovement(movement, transaction),
+    writeStockLevel: (level: any, transaction?: unknown) =>
+      transaction ? levelRepo.upsertLevelInTransaction(transaction, level) : levelRepo.upsertLevel(level),
+    resolveCOGSAccounts: resolveInventoryCOGSAccounts,
+    addToCOGSBucket: addInventoryCOGSToBucket,
+  });
+
+  const now = new Date();
+  const arAccountId = `acc-ar-${cid}`;
+  const cashAccountId = `acc-cash-pos-${cid}`;
+  const inventoryAccountId = `acc-inv-${cid}`;
+  const cogsAccountId = `acc-cogs-${cid}`;
+  const revenueAccountId = `acc-rev-pos-${cid}`;
+  await accountRepo.create(cid, {
+    id: arAccountId, userCode: '1100', name: 'Accounts Receivable', classification: 'ASSET',
+    balanceNature: 'DEBIT', createdBy: 'it', updatedBy: 'it',
+  });
+  await accountRepo.create(cid, {
+    id: cashAccountId, userCode: '1010', name: 'POS Cash Drawer', classification: 'ASSET',
+    balanceNature: 'DEBIT', createdBy: 'it', updatedBy: 'it',
+  });
+  await accountRepo.create(cid, {
+    id: inventoryAccountId, userCode: '1300', name: 'Inventory', classification: 'ASSET',
+    balanceNature: 'DEBIT', createdBy: 'it', updatedBy: 'it',
+  });
+  await accountRepo.create(cid, {
+    id: cogsAccountId, userCode: '5000', name: 'COGS', classification: 'EXPENSE',
+    balanceNature: 'DEBIT', createdBy: 'it', updatedBy: 'it',
+  });
+  await accountRepo.create(cid, {
+    id: revenueAccountId, userCode: '4010', name: 'POS Revenue', classification: 'REVENUE',
+    balanceNature: 'CREDIT', createdBy: 'it', updatedBy: 'it',
+  });
+
+  const itemId = `item-${cid}`;
+  const whId = `wh-${cid}`;
+  const registerId = `reg-${cid}`;
+  const cashierId = `cashier-${cid}`;
+  const customerId = `cust-${cid}`;
+  await invSettingsRepo.saveSettings(new InventorySettings({
+    companyId: cid,
+    inventoryAccountingMethod: 'PERPETUAL',
+    accountingMode: 'PERPETUAL',
+    defaultCostingMethod: 'MOVING_AVG',
+    defaultCostCurrency: 'USD',
+    defaultInventoryAssetAccountId: inventoryAccountId,
+    defaultCOGSAccountId: cogsAccountId,
+    allowNegativeStock: false,
+    autoGenerateItemCode: false,
+    itemCodeNextSeq: 1,
+  }));
+  await partyRepo.create(new Party({
+    id: customerId,
+    companyId: cid,
+    code: 'WALKIN',
+    legalName: 'Walk-in Customer',
+    displayName: 'Walk-in Customer',
+    roles: ['CUSTOMER'],
+    defaultCurrency: 'USD',
+    defaultARAccountId: arAccountId,
+    active: true,
+    createdBy: 'it',
+    createdAt: now,
+    updatedAt: now,
+  }));
+  await itemRepo.updateItem(itemId, {
+    revenueAccountId,
+    cogsAccountId,
+    inventoryAssetAccountId: inventoryAccountId,
+    salePrice: 12,
+    updatedAt: now,
+  } as any);
+  await posSettingsRepo.saveSettings(new PosSettings({
+    companyId: cid,
+    requireOpenShift: true,
+    walkInCustomerId: customerId,
+    defaultRevenueAccountId: revenueAccountId,
+    receiptPrefix: 'R',
+    receiptNextSeq: 1,
+    allowPosDirectSales: true,
+    negativeStockPolicy: 'BLOCK',
+    paymentMethods: [{ code: 'CASH', settlementAccountId: cashAccountId, requiresReference: false, allowsChange: true, isEnabled: true }],
+  }));
+  await posPolicyRepo.savePolicy(new POSPolicy({
+    companyId: cid,
+    allowPosDirectSales: true,
+    terminalPolicies: [{ registerId, allowDirectSales: true }],
+  }));
+  await registerRepo.create(new PosRegister({
+    id: registerId,
+    companyId: cid,
+    code: 'REG1',
+    name: 'Main Register',
+    warehouseId: whId,
+    cashDrawerAccountId: cashAccountId,
+    settlementAccountIds: { CASH: cashAccountId },
+    status: 'ACTIVE',
+    createdAt: now,
+    updatedAt: now,
+  }));
+
+  const openShift = new OpenPosShiftUseCase(shiftRepo, registerRepo, posSettingsRepo, cashMovementRepo, txManager);
+  const shift = await openShift.execute({
+    companyId: cid,
+    registerId,
+    cashierUserId: cashierId,
+    openingFloat: 20,
+    actor: { userId: cashierId },
+  });
+  check('POS shift opens and reads back as OPEN', (await shiftRepo.getById(cid, shift.id))?.status === 'OPEN');
+
+  const completeSale = new CompletePosSaleUseCase(
+    shiftRepo,
+    posSettingsRepo,
+    registerRepo,
+    receiptRepo,
+    paymentRepo,
+    cashMovementRepo,
+    txManager,
+    new PostPosSaleUseCase(
+      itemRepo,
+      itemCategoryRepo,
+      invSettingsRepo,
+      partyRepo,
+      taxRepo,
+      currencyRepo,
+      inventoryCore,
+      accountingBridge,
+      new TaxEngine(),
+      posSettingsRepo
+    ),
+    policyEngine,
+    numberingEngine
+  );
+  const sale = await completeSale.execute({
+    companyId: cid,
+    registerId,
+    shiftId: shift.id,
+    lines: [{ itemId, qty: 1, unitPrice: 12 }],
+    payments: [{ method: 'CASH', amount: 12 }],
+    actor: { userId: cashierId, roleId: 'pos-cashier' },
+  });
+  const receipt = await receiptRepo.getById(cid, sale.receipt.id);
+  const payments = await paymentRepo.listByReceipt(cid, sale.receipt.id);
+  const posLedgers = await prisma.ledgerEntry.findMany({ where: { companyId: cid, description: { contains: sale.salesInvoiceNumber } } });
+  check('POS sale persists receipt and cash payment',
+    !!receipt && receipt.status === 'COMPLETED' && receipt.grandTotal === 12 && payments.length === 1 && payments[0].amount === 12);
+  check('POS sale posts ledger rows through PostingGateway-backed bridge', posLedgers.length >= 4);
+
+  const afterSaleLevel = await levelRepo.getLevel(cid, itemId, whId);
+  check('POS sale decrements stock level by sold quantity', !!afterSaleLevel && afterSaleLevel.qtyOnHand === 14);
+
+  const closeShift = new ClosePosShiftUseCase(
+    shiftRepo,
+    posSettingsRepo,
+    registerRepo,
+    cashMovementRepo,
+    accountRepo,
+    accountingBridge,
+    txManager,
+    receiptRepo,
+    paymentRepo
+  );
+  const closed = await closeShift.execute({
+    companyId: cid,
+    shiftId: shift.id,
+    countedCash: 32,
+    actor: { userId: cashierId },
+  });
+  check('POS shift closes reconciled with expected cash totals',
+    closed.shift.status === 'RECONCILED' && closed.expectedPaymentTotals.CASH === 32 && closed.overShortAmount === 0);
+}
+
 async function cleanup(prisma: PrismaClient, cid: string): Promise<void> {
   // Delete child rows first, then the company.
   try {
+    await (prisma as any).posPayment.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).posReceipt.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).posCashMovement.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).posShift.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).posRegister.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).posSettings.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).posPolicy.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).postingLog.deleteMany({ where: { companyId: cid } });
+    await prisma.voucherLine.deleteMany({ where: { voucher: { companyId: cid } } });
+    await prisma.voucher.deleteMany({ where: { companyId: cid } });
+    await prisma.voucherSequence.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).companyModule.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).companySettings.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).companyRole.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).companyUser.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).inventorySettings.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).party.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).companyCurrency.deleteMany({ where: { companyId: cid } });
     await prisma.ledgerEntry.deleteMany({ where: { companyId: cid } });
     await prisma.account.deleteMany({ where: { companyId: cid } });
     // Invoices (lines cascade) must go before items — line.itemId FK is Restrict.
@@ -243,6 +593,7 @@ async function cleanup(prisma: PrismaClient, cid: string): Promise<void> {
     await (prisma as any).item.deleteMany({ where: { companyId: cid } });
     await (prisma as any).warehouse.deleteMany({ where: { companyId: cid } });
     await prisma.company.deleteMany({ where: { id: cid } });
+    await prisma.user.deleteMany({ where: { id: { in: [`owner-${cid}`, `cashier-${cid}`] } } });
   } catch (e: any) {
     console.warn('Cleanup warning:', e.message);
   }
@@ -264,6 +615,9 @@ async function main(): Promise<void> {
     await flowInventory(prisma, cid);
     await flowSales(prisma, cid);
     await flowPurchases(prisma, cid);
+    await flowRBAC(prisma, cid);
+    await flowCore(prisma, cid);
+    await flowPOS(prisma, cid);
 
     console.log('\n====================================================');
     console.log(`  ALL ${passed} INTEGRATION CHECKS PASSED on real Postgres`);
