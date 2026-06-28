@@ -25,12 +25,12 @@ export class CatalogCore implements ICatalogCore {
     return this.createItemUseCase.execute(data);
   }
 
-  async updateItem(id: string, data: Partial<Item>): Promise<Item> {
-    return this.updateItemUseCase.execute(id, data);
+  async updateItem(companyId: string, id: string, data: Partial<Item>): Promise<Item> {
+    return this.updateItemUseCase.execute(companyId, id, data);
   }
 
-  async getItem(id: string): Promise<Item | null> {
-    return this.getItemUseCase.execute(id);
+  async getItem(companyId: string, id: string): Promise<Item | null> {
+    return this.getItemUseCase.execute(companyId, id);
   }
 
   async listItems(companyId: string, filters?: ItemListOptions): Promise<Item[]> {
@@ -41,7 +41,7 @@ export class CatalogCore implements ICatalogCore {
     return this.searchItemsUseCase.execute(companyId, query, filters);
   }
 
-  async deleteItem(id: string): Promise<void> {
-    return this.deleteItemUseCase.execute(id);
+  async deleteItem(companyId: string, id: string): Promise<void> {
+    return this.deleteItemUseCase.execute(companyId, id);
   }
 }
