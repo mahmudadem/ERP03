@@ -24,6 +24,16 @@ What IS allowed during the freeze:
 
 What is NOT allowed: any task that adds to the QA surface — new UI polish (including the remaining Task 132 chrome work), new selectors, new table features, new AI features, new master-data conveniences. If an owner request arrives that looks like a feature, log it for post-pilot and continue.
 
+### ⭐ TOP PRIORITY (owner, 2026-06-28): Launch on Supabase/PostgreSQL — Epic 275
+
+**Owner decided the first production launch runs on Supabase (PostgreSQL), NOT Firestore.** Firestore is demoted to dev/fallback only. Reason: reporting, costing, maintainability, and the offline/desktop future all require SQL. This **supersedes the "Deploy to real Firebase project" line** in the ship plan below.
+
+- **Epic:** [275 — Supabase Launch](./tasks/275-supabase-launch-epic.md). Ordered tasks 275a–275f, each with its own file + CTO audit gate.
+- **Critical path:** 275a (seeders) + 275b (settings resolver) → 275c (local Postgres smoke test) → 275e (integration tests) → 275f (provision + deploy). 275d (missing Prisma repos, non-AI) runs in parallel, merges before 275e.
+- **Decisions locked:** Postgres-only in production; Firebase Auth/Storage/FCM kept for v1; AI module OFF (its repos out of scope); host = Railway. See [[supabase_deploy_decisions]] / [DEPLOYMENT-PLAN-SUPABASE.md](./tasks/DEPLOYMENT-PLAN-SUPABASE.md).
+- **Offline queue/sync** is designed ([docs/architecture/offline-sync-queue.md](../docs/architecture/offline-sync-queue.md)) but **post-launch** (Task 222 family).
+- **Task Lock:** Epic 275 planning ✅ (Claude/Opus, 2026-06-28). Execution 275a–275f ⬜ unassigned — pick up in critical-path order, one builder per task file, branch per task.
+
 ### The ship plan (work top-down)
 
 | Phase | Item | Status |
@@ -32,8 +42,8 @@ What is NOT allowed: any task that adds to the QA surface — new UI polish (inc
 | 1 | CI pipeline (`.github/workflows/ci.yml`) | ✅ created 2026-06-13 |
 | 1 | Golden-path QA scripts replace QA-QUEUE | ✅ created 2026-06-13 — **owner must run them** |
 | 1 | Fix golden-path findings | ⬜ after owner's QA pass |
-| 2 | Deploy to real Firebase project (hosting config + functions + rules + indexes) | ⬜ |
-| 2 | Sentry + scheduled Firestore backups + helmet/rate-limit | ⬜ |
+| 2 | ~~Deploy to real Firebase project~~ → **SUPERSEDED by Epic 275 (deploy to Supabase/Postgres)** | 🔄 replaced 2026-06-28 |
+| 2 | Sentry + scheduled **Postgres/Supabase** backups + helmet/rate-limit | ⬜ |
 | 3 | Scheduled Tasks Engine ([spec](./tasks/scheduled-tasks-engine.md)) | ⬜ |
 | 3 | Email invoice delivery (sender-accounts abstraction) | ⬜ |
 | 4 | Pilot: 1–3 real companies on staging | ⬜ |
