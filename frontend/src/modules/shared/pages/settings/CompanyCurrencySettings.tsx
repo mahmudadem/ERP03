@@ -6,6 +6,7 @@
  */
 
 import React, { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { DollarSign, Plus, X, Check, AlertCircle, Info } from 'lucide-react';
 import { Spinner } from '../../../../components/ui/Spinner';
 import { accountingApi, CurrencyDTO, CompanyCurrencyDTO } from '../../../../api/accountingApi';
@@ -19,6 +20,7 @@ import { AvailableCurrenciesModal } from './components/AvailableCurrenciesModal'
 import { EnableCurrencyModal } from './components/EnableCurrencyModal';
 
 export const CompanyCurrencySettings: React.FC = () => {
+  const { t } = useTranslation('common');
   const queryClient = useQueryClient();
   const [globalCurrencies, setGlobalCurrencies] = useState<CurrencyDTO[]>([]);
   const [companyCurrencies, setCompanyCurrencies] = useState<CompanyCurrencyDTO[]>([]);
@@ -55,18 +57,18 @@ export const CompanyCurrencySettings: React.FC = () => {
 
   const handleDisable = async (currencyCode: string) => {
     if (currencyCode === baseCurrency) {
-      errorHandler.showError('Cannot disable base currency');
+      errorHandler.showError(t('currencySettings.messages.cannotDisableBase', { defaultValue: 'Cannot disable base currency' }));
       return;
     }
 
     setDisabling(currencyCode);
     try {
       await accountingApi.disableCurrency(currencyCode);
-      errorHandler.showSuccess(`${currencyCode} disabled`);
+      errorHandler.showSuccess(t('currencySettings.messages.disabled', { currency: currencyCode, defaultValue: '{{currency}} disabled' }));
       loadData();
       queryClient.invalidateQueries({ queryKey: ['company-currencies'] });
     } catch (error: any) {
-      errorHandler.showError(error.message || 'Failed to disable currency');
+      errorHandler.showError(error.message || t('currencySettings.messages.disableFailed', { defaultValue: 'Failed to disable currency' }));
     } finally {
       setDisabling(null);
     }
@@ -93,10 +95,10 @@ export const CompanyCurrencySettings: React.FC = () => {
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-gray-100 dark:border-[var(--color-border)] pb-6">
         <div>
           <h2 className="text-2xl font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-            Currency Settings
+            {t('currencySettings.title', { defaultValue: 'Currency Settings' })}
           </h2>
           <p className="text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
-            Manage your company's active currencies and exchange rates.
+            {t('currencySettings.subtitle', { defaultValue: "Manage your company's active currencies and exchange rates." })}
           </p>
         </div>
         
@@ -105,7 +107,7 @@ export const CompanyCurrencySettings: React.FC = () => {
           className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-sm transition-all active:scale-95"
         >
           <Plus size={18} />
-          <span>Add New Currency</span>
+          <span>{t('currencySettings.actions.addNew', { defaultValue: 'Add New Currency' })}</span>
         </button>
       </div>
 
@@ -119,7 +121,7 @@ export const CompanyCurrencySettings: React.FC = () => {
             <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl shadow-sm overflow-hidden flex flex-col h-full">
               <div className="px-5 py-3.5 bg-gray-50 dark:bg-gray-800 border-b border-gray-200 dark:border-[var(--color-border)] flex-shrink-0">
                 <h3 className="text-sm font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-                  Active Currencies
+                  {t('currencySettings.activeCurrencies', { defaultValue: 'Active Currencies' })}
                 </h3>
               </div>
               
@@ -134,7 +136,9 @@ export const CompanyCurrencySettings: React.FC = () => {
                         <div className="flex items-center gap-2">
                           <p className="font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{currency.code}</p>
                           {currency.code === baseCurrency && (
-                            <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-full">Base</span>
+                            <span className="text-[9px] font-black uppercase px-2 py-0.5 bg-emerald-100 dark:bg-emerald-900/60 text-emerald-700 dark:text-emerald-400 rounded-full">
+                              {t('currencySettings.base', { defaultValue: 'Base' })}
+                            </span>
                           )}
                         </div>
                         <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">{currency.name}</p>
@@ -142,13 +146,15 @@ export const CompanyCurrencySettings: React.FC = () => {
                     </div>
                     
                     <div className="flex items-center gap-4">
-                      <span className="hidden sm:block text-[10px] font-bold text-gray-400 uppercase tracking-tighter">{currency.decimalPlaces} Decimals</span>
+                      <span className="hidden sm:block text-[10px] font-bold text-gray-400 uppercase tracking-tighter">
+                        {t('currencySettings.decimals', { count: currency.decimalPlaces, defaultValue: '{{count}} decimals' })}
+                      </span>
                       {currency.code !== baseCurrency && (
                         <button
                           onClick={() => handleDisable(currency.code)}
                           disabled={disabling === currency.code}
                           className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 disabled:opacity-50"
-                          title="Disable Currency"
+                          title={t('currencySettings.actions.disable', { defaultValue: 'Disable Currency' })}
                         >
                           {disabling === currency.code ? (
                             <Spinner size="sm" />

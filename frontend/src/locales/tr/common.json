@@ -402,14 +402,19 @@
         "noSearchMatches": "Aramanızla eşleşen kullanıcı yok",
         "noUsersFound": "Kullanıcı bulunamadı",
         "adjustSearch": "Arama terimlerinizi ayarlamayı deneyin",
-        "inviteHint": "Kullanıcıları şirketinize davet ederek başlayın."
+        "inviteHint": "Kullanıcıları şirketinize davet ederek başlayın.",
+        "addHint": "Şirketinize mevcut platform kullanıcılarını ekleyerek başlayın."
       },
       "confirm": {
         "disableVerb": "devre dışı bırakmak",
         "enableVerb": "olanak vermek",
         "toggleStatus": "{{action}} {{email}} yapmak istediğinizden emin misiniz?",
         "removeUser": "{{email}}'yi şirketten çıkarmak istediğinizden emin misiniz?"
-      }
+      },
+      "addUser": "Kullanıcı Ekle",
+      "addExistingUser": "Mevcut Kullanıcı Ekle",
+      "addExistingUserHint": "Kullanıcıyı ekleyebilmeniz için önce kaydolmuş olması gerekir.",
+      "adding": "Ekleniyor..."
     },
     "roles": {
       "title": "Rol Yönetimi",
@@ -556,7 +561,8 @@
         "inviteUser": "+ Yeni Kullanici Davet Et",
         "createRole": "+ Yeni Rol Olustur",
         "manageSubscription": "Aboneligi Yonet",
-        "configureModules": "Modulleri Yapilandir"
+        "configureModules": "Modulleri Yapilandir",
+        "addUser": "Kullanıcı Ekle"
       }
     },
     "invoices": {
@@ -3736,12 +3742,14 @@
     "clearFilters": "Filtreleri Temizle",
     "close": "Kapat",
     "create": "Oluştur",
-    "select": "Seç",
+    "select": "Seç...",
     "confirm": "Onayla",
     "generate": "Oluştur",
     "empty": "Satır yok.",
     "processing": "İşleniyor...",
-    "label": "Etiket"
+    "label": "Etiket",
+    "refresh": "Yenile",
+    "system": "Sistem"
   },
   "messaging": {
     "whatsapp": {
@@ -4351,5 +4359,240 @@
       "label": "Finansal Entegrasyon Aktif",
       "message": "{{module}} Muhasebe ile tamamen entegre. Tüm işlemler finansal/GL kayıtları oluşturur."
     }
-  }
+  },
+  "taxCodes": {
+    "title": "Vergi Kodları",
+    "subtitle": "Vergi oranlarını, hesap yönlendirmelerini, fiyat temelini ve satın alma vergisi maliyet davranışını yönetin.",
+    "loading": "Vergi kodları yükleniyor...",
+    "empty": "Vergi kodu bulunamadı.",
+    "lockText": "Bu vergi kodu kayıt edilmiş belgelerde kullanılıyor. Vergi davranışını değiştirmek için yeni vergi kodu oluşturun.",
+    "actions": {
+      "new": "Yeni Vergi Kodu",
+      "create": "Vergi Kodu Oluştur",
+      "update": "Vergi Kodunu Güncelle"
+    },
+    "columns": {
+      "code": "Kod",
+      "name": "Ad",
+      "rate": "Oran",
+      "type": "Tür",
+      "scope": "Kapsam",
+      "priceBasis": "Fiyat Temeli",
+      "purchaseTreatment": "Satın Alma Davranışı",
+      "status": "Durum",
+      "usage": "Kullanım",
+      "actions": "İşlemler"
+    },
+    "fields": {
+      "code": "Kod",
+      "name": "Ad",
+      "ratePercent": "Oran %",
+      "type": "Tür",
+      "scope": "Kapsam",
+      "active": "Aktif",
+      "purchaseTaxAccount": "Satın Alma Vergi Hesabı",
+      "salesTaxAccount": "Satış Vergi Hesabı",
+      "priceBasis": "Fiyat Temeli",
+      "purchaseTaxTreatment": "Satın Alma Vergisi Davranışı"
+    },
+    "placeholders": {
+      "purchaseTaxAccount": "Satın alma vergi hesabı seç",
+      "salesTaxAccount": "Satış vergi hesabı seç",
+      "priceBasis": "Fiyat temelini seç..."
+    },
+    "priceBasis": {
+      "inclusive": "Dahil",
+      "exclusive": "Hariç",
+      "inclusiveHelp": "Dahil - girilen fiyat vergiyi içerir",
+      "exclusiveHelp": "Hariç - vergi fiyatın üstüne eklenir",
+      "help": "%10 vergi ve 100 fiyatla: Hariç toplam 110 olur; Dahil 100, net 90.91 ve vergi 9.09 olarak ayrılır."
+    },
+    "purchaseTreatment": {
+      "recoverableShort": "İndirilebilir",
+      "nonRecoverableShort": "İndirilemez",
+      "recoverableHelp": "İndirilebilir - satın alma vergisini ayrı kaydet",
+      "nonRecoverableHelp": "İndirilemez - satın alma vergisini stok/gider maliyetine dahil et",
+      "help": "İndirilebilir vergi satın alma vergi hesabına borç yazılır. İndirilemez vergi stok veya gider maliyetine dahil edilir."
+    },
+    "status": {
+      "active": "Aktif",
+      "inactive": "Pasif"
+    },
+    "usage": {
+      "locked": "Kilitli",
+      "editable": "Düzenlenebilir"
+    },
+    "modal": {
+      "editTitle": "Vergi Kodunu Düzenle",
+      "newTitle": "Yeni Vergi Kodu"
+    },
+    "messages": {
+      "loadFailed": "Vergi kodları yüklenemedi.",
+      "updated": "Vergi kodu güncellendi.",
+      "created": "Vergi kodu oluşturuldu.",
+      "invalidRate": "Oran % negatif olmayan bir sayı olmalıdır.",
+      "priceBasisRequired": "Fiyat esası zorunludur. Girilen fiyatlara verginin dahil mi yoksa üstüne mi ekleneceğini seçin.",
+      "saveFailed": "Vergi kodu kaydedilemedi."
+    }
+  },
+  "currencySettings": {
+    "title": "Para Birimi Ayarları",
+    "subtitle": "Şirketinizin aktif para birimlerini ve döviz kurlarını yönetin.",
+    "activeCurrencies": "Aktif Para Birimleri",
+    "manualRateEntry": "Manuel Kur Girişi",
+    "recentOperations": "Son Fiyatlama İşlemleri",
+    "noOperations": "Kayıtlı fiyatlama işlemi yok",
+    "base": "Baz",
+    "decimals": "{{count}} ondalık",
+    "from": "Kaynak",
+    "to": "Hedef",
+    "effectiveDate": "Geçerlilik Tarihi",
+    "rate": "Kur",
+    "suggestedInverse": "Önerilen ters kur: {{rate}} ({{from}}→{{to}})",
+    "effectiveInline": "Geçerli: {{date}}",
+    "changePercent": "%{{percent}} değişim",
+    "reference": "Referans",
+    "actions": {
+      "addNew": "Yeni Para Birimi Ekle",
+      "disable": "Para Birimini Devre Dışı Bırak",
+      "updateReferenceRate": "Referans Kuru Güncelle",
+      "saveAnyway": "Yine de Kaydet"
+    },
+    "available": {
+      "subtitle": "Şirket işlemleri için ek para birimlerini etkinleştirin.",
+      "searchPlaceholder": "Para birimi kodu veya adına göre ara...",
+      "noMatches": "Eşleşme bulunamadı",
+      "noMatchesHint": "Farklı bir para birimi kodu veya adı deneyin."
+    },
+    "enable": {
+      "title": "{{currency}} etkinleştir",
+      "infoBefore": "Etkinleştirmek için başlangıç kuru gerekir:",
+      "infoAfter": "Bu kur muhasebe işlemleriniz için referans kur olarak kullanılacaktır.",
+      "initialRate": "Başlangıç Döviz Kuru",
+      "enabling": "Etkinleştiriliyor...",
+      "submit": "Para Birimini Etkinleştir"
+    },
+    "deviation": {
+      "title": "Kur Sapması Uyarısı",
+      "messageBefore": "Girdiğiniz kur",
+      "messageAfterRate": "son kurdan",
+      "messageAfterPercent": "farklı.",
+      "confirmText": "Bu bir yazım hatası olabilir. Bu kuru kaydetmek istediğinizden emin misiniz?"
+    },
+    "messages": {
+      "cannotDisableBase": "Baz para birimi devre dışı bırakılamaz",
+      "disabled": "{{currency}} devre dışı bırakıldı",
+      "disableFailed": "Para birimi devre dışı bırakılamadı",
+      "rateUpdated": "Kur güncellendi: 1 {{from}} = {{rate}} {{to}}",
+      "rateSaveFailed": "Kur kaydedilemedi",
+      "invalidRate": "Geçerli bir döviz kuru girin",
+      "enabled": "{{currency}} başarıyla etkinleştirildi",
+      "enableFailed": "Para birimi etkinleştirilemedi"
+    }
+  },
+  "communications": {
+    "title": "İletişim",
+    "subtitle": "Müşterilere belge göndermek için kullanılan mesajlaşma kanallarını yönetin. Tüm modüllerle ortaktır.",
+    "saved": "İletişim ayarları kaydedildi.",
+    "shareLink": {
+      "title": "Fatura paylaşmak için kurulum gerekmez",
+      "description": "Kayıt edilmiş herhangi bir faturadaki \"WhatsApp ile Paylaş\" düğmesi telefonunuzda veya WhatsApp Web üzerinde hazır mesaj açar; hesap gerekmez. Aşağıdaki kanalları yalnızca belgeleri sunucu tarafında otomatik göndermek istiyorsanız yapılandırın."
+    },
+    "summary": "Göndermeye hazır {{count}} aktif kanal",
+    "summary_plural": "Göndermeye hazır {{count}} aktif kanal",
+    "add": "Ekle",
+    "noChannelAccounts": "Henüz {{channel}} hesabı yok.",
+    "addFirst": "{{channel}} hesabı ekle",
+    "channel": {
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "Faturaları Meta WhatsApp Cloud API ile gönder."
+      },
+      "telegram": {
+        "title": "Telegram",
+        "description": "Faturaları Telegram botu ile gönder."
+      },
+      "email": {
+        "title": "E-posta",
+        "description": "Faturaları e-posta ile gönder (SMTP)."
+      }
+    }
+  },
+  "appearance": {
+    "userPreferences": "Kullanıcı Tercihleri",
+    "title": "Görünüm Laboratuvarı",
+    "subtitle": "Kişisel çalışma alanınızı tasarlayın. Hazır şablonlardan seçin, otomatik tema üretin veya her ayrıntıyı ayarlayın.",
+    "resetDefault": "Varsayılana Sıfırla",
+    "savePreferences": "Tercihleri Kaydet",
+    "presets": "Seçilmiş Şablonlar",
+    "typographyDepth": "Tipografi ve Derinlik",
+    "fontFamily": "Yazı Tipi",
+    "shadowIntensity": "Gölge Yoğunluğu",
+    "cornerRadius": "Köşe Yarıçapı ({{radius}}px)",
+    "sharp": "Keskin",
+    "rounded": "Yuvarlak",
+    "advancedColors": "Gelişmiş Renkler",
+    "advancedColorsSubtitle": "Her renk değeri üzerinde tam kontrol",
+    "jsonExport": "JSON Dışa Aktar",
+    "autoTheme": {
+      "title": "Otomatik Tema Üretici",
+      "subtitle": "Akıllı renk uyumu",
+      "description": "Ana marka renginizi seçin; açık ve koyu mod için dengeli palet hesaplayalım.",
+      "baseColor": "Ana Renk",
+      "generate": "Üret"
+    },
+    "fonts": {
+      "system": "Sistem Varsayılanı"
+    },
+    "shadows": {
+      "flat": "Düz (gölgesiz)",
+      "subtle": "Hafif (zarif derinlik)",
+      "pronounced": "Belirgin (derin yüzey)",
+      "glass": "Cam efekti (yumuşak parıltı)"
+    },
+    "colorTabs": {
+      "brand": "Marka",
+      "light": "Açık",
+      "dark": "Koyu"
+    },
+    "colors": {
+      "primary": "Birincil işlem",
+      "accent": "Vurgu",
+      "success": "Başarı",
+      "warning": "Uyarı",
+      "danger": "Tehlike",
+      "bgPrimary": "Birincil yüzey",
+      "bgSecondary": "Sayfa arka planı",
+      "bgTertiary": "Sönük yüzey",
+      "textPrimary": "Birincil metin",
+      "textSecondary": "İkincil metin",
+      "textMuted": "Sönük metin",
+      "border": "Kenarlık"
+    },
+    "preview": {
+      "title": "Canlı Önizleme",
+      "font": "Yazı",
+      "shadows": "Gölgeler",
+      "uiComponents": "UI Bileşenleri",
+      "action": "İşlem",
+      "badges": "Rozetler",
+      "approved": "Onaylandı",
+      "pending": "Bekliyor",
+      "failed": "Başarısız",
+      "formInputs": "Form Alanları",
+      "focusMe": "Odaklan",
+      "active": "Aktif",
+      "option": "Seçenek",
+      "doc": "Belge",
+      "status": "Durum",
+      "draft": "Taslak",
+      "paid": "Ödendi"
+    },
+    "messages": {
+      "saved": "Görünüm tercihleri kaydedildi.",
+      "saveFailed": "Görünüm tercihleri kaydedilemedi."
+    }
+  },
+  "saveChanges": "Değişiklikleri Kaydet",
+  "loading": "Yükleniyor..."
 }

@@ -71,7 +71,8 @@
     "totals": "Totals",
     "unbalanced": "UNBALANCED",
     "loadError": "Failed to load report. Please try again.",
-    "generatedOn": "Generated on {{date}}"
+    "generatedOn": "Generated on {{date}}",
+    "excludeZero": "Exclude Zero Balances"
   },
   "profitLoss": {
     "title": "Profit & Loss Statement",
@@ -227,7 +228,19 @@
     "description": "Description",
     "amount": "Amount",
     "days": "Days",
-    "totals": "Totals"
+    "totals": "Totals",
+    "title": "Aging Report",
+    "subtitle": "Track outstanding receivables and payables by age buckets.",
+    "asOfDate": "As of Date",
+    "includeZeroBalance": "Include zero-balance accounts",
+    "loading": "Loading report...",
+    "empty": "No outstanding balances found",
+    "emptyDesc": "Adjust your filters or date range to see results.",
+    "noTransactions": "No transaction details available.",
+    "modeAutoInfo": "Automatic mode: report includes posting AR/AP-style accounts only. Cash and header/group accounts are excluded by design. Use Account filter to target a specific account or group.",
+    "modeManualInfo": "Manual mode: report is scoped to the selected account (and its descendants when applicable). Use this when you know the exact AP/AR structure to analyze.",
+    "type": "Report Type",
+    "targetAccount": "Optional: target a specific account"
   },
   "consolidated": {
     "selectGroup": "Select Group",
@@ -236,7 +249,11 @@
     "debit": "Debit ({{currency}})",
     "credit": "Credit ({{currency}})",
     "balance": "Balance",
-    "totals": "Totals"
+    "totals": "Totals",
+    "title": "Consolidated Trial Balance",
+    "subtitle": "Group-level trial balance across companies",
+    "empty": "No consolidated data available for selected parameters.",
+    "loadError": "Failed to load consolidated trial balance."
   },
   "bankRec": {
     "selectAccount": "Select bank account",
@@ -258,7 +275,18 @@
       "unmatched": "Unmatched",
       "auto_matched": "Auto matched",
       "matched": "Matched"
-    }
+    },
+    "title": "Bank Reconciliation",
+    "subtitle": "Reconcile bank statements with ledger entries",
+    "chooseFile": "Choose OFX/CSV",
+    "completeHint": "All statement lines must be matched before completing.",
+    "loading": "Loading reconciliation data...",
+    "importTitle": "Import Bank Statement",
+    "importPrompt": "To begin reconciliation, upload a bank statement file for the selected account.",
+    "supportedFormats": "Supported formats:",
+    "supportedOfx": ".OFX or .QFX (bank export)",
+    "supportedCsv": ".CSV (date, description, amount, reference, balance)",
+    "importedOn": "Imported: {{date}}"
   },
   "budget": {
     "fiscalYearId": "Fiscal Year Id",
@@ -296,17 +324,29 @@
       "oct": "Oct",
       "nov": "Nov",
       "dec": "Dec"
-    }
+    },
+    "allCostCenters": "All cost centers"
   },
   "budgetVsActual": {
-    "selectBudget": "Select Budget",
+    "selectBudget": "Select a budget first.",
     "option": "{{name}} (v{{version}}) - {{status}}",
     "account": "Account",
     "budget": "Budget",
     "actual": "Actual",
     "variance": "Variance",
     "variancePct": "Variance %",
-    "costCenter": "CC {{id}}"
+    "costCenter": "CC {{id}}",
+    "title": "Budget vs Actual",
+    "subtitle": "Compare approved budgets with actual postings over a selected period",
+    "loading": "Loading...",
+    "missingFiscalYear": "Fiscal year not found for selected budget.",
+    "invalidRange": "Date range is outside selected fiscal year.",
+    "loadError": "Failed to load report.",
+    "monthlyBreakdown": "Monthly breakdown",
+    "month": "Month",
+    "underBudget": "Under budget",
+    "overBudget": "Over budget",
+    "onBudget": "On budget"
   },
   "costCenters": {
     "title": "Cost Centers",
@@ -358,7 +398,7 @@
   },
   "journal": {
     "title": "Journal / Day Book",
-    "subtitle": "Vouchers listed chronologically with full lines.",
+    "subtitle": "Chronological record of all voucher entries",
     "from": "From",
     "to": "To",
     "voucherType": "Voucher Type",
@@ -370,13 +410,52 @@
     "debit": "Debit",
     "credit": "Credit",
     "period": "Period {{from}} to {{to}}",
-    "empty": "No vouchers in this period.",
+    "empty": "No journal entries found for the selected criteria.",
     "dateLabel": "Date: {{date}}",
     "voucherLabel": "Voucher:",
     "type": "Type",
     "descriptionLabel": "Description",
     "debitTotal": "Total Debit",
-    "creditTotal": "Total Credit"
+    "creditTotal": "Total Credit",
+    "processing": "Processing...",
+    "grandTotal": "Grand Total",
+    "balanced": "Balanced",
+    "voucherCount": "{{count}} vouchers",
+    "filters": {
+      "period": "Period",
+      "type": "Type",
+      "form": "Form",
+      "currency": "Currency",
+      "status": "Status",
+      "voucherType": "Voucher Type",
+      "voucherForm": "Voucher Form",
+      "allForms": "All Forms",
+      "allCurrencies": "All Currencies",
+      "generateReport": "Generate Report"
+    },
+    "columns": {
+      "account": "Account",
+      "description": "Description",
+      "debit": "Debit",
+      "credit": "Credit"
+    },
+    "voucherTypes": {
+      "allTypes": "All Types",
+      "journalEntry": "Journal Entry",
+      "paymentVoucher": "Payment Voucher",
+      "receiptVoucher": "Receipt Voucher",
+      "openingBalance": "Opening Balance",
+      "reversal": "Reversal",
+      "fxRevaluation": "FX Revaluation"
+    },
+    "statuses": {
+      "allStatuses": "All Statuses",
+      "draft": "Draft",
+      "pending": "Pending",
+      "approved": "Approved",
+      "rejected": "Rejected",
+      "cancelled": "Cancelled"
+    }
   },
   "voucherList": {
     "titleAll": "All Vouchers",
@@ -469,7 +548,8 @@
     "awaitingApproval": "Awaiting My Approval",
     "awaitingCustody": "Awaiting Custody Confirmation",
     "noneApproval": "All caught up! No vouchers pending your approval.",
-    "noneCustody": "No assets awaiting your physical confirmation."
+    "noneCustody": "No assets awaiting your physical confirmation.",
+    "awaitingSourceDocs": "Source Documents"
   },
   "settings": {
     "title": "Accounting Settings",
@@ -706,7 +786,15 @@
     "balanceBase": "Balance (Base)",
     "totals": "Totals",
     "closingBalance": "Closing Balance",
-    "openVoucher": "Open voucher"
+    "openVoucher": "Open voucher",
+    "selectAccountPlaceholder": "Select account to analyze...",
+    "costCenter": "Cost Center",
+    "optional": "optional",
+    "allCostCentersPlaceholder": "All cost centers...",
+    "currency": "Currency",
+    "allCurrencies": "All Currencies",
+    "options": "Options",
+    "executeAnalysis": "Execute Analysis"
   },
   "voucherTable": {
     "columns": {
@@ -1039,5 +1127,189 @@
     },
     "baseCurrencyParity": "Base Currency Parity",
     "baseCurrencyParityFormat": "1 {{currency}} = 1.0000 {{baseCurrency}} (Base Currency Parity)"
+  },
+  "accountingDashboard": {
+    "title": "Accounting Dashboard",
+    "subtitle": "Real-time overview of your financial operations and required actions.",
+    "refresh": "Refresh",
+    "totalVouchers": "Total Vouchers",
+    "vsLastMonth": "{{pct}}% vs last month",
+    "cashOnHand": "Cash On Hand",
+    "cashHint": "Across cash/bank accounts",
+    "recentJournalEntries": "Recent Journal Entries",
+    "viewLedger": "View Ledger",
+    "openVoucher": "Open voucher {{voucherNo}}",
+    "noVouchersYet": "No vouchers yet.",
+    "financialReports": "Financial Reports",
+    "financialReportsHint": "Access P&L, Balance Sheet, Trial Balance.",
+    "newVoucher": "New Voucher",
+    "unbalancedDrafts": "{{count}} unbalanced draft voucher(s) need attention.",
+    "currentPeriodStatus": "Current period status",
+    "reports": {
+      "trialBalance": "Trial Balance",
+      "balanceSheet": "Balance Sheet",
+      "profitLoss": "Profit & Loss",
+      "tradingAccount": "Trading Account",
+      "accountStatement": "Account Statement",
+      "agingReport": "Aging Report"
+    }
+  },
+  "accountsList": {
+    "filter": "Filter",
+    "actions": {
+      "expandAll": "Expand All",
+      "collapseAll": "Collapse All",
+      "newAccount": "New Account"
+    },
+    "columns": {
+      "accountCodeName": "Account Code & Name",
+      "class": "Class",
+      "currency": "CCY",
+      "balance": "Balance"
+    },
+    "classes": {
+      "all": "All Classes",
+      "asset": "Asset",
+      "liability": "Liability",
+      "equity": "Equity",
+      "revenue": "Revenue",
+      "expense": "Expense"
+    },
+    "parentWarning": {
+      "title": "Invalid Parent Selection",
+      "attempt": "You are attempting to create a new account as a child of",
+      "ruleTitle": "Accounting Rule Violation",
+      "accountPrefix": "Account",
+      "postingRule": "is a Posting Account (transaction level). In a professional Chart of Accounts, only Header Accounts can have children.",
+      "instructionLabel": "Instruction:",
+      "instruction": "To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.",
+      "confirm": "I Understand"
+    },
+    "loading": "Loading accounts...",
+    "roles": {
+      "header": "Header",
+      "posting": "Posting"
+    },
+    "searchPlaceholder": "Search by account code or name..."
+  },
+  "tradingAccount": {
+    "title": "Trading Account (Gross Profit)",
+    "subtitle": "Revenue vs Direct Costs",
+    "netSales": "Net Sales",
+    "costOfSales": "Cost of Sales",
+    "grossProfit": "Gross Profit",
+    "gpMargin": "GP Margin",
+    "periodicFormula": "Periodic Trading Formula",
+    "salesBreakdown": "Sales Breakdown",
+    "netPurchasesBreakdown": "Net Purchases Breakdown",
+    "costOfSalesBreakdown": "Cost of Sales Breakdown",
+    "netPurchases": "Net Purchases",
+    "openingInventory": "Opening Inventory",
+    "closingInventory": "Closing Inventory",
+    "totalNetSales": "Total Net Sales",
+    "totalCostOfSales": "Total Cost of Sales",
+    "summary": "Summary",
+    "grossProfitMarginPct": "Gross Profit Margin %",
+    "section": "Section",
+    "account": "Account",
+    "amount": "Amount",
+    "periodLine": "Period: {{from}} - {{to}}",
+    "sales": "Sales"
+  },
+  "costCenterSummary": {
+    "title": "Cost Center Summary",
+    "subtitle": "Breakdown of accounts by cost center",
+    "costCenter": "Cost Center",
+    "selectCostCenter": "Select cost center...",
+    "fromDate": "From Date",
+    "toDate": "To Date",
+    "executeAnalysis": "Execute Analysis",
+    "accountCode": "Account Code",
+    "accountName": "Account Name",
+    "classification": "Classification",
+    "totalDebit": "Total Debit",
+    "totalCredit": "Total Credit",
+    "netBalance": "Net Balance",
+    "processing": "Processing...",
+    "period": "Period",
+    "entries": "Entries",
+    "noEntries": "No entries found",
+    "noEntriesHint": "No ledger entries match the selected cost center and date range."
+  },
+  "subgroupTagging": {
+    "title": "Subgroup Tagging Tool",
+    "subtitle": "Tag accounts for Trading Account and structured Profit & Loss reporting.",
+    "partialFailure": "Some updates failed:",
+    "missingAccountId": "(missing accountId)",
+    "selectAll": "Select All",
+    "updated": "Updated {{count}} account(s).",
+    "filters": {
+      "classification": "Classification",
+      "currentSubgroup": "Current Subgroup",
+      "search": "Search",
+      "searchPlaceholder": "Code or name",
+      "all": "All"
+    },
+    "bulk": {
+      "selectClassificationFirst": "Select one classification first",
+      "assignSubgroup": "Assign {{classification}} subgroup",
+      "applyToSelected": "Apply to Selected"
+    },
+    "columns": {
+      "select": "Sel",
+      "code": "Code",
+      "account": "Account",
+      "classification": "Classification",
+      "subgroup": "Subgroup"
+    },
+    "subgroups": {
+      "clear": "(Clear)",
+      "none": "(none)",
+      "sales": "Sales",
+      "otherRevenue": "Other Revenue",
+      "costOfSales": "Cost of Sales",
+      "operatingExpenses": "Operating Expenses",
+      "otherExpenses": "Other Expenses",
+      "retainedEarnings": "Retained Earnings",
+      "contributedCapital": "Contributed Capital",
+      "reserves": "Reserves"
+    },
+    "loadingAccounts": "Loading accounts...",
+    "noAccountsFound": "No accounts found for this filter.",
+    "unassigned": "Unassigned",
+    "modified": "Modified",
+    "errors": {
+      "loadFailed": "Failed to load accounts",
+      "selectAtLeastOne": "Select at least one account to apply subgroup changes.",
+      "singleClassification": "Bulk assign requires same classification selection (or apply a classification filter).",
+      "chooseSubgroup": "Choose a subgroup value before applying.",
+      "multipleClassifications": "Selected accounts contain multiple classifications. Narrow selection first.",
+      "noPendingChanges": "No pending subgroup changes to save.",
+      "saveFailed": "Failed to save subgroup updates"
+    },
+    "classificationOptions": {
+      "all": "All (Revenue + Expense + Equity)",
+      "revenue": "Revenue",
+      "expense": "Expense",
+      "equity": "Equity"
+    },
+    "scope": {
+      "eligible": "eligible"
+    },
+    "summary": {
+      "none": "0 accounts in {{scope}} scope",
+      "taggedAs": "{{tagged}} of {{total}} {{scope}} accounts tagged as {{subgroup}}",
+      "unassigned": "{{count}} of {{total}} {{scope}} accounts are unassigned",
+      "tagged": "{{count}} of {{total}} {{scope}} accounts are tagged"
+    },
+    "accounts": "account(s)",
+    "selected": "Selected",
+    "pendingChanges": "Pending changes",
+    "saving": "Saving...",
+    "confirmTitle": "Confirm Save",
+    "confirmBody": "Update {{count}} account(s) with new subgroup assignments?",
+    "cancel": "Cancel",
+    "confirmYes": "Yes, Update",
+    "prepared": "Prepared subgroup update for {{count}} account(s)."
   }
 }

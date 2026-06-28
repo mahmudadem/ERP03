@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Search, Plus } from 'lucide-react';
 import { CurrencyDTO } from '../../../../../api/accountingApi';
 
@@ -13,6 +14,7 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
   onClose,
   onSelect
 }) => {
+  const { t } = useTranslation('common');
   const [search, setSearch] = useState('');
 
   const filtered = currencies.filter(c => 
@@ -30,10 +32,10 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
         <div className="px-6 py-4 border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between bg-gray-50 dark:bg-gray-800">
           <div>
             <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-              Add New Currency
+              {t('currencySettings.actions.addNew', { defaultValue: 'Add New Currency' })}
             </h3>
             <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)]">
-              Enable additional currencies for your company transactions.
+              {t('currencySettings.available.subtitle', { defaultValue: 'Enable additional currencies for your company transactions.' })}
             </p>
           </div>
           <button 
@@ -50,7 +52,7 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               type="text"
-              placeholder="Search by currency code or name..."
+              placeholder={t('currencySettings.available.searchPlaceholder', { defaultValue: 'Search by currency code or name...' })}
               value={search}
               onChange={e => setSearch(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 bg-gray-50 dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
@@ -89,8 +91,12 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
               <div className="w-12 h-12 bg-gray-50 dark:bg-gray-800 rounded-lg flex items-center justify-center mb-4">
                 <Search size={24} className="text-gray-300" />
               </div>
-              <p className="text-gray-900 dark:text-[var(--color-text-primary)] font-bold">No matches found</p>
-              <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">Try a different currency code or name.</p>
+              <p className="text-gray-900 dark:text-[var(--color-text-primary)] font-bold">
+                {t('currencySettings.available.noMatches', { defaultValue: 'No matches found' })}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-[var(--color-text-secondary)] mt-1">
+                {t('currencySettings.available.noMatchesHint', { defaultValue: 'Try a different currency code or name.' })}
+              </p>
             </div>
           )}
         </div>
@@ -101,7 +107,7 @@ export const AvailableCurrenciesModal: React.FC<AvailableCurrenciesModalProps> =
             onClick={onClose}
             className="px-6 py-2 text-sm font-bold text-gray-500 hover:text-gray-700 dark:hover:text-gray-300 transition-colors"
           >
-            Cancel
+            {t('common.cancel', { defaultValue: 'Cancel' })}
           </button>
         </div>
       </div>

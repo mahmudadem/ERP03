@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { useTranslation } from 'react-i18next';
 import { ArrowRight, Save, TrendingUp, AlertTriangle, CheckCircle, Lightbulb } from 'lucide-react';
 import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi } from '../../../../../api/accountingApi';
@@ -12,6 +13,7 @@ interface PricingEntryFormProps {
 }
 
 export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurrencies, baseCurrency, onSuccess }) => {
+  const { t } = useTranslation('common');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState(baseCurrency);
   const [rate, setRate] = useState('');
@@ -134,7 +136,12 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
     setSaving(true);
     try {
       await accountingApi.saveExchangeRate(fromCurr, toCurr, rateValue, dateValue);
-      errorHandler.showSuccess(`Rate updated: 1 ${fromCurr} = ${rateValue} ${toCurr}`);
+      errorHandler.showSuccess(t('currencySettings.messages.rateUpdated', {
+        from: fromCurr,
+        to: toCurr,
+        rate: rateValue,
+        defaultValue: 'Rate updated: 1 {{from}} = {{rate}} {{to}}',
+      }));
       setRate('');
       setDate(() => {
         const now = new Date();
@@ -143,7 +150,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
       setDeviation(null);
       onSuccess();
     } catch (err: any) {
-      errorHandler.showError(err.message || 'Failed to save rate');
+      errorHandler.showError(err.message || t('currencySettings.messages.rateSaveFailed', { defaultValue: 'Failed to save rate' }));
     } finally {
       setSaving(false);
     }
@@ -170,19 +177,21 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
     <div className="bg-white dark:bg-[var(--color-bg-tertiary)] border border-gray-200 dark:border-[var(--color-border)] rounded-xl p-6 shadow-sm">
       <h3 className="text-sm font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-6 flex items-center gap-2">
         <TrendingUp size={16} className="text-indigo-600" />
-        Manual Rate Entry
+        {t('currencySettings.manualRateEntry', { defaultValue: 'Manual Rate Entry' })}
       </h3>
       <form onSubmit={handleSubmit} className="space-y-4">
         {/* Row 1: Currency Selection */}
         <div className="grid grid-cols-1 md:grid-cols-7 items-end gap-3">
           <div className="md:col-span-3">
-            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">From</label>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
+              {t('currencySettings.from', { defaultValue: 'From' })}
+            </label>
             <select 
               value={from} 
               onChange={e => setFrom(e.target.value)}
               className="w-full px-3 py-2 border border-gray-200 dark:border-[var(--color-border)] bg-gray-50 dark:bg-[var(--color-bg-secondary)] rounded-lg text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition-all"
             >
-              <option value="">Select...</option>
+              <option value="">{t('common.select', { defaultValue: 'Select...' })}</option>
               {allCodes.map(c => (
                 <option key={c} value={c}>{c}</option>
               ))}
@@ -194,7 +203,9 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
           </div>
 
           <div className="md:col-span-3">
-            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">To</label>
+            <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
+              {t('currencySettings.to', { defaultValue: 'To' })}
+            </label>
             <select 
               value={to} 
               onChange={e => setTo(e.target.value)}
@@ -211,7 +222,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           <div>
             <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
-              Effective Date
+              {t('currencySettings.effectiveDate', { defaultValue: 'Effective Date' })}
             </label>
             <DatePicker 
               value={date} 
@@ -222,7 +233,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
 
           <div>
             <label className="block text-[10px] uppercase tracking-wider font-bold text-gray-500 mb-1.5">
-              Rate
+              {t('currencySettings.rate', { defaultValue: 'Rate' })}
             </label>
             <div className="relative">
               <input 
@@ -239,7 +250,14 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
             {suggestedRate && (
               <div className="mt-1.5 flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400">
                 <Lightbulb size={12} />
-                <span>Suggested inverse: {suggestedRate.toFixed(4)} (from {to}→{from})</span>
+                <span>
+                  {t('currencySettings.suggestedInverse', {
+                    rate: suggestedRate.toFixed(4),
+                    from: to,
+                    to: from,
+                    defaultValue: 'Suggested inverse: {{rate}} (from {{from}}→{{to}})',
+                  })}
+                </span>
               </div>
             )}
           </div>
@@ -261,14 +279,14 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
               <p className={`text-sm font-bold ${colors.text}`}>
                 1 {from} = {parseFloat(rate).toFixed(4)} {to}
                 <span className="ml-3 text-xs font-normal opacity-70">
-                  (Effective: {new Date(date).toLocaleDateString()})
+                  ({t('currencySettings.effectiveInline', { date: new Date(date).toLocaleDateString(), defaultValue: 'Effective: {{date}}' })})
                 </span>
               </p>
             </div>
             {deviation && (
               <span className={`text-xs font-bold ${colors.text} opacity-80`}>
                 {deviation.percentage >= 50 ? '⚠️ ' : deviation.percentage >= 10 ? '⚠ ' : '✓ '}
-                {deviation.percentage.toFixed(1)}% change
+                {t('currencySettings.changePercent', { percent: deviation.percentage.toFixed(1), defaultValue: '{{percent}}% change' })}
               </span>
             )}
           </div>
@@ -281,7 +299,7 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
             className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-bold disabled:opacity-50 disabled:grayscale shadow-md hover:shadow-lg active:scale-95"
           >
             {saving ? <Spinner size="sm" /> : <Save size={16} />}
-            <span>Update Reference Rate</span>
+            <span>{t('currencySettings.actions.updateReferenceRate', { defaultValue: 'Update Reference Rate' })}</span>
           </button>
         </div>
       </form>
@@ -296,28 +314,31 @@ export const PricingEntryForm: React.FC<PricingEntryFormProps> = ({ enabledCurre
               </div>
               <div className="flex-1">
                 <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-2">
-                  Rate Deviation Warning
+                  {t('currencySettings.deviation.title', { defaultValue: 'Rate Deviation Warning' })}
                 </h3>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
-                  The rate you entered <strong>({pendingSave?.rate.toFixed(4)})</strong> differs by{' '}
-                  <strong className="text-yellow-600">{deviation.percentage.toFixed(1)}%</strong> from the most recent rate.
+                  {t('currencySettings.deviation.messageBefore', { defaultValue: 'The rate you entered' })}{' '}
+                  <strong>({pendingSave?.rate.toFixed(4)})</strong>{' '}
+                  {t('currencySettings.deviation.messageAfterRate', { defaultValue: 'differs by' })}{' '}
+                  <strong className="text-yellow-600">{deviation.percentage.toFixed(1)}%</strong>{' '}
+                  {t('currencySettings.deviation.messageAfterPercent', { defaultValue: 'from the most recent rate.' })}
                 </p>
                 <p className="text-sm text-gray-600 dark:text-gray-300 mb-6">
-                  This could be a typing mistake. Are you sure you want to save this rate?
+                  {t('currencySettings.deviation.confirmText', { defaultValue: 'This could be a typing mistake. Are you sure you want to save this rate?' })}
                 </p>
                 <div className="flex gap-3 justify-end">
                   <button
                     onClick={handleCancelSave}
                     className="px-4 py-2 bg-gray-200 dark:bg-gray-700 text-gray-800 dark:text-gray-200 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-600 transition-all font-medium"
                   >
-                    Cancel
+                    {t('common.cancel', { defaultValue: 'Cancel' })}
                   </button>
                   <button
                     onClick={handleConfirmSave}
                     className="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-all font-medium flex items-center gap-2"
                   >
                     <Save size={16} />
-                    Save Anyway
+                    {t('currencySettings.actions.saveAnyway', { defaultValue: 'Save Anyway' })}
                   </button>
                 </div>
               </div>

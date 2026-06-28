@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Check, Info } from 'lucide-react';
 import { Spinner } from '../../../../../components/ui/Spinner';
 import { accountingApi, CurrencyDTO } from '../../../../../api/accountingApi';
@@ -17,12 +18,13 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
   onClose, 
   onEnabled 
 }) => {
+  const { t } = useTranslation('common');
   const [rate, setRate] = useState<string>('');
   const [saving, setSaving] = useState(false);
 
   const handleEnable = async () => {
     if (!rate || parseFloat(rate) <= 0) {
-      errorHandler.showError('Please enter a valid exchange rate');
+      errorHandler.showError(t('currencySettings.messages.invalidRate', { defaultValue: 'Please enter a valid exchange rate' }));
       return;
     }
 
@@ -36,11 +38,11 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
           return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
         })()
       );
-      errorHandler.showSuccess(`${currency.code} enabled successfully!`);
+      errorHandler.showSuccess(t('currencySettings.messages.enabled', { currency: currency.code, defaultValue: '{{currency}} enabled successfully!' }));
       onEnabled();
       onClose();
     } catch (error: any) {
-      errorHandler.showError(error.message || 'Failed to enable currency');
+      errorHandler.showError(error.message || t('currencySettings.messages.enableFailed', { defaultValue: 'Failed to enable currency' }));
     } finally {
       setSaving(false);
     }
@@ -54,7 +56,7 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
       >
         <div className="px-6 py-4 border-b border-gray-200 dark:border-[var(--color-border)] flex items-center justify-between bg-gray-50 dark:bg-gray-800">
           <h3 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">
-            Enable {currency.code}
+            {t('currencySettings.enable.title', { currency: currency.code, defaultValue: 'Enable {{currency}}' })}
           </h3>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-lg transition-colors">
             <X size={18} className="text-gray-500" />
@@ -66,15 +68,16 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
             <div className="flex items-start gap-3">
               <Info size={18} className="text-blue-600 dark:text-blue-400 mt-0.5" />
               <p className="text-xs text-blue-800 dark:text-blue-300 leading-relaxed font-medium">
-                An initial exchange rate is required to enable <span className="font-bold underline">{currency.code}</span>. 
-                This will be used as the reference rate for your accounting operations.
+                {t('currencySettings.enable.infoBefore', { defaultValue: 'An initial exchange rate is required to enable' })}{' '}
+                <span className="font-bold underline">{currency.code}</span>.{' '}
+                {t('currencySettings.enable.infoAfter', { defaultValue: 'This will be used as the reference rate for your accounting operations.' })}
               </p>
             </div>
           </div>
 
           <div>
             <label className="block text-xs font-bold text-gray-500 mb-3 uppercase tracking-wider">
-              Initial Exchange Rate
+              {t('currencySettings.enable.initialRate', { defaultValue: 'Initial Exchange Rate' })}
             </label>
             <div className="flex items-center gap-4">
               <div className="flex-none px-4 py-2.5 bg-gray-100 dark:bg-gray-800 rounded-lg font-bold text-gray-900 dark:text-white border border-gray-200 dark:border-[var(--color-border)] text-sm">
@@ -103,7 +106,7 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
             onClick={onClose}
             className="px-4 py-2 text-sm font-bold text-gray-500 hover:text-gray-700 transition-colors"
           >
-            Cancel
+            {t('common.cancel', { defaultValue: 'Cancel' })}
           </button>
           <button
             onClick={handleEnable}
@@ -113,12 +116,12 @@ export const EnableCurrencyModal: React.FC<EnableCurrencyModalProps> = ({
             {saving ? (
               <>
                 <Spinner size="sm" />
-                <span>Enabling...</span>
+                <span>{t('currencySettings.enable.enabling', { defaultValue: 'Enabling...' })}</span>
               </>
             ) : (
               <>
                 <Check size={16} />
-                <span>Enable Currency</span>
+                <span>{t('currencySettings.enable.submit', { defaultValue: 'Enable Currency' })}</span>
               </>
             )}
           </button>

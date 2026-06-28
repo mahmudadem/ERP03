@@ -71,7 +71,8 @@
     "totals": "Toplamlar",
     "unbalanced": "DENGESİZ",
     "loadError": "Rapor yüklenemedi, lütfen tekrar deneyin.",
-    "generatedOn": "{{date}} tarihinde üretildi"
+    "generatedOn": "{{date}} tarihinde üretildi",
+    "excludeZero": "Sıfır Bakiyeleri Hariç Tut"
   },
   "profitLoss": {
     "title": "Gelir/Gider Tablosu",
@@ -227,7 +228,19 @@
     "description": "Açıklama",
     "amount": "Tutar",
     "days": "Gün",
-    "totals": "Toplamlar"
+    "totals": "Toplamlar",
+    "title": "Yaşlandırma Raporu",
+    "subtitle": "Alacak ve borç bakiyelerini yaş gruplarına göre izleyin.",
+    "asOfDate": "Tarih itibarıyla",
+    "includeZeroBalance": "Sıfır bakiyeli hesapları dahil et",
+    "loading": "Rapor yükleniyor...",
+    "empty": "Açık bakiye bulunamadı",
+    "emptyDesc": "Sonuçları görmek için filtreleri veya tarih aralığını değiştirin.",
+    "noTransactions": "İşlem detayı yok.",
+    "modeAutoInfo": "Otomatik mod: rapor yalnızca kayıt yapılabilir AR/AP tarzı hesapları içerir. Nakit ve üst/grup hesaplar tasarım gereği hariçtir. Belirli bir hesap veya grubu analiz etmek için Hesap filtresini kullanın.",
+    "modeManualInfo": "Manuel mod: rapor seçili hesap ve varsa alt hesapları ile sınırlıdır. Tam AP/AR yapısını bildiğinizde kullanın.",
+    "type": "Rapor Türü",
+    "targetAccount": "İsteğe bağlı: belirli bir hesabı hedefle"
   },
   "consolidated": {
     "selectGroup": "Grup seçin",
@@ -236,7 +249,11 @@
     "debit": "Borç ({{currency}})",
     "credit": "Alacak ({{currency}})",
     "balance": "Bakiye",
-    "totals": "Toplamlar"
+    "totals": "Toplamlar",
+    "title": "Konsolide Mizan",
+    "subtitle": "Şirketler genelinde grup seviyesinde mizan",
+    "empty": "Seçilen parametreler için konsolide veri yok.",
+    "loadError": "Konsolide mizan yüklenemedi."
   },
   "bankRec": {
     "selectAccount": "Banka hesabı seçin",
@@ -258,7 +275,18 @@
       "unmatched": "Eşleşmedi",
       "auto_matched": "Oto eşleşti",
       "matched": "Eşleşti"
-    }
+    },
+    "title": "Banka Mutabakatı",
+    "subtitle": "Banka ekstrelerini defter kayıtlarıyla mutabıklaştırın",
+    "chooseFile": "OFX/CSV seç",
+    "completeHint": "Tamamlamadan önce tüm ekstre satırları eşleşmiş olmalıdır.",
+    "loading": "Mutabakat verileri yükleniyor...",
+    "importTitle": "Banka Ekstresi İçe Aktar",
+    "importPrompt": "Mutabakata başlamak için seçili hesap için banka ekstresi dosyası yükleyin.",
+    "supportedFormats": "Desteklenen biçimler:",
+    "supportedOfx": ".OFX veya .QFX (banka dışa aktarımı)",
+    "supportedCsv": ".CSV (tarih, açıklama, tutar, referans, bakiye)",
+    "importedOn": "İçe aktarıldı: {{date}}"
   },
   "budget": {
     "fiscalYearId": "Mali Yıl ID",
@@ -296,17 +324,29 @@
       "oct": "Eki",
       "nov": "Kas",
       "dec": "Ara"
-    }
+    },
+    "allCostCenters": "Tüm maliyet merkezleri"
   },
   "budgetVsActual": {
-    "selectBudget": "Bütçe Seçin",
+    "selectBudget": "Önce bütçe seçin.",
     "option": "{{name}} (sürüm {{version}}) - {{status}}",
     "account": "Hesap",
     "budget": "Bütçe",
     "actual": "Gerçekleşen",
-    "variance": "Sapma",
-    "variancePct": "Sapma %",
-    "costCenter": "MB {{id}}"
+    "variance": "Fark",
+    "variancePct": "Fark %",
+    "costCenter": "MB {{id}}",
+    "title": "Bütçe ve Gerçekleşen",
+    "subtitle": "Onaylı bütçeleri seçili dönemdeki gerçekleşen kayıtlarla karşılaştırın",
+    "loading": "Yükleniyor...",
+    "missingFiscalYear": "Seçili bütçe için mali yıl bulunamadı.",
+    "invalidRange": "Tarih aralığı seçili mali yılın dışında.",
+    "loadError": "Rapor yüklenemedi.",
+    "monthlyBreakdown": "Aylık dağılım",
+    "month": "Ay",
+    "underBudget": "Bütçe altında",
+    "overBudget": "Bütçe üstünde",
+    "onBudget": "Bütçeye uygun"
   },
   "costCenters": {
     "title": "Maliyet Merkezleri",
@@ -357,8 +397,8 @@
     }
   },
   "journal": {
-    "title": "Yevmiye / Günlük",
-    "subtitle": "Fişler kronolojik olarak tüm satırlarıyla listelenir.",
+    "title": "Yevmiye / Günlük Defter",
+    "subtitle": "Tüm fiş kayıtlarının kronolojik kaydı",
     "from": "Başlangıç",
     "to": "Bitiş",
     "voucherType": "Fiş Türü",
@@ -370,13 +410,52 @@
     "debit": "Borç",
     "credit": "Alacak",
     "period": "{{from}} - {{to}} dönemi",
-    "empty": "Bu dönemde fiş yok.",
+    "empty": "Seçilen ölçütler için yevmiye kaydı bulunamadı.",
     "dateLabel": "Tarih: {{date}}",
     "voucherLabel": "Fiş:",
     "type": "Tür",
     "descriptionLabel": "Açıklama",
     "debitTotal": "Toplam Borç",
-    "creditTotal": "Toplam Alacak"
+    "creditTotal": "Toplam Alacak",
+    "processing": "İşleniyor...",
+    "grandTotal": "Genel Toplam",
+    "balanced": "Dengeli",
+    "voucherCount": "{{count}} fiş",
+    "filters": {
+      "period": "Dönem",
+      "type": "Tür",
+      "form": "Form",
+      "currency": "Para Birimi",
+      "status": "Durum",
+      "voucherType": "Fiş Türü",
+      "voucherForm": "Fiş Formu",
+      "allForms": "Tüm Formlar",
+      "allCurrencies": "Tüm Para Birimleri",
+      "generateReport": "Raporu Oluştur"
+    },
+    "columns": {
+      "account": "Hesap",
+      "description": "Açıklama",
+      "debit": "Borç",
+      "credit": "Alacak"
+    },
+    "voucherTypes": {
+      "allTypes": "Tüm Türler",
+      "journalEntry": "Yevmiye Fişi",
+      "paymentVoucher": "Ödeme Fişi",
+      "receiptVoucher": "Tahsilat Fişi",
+      "openingBalance": "Açılış Bakiyesi",
+      "reversal": "Ters Kayıt",
+      "fxRevaluation": "Kur Değerleme"
+    },
+    "statuses": {
+      "allStatuses": "Tüm Durumlar",
+      "draft": "Taslak",
+      "pending": "Bekliyor",
+      "approved": "Onaylandı",
+      "rejected": "Reddedildi",
+      "cancelled": "İptal Edildi"
+    }
   },
   "voucherList": {
     "titleAll": "Tüm Fişler",
@@ -466,7 +545,8 @@
     "awaitingApproval": "Onayımı Bekleyenler",
     "awaitingCustody": "Zimmet Doğrulaması Bekleyenler",
     "noneApproval": "Hepsi tamam! Onay bekleyen fiş yok.",
-    "noneCustody": "Onayınızı bekleyen fiziksel zimmet yok."
+    "noneCustody": "Onayınızı bekleyen fiziksel zimmet yok.",
+    "awaitingSourceDocs": "Kaynak Belgeler"
   },
   "settings": {
     "title": "Muhasebe Ayarları",
@@ -699,7 +779,15 @@
     "balanceBase": "Bakiye (Baz)",
     "totals": "Toplamlar",
     "closingBalance": "Kapanış Bakiyesi",
-    "openVoucher": "Fişi aç"
+    "openVoucher": "Fişi aç",
+    "selectAccountPlaceholder": "Analiz edilecek hesabı seçin...",
+    "costCenter": "Maliyet Merkezi",
+    "optional": "isteğe bağlı",
+    "allCostCentersPlaceholder": "Tüm maliyet merkezleri...",
+    "currency": "Para Birimi",
+    "allCurrencies": "Tüm Para Birimleri",
+    "options": "Seçenekler",
+    "executeAnalysis": "Analizi Çalıştır"
   },
   "voucherTable": {
     "columns": {
@@ -1013,5 +1101,189 @@
     },
     "baseCurrencyParity": "Temel Para Birimi Paritesi",
     "baseCurrencyParityFormat": "1 {{currency}} = 1.0000 {{baseCurrency}} (Temel Para Birimi Paritesi)"
+  },
+  "accountingDashboard": {
+    "title": "Muhasebe Paneli",
+    "subtitle": "Finansal operasyonlarınız ve gereken işlemler için anlık görünüm.",
+    "refresh": "Yenile",
+    "totalVouchers": "Toplam Fiş",
+    "vsLastMonth": "Geçen aya göre {{pct}}%",
+    "cashOnHand": "Nakit ve Banka",
+    "cashHint": "Nakit/banka hesapları genelinde",
+    "recentJournalEntries": "Son Yevmiye Kayıtları",
+    "viewLedger": "Defteri Gör",
+    "openVoucher": "{{voucherNo}} fişini aç",
+    "noVouchersYet": "Henüz fiş yok.",
+    "financialReports": "Finansal Raporlar",
+    "financialReportsHint": "Kar/Zarar, Bilanço ve Mizan raporlarına erişin.",
+    "newVoucher": "Yeni Fiş",
+    "unbalancedDrafts": "{{count}} dengesiz taslak fiş ilgilenmeyi bekliyor.",
+    "currentPeriodStatus": "Geçerli dönem durumu",
+    "reports": {
+      "trialBalance": "Mizan",
+      "balanceSheet": "Bilanço",
+      "profitLoss": "Kar ve Zarar",
+      "tradingAccount": "Ticaret Hesabı",
+      "accountStatement": "Hesap Ekstresi",
+      "agingReport": "Yaşlandırma Raporu"
+    }
+  },
+  "accountsList": {
+    "filter": "Filtre",
+    "actions": {
+      "expandAll": "Tümünü Aç",
+      "collapseAll": "Tümünü Kapat",
+      "newAccount": "Yeni Hesap"
+    },
+    "columns": {
+      "accountCodeName": "Hesap Kodu ve Adı",
+      "class": "Sınıf",
+      "currency": "PB",
+      "balance": "Bakiye"
+    },
+    "classes": {
+      "all": "Tüm Sınıflar",
+      "asset": "Varlık",
+      "liability": "Yükümlülük",
+      "equity": "Özkaynak",
+      "revenue": "Gelir",
+      "expense": "Gider"
+    },
+    "parentWarning": {
+      "title": "Geçersiz Üst Hesap Seçimi",
+      "attempt": "Yeni hesabı şu hesabın altında oluşturmaya çalışıyorsunuz:",
+      "ruleTitle": "Muhasebe Kuralı İhlali",
+      "accountPrefix": "Hesap",
+      "postingRule": "bir Kayıt Hesabıdır (işlem seviyesi). Profesyonel hesap planında yalnızca Üst Hesapların alt hesabı olabilir.",
+      "instructionLabel": "Talimat:",
+      "instruction": "Hesapları doğru düzenlemek için oluşturma düğmesine basmadan önce bir Üst Hesap (Özet Hesap) seçin veya önce kök seviyede hesap oluşturun.",
+      "confirm": "Anladım"
+    },
+    "loading": "Hesaplar yükleniyor...",
+    "roles": {
+      "header": "Başlık",
+      "posting": "Kayıt"
+    },
+    "searchPlaceholder": "Hesap kodu veya adına göre ara..."
+  },
+  "tradingAccount": {
+    "title": "Ticaret Hesabı (Brüt Kar)",
+    "subtitle": "Gelirler ve doğrudan maliyetler",
+    "netSales": "Net Satışlar",
+    "costOfSales": "Satışların Maliyeti",
+    "grossProfit": "Brüt Kar",
+    "gpMargin": "Brüt Kar Marjı",
+    "periodicFormula": "Dönemsel Ticaret Formülü",
+    "salesBreakdown": "Satış Dağılımı",
+    "netPurchasesBreakdown": "Net Alış Dağılımı",
+    "costOfSalesBreakdown": "Satış Maliyeti Dağılımı",
+    "netPurchases": "Net Alışlar",
+    "openingInventory": "Açılış Stoku",
+    "closingInventory": "Kapanış Stoku",
+    "totalNetSales": "Toplam Net Satış",
+    "totalCostOfSales": "Toplam Satış Maliyeti",
+    "summary": "Özet",
+    "grossProfitMarginPct": "Brüt Kar Marjı %",
+    "section": "Bölüm",
+    "account": "Hesap",
+    "amount": "Tutar",
+    "periodLine": "Dönem: {{from}} - {{to}}",
+    "sales": "Satışlar"
+  },
+  "costCenterSummary": {
+    "title": "Maliyet Merkezi Özeti",
+    "subtitle": "Hesapların maliyet merkezine göre dağılımı",
+    "costCenter": "Maliyet Merkezi",
+    "selectCostCenter": "Maliyet merkezi seç...",
+    "fromDate": "Başlangıç Tarihi",
+    "toDate": "Bitiş Tarihi",
+    "executeAnalysis": "Analizi Çalıştır",
+    "accountCode": "Hesap Kodu",
+    "accountName": "Hesap Adı",
+    "classification": "Sınıflandırma",
+    "totalDebit": "Toplam Borç",
+    "totalCredit": "Toplam Alacak",
+    "netBalance": "Net Bakiye",
+    "processing": "İşleniyor...",
+    "period": "Dönem",
+    "entries": "Kayıtlar",
+    "noEntries": "Kayıt bulunamadı",
+    "noEntriesHint": "Seçili maliyet merkezi ve tarih aralığıyla eşleşen defter kaydı yok."
+  },
+  "subgroupTagging": {
+    "title": "Alt Grup Etiketleme Aracı",
+    "subtitle": "Ticaret Hesabı ve yapılandırılmış Kar/Zarar raporları için hesapları etiketleyin.",
+    "partialFailure": "Bazı güncellemeler başarısız oldu:",
+    "missingAccountId": "(accountId eksik)",
+    "selectAll": "Tümünü Seç",
+    "updated": "{{count}} hesap güncellendi.",
+    "filters": {
+      "classification": "Sınıflandırma",
+      "currentSubgroup": "Geçerli Alt Grup",
+      "search": "Ara",
+      "searchPlaceholder": "Kod veya ad",
+      "all": "Tümü"
+    },
+    "bulk": {
+      "selectClassificationFirst": "Önce bir sınıflandırma seçin",
+      "assignSubgroup": "{{classification}} alt grubunu ata",
+      "applyToSelected": "Seçililere Uygula"
+    },
+    "columns": {
+      "select": "Seç",
+      "code": "Kod",
+      "account": "Hesap",
+      "classification": "Sınıflandırma",
+      "subgroup": "Alt Grup"
+    },
+    "subgroups": {
+      "clear": "(Temizle)",
+      "none": "(yok)",
+      "sales": "Satışlar",
+      "otherRevenue": "Diğer Gelirler",
+      "costOfSales": "Satışların Maliyeti",
+      "operatingExpenses": "Faaliyet Giderleri",
+      "otherExpenses": "Diğer Giderler",
+      "retainedEarnings": "Geçmiş Yıl Karları",
+      "contributedCapital": "Sermaye",
+      "reserves": "Yedekler"
+    },
+    "loadingAccounts": "Hesaplar yükleniyor...",
+    "noAccountsFound": "Bu filtre için hesap bulunamadı.",
+    "unassigned": "Atanmamış",
+    "modified": "Değiştirildi",
+    "errors": {
+      "loadFailed": "Hesaplar yüklenemedi",
+      "selectAtLeastOne": "Alt grup değişikliklerini uygulamak için en az bir hesap seçin.",
+      "singleClassification": "Toplu atama aynı sınıflandırma seçimini veya sınıflandırma filtresini gerektirir.",
+      "chooseSubgroup": "Uygulamadan önce alt grup değeri seçin.",
+      "multipleClassifications": "Seçili hesaplar birden fazla sınıflandırma içeriyor. Önce seçimi daraltın.",
+      "noPendingChanges": "Kaydedilecek bekleyen alt grup değişikliği yok.",
+      "saveFailed": "Alt grup güncellemeleri kaydedilemedi"
+    },
+    "classificationOptions": {
+      "all": "Tümü (Gelir + Gider + Özkaynak)",
+      "revenue": "Gelir",
+      "expense": "Gider",
+      "equity": "Özkaynak"
+    },
+    "scope": {
+      "eligible": "uygun"
+    },
+    "summary": {
+      "none": "{{scope}} kapsamındaki 0 hesap",
+      "taggedAs": "{{tagged}} / {{total}} {{scope}} hesap {{subgroup}} olarak etiketlendi",
+      "unassigned": "{{count}} / {{total}} {{scope}} hesap atanmamış",
+      "tagged": "{{count}} / {{total}} {{scope}} hesap etiketlendi"
+    },
+    "accounts": "hesap",
+    "selected": "Seçili",
+    "pendingChanges": "Bekleyen değişiklikler",
+    "saving": "Kaydediliyor...",
+    "confirmTitle": "Kaydı Onayla",
+    "confirmBody": "{{count}} hesabı yeni alt grup atamalarıyla güncelle?",
+    "cancel": "İptal",
+    "confirmYes": "Evet, Güncelle",
+    "prepared": "{{count}} hesap için alt grup güncellemesi hazırlandı."
   }
 }

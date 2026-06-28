@@ -22,7 +22,7 @@ export default function AccountsListPage() {
     const [searchQuery, setSearchQuery] = useState('');
     const [showPostingWarning, setShowPostingWarning] = useState(false);
     const [warningParentName, setWarningParentName] = useState('');
-    const [classFilter, setClassFilter] = useState<string>('All Classes');
+    const [classFilter, setClassFilter] = useState<string>('ALL');
     const [drilldownAccount, setDrilldownAccount] = useState<Account | null>(null);
 
     const toggleCollapse = (id: string, e: React.MouseEvent) => {
@@ -187,7 +187,7 @@ export default function AccountsListPage() {
     
     // Search filter logic
     const filterTree = (nodes: any[], query: string, classificationFilter: string): any[] => {
-        if (!query && classificationFilter === 'All Classes') return nodes;
+        if (!query && classificationFilter === 'ALL') return nodes;
         const search = query.toLowerCase();
         
         return nodes.map(node => {
@@ -200,7 +200,7 @@ export default function AccountsListPage() {
             }
 
             let matchesClass = true;
-            if (classificationFilter !== 'All Classes') {
+            if (classificationFilter !== 'ALL') {
                 matchesClass = (node.classification || node.type || '').toUpperCase() === classificationFilter.toUpperCase();
             }
             
@@ -247,6 +247,13 @@ export default function AccountsListPage() {
     const getRoleBadge = (role: AccountRole | string) => {
         if (role === 'HEADER') return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-800"><Folder className="w-3 h-3 mr-1"/> {t('accountsList.roles.header', { defaultValue: 'Header' })}</span>;
         return <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-cyan-100 text-cyan-800"><FileText className="w-3 h-3 mr-1"/> {t('accountsList.roles.posting', { defaultValue: 'Posting' })}</span>;
+    };
+
+    const accountRoleLabel = (role?: string, hasChildren = false) => {
+        const effectiveRole = role || (hasChildren ? 'HEADER' : 'POSTING');
+        if (effectiveRole === 'HEADER') return t('accountsList.roles.header', { defaultValue: 'Header' });
+        if (effectiveRole === 'POSTING') return t('accountsList.roles.posting', { defaultValue: 'Posting' });
+        return effectiveRole;
     };
 
     const getEffectiveCurrency = (account: any): { code: string; isInherited: boolean; type: CurrencyPolicy } => {
@@ -342,20 +349,27 @@ export default function AccountsListPage() {
                 <div className="px-5 pb-4 flex items-center gap-3">
                     <div className="flex items-center text-gray-400 text-xs font-bold tracking-wider">
                         <Sliders className="w-4 h-4 mr-1.5" />
-                        FILTER:
+                        {t('accountsList.filter', { defaultValue: 'Filter' })}:
                     </div>
                     <div className="flex gap-1.5">
-                        {['All Classes', 'Asset', 'Liability', 'Equity', 'Revenue', 'Expense'].map(cls => (
+                        {[
+                            { value: 'ALL', label: t('accountsList.classes.all', { defaultValue: 'All Classes' }) },
+                            { value: 'ASSET', label: t('accountsList.classes.asset', { defaultValue: 'Asset' }) },
+                            { value: 'LIABILITY', label: t('accountsList.classes.liability', { defaultValue: 'Liability' }) },
+                            { value: 'EQUITY', label: t('accountsList.classes.equity', { defaultValue: 'Equity' }) },
+                            { value: 'REVENUE', label: t('accountsList.classes.revenue', { defaultValue: 'Revenue' }) },
+                            { value: 'EXPENSE', label: t('accountsList.classes.expense', { defaultValue: 'Expense' }) },
+                        ].map(cls => (
                             <button
-                                key={cls}
-                                onClick={() => setClassFilter(cls)}
+                                key={cls.value}
+                                onClick={() => setClassFilter(cls.value)}
                                 className={`px-3 py-1 text-xs font-bold rounded-md transition-colors ${
-                                    classFilter === cls 
+                                    classFilter === cls.value
                                         ? 'bg-gray-100 text-gray-900 border border-gray-200' 
                                         : 'text-gray-500 hover:bg-gray-50 border border-transparent'
                                 }`}
                             >
-                                {cls}
+                                {cls.label}
                             </button>
                         ))}
                     </div>
@@ -363,16 +377,16 @@ export default function AccountsListPage() {
 
                 <div className="grid grid-cols-12 px-6 py-3 border-t border-b border-gray-100 bg-gray-50/50">
                     <div className="col-span-8 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
-                        Account Code & Name
+                        {t('accountsList.columns.accountCodeName', { defaultValue: 'Account Code & Name' })}
                     </div>
                     <div className="col-span-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">
-                        Class
+                        {t('accountsList.columns.class', { defaultValue: 'Class' })}
                     </div>
                     <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">
-                        CCY
+                        {t('accountsList.columns.currency', { defaultValue: 'CCY' })}
                     </div>
                     <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">
-                        Balance SYP
+                        {t('accountsList.columns.balance', { defaultValue: 'Balance' })} SYP
                     </div>
                 </div>
 
@@ -518,7 +532,7 @@ export default function AccountsListPage() {
                                             ? 'bg-gray-100 text-gray-500' 
                                             : 'bg-emerald-50 text-emerald-600'
                                     }`}>
-                                        {account.accountRole || (hasChildren ? 'Header' : 'Posting')}
+                                        {accountRoleLabel(account.accountRole, hasChildren)}
                                     </span>
                                 </div>
 
@@ -581,25 +595,32 @@ export default function AccountsListPage() {
             {/* Posting Account Safety Overlay */}
             <ConfirmDialog
                 isOpen={showPostingWarning}
-                title="Invalid Parent Selection"
+                title={t('accountsList.parentWarning.title', { defaultValue: 'Invalid Parent Selection' })}
                 tone="warning"
                 icon={<AlertCircle size={24} />}
                 message={
                 <div className="space-y-4">
-                    <p>You are attempting to create a new account as a child of <strong className="text-slate-900 italic">"{warningParentName}"</strong>.</p>
+                    <p>
+                        {t('accountsList.parentWarning.attempt', { defaultValue: 'You are attempting to create a new account as a child of' })}{' '}
+                        <strong className="text-slate-900 italic">"{warningParentName}"</strong>.
+                    </p>
                     <div className="bg-amber-100/50 p-4 rounded-xl border border-amber-200">
-                        <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">Accounting Rule Violation</h4>
+                        <h4 className="text-xs font-black text-amber-800 uppercase tracking-widest mb-1">
+                            {t('accountsList.parentWarning.ruleTitle', { defaultValue: 'Accounting Rule Violation' })}
+                        </h4>
                         <p className="text-amber-700 text-xs leading-relaxed">
-                            Account <strong>"{warningParentName}"</strong> is a <span className="underline decoration-2">Posting Account</span> (Transaction level). 
-                            In a professional Chart of Accounts, only <strong>Header Accounts</strong> can have children.
+                            {t('accountsList.parentWarning.accountPrefix', { defaultValue: 'Account' })}{' '}
+                            <strong>"{warningParentName}"</strong>{' '}
+                            {t('accountsList.parentWarning.postingRule', { defaultValue: 'is a Posting Account (transaction level). In a professional Chart of Accounts, only Header Accounts can have children.' })}
                         </p>
                     </div>
                     <p className="text-slate-500 italic text-[11px]">
-                        <strong>Instruction:</strong> To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.
+                        <strong>{t('accountsList.parentWarning.instructionLabel', { defaultValue: 'Instruction:' })}</strong>{' '}
+                        {t('accountsList.parentWarning.instruction', { defaultValue: 'To organize your accounts correctly, please select a Header Account (Summary Account) before clicking the creation button, or create a root-level account first.' })}
                     </p>
                 </div>
                 }
-                confirmLabel="I Understand"
+                confirmLabel={t('accountsList.parentWarning.confirm', { defaultValue: 'I Understand' })}
                 onConfirm={() => setShowPostingWarning(false)}
                 onCancel={() => setShowPostingWarning(false)}
             />

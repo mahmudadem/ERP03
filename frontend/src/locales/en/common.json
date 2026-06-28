@@ -403,14 +403,19 @@
         "noSearchMatches": "No users match your search",
         "noUsersFound": "No users found",
         "adjustSearch": "Try adjusting your search terms",
-        "inviteHint": "Get started by inviting users to your company."
+        "inviteHint": "Get started by inviting users to your company.",
+        "addHint": "Get started by adding existing platform users to your company."
       },
       "confirm": {
         "disableVerb": "disable",
         "enableVerb": "enable",
         "toggleStatus": "Are you sure you want to {{action}} {{email}}?",
         "removeUser": "Are you sure you want to remove {{email}} from the company?"
-      }
+      },
+      "addUser": "Add User",
+      "addExistingUser": "Add Existing User",
+      "addExistingUserHint": "The user must sign up before you can add them.",
+      "adding": "Adding..."
     },
     "roles": {
       "title": "Role Management",
@@ -557,7 +562,8 @@
         "inviteUser": "+ Invite New User",
         "createRole": "+ Create New Role",
         "manageSubscription": "Manage Subscription",
-        "configureModules": "Configure Modules"
+        "configureModules": "Configure Modules",
+        "addUser": "Add User"
       }
     },
     "invoices": {
@@ -3660,12 +3666,14 @@
     "clearFilters": "Clear Filters",
     "close": "Close",
     "create": "Create",
-    "select": "Select",
+    "select": "Select...",
     "confirm": "Confirm",
     "generate": "Generate",
     "empty": "No rows.",
     "processing": "Processing...",
-    "label": "Label"
+    "label": "Label",
+    "refresh": "Refresh",
+    "system": "System"
   },
   "messaging": {
     "whatsapp": {
@@ -4372,5 +4380,240 @@
       "label": "Financial Integration Active",
       "message": "{{module}} is fully integrated with Accounting. All operations create financial/GL postings."
     }
-  }
+  },
+  "taxCodes": {
+    "title": "Tax Codes",
+    "subtitle": "Manage tax rates, account routing, price basis, and purchase tax cost treatment.",
+    "loading": "Loading tax codes...",
+    "empty": "No tax codes found.",
+    "lockText": "This tax code is used in posted documents. Create a new tax code to change tax treatment.",
+    "actions": {
+      "new": "New Tax Code",
+      "create": "Create Tax Code",
+      "update": "Update Tax Code"
+    },
+    "columns": {
+      "code": "Code",
+      "name": "Name",
+      "rate": "Rate",
+      "type": "Type",
+      "scope": "Scope",
+      "priceBasis": "Price Basis",
+      "purchaseTreatment": "Purchase Treatment",
+      "status": "Status",
+      "usage": "Usage",
+      "actions": "Actions"
+    },
+    "fields": {
+      "code": "Code",
+      "name": "Name",
+      "ratePercent": "Rate %",
+      "type": "Type",
+      "scope": "Scope",
+      "active": "Active",
+      "purchaseTaxAccount": "Purchase Tax Account",
+      "salesTaxAccount": "Sales Tax Account",
+      "priceBasis": "Price Basis",
+      "purchaseTaxTreatment": "Purchase Tax Treatment"
+    },
+    "placeholders": {
+      "purchaseTaxAccount": "Select purchase tax account",
+      "salesTaxAccount": "Select sales tax account",
+      "priceBasis": "Select price basis..."
+    },
+    "priceBasis": {
+      "inclusive": "Inclusive",
+      "exclusive": "Exclusive",
+      "inclusiveHelp": "Inclusive - entered price already includes tax",
+      "exclusiveHelp": "Exclusive - tax is added on top",
+      "help": "With 10% tax and price 100, Exclusive totals 110; Inclusive splits 100 into net 90.91 and tax 9.09."
+    },
+    "purchaseTreatment": {
+      "recoverableShort": "Recoverable",
+      "nonRecoverableShort": "Non-recoverable",
+      "recoverableHelp": "Recoverable - post purchase tax separately",
+      "nonRecoverableHelp": "Non-recoverable - include purchase tax in item/expense cost",
+      "help": "Recoverable tax debits the purchase tax account. Non-recoverable tax is capitalized into inventory or expense cost."
+    },
+    "status": {
+      "active": "Active",
+      "inactive": "Inactive"
+    },
+    "usage": {
+      "locked": "Locked",
+      "editable": "Editable"
+    },
+    "modal": {
+      "editTitle": "Edit Tax Code",
+      "newTitle": "New Tax Code"
+    },
+    "messages": {
+      "loadFailed": "Failed to load tax codes.",
+      "updated": "Tax code updated.",
+      "created": "Tax code created.",
+      "invalidRate": "Rate % must be a non-negative number.",
+      "priceBasisRequired": "Price Basis is required. Choose whether entered prices include tax or tax is added on top.",
+      "saveFailed": "Failed to save tax code."
+    }
+  },
+  "currencySettings": {
+    "title": "Currency Settings",
+    "subtitle": "Manage your company's active currencies and exchange rates.",
+    "activeCurrencies": "Active Currencies",
+    "manualRateEntry": "Manual Rate Entry",
+    "recentOperations": "Recent Pricing Operations",
+    "noOperations": "No pricing operations recorded",
+    "base": "Base",
+    "decimals": "{{count}} decimals",
+    "from": "From",
+    "to": "To",
+    "effectiveDate": "Effective Date",
+    "rate": "Rate",
+    "suggestedInverse": "Suggested inverse: {{rate}} (from {{from}}→{{to}})",
+    "effectiveInline": "Effective: {{date}}",
+    "changePercent": "{{percent}}% change",
+    "reference": "Reference",
+    "actions": {
+      "addNew": "Add New Currency",
+      "disable": "Disable Currency",
+      "updateReferenceRate": "Update Reference Rate",
+      "saveAnyway": "Save Anyway"
+    },
+    "available": {
+      "subtitle": "Enable additional currencies for your company transactions.",
+      "searchPlaceholder": "Search by currency code or name...",
+      "noMatches": "No matches found",
+      "noMatchesHint": "Try a different currency code or name."
+    },
+    "enable": {
+      "title": "Enable {{currency}}",
+      "infoBefore": "An initial exchange rate is required to enable",
+      "infoAfter": "This will be used as the reference rate for your accounting operations.",
+      "initialRate": "Initial Exchange Rate",
+      "enabling": "Enabling...",
+      "submit": "Enable Currency"
+    },
+    "deviation": {
+      "title": "Rate Deviation Warning",
+      "messageBefore": "The rate you entered",
+      "messageAfterRate": "differs by",
+      "messageAfterPercent": "from the most recent rate.",
+      "confirmText": "This could be a typing mistake. Are you sure you want to save this rate?"
+    },
+    "messages": {
+      "cannotDisableBase": "Cannot disable base currency",
+      "disabled": "{{currency}} disabled",
+      "disableFailed": "Failed to disable currency",
+      "rateUpdated": "Rate updated: 1 {{from}} = {{rate}} {{to}}",
+      "rateSaveFailed": "Failed to save rate",
+      "invalidRate": "Please enter a valid exchange rate",
+      "enabled": "{{currency}} enabled successfully!",
+      "enableFailed": "Failed to enable currency"
+    }
+  },
+  "communications": {
+    "title": "Communications",
+    "subtitle": "Manage the messaging channels used to send documents to customers. Shared across all modules.",
+    "saved": "Communication settings saved.",
+    "shareLink": {
+      "title": "No setup needed to share invoices",
+      "description": "The \"Share via WhatsApp\" button on any posted invoice opens a pre-filled message on your phone or WhatsApp Web - no account required. Configure the channels below only if you want documents sent automatically, server-side."
+    },
+    "summary": "{{count}} active channel ready to send",
+    "summary_plural": "{{count}} active channels ready to send",
+    "add": "Add",
+    "noChannelAccounts": "No {{channel}} accounts yet.",
+    "addFirst": "Add a {{channel}} account",
+    "channel": {
+      "whatsapp": {
+        "title": "WhatsApp",
+        "description": "Send invoices via the Meta WhatsApp Cloud API."
+      },
+      "telegram": {
+        "title": "Telegram",
+        "description": "Send invoices through a Telegram bot."
+      },
+      "email": {
+        "title": "Email",
+        "description": "Send invoices by email (SMTP)."
+      }
+    }
+  },
+  "appearance": {
+    "userPreferences": "User Preferences",
+    "title": "Appearance Lab",
+    "subtitle": "Design your personal workspace. Choose from beautiful presets, generate an auto-theme, or fine-tune every detail.",
+    "resetDefault": "Reset to Default",
+    "savePreferences": "Save Preferences",
+    "presets": "Curated Presets",
+    "typographyDepth": "Typography & Depth",
+    "fontFamily": "Font Family",
+    "shadowIntensity": "Shadow Intensity",
+    "cornerRadius": "Corner Radius ({{radius}}px)",
+    "sharp": "Sharp",
+    "rounded": "Rounded",
+    "advancedColors": "Advanced Colors",
+    "advancedColorsSubtitle": "Absolute control over every token",
+    "jsonExport": "JSON Export",
+    "autoTheme": {
+      "title": "Auto-Theme Generator",
+      "subtitle": "AI-powered color harmony",
+      "description": "Pick your core brand color. We will instantly compute balanced Light and Dark mode UI palettes.",
+      "baseColor": "Base Color",
+      "generate": "Generate"
+    },
+    "fonts": {
+      "system": "System Default"
+    },
+    "shadows": {
+      "flat": "Flat (Minimalist, no shadows)",
+      "subtle": "Subtle (Elegant depth)",
+      "pronounced": "Pronounced (Deep floating)",
+      "glass": "Glassmorphism (Soft glow)"
+    },
+    "colorTabs": {
+      "brand": "Brand",
+      "light": "Light",
+      "dark": "Dark"
+    },
+    "colors": {
+      "primary": "Primary action",
+      "accent": "Accent",
+      "success": "Success",
+      "warning": "Warning",
+      "danger": "Danger",
+      "bgPrimary": "Primary surface",
+      "bgSecondary": "Page background",
+      "bgTertiary": "Muted surface",
+      "textPrimary": "Primary text",
+      "textSecondary": "Secondary text",
+      "textMuted": "Muted text",
+      "border": "Border"
+    },
+    "preview": {
+      "title": "Live Preview",
+      "font": "Font",
+      "shadows": "Shadows",
+      "uiComponents": "UI Components",
+      "action": "Action",
+      "badges": "Badges",
+      "approved": "Approved",
+      "pending": "Pending",
+      "failed": "Failed",
+      "formInputs": "Form Inputs",
+      "focusMe": "Focus me",
+      "active": "Active",
+      "option": "Option",
+      "doc": "Doc",
+      "status": "Status",
+      "draft": "Draft",
+      "paid": "Paid"
+    },
+    "messages": {
+      "saved": "Appearance preferences saved successfully.",
+      "saveFailed": "Could not save appearance preferences."
+    }
+  },
+  "saveChanges": "Save Changes",
+  "loading": "Loading..."
 }

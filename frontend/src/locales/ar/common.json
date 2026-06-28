@@ -403,14 +403,19 @@
         "noSearchMatches": "لا يوجد مستخدمون يطابقون بحثك",
         "noUsersFound": "لم يتم العثور على مستخدمين",
         "adjustSearch": "حاول تعديل مصطلحات البحث الخاصة بك",
-        "inviteHint": "ابدأ بدعوة المستخدمين إلى شركتك."
+        "inviteHint": "ابدأ بدعوة المستخدمين إلى شركتك.",
+        "addHint": "ابدأ بإضافة مستخدمي المنصة الموجودين إلى شركتك."
       },
       "confirm": {
         "disableVerb": "إبطال",
         "enableVerb": "يُمكَِن",
         "toggleStatus": "هل أنت متأكد أنك تريد {{action}} {{email}}؟",
         "removeUser": "هل أنت متأكد أنك تريد إزالة {{email}} من الشركة؟"
-      }
+      },
+      "addUser": "إضافة مستخدم",
+      "addExistingUser": "إضافة مستخدم موجود",
+      "addExistingUserHint": "يجب أن يسجل المستخدم أولاً قبل أن تتمكن من إضافته.",
+      "adding": "جارٍ الإضافة..."
     },
     "roles": {
       "title": "إدارة الأدوار",
@@ -557,7 +562,8 @@
         "inviteUser": "+ دعوة مستخدم جديد",
         "createRole": "+ إنشاء دور جديد",
         "manageSubscription": "إدارة الاشتراك",
-        "configureModules": "تكوين الوحدات"
+        "configureModules": "تكوين الوحدات",
+        "addUser": "إضافة مستخدم"
       }
     },
     "invoices": {
@@ -3733,12 +3739,14 @@
     "clearFilters": "مسح عوامل التصفية",
     "close": "إغلاق",
     "create": "إنشاء",
-    "select": "اختيار",
+    "select": "اختر...",
     "confirm": "تأكيد",
     "generate": "إنشاء",
     "empty": "لا توجد صفوف.",
     "processing": "جارٍ المعالجة...",
-    "label": "التسمية"
+    "label": "التسمية",
+    "refresh": "تحديث",
+    "system": "النظام"
   },
   "messaging": {
     "whatsapp": {
@@ -4448,5 +4456,240 @@
       "label": "التكامل المالي فعال",
       "message": "{{module}} متكاملة بالكامل مع المحاسبة. كل العمليات تنشئ ترحيلات مالية/دفتر أستاذ."
     }
-  }
+  },
+  "taxCodes": {
+    "title": "رموز الضرائب",
+    "subtitle": "إدارة نسب الضرائب وحسابات التوجيه وأساس السعر ومعالجة ضريبة المشتريات.",
+    "loading": "جارٍ تحميل رموز الضرائب...",
+    "empty": "لا توجد رموز ضرائب.",
+    "lockText": "رمز الضريبة مستخدم في مستندات مرحلة. أنشئ رمز ضريبة جديداً لتغيير المعالجة الضريبية.",
+    "actions": {
+      "new": "رمز ضريبة جديد",
+      "create": "إنشاء رمز الضريبة",
+      "update": "تحديث رمز الضريبة"
+    },
+    "columns": {
+      "code": "الرمز",
+      "name": "الاسم",
+      "rate": "النسبة",
+      "type": "النوع",
+      "scope": "النطاق",
+      "priceBasis": "أساس السعر",
+      "purchaseTreatment": "معالجة المشتريات",
+      "status": "الحالة",
+      "usage": "الاستخدام",
+      "actions": "الإجراءات"
+    },
+    "fields": {
+      "code": "الرمز",
+      "name": "الاسم",
+      "ratePercent": "النسبة %",
+      "type": "النوع",
+      "scope": "النطاق",
+      "active": "نشط",
+      "purchaseTaxAccount": "حساب ضريبة المشتريات",
+      "salesTaxAccount": "حساب ضريبة المبيعات",
+      "priceBasis": "أساس السعر",
+      "purchaseTaxTreatment": "معالجة ضريبة المشتريات"
+    },
+    "placeholders": {
+      "purchaseTaxAccount": "اختر حساب ضريبة المشتريات",
+      "salesTaxAccount": "اختر حساب ضريبة المبيعات",
+      "priceBasis": "اختر أساس السعر..."
+    },
+    "priceBasis": {
+      "inclusive": "شامل",
+      "exclusive": "غير شامل",
+      "inclusiveHelp": "شامل - السعر المدخل يتضمن الضريبة مسبقاً",
+      "exclusiveHelp": "غير شامل - تضاف الضريبة فوق السعر",
+      "help": "مع ضريبة 10% وسعر 100: غير شامل يصبح الإجمالي 110؛ شامل يقسم 100 إلى صافي 90.91 وضريبة 9.09."
+    },
+    "purchaseTreatment": {
+      "recoverableShort": "قابلة للاسترداد",
+      "nonRecoverableShort": "غير قابلة للاسترداد",
+      "recoverableHelp": "قابلة للاسترداد - ترحيل ضريبة المشتريات بشكل منفصل",
+      "nonRecoverableHelp": "غير قابلة للاسترداد - تضمين ضريبة المشتريات في تكلفة الصنف/المصروف",
+      "help": "الضريبة القابلة للاسترداد تُحمّل حساب ضريبة المشتريات. غير القابلة للاسترداد تُرسمل ضمن تكلفة المخزون أو المصروف."
+    },
+    "status": {
+      "active": "نشط",
+      "inactive": "غير نشط"
+    },
+    "usage": {
+      "locked": "مقفل",
+      "editable": "قابل للتعديل"
+    },
+    "modal": {
+      "editTitle": "تعديل رمز الضريبة",
+      "newTitle": "رمز ضريبة جديد"
+    },
+    "messages": {
+      "loadFailed": "فشل تحميل رموز الضرائب.",
+      "updated": "تم تحديث رمز الضريبة.",
+      "created": "تم إنشاء رمز الضريبة.",
+      "invalidRate": "يجب أن تكون النسبة % رقماً غير سالب.",
+      "priceBasisRequired": "أساس السعر مطلوب. اختر هل الأسعار المدخلة تشمل الضريبة أم تضاف الضريبة فوقها.",
+      "saveFailed": "فشل حفظ رمز الضريبة."
+    }
+  },
+  "currencySettings": {
+    "title": "إعدادات العملات",
+    "subtitle": "إدارة عملات الشركة النشطة وأسعار الصرف.",
+    "activeCurrencies": "العملات النشطة",
+    "manualRateEntry": "إدخال السعر يدوياً",
+    "recentOperations": "آخر عمليات التسعير",
+    "noOperations": "لا توجد عمليات تسعير مسجلة",
+    "base": "أساس",
+    "decimals": "{{count}} منازل عشرية",
+    "from": "من",
+    "to": "إلى",
+    "effectiveDate": "تاريخ السريان",
+    "rate": "السعر",
+    "suggestedInverse": "السعر العكسي المقترح: {{rate}} (من {{from}} إلى {{to}})",
+    "effectiveInline": "السريان: {{date}}",
+    "changePercent": "تغير {{percent}}%",
+    "reference": "مرجعي",
+    "actions": {
+      "addNew": "إضافة عملة جديدة",
+      "disable": "تعطيل العملة",
+      "updateReferenceRate": "تحديث السعر المرجعي",
+      "saveAnyway": "الحفظ رغم ذلك"
+    },
+    "available": {
+      "subtitle": "فعّل عملات إضافية لمعاملات شركتك.",
+      "searchPlaceholder": "ابحث برمز العملة أو اسمها...",
+      "noMatches": "لا توجد نتائج",
+      "noMatchesHint": "جرّب رمز أو اسم عملة مختلفاً."
+    },
+    "enable": {
+      "title": "تفعيل {{currency}}",
+      "infoBefore": "يلزم إدخال سعر صرف أولي لتفعيل",
+      "infoAfter": "سيُستخدم هذا السعر كسعر مرجعي للعمليات المحاسبية.",
+      "initialRate": "سعر الصرف الأولي",
+      "enabling": "جارٍ التفعيل...",
+      "submit": "تفعيل العملة"
+    },
+    "deviation": {
+      "title": "تحذير انحراف سعر الصرف",
+      "messageBefore": "السعر الذي أدخلته",
+      "messageAfterRate": "يختلف بمقدار",
+      "messageAfterPercent": "عن آخر سعر مسجل.",
+      "confirmText": "قد يكون هذا خطأً في الإدخال. هل أنت متأكد من حفظ هذا السعر؟"
+    },
+    "messages": {
+      "cannotDisableBase": "لا يمكن تعطيل العملة الأساسية",
+      "disabled": "تم تعطيل {{currency}}",
+      "disableFailed": "فشل تعطيل العملة",
+      "rateUpdated": "تم تحديث السعر: 1 {{from}} = {{rate}} {{to}}",
+      "rateSaveFailed": "فشل حفظ السعر",
+      "invalidRate": "أدخل سعر صرف صحيحاً",
+      "enabled": "تم تفعيل {{currency}} بنجاح",
+      "enableFailed": "فشل تفعيل العملة"
+    }
+  },
+  "communications": {
+    "title": "الاتصالات",
+    "subtitle": "إدارة قنوات المراسلة المستخدمة لإرسال المستندات إلى العملاء. مشتركة بين كل الوحدات.",
+    "saved": "تم حفظ إعدادات الاتصالات.",
+    "shareLink": {
+      "title": "لا يلزم إعداد لمشاركة الفواتير",
+      "description": "زر \"مشاركة عبر واتساب\" في أي فاتورة مرحلة يفتح رسالة جاهزة على هاتفك أو واتساب ويب دون الحاجة إلى حساب. اضبط القنوات أدناه فقط إذا أردت إرسال المستندات تلقائياً من الخادم."
+    },
+    "summary": "{{count}} قناة نشطة جاهزة للإرسال",
+    "summary_plural": "{{count}} قنوات نشطة جاهزة للإرسال",
+    "add": "إضافة",
+    "noChannelAccounts": "لا توجد حسابات {{channel}} بعد.",
+    "addFirst": "إضافة حساب {{channel}}",
+    "channel": {
+      "whatsapp": {
+        "title": "واتساب",
+        "description": "إرسال الفواتير عبر Meta WhatsApp Cloud API."
+      },
+      "telegram": {
+        "title": "تيليغرام",
+        "description": "إرسال الفواتير عبر بوت تيليغرام."
+      },
+      "email": {
+        "title": "البريد الإلكتروني",
+        "description": "إرسال الفواتير بالبريد الإلكتروني (SMTP)."
+      }
+    }
+  },
+  "appearance": {
+    "userPreferences": "تفضيلات المستخدم",
+    "title": "مختبر المظهر",
+    "subtitle": "صمّم مساحة عملك الشخصية. اختر من القوالب الجاهزة أو ولّد مظهراً تلقائياً أو اضبط كل تفصيل.",
+    "resetDefault": "استعادة الافتراضي",
+    "savePreferences": "حفظ التفضيلات",
+    "presets": "قوالب مختارة",
+    "typographyDepth": "الخطوط والعمق",
+    "fontFamily": "عائلة الخط",
+    "shadowIntensity": "شدة الظلال",
+    "cornerRadius": "استدارة الزوايا ({{radius}}px)",
+    "sharp": "حاد",
+    "rounded": "مستدير",
+    "advancedColors": "ألوان متقدمة",
+    "advancedColorsSubtitle": "تحكم كامل بكل قيم الألوان",
+    "jsonExport": "تصدير JSON",
+    "autoTheme": {
+      "title": "مولد المظهر التلقائي",
+      "subtitle": "تناغم ألوان ذكي",
+      "description": "اختر لون العلامة الأساسي، وسنحسب لوحة متوازنة للوضعين الفاتح والداكن.",
+      "baseColor": "اللون الأساسي",
+      "generate": "توليد"
+    },
+    "fonts": {
+      "system": "خط النظام الافتراضي"
+    },
+    "shadows": {
+      "flat": "مسطح (بدون ظلال)",
+      "subtle": "خفيف (عمق أنيق)",
+      "pronounced": "واضح (عناصر عائمة)",
+      "glass": "زجاجي (توهج ناعم)"
+    },
+    "colorTabs": {
+      "brand": "العلامة",
+      "light": "فاتح",
+      "dark": "داكن"
+    },
+    "colors": {
+      "primary": "الإجراء الأساسي",
+      "accent": "لون مساعد",
+      "success": "نجاح",
+      "warning": "تحذير",
+      "danger": "خطر",
+      "bgPrimary": "سطح أساسي",
+      "bgSecondary": "خلفية الصفحة",
+      "bgTertiary": "سطح هادئ",
+      "textPrimary": "نص أساسي",
+      "textSecondary": "نص ثانوي",
+      "textMuted": "نص خافت",
+      "border": "الحدود"
+    },
+    "preview": {
+      "title": "معاينة مباشرة",
+      "font": "الخط",
+      "shadows": "الظلال",
+      "uiComponents": "مكونات الواجهة",
+      "action": "إجراء",
+      "badges": "الشارات",
+      "approved": "معتمد",
+      "pending": "معلق",
+      "failed": "فشل",
+      "formInputs": "حقول الإدخال",
+      "focusMe": "ركّز هنا",
+      "active": "نشط",
+      "option": "خيار",
+      "doc": "مستند",
+      "status": "الحالة",
+      "draft": "مسودة",
+      "paid": "مدفوع"
+    },
+    "messages": {
+      "saved": "تم حفظ تفضيلات المظهر بنجاح.",
+      "saveFailed": "تعذر حفظ تفضيلات المظهر."
+    }
+  },
+  "saveChanges": "حفظ التغييرات",
+  "loading": "جارٍ التحميل..."
 }
