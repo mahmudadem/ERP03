@@ -747,7 +747,11 @@ const PosSettingsPage: React.FC<Props> = () => {
                                   onChange={(e) => toggleRoleAction(role.id, action, e.target.checked)}
                                   className="rounded border-slate-300"
                                 />
-                                <span>{action.replace(/_/g, ' ')}</span>
+                                <span>
+                                  {t(`pos:managerOverride.actions.${action}`, {
+                                    defaultValue: action.replace(/_/g, ' '),
+                                  })}
+                                </span>
                               </label>
                             ))}
                           </div>

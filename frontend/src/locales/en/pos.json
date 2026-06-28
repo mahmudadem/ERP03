@@ -47,7 +47,19 @@
     "exchangeTitle": "Approve exchange",
     "voidHelp": "Capture manager approval if the cashier role requires approval for line voids.",
     "saleHelp": "Capture approval before completing a sale with restricted discounts, price, tax, or void overrides.",
-    "returnHelp": "Capture manager approval if the cashier role requires approval for returns or exchanges."
+    "returnHelp": "Capture manager approval if the cashier role requires approval for returns or exchanges.",
+    "errors": {
+      "loadUsers": "Failed to load company users.",
+      "capture": "Failed to capture manager approval."
+    },
+    "actions": {
+      "VOID_LINE": "Void line",
+      "PRICE_OVERRIDE": "Price override",
+      "DISCOUNT_OVERRIDE": "Discount override",
+      "TAX_OVERRIDE": "Tax override",
+      "RETURN": "Return",
+      "REPRINT": "Reprint"
+    }
   },
   "terminal": {
     "searchTitle": "Search products",
@@ -153,7 +165,9 @@
     "saleNotesPlaceholder": "Optional sale notes...",
     "creditSale": "Deferred Payment to Customer Account",
     "needCustomerForCredit": "Credit sale requires a selected customer.",
-    "creditSaleNeedsApproval": "Manager approval is required for deferred payment."
+    "creditSaleNeedsApproval": "Manager approval is required for deferred payment.",
+    "shortcuts": "Shortcuts",
+    "keyboardShortcuts": "Keyboard shortcuts"
   },
   "settings": {
     "title": "POS Settings",
@@ -162,6 +176,9 @@
     "saved": "POS settings saved.",
     "general": {
       "title": "General"
+    },
+    "controls": {
+      "title": "Controls"
     },
     "requireOpenShift": "Require an open shift to sell",
     "allowPosDirectSales": "Allow POS direct sales",
@@ -209,6 +226,21 @@
     },
     "cashOverContext": "Income",
     "cashShortContext": "Expense",
+    "defaultRevenueAccount": "Default revenue account",
+    "defaultRevenueAccountHelp": "Fallback revenue account for POS sales when an item (and its category) has none. Resolution order at the till: item → item category → this default.",
+    "defaultRevenueContext": "Revenue account",
+    "belowCost": {
+      "title": "Below-cost selling policy",
+      "subtitle": "Company-wide rule for selling at or below cost. Shared with Sales — changing it here changes it everywhere.",
+      "mode": "When a line is below cost",
+      "allow": "Allow",
+      "block": "Block",
+      "requireApproval": "Require approval — block until a manager approves",
+      "allowOverride": "Allow manager override (off = absolute block; even an approved override cannot pass)",
+      "minMargin": "Minimum gross margin (%)",
+      "minMarginPlaceholder": "No minimum",
+      "minMarginHelp": "Optional. A line below this margin is treated like a below-cost line. Leave blank to only guard against selling below cost."
+    },
     "cashierPolicies": {
       "title": "Cashier role policies",
       "noRoles": "No cashier roles found.",
@@ -284,7 +316,19 @@
     "allowedCashiersHelp": "When no users are selected, any cashier with POS access can open a shift on this register.",
     "cashAccountContext": "Cash/Bank asset",
     "cashDrawerHelp": "Used for all CASH sales, cash refunds, cash movements, and over/short close entries for this register.",
-    "nonCashSettlementHelp": "Used when this register accepts this non-cash method. Leave blank only if the method is not used at this register."
+    "nonCashSettlementHelp": "Used when this register accepts this non-cash method. Leave blank only if the method is not used at this register.",
+    "settlement": {
+      "CARD": "Card settlement account",
+      "BANK_TRANSFER": "Bank transfer settlement account",
+      "CUSTOM": "Custom settlement account"
+    },
+    "shortcuts": {
+      "title": "Shortcut layout",
+      "help": "Choose the product shortcut layout this register should use. Leave blank to use the company default.",
+      "configure": "Configure shortcuts",
+      "dialogTitle": "Register shortcuts",
+      "dialogSubtitle": "Manage the product shortcut layout used by this register."
+    }
   },
   "shift": {
     "title": "POS Shift",
@@ -312,6 +356,11 @@
     "cashSales": "Cash sales",
     "refunds": "Cash refunds",
     "counted": "Counted cash",
+    "countedPayment": {
+      "CARD": "Counted card",
+      "BANK_TRANSFER": "Counted bank transfer",
+      "CUSTOM": "Counted custom"
+    },
     "close": "Close",
     "historyTitle": "Shift history",
     "historySubtitle": "Recent shifts for this company.",
@@ -363,6 +412,7 @@
     "payment": {
       "cash": "Cash",
       "card": "Card",
+      "bankTransfer": "Bank transfer",
       "custom": "Custom"
     }
   },
@@ -399,6 +449,8 @@
     "shortcutEnabled": "Shortcut enabled.",
     "shortcutDisabled": "Shortcut disabled.",
     "shortcutDeleted": "Shortcut deleted.",
+    "saved": "Keyboard shortcuts saved.",
+    "customItemNotImplemented": "Custom item entry is not available yet.",
     "actions": {
       "create": "Create",
       "add": "Add",

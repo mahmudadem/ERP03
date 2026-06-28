@@ -324,7 +324,7 @@ const PosShiftPage: React.FC<Props> = () => {
             {PAYMENT_METHODS.filter((method) => method !== 'CASH').map((method) => (
               <div key={method}>
                 <label className="block text-sm font-medium mb-1">
-                  {t(`pos:shift.counted.${method}`, { defaultValue: `Counted ${method}` })}
+                  {t(`pos:shift.countedPayment.${method}`, { defaultValue: `Counted ${method}` })}
                 </label>
                 <input
                   type="number"
