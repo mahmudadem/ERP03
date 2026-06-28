@@ -10,7 +10,7 @@ import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents';
 import { useCompanyModules } from '../../../hooks/useCompanyModules';
 
 interface InventoryInitializationWizardProps {
-  onComplete: () => void;
+  onComplete?: () => void;
 }
 
 const stepTitles = ['Welcome', 'Accounting Mode', 'Default Warehouse', 'Inventory Settings', 'Confirm & Initialize'];
@@ -145,7 +145,7 @@ export const InventoryInitializationWizard: React.FC<InventoryInitializationWiza
 
       emitCompanyModulesRefresh({ companyId, moduleCode: 'inventory' });
       await queryClient.invalidateQueries({ queryKey: ['companyModules', companyId] });
-      onComplete();
+      onComplete?.();
     } catch (err: any) {
       console.error('Inventory initialization failed', err);
       setError(

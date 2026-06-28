@@ -70,6 +70,9 @@ describe('SimpleTradingCompanyInitializer', () => {
     const salesSettings: any[] = [];
     const purchaseSettings: any[] = [];
     const warehouses: any[] = [];
+    const posSettings: any[] = [];
+    const posRegisters: any[] = [];
+    const parties = new Map<string, any>();
 
     const accountRepo: any = {
       list: jest.fn(async () => Array.from(accounts.values())),
@@ -96,12 +99,13 @@ describe('SimpleTradingCompanyInitializer', () => {
     const companyModuleRepo: any = {
       get: jest.fn(async (_companyId: string, moduleCode: string) => modules.get(moduleCode) || null),
       update: jest.fn(async (_companyId: string, moduleCode: string, data: any) => {
-        modules.set(moduleCode, { moduleCode, ...data });
+        modules.set(moduleCode, { ...(modules.get(moduleCode) || {}), moduleCode, ...data });
       }),
       create: jest.fn(async (data: any) => {
         modules.set(data.moduleCode, data);
       }),
     };
+    modules.set('pos', { companyId: 'cmp-1', moduleCode: 'pos', isEnabled: true, initialized: false, config: {} });
 
     const initializer = new SimpleTradingCompanyInitializer({
       companyRepo: {
@@ -154,6 +158,18 @@ describe('SimpleTradingCompanyInitializer', () => {
       purchaseSettingsRepo: {
         saveSettings: jest.fn(async (settings: any) => purchaseSettings.push(settings)),
       } as any,
+      posSettingsRepo: {
+        getSettings: jest.fn(async () => null),
+        saveSettings: jest.fn(async (settings: any) => posSettings.push(settings)),
+      } as any,
+      posRegisterRepo: {
+        list: jest.fn(async () => posRegisters),
+        create: jest.fn(async (register: any) => posRegisters.push(register)),
+      } as any,
+      partyRepo: {
+        getByCode: jest.fn(async (_companyId: string, code: string) => parties.get(code) || null),
+        create: jest.fn(async (party: any) => parties.set(party.code, party)),
+      } as any,
     });
 
     const summary = await initializer.execute({
@@ -163,7 +179,7 @@ describe('SimpleTradingCompanyInitializer', () => {
     });
 
     expect(summary.templateId).toBe('simple-trading-company');
-    expect(summary.modulesInitialized).toEqual(['accounting', 'inventory', 'sales', 'purchase']);
+    expect(summary.modulesInitialized).toEqual(['accounting', 'inventory', 'sales', 'purchase', 'pos']);
     expect(summary.accounting.coaTemplate).toBe('periodic_trading');
     expect(summary.inventory.accountingMode).toBe('PERIODIC');
     expect(summary.linkedAccounts.inventoryAsset.code).toBe('10301');
@@ -190,6 +206,14 @@ describe('SimpleTradingCompanyInitializer', () => {
     expect(purchaseSettings[0].apParentAccountId).toBe(summary.linkedAccounts.apParent.id);
     expect(purchaseSettings[0].defaultPurchaseReturnAccountId).toBe(summary.linkedAccounts.purchaseReturn.id);
     expect(purchaseSettings[0].defaultPurchaseDiscountAccountId).toBe(summary.linkedAccounts.purchaseDiscount.id);
+    expect(modules.get('pos').initialized).toBe(true);
+    expect(posSettings[0].walkInCustomerId).toBe('party_cmp-1_walkin');
+    expect(posSettings[0].defaultRevenueAccountId).toBe(summary.linkedAccounts.salesRevenue.id);
+    expect(posSettings[0].allowPosDirectSales).toBe(false);
+    expect(posRegisters[0].code).toBe('MAIN');
+    expect(posRegisters[0].warehouseId).toBe(warehouses[0].id);
+    expect(posRegisters[0].cashDrawerAccountId).toBe(summary.linkedAccounts.cash.id);
+    expect(parties.get('WALKIN').defaultARAccountId).toBe(summary.linkedAccounts.arParent.id);
   });
 
   it('re-seeds the starter policy when mode changes before any transaction history exists', async () => {

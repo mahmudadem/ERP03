@@ -55,7 +55,7 @@ export class OnboardingController {
         diContainer.userRepository,
         diContainer.rbacCompanyUserRepository
       );
-      const status = await useCase.execute(userId);
+      const status = await useCase.execute(userId, (req as any).user?.email);
 
       res.json({
         success: true,
@@ -86,7 +86,12 @@ export class OnboardingController {
         diContainer.userRepository,
         diContainer.planRegistryRepository
       );
-      const result = await useCase.execute({ userId, planId });
+      const result = await useCase.execute({
+        userId,
+        planId,
+        email: (req as any).user?.email,
+        name: (req as any).user?.email,
+      });
 
       res.json({
         success: true,
@@ -220,6 +225,12 @@ export class OnboardingController {
       if (autoInitializeModules && defaultWarehouseName !== undefined && (typeof defaultWarehouseName !== 'string' || !defaultWarehouseName.trim())) {
         return next(ApiError.badRequest('defaultWarehouseName must be a non-empty string.'));
       }
+      if (autoInitializeModules) {
+        const selectedTemplateId = starterTemplateId || 'simple-trading-company';
+        if (selectedTemplateId !== 'simple-trading-company') {
+          return next(ApiError.badRequest(`Unsupported starter template: ${selectedTemplateId}`));
+        }
+      }
 
       // We need a resolver instance
       const resolver = new CompanyRolePermissionResolver(
@@ -259,11 +270,6 @@ const useCase = new CreateCompanyUseCase(
 
       let starterPolicySummary = null;
       if (autoInitializeModules) {
-        const selectedTemplateId = starterTemplateId || 'simple-trading-company';
-        if (selectedTemplateId !== 'simple-trading-company') {
-          return next(ApiError.badRequest(`Unsupported starter template: ${selectedTemplateId}`));
-        }
-
         const initializer = new SimpleTradingCompanyInitializer({
           companyRepo: diContainer.companyRepository,
           companyModuleRepo: diContainer.companyModuleRepository,
@@ -280,20 +286,34 @@ const useCase = new CreateCompanyUseCase(
           uomRepo: diContainer.uomRepository,
           salesSettingsRepo: diContainer.salesSettingsRepository,
           purchaseSettingsRepo: diContainer.purchaseSettingsRepository,
+          posSettingsRepo: diContainer.posSettingsRepository,
+          posRegisterRepo: diContainer.posRegisterRepository,
+          partyRepo: diContainer.partyRepository,
         });
 
-        starterPolicySummary = await initializer.execute({
-          companyId: result.companyId,
-          userId,
-          baseCurrency: normalizedCurrency,
-          accountingMode: normalizedAccountingMode,
-          coaTemplate: normalizedCoaTemplate,
-          costingBasis: normalizedCostingBasis,
-          defaultWarehouseCode: typeof defaultWarehouseCode === 'string' ? defaultWarehouseCode : undefined,
-          defaultWarehouseName: typeof defaultWarehouseName === 'string' ? defaultWarehouseName : undefined,
-          salesWorkflowMode: normalizedSalesWorkflowMode,
-          purchaseWorkflowMode: normalizedPurchaseWorkflowMode,
-        });
+        try {
+          starterPolicySummary = await initializer.execute({
+            companyId: result.companyId,
+            userId,
+            baseCurrency: normalizedCurrency,
+            accountingMode: normalizedAccountingMode,
+            coaTemplate: normalizedCoaTemplate,
+            costingBasis: normalizedCostingBasis,
+            defaultWarehouseCode: typeof defaultWarehouseCode === 'string' ? defaultWarehouseCode : undefined,
+            defaultWarehouseName: typeof defaultWarehouseName === 'string' ? defaultWarehouseName : undefined,
+            salesWorkflowMode: normalizedSalesWorkflowMode,
+            purchaseWorkflowMode: normalizedPurchaseWorkflowMode,
+          });
+        } catch (initializerError) {
+          try {
+            await diContainer.companyEntitlementRepository.deactivateEntitlement(`ent_${result.companyId}`);
+            await diContainer.companyRepository.delete(result.companyId);
+            console.warn(`[OnboardingController] Rolled back company ${result.companyId} after starter initialization failure`);
+          } catch (rollbackError) {
+            console.error(`[OnboardingController] Failed to roll back company ${result.companyId} after starter initialization failure`, rollbackError);
+          }
+          throw initializerError;
+        }
       }
 
       res.json({

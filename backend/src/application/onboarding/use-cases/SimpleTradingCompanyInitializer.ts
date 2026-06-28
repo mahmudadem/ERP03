@@ -18,6 +18,12 @@ import { IPurchaseSettingsRepository } from '../../../repository/interfaces/purc
 import { ISalesSettingsRepository } from '../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { IVoucherFormRepository } from '../../../repository/interfaces/designer/IVoucherFormRepository';
 import { IVoucherTypeDefinitionRepository } from '../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
+import { IPosSettingsRepository } from '../../../repository/interfaces/pos/IPosSettingsRepository';
+import { IPosRegisterRepository } from '../../../repository/interfaces/pos/IPosRegisterRepository';
+import { IPartyRepository } from '../../../repository/interfaces/shared/IPartyRepository';
+import { PosSettings } from '../../../domain/pos/entities/PosSettings';
+import { PosRegister } from '../../../domain/pos/entities/PosRegister';
+import { Party } from '../../../domain/shared/entities/Party';
 
 export type SimpleTradingCompanyMode = 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
 
@@ -48,6 +54,14 @@ export interface SimpleTradingCompanyPolicySummary {
     workflowMode: 'SIMPLE' | 'OPERATIONAL';
     allowDirectInvoicing: boolean;
   };
+  pos?: {
+    initialized: boolean;
+    requireOpenShift: true;
+    allowPosDirectSales: false;
+    negativeStockPolicy: 'BLOCK';
+    defaultRegisterCode?: string;
+    walkInCustomerCode?: string;
+  };
   tax: {
     status: 'READY_NOT_ASSUMED';
     note: string;
@@ -71,6 +85,9 @@ interface Deps {
   uomRepo: IUomRepository;
   salesSettingsRepo: ISalesSettingsRepository;
   purchaseSettingsRepo: IPurchaseSettingsRepository;
+  posSettingsRepo?: IPosSettingsRepository;
+  posRegisterRepo?: IPosRegisterRepository;
+  partyRepo?: IPartyRepository;
 }
 
 type AccountSpec = {
@@ -422,10 +439,26 @@ export class SimpleTradingCompanyInitializer {
       allowOverpayment: true,
     });
 
+    const posDefaults = await this.initializePosIfInstalled({
+      companyId: input.companyId,
+      userId: input.userId,
+      defaultWarehouseId: inventoryResult.defaultWarehouse?.id,
+      cashAccountId: accounts.cash.id,
+      defaultRevenueAccountId: accounts.salesRevenue.id,
+      arParentAccountId: accounts.arParent.id,
+      baseCurrency,
+    });
+
     return {
       templateId: 'simple-trading-company',
       templateName: policy.templateName,
-      modulesInitialized: ['accounting', 'inventory', 'sales', 'purchase'],
+      modulesInitialized: [
+        'accounting',
+        'inventory',
+        'sales',
+        'purchase',
+        ...(posDefaults.initialized ? ['pos'] : []),
+      ],
       baseCurrency,
       accounting: {
         coaTemplate,
@@ -449,6 +482,18 @@ export class SimpleTradingCompanyInitializer {
         workflowMode: purchaseWorkflowMode,
         allowDirectInvoicing: purchaseAllowDirect,
       },
+      ...(posDefaults.initialized
+        ? {
+            pos: {
+              initialized: true,
+              requireOpenShift: true,
+              allowPosDirectSales: false,
+              negativeStockPolicy: 'BLOCK',
+              defaultRegisterCode: posDefaults.defaultRegisterCode,
+              walkInCustomerCode: posDefaults.walkInCustomerCode,
+            },
+          }
+        : {}),
       tax: {
         status: 'READY_NOT_ASSUMED',
         note: 'Tax setup is ready for tax codes, but no country tax rate is silently applied by this template.',
@@ -463,6 +508,105 @@ export class SimpleTradingCompanyInitializer {
       .filter((template: any) => String(template.module || '').trim().toUpperCase() === 'ACCOUNTING')
       .map((template: any) => template.id)
       .filter(Boolean);
+  }
+
+  private async initializePosIfInstalled(input: {
+    companyId: string;
+    userId: string;
+    defaultWarehouseId?: string;
+    cashAccountId: string;
+    defaultRevenueAccountId: string;
+    arParentAccountId: string;
+    baseCurrency: string;
+  }): Promise<{ initialized: boolean; defaultRegisterCode?: string; walkInCustomerCode?: string }> {
+    const posModule = await this.deps.companyModuleRepo.get(input.companyId, 'pos');
+    if (!posModule) return { initialized: false };
+
+    let walkInCustomerId: string | undefined;
+    if (this.deps.partyRepo) {
+      const existingWalkIn = await this.deps.partyRepo.getByCode(input.companyId, 'WALKIN');
+      if (existingWalkIn) {
+        walkInCustomerId = existingWalkIn.id;
+      } else {
+        const now = new Date();
+        const walkIn = new Party({
+          id: `party_${input.companyId}_walkin`,
+          companyId: input.companyId,
+          code: 'WALKIN',
+          legalName: 'Walk-in Customer',
+          displayName: 'Walk-in Customer',
+          roles: ['CUSTOMER'],
+          defaultCurrency: input.baseCurrency,
+          defaultARAccountId: input.arParentAccountId,
+          creditHoldPolicy: 'BLOCK',
+          active: true,
+          createdBy: input.userId || 'SYSTEM',
+          createdAt: now,
+          updatedAt: now,
+        });
+        await this.deps.partyRepo.create(walkIn);
+        walkInCustomerId = walkIn.id;
+      }
+    }
+
+    if (this.deps.posSettingsRepo) {
+      const existingSettings = await this.deps.posSettingsRepo.getSettings(input.companyId);
+      if (!existingSettings) {
+        const defaultPosSettings = PosSettings.createDefault(input.companyId);
+        const settings = new PosSettings({
+          companyId: input.companyId,
+          requireOpenShift: defaultPosSettings.requireOpenShift,
+          receiptPrefix: defaultPosSettings.receiptPrefix,
+          receiptNextSeq: defaultPosSettings.receiptNextSeq,
+          cashRounding: defaultPosSettings.cashRounding,
+          allowPosDirectSales: defaultPosSettings.allowPosDirectSales,
+          allowCreditSales: defaultPosSettings.allowCreditSales,
+          creditSaleManagerOverride: defaultPosSettings.creditSaleManagerOverride,
+          negativeStockPolicy: defaultPosSettings.negativeStockPolicy,
+          paymentMethods: defaultPosSettings.paymentMethods,
+          walkInCustomerId,
+          defaultRevenueAccountId: input.defaultRevenueAccountId,
+        });
+        await this.deps.posSettingsRepo.saveSettings(settings);
+      }
+    }
+
+    if (this.deps.posRegisterRepo && input.defaultWarehouseId) {
+      const registers = await this.deps.posRegisterRepo.list(input.companyId);
+      if (registers.length === 0) {
+        const now = new Date();
+        await this.deps.posRegisterRepo.create(new PosRegister({
+          id: `reg_${input.companyId}_main`,
+          companyId: input.companyId,
+          code: 'MAIN',
+          name: 'Main Register',
+          warehouseId: input.defaultWarehouseId,
+          cashDrawerAccountId: input.cashAccountId,
+          status: 'ACTIVE',
+          createdAt: now,
+          updatedAt: now,
+        }));
+      }
+    }
+
+    if (!posModule.initialized) {
+      await this.deps.companyModuleRepo.update(input.companyId, 'pos', {
+        initialized: true,
+        initializationStatus: 'complete',
+        config: {
+          ...(posModule.config || {}),
+          initializedFrom: 'simple-trading-company',
+          defaultsSeeded: true,
+        },
+        updatedAt: new Date(),
+      });
+    }
+
+    return {
+      initialized: true,
+      defaultRegisterCode: 'MAIN',
+      walkInCustomerCode: walkInCustomerId ? 'WALKIN' : undefined,
+    };
   }
 
   private async ensureSupportingAccounts(companyId: string, userId: string, baseCurrency: string): Promise<void> {

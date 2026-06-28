@@ -2,6 +2,77 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 SQL QA — two-company creation bug sweep + smoke test)
+
+- **Goal:** Owner hit a cascade of errors creating companies in SQL mode (UNIQUE on `taxId`, "creation fails but company is still created", duplicate role id). Asked why these weren't caught earlier and "what else is on the way."
+- **Root cause (one class):** Firestore→SQL port didn't reconcile three things Postgres enforces that Firestore didn't: (1) UNIQUE treats `''` as a value (blank `taxId` collided); (2) stable per-document ids became **global** primary keys (role `'OWNER'`, voucher-type / `FY{year}` ids collided across companies); (3) no cross-doc transaction, so a mid-flow failure orphaned a company row. Each only manifests on the **second** company or on a partial failure — which is why single-company testing missed them.
+- **Fixes (all on SQL/Prisma path):**
+  - `taxId` made nullable + empty mapped to `NULL` (`schema.prisma`, `PrismaCompanyRepository`).
+  - Company creation made atomic: `CompleteCompanyCreationUseCase` now rolls back the company (FK cascade) on any mid-flow failure.
+  - `CompanyRole` PK → composite `@@id([companyId, id])` so `'OWNER'/'ADMIN'/'MEMBER'` are per-company (+ fixed two single-id `update/delete` call-sites).
+  - Voucher-type copy id and `FiscalYear` id company-scoped (no schema change — lookups already pass `companyId`); voucher-**form** FK now points at the scoped type id (was using the canonical code).
+  - Account `classification` normalized on **read** in `PrismaAccountRepository` + one-time backfill of 84 legacy mixed-case rows → canonical UPPERCASE (the earlier QA-blocker-#4 fix didn't cover existing data or the read path).
+  - Removed scalar `companyId` + relation `connect` conflict in `create` for Sales/Purchase settings and `SalesProfitLineFact` repos (Prisma validation error).
+  - Voucher-sequence id company-scoped (`<prefix>-<year>` global PK collided on the 2nd company's first posting) — found by the posting extension.
+- **Durable safety net:** new `npm run smoke:companies` (`backend/src/scripts/smokeTwoCompanies.ts`) creates **two** companies back-to-back with the same owner/bundle through the real `CreateCompanyUseCase` + `SimpleTradingCompanyInitializer`, fully initializes every module, **posts a balanced journal on each**, verifies 15 invariants per company (incl. voucher types == forms, no lowercase classifications, ledger balanced), then cleans up (transaction data first — `voucher_lines`/`ledger_entries` RESTRICT accounts). This found 4 of the bugs above before the owner re-hit them.
+- **Verification:** `npm run smoke:companies` → **PASS** (15 checks/company; both identical: 48 accounts, 16 voucher types = 16 forms, balanced journal posted, roles/settings/FY/entitlement present). Backend `tsc` build clean. Orphan "ASD co" from the original failed attempt deleted (cascade).
+- **Time spent:** ~3.5h.
+- **Next:** Owner to restart backend and retry company creation. Remaining: audit HR/CRM/POS-layout/print/field-library initializers with the same two-company lens; address the admin "delete company with transactions" RESTRICT gap (creation rollback is unaffected); consider folding `smoke:companies` into CI at 275f.
+
+### Session: 2026-06-28 (Epic 275 SQL QA — onboarding retry rollback and duplicate-name cleanup)
+
+- **Goal:** Fix owner-reported retry failure where a previous failed onboarding attempt left company name `zxc` reserved, causing `You already have a company named "zxc"` on the next attempt.
+- **What was done:** Added fast-onboarding rollback around starter initialization in `OnboardingController`: unsupported starter templates are rejected before company creation, and if `SimpleTradingCompanyInitializer` fails after company creation, the controller deactivates the entitlement and deletes the company. Cleaned the old local failed `zxc` shell only after verifying it had zero ledger entries, vouchers, sales invoices, purchase invoices, POS receipts, and stock movements.
+- **Accounting/ERP impact:** Control/cleanup behavior only. The duplicate-name guard stays strict for real companies. The cleanup is limited to failed onboarding shells with no financial activity; no posting, voucher, tax, stock valuation, balances, reports, or tenant isolation rules were weakened.
+- **Verification:** Backend `node_modules/.bin/tsc --noEmit` passed. Live SQL probe created and initialized `zxc`, created default voucher forms, then cleaned the probe. A subsequent local/browser retry now has `zxc` successfully created with 48 accounts, 16 voucher types, 16 voucher forms, one fiscal year, and Accounting/Inventory/Sales/Purchase initialized.
+- **Time spent:** ~0.5h.
+- **Next:** Continue SQL QA inside the created company. POS itself is still `pending` in `company_modules`, while the simple trading starter initialized the accounting/inventory/sales/purchase foundations used by POS.
+
+### Session: 2026-06-28 (Epic 275 SQL QA — COA classification normalization blocker)
+
+- **Goal:** Fix owner-reported onboarding failure where Review/Create stopped with `AR parent account must be classified as ASSET (got asset)` during SQL-mode company initialization.
+- **What was done:** Kept the financial control intact. Normalized SQL-hydrated COA template account `type`/`classification` values to canonical uppercase in `PrismaSystemMetadataRepository.getMetadata('coa_templates')`, and made `PrismaAccountRepository.create/update` normalize classification input before writing SQL accounts.
+- **Accounting/ERP impact:** Corrects seed/master-data shape only. The AR/AP classification checks remain strict, which is the right accounting control. No posting math, vouchers, tax, stock valuation, balances, approvals, tenant isolation, or reports were loosened.
+- **Verification:** Focused `PrismaSystemMetadataRepository` regression test passed (2/2). Backend `node_modules/.bin/tsc --noEmit` passed. Live SQL metadata probe confirmed the `standard` template has 42 accounts, no lowercase classifications, and AR parent code `104` classified as `ASSET`.
+- **Time spent:** ~0.3h.
+- **Next:** Retry onboarding company creation from the Review/Create step. If the failed company is partially created, create a fresh test company name for the cleanest QA signal.
+
+### Session: 2026-06-28 (Epic 275 SQL QA — COA metadata initialization blocker)
+
+- **Goal:** Fix owner-reported onboarding failure where Review/Create stopped with `COA Template 'standard' not found in system metadata` during SQL-mode company initialization.
+- **What was done:** Kept the fix in the SQL repository layer. `PrismaSystemMetadataRepository.getMetadata('coa_templates')` now hydrates full templates from `chart_of_accounts_templates` and merges manifest metadata from `system_metadata`, returning stable template ids such as `standard` with the account arrays required by `InitializeAccountingUseCase`.
+- **Accounting/ERP impact:** Correct initialization data only. This does not change COA definitions, posting math, vouchers, tax, stock valuation, approvals, or period-lock behavior. It restores the standard onboarding path so the selected COA can seed company accounts.
+- **Verification:** Focused repository regression test passed (2/2). Backend `npx tsc --noEmit` passed. SQL seed passed idempotently against local Postgres. Live SQL probe returned 8 templates, found `standard`, and confirmed 42 accounts.
+- **Time spent:** ~0.6h.
+- **Next:** Re-run the onboarding wizard on a fresh company or retry app initialization for the half-created company from the failed attempt; then commit the local Epic 275 launch fixes only after owner approval.
+
+### Session: 2026-06-28 (Epic 275 SQL QA — module registry identity repair)
+
+- **Goal:** Explain and fix Super Admin Module Registry rows showing Sales as `code_only` and POS as `implementation_failed`.
+- **What happened:** Found SQL module registry rows seeded with random UUID ids while runtime code modules use stable ids like `sales` and `pos`. The availability checker correctly compares DB/code module identity, so the stale UUID row looked like a different module. Fixed `seedModuleRegistry.ts` to create stable `id = code`, added missing Sales to the seed, and marked POS as implemented for v1. Reconciled the live local SQL database.
+- **Accounting/ERP impact:** Platform metadata/visibility repair only. No tenant company data, posting, ledger, tax, inventory valuation, costing, or financial reports changed.
+- **Verification:** Module availability focused suites passed (21 tests); backend `tsc --noEmit` passed; live Super Admin availability endpoint now reports Accounting, Inventory, POS, Purchase, and Sales as available with no Sales code-only/POS implementation-failed entries.
+- **Time spent:** ~0.3h.
+- **Next:** Owner should refresh Super Admin -> Modules Registry and continue QA.
+
+### Session: 2026-06-28 (Epic 275 SQL QA — onboarding plan selection repair)
+
+- **Goal:** Fix first owner QA blocker in SQL mode: plan selection failed with `NOT_FOUND: User not found` after the browser had a valid Firebase Auth session but no matching SQL `users` row.
+- **What happened:** Confirmed the route was live and the error was semantic, not a missing endpoint. `GetOnboardingStatusUseCase` already tolerated legacy/missing SQL users, but `SelectPlanUseCase` hard-failed. Added a narrow just-in-time SQL user creation path for verified Firebase Auth users during plan selection, with an email/id mismatch guard. The controller now passes the verified auth email into onboarding status and select-plan.
+- **Accounting/ERP impact:** Identity/onboarding repair only. No company, tenant membership, posting, ledger, tax, stock, costing, reports, or financial authority behavior changed.
+- **Verification:** Focused `SelectPlanUseCase` test passed (3/3); backend `tsc --noEmit` passed; backend build passed; live emulator probe created a Firebase-only auth user and selected a plan successfully (`200`).
+- **Time spent:** ~0.4h.
+- **Next:** Owner should hard refresh and retry plan selection. Continue SQL QA runbook from company creation onward.
+
+### Session: 2026-06-28 (Epic 275 — final v1 hosting stack lock)
+
+- **Goal:** Record the owner's final v1 deployment stack so 275f does not treat hosting as open.
+- **What happened:** Added a locked stack table to `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`: frontend on Vercel free, backend on Railway, database on Supabase/PostgreSQL, and Firebase retained for Auth, Storage, and FCM. Mirrored the decision in `planning/ACTIVE.md`.
+- **Accounting/ERP impact:** Documentation-only. No posting, tax, costing, stock valuation, ledger, tenant isolation, or runtime behavior changed. Operationally, Supabase/PostgreSQL remains the production financial authority, so backups and SQL-mode deployment checks stay mandatory before launch.
+- **Verification:** Markdown-only change; reviewed diff.
+- **Time spent:** ~0.1h.
+- **Next:** Continue the existing Epic 275 path: get owner commit approval for the 275a/275b audit cleanup, then proceed to 275f provision/deploy.
+
 ### Session: 2026-06-28 (Epic 275 — 275a/275b audit TODO resolution)
 
 - **Goal:** Execute `planning/handoff-275ab-codex.md`: resolve the remaining 275a SQL seed and 275b SQL settings resolver audit markers before 275f deploy.
@@ -5351,3 +5422,11 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Docs/planning:** Updated `planning/done/275e-sql-integration-tests.md`, `docs/architecture/accounting.md`, `docs/architecture/pos.md`, `planning/ACTIVE.md`, and `planning/PRIORITIES.md`.
 - **Time spent:** ~1.4h. Estimate was 2.5-4.0h.
 - **Next:** Ask owner to approve committing Task 275e. Do not start the 5x `TODO(275a-audit)` + 7x `TODO(275b-audit)` live-schema audit cleanup without owner go.
+### Session: 2026-06-28 (Onboarding auto-initialization follow-up)
+
+- **Goal:** Fix starter auto-initialization gaps reported during owner QA: Retail/POS bundle installed Accounting, Inventory, and POS but module setup was not fully completed; Inventory setup route also crashed with `onComplete is not a function`.
+- **What was done:** Extended `SimpleTradingCompanyInitializer` so installed POS modules receive safe starter defaults: POS settings, walk-in customer, active main register linked to starter warehouse, cash drawer account from starter COA, and initialized module state. Accounting and Inventory continue to initialize through their real use cases using the wizard-selected COA/base currency/starter mode. Fixed Inventory setup wizard callback to be optional for direct `/inventory/setup` routing.
+- **Accounting/ERP impact:** Improves starter readiness while keeping risky POS direct-sale behavior disabled by default. Mandatory Accounting and Inventory links come from the selected starter COA/currency; POS cash/register defaults are seeded only when POS is installed.
+- **Verification:** Focused `SimpleTradingCompanyInitializer.test.ts` passed; frontend typecheck passed. Full backend typecheck remains noisy in this dirty checkout due existing repo-wide script/test tsconfig issues and Prisma generate DLL lock.
+- **Future task:** Created `planning/tasks/276-bundle-aware-auto-initialization.md` to make the starter fully bundle-aware for Accounting-only, Inventory/POS-only, and larger bundles.
+- **Time spent:** ~1.3h.
