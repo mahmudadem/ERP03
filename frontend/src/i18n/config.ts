@@ -44,7 +44,6 @@ i18n
     resources,
     fallbackLng: 'en',
     supportedLngs: ['en', 'ar', 'tr'],
-    lng: 'en',
     ns: ['common', 'dashboard', 'accounting', 'aiAssistant', 'pos', 'controls'],
     defaultNS: 'common',
     detection: {

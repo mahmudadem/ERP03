@@ -1893,6 +1893,15 @@
           "field": "Language"
         }
       }
+    },
+    "landing": {
+      "errors": {
+        "invalidCredential": "Invalid email or password.",
+        "wrongPassword": "Incorrect password.",
+        "emailInUse": "Email is already registered.",
+        "weakPassword": "Password is too weak.",
+        "networkError": "Network error. Please check your connection."
+      }
     }
   },
   "rbac": {
