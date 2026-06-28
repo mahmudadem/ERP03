@@ -25,14 +25,14 @@ interface ManagerOverrideCaptureProps {
   onApproved: (override: ManagerOverrideValue) => void;
 }
 
-const actionLabel = (action: PosManagerOverrideAction): string => {
+const actionLabel = (action: PosManagerOverrideAction, t: any): string => {
   switch (action) {
-    case 'VOID_LINE': return 'Void line';
-    case 'PRICE_OVERRIDE': return 'Price override';
-    case 'DISCOUNT_OVERRIDE': return 'Discount override';
-    case 'TAX_OVERRIDE': return 'Tax override';
-    case 'RETURN': return 'Return';
-    case 'REPRINT': return 'Reprint';
+    case 'VOID_LINE': return t('pos:managerOverride.actions.VOID_LINE', { defaultValue: 'Void line' });
+    case 'PRICE_OVERRIDE': return t('pos:managerOverride.actions.PRICE_OVERRIDE', { defaultValue: 'Price override' });
+    case 'DISCOUNT_OVERRIDE': return t('pos:managerOverride.actions.DISCOUNT_OVERRIDE', { defaultValue: 'Discount override' });
+    case 'TAX_OVERRIDE': return t('pos:managerOverride.actions.TAX_OVERRIDE', { defaultValue: 'Tax override' });
+    case 'RETURN': return t('pos:managerOverride.actions.RETURN', { defaultValue: 'Return' });
+    case 'REPRINT': return t('pos:managerOverride.actions.REPRINT', { defaultValue: 'Reprint' });
     default: return action;
   }
 };
@@ -66,7 +66,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
         setLoadingUsers(true);
         setUsers(await listUsers());
       } catch (err: any) {
-        errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to load company users.');
+        errorHandler.showError(err?.response?.data?.error?.message || err?.message || t('pos:managerOverride.errors.loadUsers', { defaultValue: 'Failed to load company users.' }));
       } finally {
         setLoadingUsers(false);
       }
@@ -110,7 +110,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
         action: created.action,
       });
     } catch (err: any) {
-      errorHandler.showError(err?.response?.data?.error?.message || err?.message || 'Failed to capture manager approval.');
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || t('pos:managerOverride.errors.capture', { defaultValue: 'Failed to capture manager approval.' }));
     } finally {
       setSubmitting(false);
     }
@@ -133,7 +133,7 @@ export const ManagerOverrideCapture: React.FC<ManagerOverrideCaptureProps> = ({
         <div className="space-y-3">
           <div className="rounded-lg border border-amber-200 bg-white px-3 py-2 text-xs text-slate-700">
             <span className="font-semibold">{t('pos:managerOverride.action', { defaultValue: 'Action' })}:</span>{' '}
-            {actionLabel(action)}
+            {actionLabel(action, t)}
           </div>
           <div>
             <label htmlFor="pos-manager-override-user" className="mb-1 block text-xs font-medium text-slate-600">
