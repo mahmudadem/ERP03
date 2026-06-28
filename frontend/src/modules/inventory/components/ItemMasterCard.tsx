@@ -15,7 +15,9 @@ import {
   Plus,
   Layers,
   Sparkles,
-  Coins
+  Coins,
+  Pencil,
+  Check
 } from 'lucide-react';
 import {
   inventoryApi,
@@ -36,6 +38,7 @@ import { MasterCardLayout, FormSection, Field, MasterCardTab } from '../../../co
 import { generateNextCode, CODE_PATTERNS } from '../../../utils/codeGenerator';
 import { useConfirm } from '../../../hooks/useConfirm';
 import { useTranslation } from 'react-i18next';
+import { Modal } from '../../../components/ui/Modal';
 
 interface ItemMasterCardProps {
   itemId?: string;
@@ -69,6 +72,12 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   const [conversionImpactById, setConversionImpactById] = useState<Record<string, UomConversionImpactReportDTO | undefined>>({});
   const [analyzingConversionId, setAnalyzingConversionId] = useState<string | null>(null);
   const [applyingConversionId, setApplyingConversionId] = useState<string | null>(null);
+
+  const [isSecondaryBarcodeModalOpen, setIsSecondaryBarcodeModalOpen] = useState(false);
+  const [newSecondaryBarcode, setNewSecondaryBarcode] = useState({ barcode: '', details: '' });
+  const [autoAddSecondaryBarcode, setAutoAddSecondaryBarcode] = useState(true);
+  const [editingBarcodeIdx, setEditingBarcodeIdx] = useState<number | null>(null);
+  const [editingBarcodeDraft, setEditingBarcodeDraft] = useState({ barcode: '', details: '' });
 
   const [item, setItem] = useState<Partial<InventoryItemDTO>>({
     code: '',
@@ -116,6 +125,13 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
           : remaining,
       };
     });
+  };
+
+  const getUomBarcodes = (uom?: InventoryUomDTO | null): string[] => {
+    if (!uom) return [];
+    return (item.uomBarcodes || []).find((entry) =>
+      entry.uomId ? entry.uomId === uom.id : entry.uom.toUpperCase() === uom.code.toUpperCase()
+    )?.barcodes || [];
   };
 
   useEffect(() => {
@@ -189,12 +205,20 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       if (data.id) {
         await loadConversions(data.id);
       }
-    } catch (err) { setError('Failed to load item'); }
+    } catch (err) { setError(t('Failed to load item', 'Failed to load item')); }
     finally { setLoading(false); }
   };
 
   const handleSave = async () => {
     try {
+      const missing = [];
+      if (!item.code?.trim()) missing.push(t('Code', 'Code'));
+      if (!item.name?.trim()) missing.push(t('Name', 'Name'));
+      if (missing.length > 0) {
+        setError(`${t('Please fill the following required fields:', 'Please fill the following required fields:')} ${missing.join(', ')}`);
+        return;
+      }
+
       setSaving(true);
       setError(null);
       const itemsBasePath = window.location.pathname.startsWith('/sales/') ? '/sales/items' :
@@ -217,7 +241,8 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       }
       onSaved?.(normalized);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to save');
+      const msg = err.response?.data?.message || 'Failed to save';
+      setError(t(msg, { defaultValue: msg }));
     } finally {
       setSaving(false);
     }
@@ -225,16 +250,16 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
 
   const handleAddConversion = async () => {
     if (!item.id && !itemId) {
-      setError('Save the item before adding conversions.');
+      setError(t('Save the item before adding conversions.', 'Save the item before adding conversions.'));
       return;
     }
     const toUomId = conversionDraft.toUomId || item.baseUomId;
     if (!conversionDraft.fromUomId || !toUomId || !(conversionDraft.factor > 0)) {
-      setError('Conversion requires from UOM, to UOM, and a positive factor.');
+      setError(t('Conversion requires from UOM, to UOM, and a positive factor.', 'Conversion requires from UOM, to UOM, and a positive factor.'));
       return;
     }
     if (findActiveConversionPair(conversionDraft.fromUomId, toUomId)) {
-      setError('This From UOM and To UOM conversion already exists. Update the existing row factor instead.');
+      setError(t('This From UOM and To UOM conversion already exists. Update the existing row factor instead.', 'This From UOM and To UOM conversion already exists. Update the existing row factor instead.'));
       return;
     }
 
@@ -250,7 +275,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       await loadConversions(savedItemId);
       setConversionDraft({ factor: 1 });
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to add conversion');
+      setError(err.response?.data?.message ? (t(err.response.data.message, err.response.data.message) as string) : (t('Failed to add conversion', 'Failed to add conversion') as string));
     }
   };
 
@@ -302,7 +327,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   const handleAnalyzeConversion = async (conversion: UomConversionDTO) => {
     const proposedFactor = getDraftFactor(conversion);
     if (!(proposedFactor > 0)) {
-      setError('New factor must be a positive number.');
+      setError(t('New factor must be a positive number.', 'New factor must be a positive number.'));
       return;
     }
 
@@ -313,7 +338,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       const report = ((result as any).data || result) as UomConversionImpactReportDTO;
       setConversionImpactById((current) => ({ ...current, [conversion.id]: report }));
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to analyze conversion impact');
+      setError(err.response?.data?.message ? (t(err.response.data.message, err.response.data.message) as string) : (t('Failed to analyze conversion impact', 'Failed to analyze conversion impact') as string));
     } finally {
       setAnalyzingConversionId(null);
     }
@@ -322,7 +347,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   const handleApplyConversionCorrection = async (conversion: UomConversionDTO) => {
     const proposedFactor = getDraftFactor(conversion);
     if (!(proposedFactor > 0)) {
-      setError('New factor must be a positive number.');
+      setError(t('New factor must be a positive number.', 'New factor must be a positive number.'));
       return;
     }
 
@@ -350,7 +375,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
         await loadConversions(savedItemId);
       }
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to apply conversion correction');
+      setError(err.response?.data?.message ? (t(err.response.data.message, err.response.data.message) as string) : (t('Failed to apply conversion correction', 'Failed to apply conversion correction') as string));
     } finally {
       setApplyingConversionId(null);
     }
@@ -391,7 +416,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       const nextCode = generateNextCode(codes, CODE_PATTERNS.ITEM);
       setItem(p => ({ ...p, code: nextCode }));
     } catch (err) {
-      setError('Could not predict next SKU');
+      setError(t('Could not predict next SKU', 'Could not predict next SKU'));
     }
   };
 
@@ -481,80 +506,19 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                         <Barcode size={16} />
                      </div>
                      <input className="form-control" value={item.barcode || ''} onChange={e => setItem(p => ({ ...p, barcode: e.target.value }))} />
-                  </div>
-                </Field>
-              </div>
-              <div className="col-span-1 sm:col-span-4">
-                <Field label={t('Barcodes by Unit of Measure', 'Barcodes by Unit of Measure')}>
-                  <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-700">
-                    {itemUomOptions.length === 0 ? (
-                      <p className="text-xs text-slate-500">
-                        {t('Save the item and configure its units before assigning unit barcodes.', 'Save the item and configure its units before assigning unit barcodes.')}
-                      </p>
-                    ) : itemUomOptions.map((uom) => {
-                      const assigned = (item.uomBarcodes || []).find((entry) =>
-                        entry.uomId ? entry.uomId === uom.id : entry.uom.toUpperCase() === uom.code.toUpperCase()
-                      )?.barcodes || [];
-                      return (
-                        <div key={uom.id} className="grid gap-2 sm:grid-cols-[10rem_1fr]">
-                          <div className="text-sm font-semibold text-slate-700 dark:text-slate-200">
-                            {uom.code} · {uom.translations?.[i18n.resolvedLanguage || i18n.language]
-                              || uom.translations?.[(i18n.resolvedLanguage || i18n.language).split('-')[0]]
-                              || uom.name}
-                          </div>
-                          <input
-                            className="form-control text-sm"
-                            value={assigned.join(', ')}
-                            onChange={(event) => setUomBarcodes(
-                              uom,
-                              event.target.value.split(',').map((value) => value.trim()).filter(Boolean)
-                            )}
-                            placeholder={t('Comma-separated barcodes', 'Comma-separated barcodes')}
-                          />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </Field>
-              </div>
-              <div className="col-span-1 sm:col-span-2">
-                <Field label={t('Secondary Barcodes', 'Secondary Barcodes')}>
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap gap-2">
-                      {(item.barcodes || []).map((code, idx) => (
-                        <div key={idx} className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded text-sm">
-                          <span>{code}</span>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              const next = [...(item.barcodes || [])];
-                              next.splice(idx, 1);
-                              setItem(p => ({ ...p, barcodes: next }));
-                            }}
-                            className="text-slate-400 hover:text-rose-500"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <input 
-                        className="form-control text-sm" 
-                        placeholder={t('Add secondary barcode...', 'Add secondary barcode...')}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') {
-                            e.preventDefault();
-                            const val = e.currentTarget.value.trim();
-                            if (val && !(item.barcodes || []).includes(val)) {
-                              setItem(p => ({ ...p, barcodes: [...(p.barcodes || []), val] }));
-                            }
-                            e.currentTarget.value = '';
-                          }
-                        }}
-                      />
-                      <span className="text-xs text-slate-400">{t('Press Enter to add', 'Press Enter to add')}</span>
-                    </div>
+                     <button
+                        type="button"
+                        onClick={() => setIsSecondaryBarcodeModalOpen(true)}
+                        className="flex items-center justify-center gap-1 h-9 px-3 text-sm font-medium text-slate-600 bg-slate-100 rounded hover:bg-slate-200 dark:text-slate-300 dark:bg-slate-800 dark:hover:bg-slate-700 whitespace-nowrap"
+                        title={t('Manage Secondary Barcodes', 'Manage Secondary Barcodes')}
+                     >
+                       <Plus size={14} />
+                       {item.metadata?.secondaryBarcodes && item.metadata.secondaryBarcodes.length > 0 ? (
+                         <span>{item.metadata?.secondaryBarcodes?.length || 0} {t('Barcodes', 'Barcodes')}</span>
+                       ) : (
+                         <span>{t('Secondary', 'Secondary')}</span>
+                       )}
+                     </button>
                   </div>
                 </Field>
               </div>
@@ -568,17 +532,6 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                 const type = e.target.value as InventoryItemDTO['type'];
                 setItem(p => ({ ...p, type, trackInventory: type === 'SERVICE' ? false : p.trackInventory }));
               }}><option value="PRODUCT">{t('PRODUCT', 'PRODUCT')}</option><option value="SERVICE">{t('SERVICE', 'SERVICE')}</option></select></Field>
-              <div className="col-span-1 sm:col-span-2 flex items-center pt-2">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input 
-                    type="checkbox" 
-                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    checked={item.active !== false} 
-                    onChange={e => setItem(p => ({ ...p, active: e.target.checked }))} 
-                  />
-                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('Active Item', 'Active Item')}</span>
-                </label>
-              </div>
             </div>
           </FormSection>
         </div>
@@ -798,7 +751,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                    >
                      <option value="">{t('From UOM', 'From UOM')}</option>
                      {uoms.map((uom) => (
-                       <option key={uom.id} value={uom.id}>{uom.code}</option>
+                       <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
                      ))}
                    </select>
                    <select
@@ -808,7 +761,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                    >
                      <option value="">{t('To UOM', 'To UOM')}</option>
                      {uoms.map((uom) => (
-                       <option key={uom.id} value={uom.id}>{uom.code}</option>
+                       <option key={uom.id} value={uom.id}>{uom.code} - {uom.name}</option>
                      ))}
                    </select>
                    <input
@@ -835,6 +788,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                       <tr>
                         <th className="px-4 py-2">{t('From', 'From')}</th>
                         <th className="px-4 py-2">{t('To', 'To')}</th>
+                        <th className="px-4 py-2">{t('Unit Barcode(s)', 'Unit Barcode(s)')}</th>
                         <th className="px-4 py-2 text-right">{t('Current Factor', 'Current Factor')}</th>
                         <th className="px-4 py-2 text-right">{t('New Factor', 'New Factor')}</th>
                         <th className="px-4 py-2">{t('Impact', 'Impact')}</th>
@@ -846,12 +800,36 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                         const impact = conversionImpactById[conversion.id];
                         const draftFactor = getDraftFactor(conversion);
                         const hasDraftChange = Math.abs(draftFactor - conversion.factor) > 0.0000001;
+                        
+                        const fromUomObj = findUom(conversion.fromUomId) || uoms.find(u => u.code === conversion.fromUom);
+                        const toUomObj = findUom(conversion.toUomId) || uoms.find(u => u.code === conversion.toUom);
 
                         return (
                           <React.Fragment key={conversion.id}>
                             <tr className="border-b last:border-none">
-                              <td className="px-4 py-2">{conversion.fromUom}</td>
-                              <td className="px-4 py-2">{conversion.toUom}</td>
+                              <td className="px-4 py-2">
+                                <span className="text-slate-400">{conversion.fromUom}</span>
+                                {fromUomObj?.name && <span className="text-slate-900 dark:text-white"> - {fromUomObj.name}</span>}
+                              </td>
+                              <td className="px-4 py-2">
+                                <span className="text-slate-400">{conversion.toUom}</span>
+                                {toUomObj?.name && <span className="text-slate-900 dark:text-white"> - {toUomObj.name}</span>}
+                              </td>
+                              <td className="px-4 py-2">
+                                <div className="flex items-center gap-1">
+                                  <Barcode size={14} className="text-slate-400 flex-shrink-0" />
+                                  <input
+                                    className="form-control text-xs"
+                                    value={getUomBarcodes(fromUomObj).join(', ')}
+                                    onChange={(e) => fromUomObj && setUomBarcodes(
+                                      fromUomObj,
+                                      e.target.value.split(',').map((v) => v.trim()).filter(Boolean)
+                                    )}
+                                    placeholder={t('Scan or type barcode', 'Scan or type barcode')}
+                                    title={t('Barcode(s) for this unit — scannable at the POS terminal. Separate multiple with commas.', 'Barcode(s) for this unit — scannable at the POS terminal. Separate multiple with commas.')}
+                                  />
+                                </div>
+                              </td>
                               <td className="px-4 py-2 text-right">{conversion.factor}</td>
                               <td className="px-4 py-2">
                                 <input
@@ -903,7 +881,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                             </tr>
                             {impact && (
                               <tr className="border-b bg-slate-50/50 last:border-none">
-                                <td className="px-4 py-3" colSpan={6}>
+                                <td className="px-4 py-3" colSpan={7}>
                                   <div className="space-y-2 text-[11px]">
                                     {!impact.used && (
                                       <div className="rounded border border-emerald-200 bg-emerald-50 px-2 py-1 text-emerald-700">
@@ -948,7 +926,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                       })}
                       {conversions.length === 0 && (
                         <tr>
-                          <td className="px-4 py-3 text-slate-400" colSpan={6}>{t('No alternate UOM conversions defined', 'No alternate UOM conversions defined')}</td>
+                          <td className="px-4 py-3 text-slate-400" colSpan={7}>{t('No alternate UOM conversions defined', 'No alternate UOM conversions defined')}</td>
                         </tr>
                       )}
                     </tbody>
@@ -970,6 +948,205 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
            </FormSection>
         </div>
       )}
+
+      <Modal
+        isOpen={isSecondaryBarcodeModalOpen}
+        onClose={() => setIsSecondaryBarcodeModalOpen(false)}
+        title={t('Secondary Barcodes', 'Secondary Barcodes')}
+        hideFooter={true}
+      >
+        <div className="space-y-4">
+          <div className="flex justify-between items-center mb-2">
+            <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('Add New Barcode', 'Add New Barcode')}</h3>
+            <label className="flex items-center gap-2 text-xs text-slate-600 dark:text-slate-400 cursor-pointer">
+              <input 
+                type="checkbox" 
+                checked={autoAddSecondaryBarcode} 
+                onChange={e => setAutoAddSecondaryBarcode(e.target.checked)} 
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+              />
+              {t('Auto Add on Enter', 'Auto Add on Enter')}
+            </label>
+          </div>
+          <div className="flex gap-2 items-end">
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">{t('Barcode', 'Barcode')}</label>
+              <input
+                className="form-control"
+                value={newSecondaryBarcode.barcode}
+                onChange={e => setNewSecondaryBarcode(p => ({ ...p, barcode: e.target.value }))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!autoAddSecondaryBarcode) return;
+                    if (!newSecondaryBarcode.barcode.trim()) return;
+                    const list = item.metadata?.secondaryBarcodes || [];
+                    if (list.some((b: any) => b.barcode === newSecondaryBarcode.barcode.trim())) return;
+                    const updatedList = [...list, { barcode: newSecondaryBarcode.barcode.trim(), details: newSecondaryBarcode.details.trim() }];
+                    setItem(p => ({
+                      ...p,
+                      barcodes: updatedList.map((b: any) => b.barcode),
+                      metadata: { ...p.metadata, secondaryBarcodes: updatedList }
+                    }));
+                    setNewSecondaryBarcode({ barcode: '', details: '' });
+                  }
+                }}
+              />
+            </div>
+            <div className="flex-1">
+              <label className="block text-xs font-medium text-slate-500 mb-1">{t('Details', 'Details')}</label>
+              <input
+                className="form-control"
+                value={newSecondaryBarcode.details}
+                onChange={e => setNewSecondaryBarcode(p => ({ ...p, details: e.target.value }))}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (!autoAddSecondaryBarcode) return;
+                    if (!newSecondaryBarcode.barcode.trim()) return;
+                    const list = item.metadata?.secondaryBarcodes || [];
+                    if (list.some((b: any) => b.barcode === newSecondaryBarcode.barcode.trim())) return;
+                    const updatedList = [...list, { barcode: newSecondaryBarcode.barcode.trim(), details: newSecondaryBarcode.details.trim() }];
+                    setItem(p => ({
+                      ...p,
+                      barcodes: updatedList.map((b: any) => b.barcode),
+                      metadata: { ...p.metadata, secondaryBarcodes: updatedList }
+                    }));
+                    setNewSecondaryBarcode({ barcode: '', details: '' });
+                  }
+                }}
+              />
+            </div>
+            <button
+              type="button"
+              className="h-[34px] px-3 bg-blue-600 text-white text-sm font-medium rounded hover:bg-blue-700"
+              onClick={() => {
+                if (!newSecondaryBarcode.barcode.trim()) return;
+                const list = item.metadata?.secondaryBarcodes || [];
+                if (list.some((b: any) => b.barcode === newSecondaryBarcode.barcode.trim())) return;
+                const updatedList = [...list, { barcode: newSecondaryBarcode.barcode.trim(), details: newSecondaryBarcode.details.trim() }];
+                setItem(p => ({
+                  ...p,
+                  barcodes: updatedList.map((b: any) => b.barcode),
+                  metadata: { ...p.metadata, secondaryBarcodes: updatedList }
+                }));
+                setNewSecondaryBarcode({ barcode: '', details: '' });
+              }}
+            >
+              {t('Add', 'Add')}
+            </button>
+          </div>
+
+          <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-800 text-slate-500">
+                <tr>
+                  <th className="px-3 py-2 font-medium">{t('Barcode', 'Barcode')}</th>
+                  <th className="px-3 py-2 font-medium">{t('Details', 'Details')}</th>
+                  <th className="px-3 py-2 font-medium w-10"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-200 dark:divide-slate-700">
+                {(item.metadata?.secondaryBarcodes || []).map((b: any, idx: number) => (
+                  <tr key={idx}>
+                    {editingBarcodeIdx === idx ? (
+                      <>
+                        <td className="px-3 py-1">
+                          <input 
+                            className="form-control"
+                            value={editingBarcodeDraft.barcode}
+                            onChange={e => setEditingBarcodeDraft(p => ({ ...p, barcode: e.target.value }))}
+                          />
+                        </td>
+                        <td className="px-3 py-1">
+                          <input 
+                            className="form-control"
+                            value={editingBarcodeDraft.details}
+                            onChange={e => setEditingBarcodeDraft(p => ({ ...p, details: e.target.value }))}
+                          />
+                        </td>
+                      </>
+                    ) : (
+                      <>
+                        <td className="px-3 py-2 font-medium">{b.barcode}</td>
+                        <td className="px-3 py-2 text-slate-500">{b.details}</td>
+                      </>
+                    )}
+                    <td className="px-3 py-2 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        {editingBarcodeIdx === idx ? (
+                          <button
+                            type="button"
+                            className="text-blue-500 hover:text-blue-600"
+                            onClick={() => {
+                               if (!editingBarcodeDraft.barcode.trim()) return;
+                               const list = [...(item.metadata?.secondaryBarcodes || [])];
+                               if (list.some((x, i) => i !== idx && x.barcode === editingBarcodeDraft.barcode.trim())) return;
+                               list[idx] = { barcode: editingBarcodeDraft.barcode.trim(), details: editingBarcodeDraft.details.trim() };
+                               setItem(p => ({
+                                 ...p,
+                                 barcodes: list.map(x => x.barcode),
+                                 metadata: { ...p.metadata, secondaryBarcodes: list }
+                               }));
+                               setEditingBarcodeIdx(null);
+                            }}
+                          >
+                            <Check size={14} />
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-slate-400 hover:text-blue-500"
+                            onClick={() => {
+                              setEditingBarcodeIdx(idx);
+                              setEditingBarcodeDraft({ barcode: b.barcode, details: b.details || '' });
+                            }}
+                          >
+                            <Pencil size={14} />
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="text-slate-400 hover:text-rose-500"
+                          onClick={() => {
+                            const list = [...(item.metadata?.secondaryBarcodes || [])];
+                            list.splice(idx, 1);
+                            setItem(p => ({
+                              ...p,
+                              barcodes: list.map(x => x.barcode),
+                              metadata: { ...p.metadata, secondaryBarcodes: list }
+                            }));
+                            if (editingBarcodeIdx === idx) setEditingBarcodeIdx(null);
+                          }}
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+                {(!item.metadata?.secondaryBarcodes || item.metadata?.secondaryBarcodes?.length === 0) && (
+                  <tr>
+                    <td colSpan={3} className="px-3 py-4 text-center text-slate-400 text-xs">
+                      {t('No secondary barcodes defined', 'No secondary barcodes defined')}
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
+
+          <div className="flex justify-end pt-4 border-t border-slate-200 dark:border-slate-700 mt-4">
+            <button
+              type="button"
+              className="px-4 py-2 bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-sm font-medium"
+              onClick={() => setIsSecondaryBarcodeModalOpen(false)}
+            >
+              {t('Close', 'Close')}
+            </button>
+          </div>
+        </div>
+      </Modal>
 
       <style>{`
         .form-control { width: 100%; border-radius: 0.375rem; border: 1px solid #cbd5e1; padding: 0.5rem 0.75rem; font-size: 0.75rem; outline: none; transition: all 0.2s; }
