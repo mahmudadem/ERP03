@@ -44,7 +44,17 @@
       "warehouse": "Warehouse"
     },
     "newButton": "New GRN",
-    "title": "Clear"
+    "title": "Goods Receipts",
+    "filters": {
+      "statusPlaceholder": "Status",
+      "clear": "Clear"
+    },
+    "status": {
+      "ALL": "All",
+      "DRAFT": "Draft",
+      "POSTED": "Posted",
+      "CANCELLED": "Cancelled"
+    }
   },
   "invoiceDetail": {
     "allocation": {
@@ -504,10 +514,12 @@
       "expectedDelivery": "Expected Delivery",
       "grandTotal": "Grand Total",
       "order": "Order #",
-      "orderDateAndTime": "Order Date and time",
+      "orderDateAndTime": "Order Date and Time",
       "print": "Print",
       "status": "Status",
-      "view": "View"
+      "view": "View",
+      "vendor": "Vendor",
+      "printingOrder": "Printing order {{orderNumber}}..."
     },
     "newButton": "New PO",
     "title": "Purchase Orders"
@@ -516,14 +528,23 @@
     "labels": {
       "accountDefaults": "Account Defaults",
       "governance": "Governance",
+      "governanceRules": "Governance Rules",
       "invoicesPI": "Invoices (PI)",
       "noSeries": "No. Series",
       "procurementPolicy": "Procurement Policy",
+      "documentNumbering": "Document Numbering",
       "purchaseOrders": "Purchase Orders",
       "receiptsGRN": "Receipts (GRN)",
       "returnsPR": "Returns (PR)"
     },
-    "title": "Governance Rules",
+    "title": "Purchase Settings",
+    "subtitle": "Control purchasing workflow, posting defaults, tolerances, and numbering.",
+    "descriptions": {
+      "procurementPolicy": "Define which purchasing documents users can work with and how operational controls behave.",
+      "accountDefaults": "Standard general ledger accounts used for purchasing transactions.",
+      "documentNumbering": "Prefixes and sequence counters for purchase documents.",
+      "governanceRules": "Override default document policies at company, branch, or form level."
+    },
     "messages": {
       "loadFailed": "Failed to load purchase settings.",
       "defaultAPRequired": "Default Accounts Payable account is required.",
@@ -907,6 +928,7 @@
       "purchaseExpense": "Purchase Expense:",
       "gRNI": "GRNI:",
       "fXGainLoss": "FX Gain/Loss:",
+      "notSelected": "Not selected",
       "theseMappingsTakeEffectImmediatelyForAllFuture": "These mappings take effect immediately for all future purchase transactions.",
       "step": "Step",
       "of": "of",

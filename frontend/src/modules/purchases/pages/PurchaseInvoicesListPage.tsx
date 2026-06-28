@@ -332,7 +332,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'vendorName',
-        label: t('invoicesList.columns.vendorName', 'Customer/Party'),
+        label: t('invoicesList.columns.vendorName', 'Vendor'),
         width: '200px',
         priority: 1,
         sortable: true,
@@ -343,7 +343,7 @@ const PurchaseInvoicesListPage: React.FC = () => {
       },
       {
         key: 'invoiceDate',
-        label: t('invoicesList.columns.invoiceDate', 'Invoice Date and time'),
+        label: t('invoicesList.columns.invoiceDate', 'Invoice Date and Time'),
         width: '180px',
         priority: 1,
         sortable: true,

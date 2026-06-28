@@ -309,7 +309,7 @@ const PurchaseSettingsPage: React.FC = () => {
     <>
       <ModuleSettingsLayout
         title={t('purchaseSettings.title', 'Purchase Settings')}
-        subtitle={t('purchaseSettings.title', 'Control purchasing workflow, posting defaults, tolerances, and numbering.')}
+        subtitle={t('purchaseSettings.subtitle', 'Control purchasing workflow, posting defaults, tolerances, and numbering.')}
         tabs={tabs as any}
         activeTab={activeTab}
         onTabChange={(id) => setActiveTab(id as TabId)}
@@ -329,8 +329,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'policy' && (
         <SettingsSection
-          title={t('purchaseSettings.title', 'Procurement Policy')}
-          description="Define which purchasing documents users can work with and how operational controls behave."
+          title={t('purchaseSettings.labels.procurementPolicy', 'Procurement Policy')}
+          description={t('purchaseSettings.descriptions.procurementPolicy', 'Define which purchasing documents users can work with and how operational controls behave.')}
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
@@ -477,8 +477,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'accounts' && (
         <SettingsSection
-          title={t('purchaseSettings.title', 'Account Defaults')}
-          description="Standard general ledger accounts used for purchasing transactions."
+          title={t('purchaseSettings.labels.accountDefaults', 'Account Defaults')}
+          description={t('purchaseSettings.descriptions.accountDefaults', 'Standard general ledger accounts used for purchasing transactions.')}
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
@@ -653,8 +653,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'numbering' && (
         <SettingsSection
-          title={t('purchaseSettings.title', 'Document Numbering')}
-          description="Prefixes and sequence counters for purchase documents."
+          title={t('purchaseSettings.labels.documentNumbering', 'Document Numbering')}
+          description={t('purchaseSettings.descriptions.documentNumbering', 'Prefixes and sequence counters for purchase documents.')}
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
@@ -702,8 +702,8 @@ const PurchaseSettingsPage: React.FC = () => {
 
       {activeTab === 'governance' && (
         <SettingsSection
-          title={t('purchaseSettings.title', 'Governance Rules')}
-          description="Override default document policies at the company, branch, or form level."
+          title={t('purchaseSettings.labels.governanceRules', 'Governance Rules')}
+          description={t('purchaseSettings.descriptions.governanceRules', 'Override default document policies at the company, branch, or form level.')}
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}

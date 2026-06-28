@@ -181,7 +181,7 @@ const GoodsReceiptsListPage: React.FC = () => {
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status.value} value={status.value}>
-                  {status.value === 'ALL' ? 'Status' : status.label}
+                  {status.value === 'ALL' ? t('goodsReceiptsList.filters.statusPlaceholder', 'Status') : t(`goodsReceiptsList.status.${status.value}`, status.label)}
                 </option>
               ))}
             </select>
@@ -201,7 +201,7 @@ const GoodsReceiptsListPage: React.FC = () => {
               type="button"
               onClick={handleClear}
               className="inline-flex items-center justify-center p-2 rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 hover:text-rose-600 dark:hover:text-rose-400 transition-all active:scale-[0.98] duration-200"
-              title={t('goodsReceiptsList.title', 'Clear')}
+              title={t('goodsReceiptsList.filters.clear', 'Clear')}
             >
               <RotateCcw size={16} />
             </button>
@@ -211,7 +211,11 @@ const GoodsReceiptsListPage: React.FC = () => {
       hasActiveFilters={hasActiveFilters}
       onClearFilters={handleClear}
       statusFilterConfig={{
-        options: STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label, color: option.color })),
+        options: STATUS_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.value === 'ALL' ? t('goodsReceiptsList.status.ALL', option.label) : t(`goodsReceiptsList.status.${option.value}`, option.label),
+          color: option.color,
+        })),
         activeValue: statusFilter,
         onChange: (value) => {
           setStatusFilter(value as GRNStatus | 'ALL');

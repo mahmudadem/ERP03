@@ -34,17 +34,27 @@
     "title": "Unpost Goods Receipt"
   },
   "goodsReceiptsList": {
-    "emptyMessage": "No goods receipts found.",
+    "emptyMessage": "Mal kabul bulunamadı.",
     "labels": {
-      "gRN": "GRN #",
-      "open": "Open",
-      "receiptDate": "Receipt Date",
-      "status": "Status",
-      "vendor": "Vendor",
-      "warehouse": "Warehouse"
+      "gRN": "Mal Kabul #",
+      "open": "Aç",
+      "receiptDate": "Kabul Tarihi",
+      "status": "Durum",
+      "vendor": "Tedarikçi",
+      "warehouse": "Depo"
     },
-    "newButton": "New GRN",
-    "title": "Clear"
+    "newButton": "Yeni Mal Kabul",
+    "title": "Mal Kabuller",
+    "filters": {
+      "statusPlaceholder": "Durum",
+      "clear": "Temizle"
+    },
+    "status": {
+      "ALL": "Tümü",
+      "DRAFT": "Taslak",
+      "POSTED": "Kaydedildi",
+      "CANCELLED": "İptal edildi"
+    }
   },
   "invoiceDetail": {
     "allocation": {
@@ -305,37 +315,37 @@
   },
   "invoicesList": {
     "actions": {
-      "print": "Print",
-      "printingToast": "Printing invoice {{invoiceNumber}}...",
-      "view": "View"
+      "print": "Yazdır",
+      "printingToast": "{{invoiceNumber}} faturası yazdırılıyor...",
+      "view": "Görüntüle"
     },
     "allVendors": "Tüm Tedarikçiler",
     "columns": {
-      "createdBy": "Created By",
-      "currency": "Currency",
-      "dueDate": "Due Date",
-      "grandTotal": "Grand Total",
-      "invoiceDate": "Invoice Date and time",
-      "invoiceNumber": "Invoice #",
-      "payments": "Payments",
-      "persona": "Invoice Type/Persona",
-      "postedAt": "Posted At",
-      "status": "Status",
-      "vendorName": "Customer/Party"
+      "createdBy": "Oluşturan",
+      "currency": "Para Birimi",
+      "dueDate": "Vade Tarihi",
+      "grandTotal": "Genel Toplam",
+      "invoiceDate": "Fatura Tarihi ve Saati",
+      "invoiceNumber": "Fatura #",
+      "payments": "Ödemeler",
+      "persona": "Fatura Türü",
+      "postedAt": "Kayıt Zamanı",
+      "status": "Durum",
+      "vendorName": "Tedarikçi"
     },
     "emptyDescription": "Yeni bir tedarikçi faturası oluşturun veya mevcut faturaları bulmak için filtreleri değiştirin.",
     "emptyTitle": "Satın alma faturası bulunamadı",
     "filters": {
-      "allTypes": "Type",
-      "apply": "Apply",
-      "clear": "Clear",
-      "dateFrom": "Date From",
-      "dateTo": "Date To",
-      "direct": "Direct",
-      "paymentPlaceholder": "Payment",
+      "allTypes": "Tür",
+      "apply": "Uygula",
+      "clear": "Temizle",
+      "dateFrom": "Başlangıç Tarihi",
+      "dateTo": "Bitiş Tarihi",
+      "direct": "Doğrudan",
+      "paymentPlaceholder": "Ödeme",
       "pos": "POS",
-      "searchPlaceholder": "Invoice #, vendor, user...",
-      "statusPlaceholder": "Status"
+      "searchPlaceholder": "Fatura #, tedarikçi, kullanıcı...",
+      "statusPlaceholder": "Durum"
     },
     "loading": "Satın alma faturaları yükleniyor...",
     "new": "Yeni Satın Alma Faturası",
@@ -360,21 +370,22 @@
   },
   "ordersList": {
     "filters": {
-      "allVendors": "All Vendors",
-      "apply": "Apply",
-      "clear": "Clear",
-      "dateFrom": "Date From",
-      "dateTo": "Date To",
-      "searchPlaceholder": "Order #, vendor, user...",
-      "statusPlaceholder": "Status"
+      "allVendors": "Tüm Tedarikçiler",
+      "apply": "Uygula",
+      "clear": "Temizle",
+      "dateFrom": "Başlangıç Tarihi",
+      "dateTo": "Bitiş Tarihi",
+      "searchPlaceholder": "Sipariş #, tedarikçi, kullanıcı...",
+      "statusPlaceholder": "Durum"
     },
     "status": {
-      "CANCELLED": "Cancelled",
-      "CLOSED": "Closed",
-      "CONFIRMED": "Confirmed",
-      "DRAFT": "Draft",
-      "FULLY_RECEIVED": "Fully Received",
-      "PARTIALLY_RECEIVED": "Partially Received"
+      "CANCELLED": "İptal Edildi",
+      "CLOSED": "Kapalı",
+      "CONFIRMED": "Onaylandı",
+      "DRAFT": "Taslak",
+      "FULLY_RECEIVED": "Tam Alındı",
+      "PARTIALLY_RECEIVED": "Kısmen Alındı",
+      "ALL": "Tümü"
     }
   },
   "poDetail": {
@@ -495,35 +506,39 @@
     }
   },
   "purchaseOrdersList": {
-    "emptyMessage": "No purchase orders found.",
+    "emptyMessage": "Satınalma siparişi bulunamadı.",
     "labels": {
-      "confirmedAt": "Confirmed At",
-      "createdBy": "Created By",
-      "currency": "Currency",
+      "confirmedAt": "Onay Zamanı",
+      "createdBy": "Oluşturan",
+      "currency": "Para Birimi",
       "customerParty": "Customer/Party",
-      "expectedDelivery": "Expected Delivery",
-      "grandTotal": "Grand Total",
-      "order": "Order #",
-      "orderDateAndTime": "Order Date and time",
-      "print": "Print",
-      "status": "Status",
-      "view": "View"
+      "expectedDelivery": "Beklenen Teslim",
+      "grandTotal": "Genel Toplam",
+      "order": "Sipariş #",
+      "orderDateAndTime": "Sipariş Tarihi ve Saati",
+      "print": "Yazdır",
+      "status": "Durum",
+      "view": "Görüntüle",
+      "vendor": "Tedarikçi",
+      "printingOrder": "{{orderNumber}} siparişi yazdırılıyor..."
     },
-    "newButton": "New PO",
-    "title": "Purchase Orders"
+    "newButton": "Yeni SS",
+    "title": "Satınalma Siparişleri"
   },
   "purchaseSettings": {
     "labels": {
-      "accountDefaults": "Account Defaults",
-      "governance": "Governance",
-      "invoicesPI": "Invoices (PI)",
-      "noSeries": "No. Series",
-      "procurementPolicy": "Procurement Policy",
-      "purchaseOrders": "Purchase Orders",
-      "receiptsGRN": "Receipts (GRN)",
-      "returnsPR": "Returns (PR)"
+      "accountDefaults": "Hesap Varsayılanları",
+      "governance": "Yönetişim",
+      "invoicesPI": "Alış Faturaları",
+      "noSeries": "Numara Serileri",
+      "procurementPolicy": "Satınalma Politikası",
+      "purchaseOrders": "Satınalma Siparişleri",
+      "receiptsGRN": "Mal Kabuller",
+      "returnsPR": "Alış İadeleri",
+      "governanceRules": "Yönetişim Kuralları",
+      "documentNumbering": "Belge Numaralandırma"
     },
-    "title": "Governance Rules",
+    "title": "Satınalma Ayarları",
     "messages": {
       "defaultAPRequired": "Varsayılan Borç Hesapları hesabı gereklidir.",
       "saveFailed": "Satın alma ayarları kaydedilemedi.",
@@ -531,6 +546,13 @@
       "updated": "Satın alma ayarları başarıyla güncellendi.",
       "defaultGRNIRequired": "Sürekli satın alma iş akışları için varsayılan GRNI hesabı gereklidir.",
       "discarded": "Değişiklikler iptal edildi"
+    },
+    "subtitle": "Satınalma iş akışı, varsayılan kayıt hesapları, toleranslar ve numaralandırmayı yönetin.",
+    "descriptions": {
+      "procurementPolicy": "Kullanıcıların hangi satınalma belgeleriyle çalışacağını ve operasyonel kontrollerin nasıl davranacağını belirleyin.",
+      "accountDefaults": "Satınalma işlemlerinde kullanılan standart genel muhasebe hesapları.",
+      "documentNumbering": "Satınalma belgeleri için önekler ve sıra sayaçları.",
+      "governanceRules": "Varsayılan belge politikalarını şirket, şube veya form düzeyinde geçersiz kılın."
     }
   },
   "returnDetail": {
@@ -634,18 +656,18 @@
   },
   "auto": {
     "ApAgingReportPage": {
-      "asOfDate": "Tarih İtibariyle",
-      "vendorOptional": "Satıcı (isteğe bağlı)",
-      "allVendors": "Tüm satıcılar",
+      "asOfDate": "İtibariyle",
+      "vendorOptional": "Tedarikçi (isteğe bağlı)",
+      "allVendors": "Tüm tedarikçiler",
       "generateReport": "Rapor Oluştur",
-      "asOf": "itibariyle",
-      "vendor": "satıcı",
-      "totalAP": "· Toplam AP:",
-      "loadingAging": "Yaşlanma yükleniyor...",
-      "noOutstandingPayablesAsOf": "itibarıyla ödenmemiş borç bulunmamaktadır.",
+      "asOf": "İtibariyle ",
+      "vendor": " tedarikçi",
+      "totalAP": " · Toplam Borç: ",
+      "loadingAging": "Yaşlandırma yükleniyor...",
+      "noOutstandingPayablesAsOf": "Bu tarih itibarıyla açık borç yok: ",
       "totals": "Toplamlar",
-      "aPAging": "AP Yaşlanma",
-      "accountsPayableByAgingBucket": "Yaşlandırma paketine göre ödenecek hesaplar"
+      "aPAging": "Borç Yaşlandırma",
+      "accountsPayableByAgingBucket": "Vadeye göre tedarikçi borçları"
     },
     "GoodsReceiptDetailPage": {
       "goodsReceipt": "Mal girişi",
@@ -753,22 +775,22 @@
       "clear": "Temizlemek"
     },
     "PurchasesAnalyticsPage": {
-      "groupBy": "Gruplandırma Ölçütü",
-      "byVendor": "Satıcıya göre",
-      "byItem": "Öğeye göre",
-      "fromDate": "Başlangıç ​​Tarihi",
-      "toDate": "Bugüne kadar",
+      "groupBy": "Grupla",
+      "byVendor": "Tedarikçiye Göre",
+      "byItem": "Kaleme Göre",
+      "fromDate": "Başlangıç Tarihi",
+      "toDate": "Bitiş Tarihi",
       "generateReport": "Rapor Oluştur",
-      "row": "sıra",
+      "row": " satır",
       "loadingReport": "Rapor yükleniyor...",
-      "purchasesByVendor": "Satıcı tarafından satın alınanlar",
-      "noDataForThisPeriod": "Bu döneme ait veri yok.",
+      "purchasesByVendor": "Tedarikçiye Göre Satınalma",
+      "noDataForThisPeriod": "Bu dönem için veri yok.",
       "totals": "Toplamlar",
-      "purchasesByItem": "Öğeye göre satın almalar",
-      "noDataForThisPeriod2": "Bu döneme ait veri yok.",
+      "purchasesByItem": "Kaleme Göre Satınalma",
+      "noDataForThisPeriod2": "Bu dönem için veri yok.",
       "totals2": "Toplamlar",
-      "purchasesAnalytics": "Satın Alma Analizleri",
-      "purchaseSpendByVendorOrItem": "Satıcıya veya ürüne göre satın alma harcaması"
+      "purchasesAnalytics": "Satınalma Analizi",
+      "purchaseSpendByVendorOrItem": "Tedarikçi veya kaleme göre satınalma harcaması"
     },
     "PurchaseSettingsPage": {
       "workflowMode": "İş Akışı Modu",
@@ -853,19 +875,19 @@
     },
     "VendorStatementPage": {
       "openingBalance": "Açılış Bakiyesi",
-      "noPostedVendorActivityInThisPeriod": "Bu dönemde yayınlanmış satıcı etkinliği yok.",
+      "noPostedVendorActivityInThisPeriod": "Bu dönemde kayıtlı tedarikçi hareketi yok.",
       "source": "Kaynak",
-      "voucher": "Kupon",
+      "voucher": "Fiş",
       "closingBalance": "Kapanış Bakiyesi",
-      "view": "Görüş",
-      "statementPeriodSummary": "Açıklama (dönem özeti)",
-      "fullLedgerAllPostedEvents": "Tam Defter (yayınlanan tüm etkinlikler)",
-      "vendor": "Satıcı",
-      "selectAVendor": "Bir satıcı seçin...",
-      "fromDate": "Başlangıç ​​Tarihi",
-      "toDate": "Bugüne kadar",
+      "view": "Görünüm",
+      "statementPeriodSummary": "Ekstre (dönem özeti)",
+      "fullLedgerAllPostedEvents": "Tam Defter (tüm kayıtlı hareketler)",
+      "vendor": "Tedarikçi",
+      "selectAVendor": "Tedarikçi seçin...",
+      "fromDate": "Başlangıç Tarihi",
+      "toDate": "Bitiş Tarihi",
       "includeOpenCommitments": "Açık taahhütleri dahil et",
-      "showsOpenPurchaseOrdersSeparatelyForProcurementFollow": "Tedarik takibi için açık satınalma siparişlerini ayrı ayrı gösterir. Bu tutarlar satıcı ekstresi bakiyesini etkilemez.",
+      "showsOpenPurchaseOrdersSeparatelyForProcurementFollow": "Açık satınalma siparişlerini takip için ayrı gösterir; tutarlar tedarikçi ekstresi bakiyesini etkilemez.",
       "generateReport": "Rapor Oluştur",
       "to": "ile",
       "billed": "Faturalandırıldı:",
@@ -877,8 +899,8 @@
       "openCommitments": "Açık Taahhütler (",
       "notIncludedInBalance": ") · Bakiyeye dahil değil",
       "noData": "Veri yok.",
-      "vendorStatement": "Satıcı Beyanı",
-      "postedAPStatementAndLedgerForAVendor": "Bir satıcı için AP beyanı ve defteri yayınlandı"
+      "vendorStatement": "Tedarikçi Ekstresi",
+      "postedAPStatementAndLedgerForAVendor": "Tedarikçi için kayıtlı borç ekstresi ve defteri"
     },
     "PurchaseFinancialIntegrationWizard": {
       "purchaseFinancialIntegration": "Finansal Entegrasyon Satın Alın",
@@ -907,6 +929,7 @@
       "purchaseExpense": "Satın Alma Giderleri:",
       "gRNI": "GRN:",
       "fXGainLoss": "Döviz Kazancı/Zararı:",
+      "notSelected": "Seçilmedi",
       "theseMappingsTakeEffectImmediatelyForAllFuture": "Bu eşlemeler gelecekteki tüm satın alma işlemleri için anında geçerli olur.",
       "step": "Adım",
       "of": "ile ilgili",

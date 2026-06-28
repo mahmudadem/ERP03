@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { ArrowUp, ArrowDown, ArrowUpDown, GripVertical, Filter } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 import { ResponsiveColumn, SortDirection, ActiveFilters } from './types';
 import { DataTableFilter } from './DataTableFilter';
 
@@ -53,6 +54,7 @@ export function DataTableHeader<T>({
   activeFilters,
   hasRowActions,
 }: DataTableHeaderProps<T>) {
+  const { t } = useTranslation('common');
   const fontClass = FONT_SIZE_MAP[fontSize];
 
   const renderSortIcon = (colKey: string, direction: SortDirection) => {
@@ -205,7 +207,7 @@ export function DataTableHeader<T>({
               fontClass
             )}
           >
-            Actions
+            {t('dataTable.actions', 'Actions')}
           </th>
         )}
       </tr>

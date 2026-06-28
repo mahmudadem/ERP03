@@ -4316,5 +4316,137 @@
   "registers": "منافذ البيع",
   "owner": "المالك",
   "admin": "مسؤول النظام",
-  "cashier": "كاشير"
+  "cashier": "كاشير",
+  "dataTable": {
+    "density": "الكثافة",
+    "fontSize": "حجم الخط",
+    "columns": "الأعمدة",
+    "actions": "الإجراءات",
+    "reset": "إعادة ضبط",
+    "noColumnsVisible": "لا توجد أعمدة ظاهرة",
+    "resetToDefaults": "إعادة الضبط للوضع الافتراضي",
+    "densities": {
+      "compact": "مضغوط",
+      "comfortable": "مريح",
+      "spacious": "واسع"
+    },
+    "priority": {
+      "core": "أساسي",
+      "standard": "قياسي",
+      "detail": "تفصيلي"
+    },
+    "pagination": {
+      "showing": "عرض {{start}}-{{end}} من {{total}}",
+      "rowsPerPage": "عدد الصفوف في الصفحة",
+      "pageSizeOption": "{{size}} / صفحة",
+      "previousPage": "الصفحة السابقة",
+      "nextPage": "الصفحة التالية",
+      "pageOf": "الصفحة {{page}} من {{totalPages}}"
+    },
+    "selection": {
+      "selectedCount": "تم تحديد {{selected}} من {{total}}",
+      "clear": "مسح"
+    }
+  },
+  "formsManagement": {
+    "title": "إدارة النماذج — {{module}}",
+    "loading": "جارٍ تحميل إدارة نماذج {{module}}...",
+    "installedTypes": "الأنواع المثبتة ({{count}})",
+    "availableTypes": "الأنواع المتاحة ({{count}})",
+    "noInstalledTypes": "لم يتم تثبيت أي أنواع مستندات بعد. اختر نوعاً من المتاح أدناه لتثبيته.",
+    "documentWizard": "معالج المستند",
+    "newForm": "نموذج جديد",
+    "formCount": "{{count}} نموذج",
+    "activeCount": "{{count}} نشط",
+    "customCount": "{{count}} مخصص",
+    "defaultFormCount": "{{count}} نموذج افتراضي",
+    "variants": "المتغيرات: {{variants}}",
+    "addCustomForm": "إضافة نموذج مخصص",
+    "builtInNative": "نموذج أصلي مدمج",
+    "lockedDefault": "افتراضي مقفل",
+    "active": "نشط",
+    "off": "متوقف",
+    "activate": "تفعيل",
+    "deactivate": "إيقاف",
+    "formSettings": "إعدادات النموذج",
+    "cloneTitle": "استنساخ نسخة قابلة للتعديل",
+    "restrictedEdit": "عرض / تعديل محدود",
+    "moreOptions": "خيارات إضافية",
+    "exportJson": "تصدير JSON",
+    "viewSchema": "عرض المخطط",
+    "sidebarGroup": "مجموعة الشريط الجانبي",
+    "sidebarGroupPlaceholder": "اكتب أو اختر مجموعة...",
+    "comingSoon": "قريباً",
+    "installing": "جارٍ التثبيت",
+    "install": "تثبيت",
+    "installedToast": "تم تثبيت \"{{name}}\" — تمت إضافة {{count}} نموذج افتراضي كمقفل وغير نشط.",
+    "instructions": {
+      "title": "إدارة النماذج — {{module}}",
+      "helpTitle": "ما وظيفة هذه الصفحة؟",
+      "open": "فتح تعليمات الصفحة"
+    },
+    "formNames": {
+      "nativeVouchers": "القيود الأصلية",
+      "nativeSalesInvoice": "فاتورة مبيعات أصلية",
+      "nativeSalesOrder": "طلب مبيعات أصلي",
+      "nativePurchaseInvoice": "فاتورة مشتريات أصلية",
+      "nativePurchaseOrder": "أمر شراء أصلي",
+      "goodsReceipt": "إشعار استلام بضائع",
+      "purchaseInvoiceService": "فاتورة مشتريات (خدمة)",
+      "purchaseInvoiceDirect": "فاتورة مشتريات (مباشرة)",
+      "purchaseInvoiceLinked": "فاتورة مشتريات (مرتبطة)",
+      "purchaseReturn": "مردود مشتريات",
+      "purchaseOrder": "أمر شراء"
+    },
+    "persona": {
+      "direct": "مباشر",
+      "linked": "مرتبط",
+      "service": "خدمة"
+    },
+    "settings": {
+      "accountDefaults": "الحسابات الافتراضية",
+      "pricingBehavior": "سلوك التسعير"
+    },
+    "messages": {
+      "activated": "تم تفعيل النموذج.",
+      "deactivated": "تم إيقاف النموذج."
+    },
+    "errors": {
+      "loadFailed": "تعذر تحميل بيانات إدارة النماذج",
+      "updateStatusFailed": "فشل تحديث حالة النموذج",
+      "installFailed": "فشل التثبيت",
+      "saveSettingsFailed": "فشل حفظ إعدادات النموذج."
+    }
+  },
+  "accountingIntegrationStatus": {
+    "modules": {
+      "inventory": "المخزون",
+      "purchases": "المشتريات",
+      "sales": "المبيعات"
+    },
+    "modulesLower": {
+      "inventory": "المخزون",
+      "purchases": "المشتريات",
+      "sales": "المبيعات"
+    },
+    "notEnabled": {
+      "label": "المحاسبة غير مفعلة",
+      "message": "ستتبع عمليات {{module}} الكميات والمستندات، لكنها لن تنشئ ترحيلات مالية أو قيود دفتر أستاذ.",
+      "action": "تفعيل المحاسبة"
+    },
+    "setupRequired": {
+      "label": "المحاسبة مفعلة - الإعداد مطلوب",
+      "message": "وحدة المحاسبة مفعلة لكنها لم تُعد بعد. أكمل إعداد المحاسبة أولاً، ثم اضبط التكامل المالي لـ {{module}}.",
+      "action": "إكمال إعداد المحاسبة"
+    },
+    "pending": {
+      "label": "التكامل المالي معلق",
+      "message": "تم إعداد المحاسبة، لكن تعيينات حسابات {{module}} لم تُضبط بعد. لن تُنشأ الترحيلات المالية حتى يتم ضبط التعيينات.",
+      "action": "ضبط التكامل"
+    },
+    "active": {
+      "label": "التكامل المالي فعال",
+      "message": "{{module}} متكاملة بالكامل مع المحاسبة. كل العمليات تنشئ ترحيلات مالية/دفتر أستاذ."
+    }
+  }
 }

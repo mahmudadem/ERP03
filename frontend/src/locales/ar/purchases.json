@@ -34,17 +34,27 @@
     "title": "Unpost Goods Receipt"
   },
   "goodsReceiptsList": {
-    "emptyMessage": "No goods receipts found.",
+    "emptyMessage": "لا توجد إشعارات استلام بضائع.",
     "labels": {
-      "gRN": "GRN #",
-      "open": "Open",
-      "receiptDate": "Receipt Date",
-      "status": "Status",
-      "vendor": "Vendor",
-      "warehouse": "Warehouse"
+      "gRN": "رقم الإشعار",
+      "open": "فتح",
+      "receiptDate": "تاريخ الاستلام",
+      "status": "الحالة",
+      "vendor": "المورد",
+      "warehouse": "المستودع"
     },
-    "newButton": "New GRN",
-    "title": "Clear"
+    "newButton": "إشعار استلام جديد",
+    "title": "إشعارات استلام بضائع",
+    "filters": {
+      "statusPlaceholder": "الحالة",
+      "clear": "مسح"
+    },
+    "status": {
+      "ALL": "الكل",
+      "DRAFT": "مسودة",
+      "POSTED": "مرحّل",
+      "CANCELLED": "ملغى"
+    }
   },
   "invoiceDetail": {
     "allocation": {
@@ -305,37 +315,37 @@
   },
   "invoicesList": {
     "actions": {
-      "print": "Print",
-      "printingToast": "Printing invoice {{invoiceNumber}}...",
-      "view": "View"
+      "print": "طباعة",
+      "printingToast": "جارٍ طباعة الفاتورة {{invoiceNumber}}...",
+      "view": "عرض"
     },
     "allVendors": "كل الموردين",
     "columns": {
-      "createdBy": "Created By",
-      "currency": "Currency",
-      "dueDate": "Due Date",
-      "grandTotal": "Grand Total",
-      "invoiceDate": "Invoice Date and time",
-      "invoiceNumber": "Invoice #",
-      "payments": "Payments",
-      "persona": "Invoice Type/Persona",
-      "postedAt": "Posted At",
-      "status": "Status",
-      "vendorName": "Customer/Party"
+      "createdBy": "أنشأها",
+      "currency": "العملة",
+      "dueDate": "تاريخ الاستحقاق",
+      "grandTotal": "الإجمالي الكلي",
+      "invoiceDate": "تاريخ ووقت الفاتورة",
+      "invoiceNumber": "رقم الفاتورة",
+      "payments": "المدفوعات",
+      "persona": "نوع الفاتورة",
+      "postedAt": "وقت الترحيل",
+      "status": "الحالة",
+      "vendorName": "المورد"
     },
     "emptyDescription": "أنشئ فاتورة مورد جديدة أو غيّر الفلاتر للعثور على فواتير موجودة.",
     "emptyTitle": "لا توجد فواتير مشتريات",
     "filters": {
-      "allTypes": "Type",
-      "apply": "Apply",
-      "clear": "Clear",
-      "dateFrom": "Date From",
-      "dateTo": "Date To",
-      "direct": "Direct",
-      "paymentPlaceholder": "Payment",
-      "pos": "POS",
-      "searchPlaceholder": "Invoice #, vendor, user...",
-      "statusPlaceholder": "Status"
+      "allTypes": "النوع",
+      "apply": "تطبيق",
+      "clear": "مسح",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ",
+      "direct": "مباشرة",
+      "paymentPlaceholder": "الدفع",
+      "pos": "نقطة بيع",
+      "searchPlaceholder": "رقم الفاتورة، المورد، المستخدم...",
+      "statusPlaceholder": "الحالة"
     },
     "loading": "جارٍ تحميل فواتير المشتريات...",
     "new": "فاتورة مشتريات جديدة",
@@ -360,21 +370,22 @@
   },
   "ordersList": {
     "filters": {
-      "allVendors": "All Vendors",
-      "apply": "Apply",
-      "clear": "Clear",
-      "dateFrom": "Date From",
-      "dateTo": "Date To",
-      "searchPlaceholder": "Order #, vendor, user...",
-      "statusPlaceholder": "Status"
+      "allVendors": "كل الموردين",
+      "apply": "تطبيق",
+      "clear": "مسح",
+      "dateFrom": "من تاريخ",
+      "dateTo": "إلى تاريخ",
+      "searchPlaceholder": "رقم الطلب، المورد، المستخدم...",
+      "statusPlaceholder": "الحالة"
     },
     "status": {
-      "CANCELLED": "Cancelled",
-      "CLOSED": "Closed",
-      "CONFIRMED": "Confirmed",
-      "DRAFT": "Draft",
-      "FULLY_RECEIVED": "Fully Received",
-      "PARTIALLY_RECEIVED": "Partially Received"
+      "CANCELLED": "ملغى",
+      "CLOSED": "مغلق",
+      "CONFIRMED": "مؤكد",
+      "DRAFT": "مسودة",
+      "FULLY_RECEIVED": "مستلم بالكامل",
+      "PARTIALLY_RECEIVED": "مستلم جزئياً",
+      "ALL": "الكل"
     }
   },
   "poDetail": {
@@ -495,35 +506,39 @@
     }
   },
   "purchaseOrdersList": {
-    "emptyMessage": "No purchase orders found.",
+    "emptyMessage": "لا توجد طلبات شراء.",
     "labels": {
-      "confirmedAt": "Confirmed At",
-      "createdBy": "Created By",
-      "currency": "Currency",
+      "confirmedAt": "وقت التأكيد",
+      "createdBy": "أنشأه",
+      "currency": "العملة",
       "customerParty": "Customer/Party",
-      "expectedDelivery": "Expected Delivery",
-      "grandTotal": "Grand Total",
-      "order": "Order #",
-      "orderDateAndTime": "Order Date and time",
-      "print": "Print",
-      "status": "Status",
-      "view": "View"
+      "expectedDelivery": "التسليم المتوقع",
+      "grandTotal": "الإجمالي الكلي",
+      "order": "رقم الطلب",
+      "orderDateAndTime": "تاريخ ووقت الطلب",
+      "print": "طباعة",
+      "status": "الحالة",
+      "view": "عرض",
+      "vendor": "المورد",
+      "printingOrder": "جارٍ طباعة الطلب {{orderNumber}}..."
     },
-    "newButton": "New PO",
-    "title": "Purchase Orders"
+    "newButton": "طلب شراء جديد",
+    "title": "طلبات الشراء"
   },
   "purchaseSettings": {
     "labels": {
-      "accountDefaults": "Account Defaults",
-      "governance": "Governance",
-      "invoicesPI": "Invoices (PI)",
-      "noSeries": "No. Series",
-      "procurementPolicy": "Procurement Policy",
-      "purchaseOrders": "Purchase Orders",
-      "receiptsGRN": "Receipts (GRN)",
-      "returnsPR": "Returns (PR)"
+      "accountDefaults": "الحسابات الافتراضية",
+      "governance": "الحوكمة",
+      "invoicesPI": "فواتير المشتريات",
+      "noSeries": "التسلسل الرقمي",
+      "procurementPolicy": "سياسة المشتريات",
+      "purchaseOrders": "طلبات الشراء",
+      "receiptsGRN": "إشعارات الاستلام",
+      "returnsPR": "مردودات المشتريات",
+      "governanceRules": "قواعد الحوكمة",
+      "documentNumbering": "ترقيم المستندات"
     },
-    "title": "Governance Rules",
+    "title": "إعدادات المشتريات",
     "messages": {
       "defaultAPRequired": "مطلوب حساب الحسابات الدائنة الافتراضية.",
       "updated": "تم تحديث إعدادات الشراء بنجاح.",
@@ -531,6 +546,13 @@
       "saveFailed": "فشل في حفظ إعدادات الشراء.",
       "defaultGRNIRequired": "مطلوب حساب GRNI الافتراضي لسير عمل الشراء الدائم.",
       "discarded": "تم تجاهل التغييرات"
+    },
+    "subtitle": "التحكم في سير عمل الشراء، الحسابات الافتراضية، نسب السماح، والترقيم.",
+    "descriptions": {
+      "procurementPolicy": "حدد مستندات الشراء التي يمكن للمستخدمين العمل عليها وكيف تعمل الضوابط التشغيلية.",
+      "accountDefaults": "حسابات دفتر الأستاذ العام الافتراضية المستخدمة في معاملات الشراء.",
+      "documentNumbering": "بادئات وأرقام التسلسل لمستندات الشراء.",
+      "governanceRules": "تجاوز سياسات المستند الافتراضية على مستوى الشركة أو الفرع أو النموذج."
     }
   },
   "returnDetail": {
@@ -634,18 +656,18 @@
   },
   "auto": {
     "ApAgingReportPage": {
-      "asOfDate": "اعتبارا من التاريخ",
-      "vendorOptional": "البائع (اختياري)",
-      "allVendors": "جميع البائعين",
-      "generateReport": "إنشاء تقرير",
-      "asOf": "اعتبارا من",
-      "vendor": "بائع",
-      "totalAP": "· إجمالي AP:",
-      "loadingAging": "تحميل الشيخوخة...",
-      "noOutstandingPayablesAsOf": "لا توجد مستحقات مستحقة الدفع اعتبارًا من",
-      "totals": "المجاميع",
-      "aPAging": "شيخوخة أب",
-      "accountsPayableByAgingBucket": "الحسابات الدائنة حسب دلو التقادم"
+      "asOfDate": "حتى تاريخ",
+      "vendorOptional": "المورد (اختياري)",
+      "allVendors": "كل الموردين",
+      "generateReport": "إنشاء التقرير",
+      "asOf": "حتى ",
+      "vendor": " مورد",
+      "totalAP": " · إجمالي الذمم الدائنة: ",
+      "loadingAging": "جارٍ تحميل الأعمار...",
+      "noOutstandingPayablesAsOf": "لا توجد ذمم دائنة مستحقة حتى ",
+      "totals": "الإجماليات",
+      "aPAging": "أعمار الذمم الدائنة",
+      "accountsPayableByAgingBucket": "الذمم الدائنة حسب فترات التأخر"
     },
     "GoodsReceiptDetailPage": {
       "goodsReceipt": "استلام البضائع",
@@ -672,8 +694,8 @@
       "currency": "عملة"
     },
     "GoodsReceiptsListPage": {
-      "gRNVendorWarehouse": "GRN #، بائع، مستودع...",
-      "apply": "يتقدم"
+      "gRNVendorWarehouse": "رقم استلام البضائع، المورد، المستودع...",
+      "apply": "تطبيق"
     },
     "PurchaseHomePage": {
       "purchasesOverview": "نظرة عامة على المشتريات",
@@ -681,7 +703,7 @@
       "purchasesOverview2": "نظرة عامة على المشتريات",
       "purchasesOverviewModule": "وحدة نظرة عامة على المشتريات",
       "moduleDashboard": "لوحة معلومات الوحدة النمطية",
-      "manageVendorsTrackPurchaseOrdersAndReceiptsAnd": "إدارة البائعين وتتبع أوامر الشراء والإيصالات ومعالجة فواتير البائعين.",
+      "manageVendorsTrackPurchaseOrdersAndReceiptsAnd": "إدارة الموردين وتتبع أوامر الشراء والاستلامات ومعالجة فواتير الموردين.",
       "settings": "إعدادات",
       "noRecentActivityYet": "لا يوجد نشاط حديث حتى الآن."
     },
@@ -690,7 +712,7 @@
       "itemID": "معرف العنصر",
       "comment": "تعليق",
       "removeLine": "إزالة الخط",
-      "eGStandardVendorUSD": "على سبيل المثال البائع القياسي بالدولار الأمريكي",
+      "eGStandardVendorUSD": "مثال: مورد قياسي بالدولار الأمريكي",
       "uSD": "دولار أمريكي"
     },
     "PurchaseReturnDetailPage": {
@@ -721,7 +743,7 @@
       "noPostedPurchaseInvoicesFound": "لم يتم العثور على فواتير شراء مُرحلة.",
       "pick": "يختار",
       "invoiceNo": "رقم الفاتورة",
-      "vendor": "بائع",
+      "vendor": "المورد",
       "invoiceDate": "تاريخ الفاتورة",
       "currency2": "عملة",
       "grandTotal": "المجموع الإجمالي",
@@ -748,27 +770,27 @@
       "unpostPurchaseReturn": "إلغاء إرجاع الشراء"
     },
     "PurchaseReturnsListPage": {
-      "returnVendorStatus": "رقم الإرجاع، البائع، الحالة...",
-      "apply": "يتقدم",
-      "clear": "واضح"
+      "returnVendorStatus": "رقم المرتجع، المورد، الحالة...",
+      "apply": "تطبيق",
+      "clear": "مسح"
     },
     "PurchasesAnalyticsPage": {
-      "groupBy": "المجموعة حسب",
-      "byVendor": "بواسطة البائع",
-      "byItem": "حسب البند",
-      "fromDate": "من التاريخ",
-      "toDate": "حتى الآن",
-      "generateReport": "إنشاء تقرير",
-      "row": "صف",
+      "groupBy": "التجميع حسب",
+      "byVendor": "حسب المورد",
+      "byItem": "حسب الصنف",
+      "fromDate": "من تاريخ",
+      "toDate": "إلى تاريخ",
+      "generateReport": "إنشاء التقرير",
+      "row": " صف",
       "loadingReport": "جارٍ تحميل التقرير...",
-      "purchasesByVendor": "المشتريات من قبل البائع",
+      "purchasesByVendor": "المشتريات حسب المورد",
       "noDataForThisPeriod": "لا توجد بيانات لهذه الفترة.",
-      "totals": "المجاميع",
-      "purchasesByItem": "المشتريات حسب السلعة",
+      "totals": "الإجماليات",
+      "purchasesByItem": "المشتريات حسب الصنف",
       "noDataForThisPeriod2": "لا توجد بيانات لهذه الفترة.",
-      "totals2": "المجاميع",
+      "totals2": "الإجماليات",
       "purchasesAnalytics": "تحليلات المشتريات",
-      "purchaseSpendByVendorOrItem": "إنفاق الشراء حسب البائع أو العنصر"
+      "purchaseSpendByVendorOrItem": "إنفاق الشراء حسب المورد أو الصنف"
     },
     "PurchaseSettingsPage": {
       "workflowMode": "وضع سير العمل",
@@ -778,7 +800,7 @@
       "exposeOrdersAndGoodsReceipts": "كشف الطلبات وإيصالات البضائع.",
       "perpetualAccountingRequiresTheOperationalWorkflowBecauseGoods": "تتطلب المحاسبة الدائمة سير العمل التشغيلي لأن إيصالات البضائع تنشئ محاسبة المخزون.",
       "allowDirectInvoicing": "السماح بالفواتير المباشرة",
-      "invoiceVendorsWithoutAPrecedingPOGRN": "فاتورة البائعين دون أمر الشراء/GRN السابق.",
+      "invoiceVendorsWithoutAPrecedingPOGRN": "إنشاء فواتير للموردين بدون أمر شراء أو استلام بضائع سابق.",
       "requirePOForStockItems": "يتطلب أمر الشراء لبنود المخزون",
       "forceStockItemProcurementToStartFromA": "إجبار شراء عناصر المخزون على البدء من أمر الشراء.",
       "simpleWorkflowAutomaticallyEnablesDirectInvoicingAndHides": "يعمل سير العمل البسيط تلقائيًا على تمكين إعداد الفواتير المباشرة وإخفاء أوامر الشراء وإيصالات البضائع عن المستخدمين النهائيين.",
@@ -786,12 +808,12 @@
       "overDelivery": "الإفراط في التسليم (٪)",
       "overInvoice": "تجاوز الفاتورة (%)",
       "allowOverPayment": "السماح بالدفع الزائد",
-      "whenOnAPaymentMayExceedTheInvoice": "عند التشغيل، قد تتجاوز الدفعة إجمالي الفاتورة. ويصبح المبلغ الإضافي بمثابة رصيد في حساب البائع (يصبح رصيد AP الخاص به سلبيًا) ويعوض فواتيره المستقبلية.",
+      "whenOnAPaymentMayExceedTheInvoice": "عند التفعيل، يمكن أن تتجاوز الدفعة إجمالي الفاتورة. يصبح المبلغ الزائد رصيداً لصالح المورد في الحسابات الدائنة ويُستخدم لتسوية فواتيره المستقبلية.",
       "deriveRememberedPricesAcrossUOM": "اشتقاق الأسعار المتذكرة عبر UOM",
       "whenOnSameVendorSameCurrencyPriceMemory": "عند التشغيل، يمكن لذاكرة سعر العملة نفسها للمورد نفسه التحويل بين وحدات قياس العناصر. لا يتم التحويل عبر العملات أبدًا.",
       "defaultAccountsPayable": "الحسابات الدائنة الافتراضية",
       "selectAPAccount": "حدد حساب AP",
-      "primaryVendorLiabilityAccount": "حساب مسؤولية البائع الأساسي.",
+      "primaryVendorLiabilityAccount": "حساب الالتزام الرئيسي للمورد.",
       "defaultPurchaseExpense": "مصاريف الشراء الافتراضية",
       "selectExpenseFallbackForNonStockItems": "حدد احتياطي النفقات للعناصر غير المخزنة",
       "optionalFallbackForServiceAndNonStockPosting": "احتياطي اختياري للخدمة والنشر غير المتعلق بالمخزون.",
@@ -811,29 +833,29 @@
       "nextNumber": "الرقم التالي",
       "basePolicyWorkflow": "السياسة الأساسية (سير العمل:",
       "allow": "يسمح",
-      "block": "حاجز",
+      "block": "حظر",
       "basePoliciesAreDerivedFromYourActiveWorkflow": "يتم اشتقاق السياسات الأساسية من وضع سير العمل النشط لديك. استخدم قواعد الإدارة أدناه لتجاوز هذه الإعدادات الافتراضية.",
       "activeOverrides": "التجاوزات النشطة",
       "specificRulesThatChangeTheBasePolicyBehavior": "قواعد محددة تغير سلوك السياسة الأساسية.",
       "addRule": "أضف القاعدة",
-      "persona": "شخصية",
+      "persona": "النمط",
       "direct": "مباشر",
       "linked": "مرتبط",
       "service": "خدمة",
       "action": "فعل",
       "allow2": "يسمح",
-      "block2": "حاجز",
+      "block2": "حظر",
       "scope": "نِطَاق",
       "company": "شركة",
       "branch": "فرع",
-      "form": "استمارة",
+      "form": "النموذج",
       "branchID": "معرف الفرع",
       "eGBranch001": "على سبيل المثال فرع-001",
       "formType": "نوع النموذج",
       "eGPurchaseInvoiceDirect": "على سبيل المثال buy_invoice_direct",
       "cancel": "يلغي",
       "addOverrideRule": "إضافة قاعدة التجاوز",
-      "persona2": "شخصية",
+      "persona2": "النمط",
       "scope2": "نِطَاق",
       "target": "هدف",
       "action2": "فعل",
@@ -841,32 +863,32 @@
       "noOverrideRulesDefinedBasePolicyAppliesTo": "لم يتم تحديد قواعد التجاوز. تنطبق السياسة الأساسية على كافة المستندات."
     },
     "VendorsListPage": {
-      "vendorsSuppliers": "البائعون (الموردون)",
-      "addVendor": "إضافة بائع",
+      "vendorsSuppliers": "الموردون",
+      "addVendor": "إضافة مورد",
       "loadingSupplyChainRecords": "جارٍ تحميل سجلات سلسلة التوريد...",
       "code": "شفرة",
       "displayName": "اسم العرض",
       "phone": "هاتف",
       "email": "بريد إلكتروني",
       "status": "حالة",
-      "noVendorRecordsIdentified": "لم يتم تحديد سجلات البائعين."
+      "noVendorRecordsIdentified": "لا توجد سجلات موردين."
     },
     "VendorStatementPage": {
       "openingBalance": "الرصيد الافتتاحي",
-      "noPostedVendorActivityInThisPeriod": "لم يتم نشر أي نشاط بائع في هذه الفترة.",
-      "source": "مصدر",
-      "voucher": "قسيمة",
+      "noPostedVendorActivityInThisPeriod": "لا توجد حركة مرحلة لهذا المورد في هذه الفترة.",
+      "source": "المصدر",
+      "voucher": "القيد",
       "closingBalance": "الرصيد الختامي",
-      "view": "منظر",
-      "statementPeriodSummary": "بيان (ملخص الفترة)",
-      "fullLedgerAllPostedEvents": "دفتر الأستاذ الكامل (جميع الأحداث المنشورة)",
-      "vendor": "بائع",
-      "selectAVendor": "حدد البائع...",
-      "fromDate": "من التاريخ",
-      "toDate": "حتى الآن",
+      "view": "العرض",
+      "statementPeriodSummary": "كشف الفترة (ملخص)",
+      "fullLedgerAllPostedEvents": "دفتر الأستاذ الكامل (كل الحركات المرحلة)",
+      "vendor": "المورد",
+      "selectAVendor": "اختر مورداً...",
+      "fromDate": "من تاريخ",
+      "toDate": "إلى تاريخ",
       "includeOpenCommitments": "تضمين الالتزامات المفتوحة",
-      "showsOpenPurchaseOrdersSeparatelyForProcurementFollow": "إظهار أوامر الشراء المفتوحة بشكل منفصل لمتابعة المشتريات. ولا تؤثر هذه المبالغ على رصيد كشف حساب المورد.",
-      "generateReport": "إنشاء تقرير",
+      "showsOpenPurchaseOrdersSeparatelyForProcurementFollow": "يعرض أوامر الشراء المفتوحة بشكل منفصل للمتابعة، ولا يؤثر على رصيد كشف المورد.",
+      "generateReport": "إنشاء التقرير",
       "to": "ل",
       "billed": "فاتورة:",
       "paid": "· مدفوع:",
@@ -877,11 +899,11 @@
       "openCommitments": "الالتزامات المفتوحة (",
       "notIncludedInBalance": ") · غير مدرجة في الرصيد",
       "noData": "لا توجد بيانات.",
-      "vendorStatement": "بيان البائع",
-      "postedAPStatementAndLedgerForAVendor": "نشر بيان AP ودفتر الأستاذ لأحد البائعين"
+      "vendorStatement": "كشف حساب المورد",
+      "postedAPStatementAndLedgerForAVendor": "كشف ذمم دائنة ودفتر أستاذ مرحّل لمورد"
     },
     "PurchaseFinancialIntegrationWizard": {
-      "purchaseFinancialIntegration": "شراء التكامل المالي",
+      "purchaseFinancialIntegration": "التكامل المالي للمشتريات",
       "configureHowPurchaseTransactionsPostToYourGeneral": "قم بتكوين كيفية ترحيل حركات الشراء إلى دفتر الأستاذ العام الخاص بك. يربط هذا الإعداد سير عمل الشراء الخاص بك بحسابات GL المناسبة.",
       "important": "مهم",
       "accountMappingsCanBeChangedLaterFromPurchase": "يمكن تغيير تعيينات الحساب لاحقًا من إعدادات الشراء، ولكن جميع معاملات الشراء ستستخدم أي تعيينات نشطة في وقت النشر.",
@@ -889,7 +911,7 @@
       "selectTheGLAccountsThatPurchaseTransactionsWill": "حدد حسابات GL التي سيتم ترحيل معاملات الشراء إليها.",
       "defaultAccountsPayable": "الحسابات الدائنة الافتراضية",
       "selectAPLiabilityAccount": "حدد حساب مسؤولية AP",
-      "primaryVendorLiabilityAccountUsedForAllPurchase": "حساب مسؤولية البائع الأساسي. تستخدم لجميع فواتير الشراء.",
+      "primaryVendorLiabilityAccountUsedForAllPurchase": "حساب الالتزام الرئيسي للمورد. يُستخدم لجميع فواتير الشراء.",
       "defaultPurchaseExpense": "مصاريف الشراء الافتراضية",
       "selectExpenseAccountOptional": "حدد حساب المصاريف (اختياري)",
       "optionalFallbackForNonStockOrServicePurchases": "احتياطي اختياري لعمليات الشراء غير المتعلقة بالمخزون أو الخدمات عندما لا يتم تعيين حساب العنصر.",
@@ -907,10 +929,11 @@
       "purchaseExpense": "تكلفة الشراء:",
       "gRNI": "GRNI:",
       "fXGainLoss": "مكاسب/خسائر العملات الأجنبية:",
+      "notSelected": "غير محدد",
       "theseMappingsTakeEffectImmediatelyForAllFuture": "تدخل هذه التعيينات حيز التنفيذ على الفور لجميع معاملات الشراء المستقبلية.",
       "step": "خطوة",
       "of": "ل",
-      "back": "خلف",
+      "back": "رجوع",
       "nextStep": "الخطوة التالية",
       "configuring": "جارٍ التكوين...",
       "enableIntegration": "تمكين التكامل"
@@ -933,7 +956,7 @@
       "exposePurchaseOrdersAndGoodsReceiptsAlongsideInvoices": "كشف أوامر الشراء وإيصالات البضائع إلى جانب الفواتير والمرتجعات.",
       "perpetualAccountingRequiresTheOperationalWorkflowBecauseGoods": "تتطلب المحاسبة الدائمة سير العمل التشغيلي لأن إيصالات البضائع تنشئ محاسبة المخزون.",
       "allowDirectInvoicing": "السماح بالفواتير المباشرة",
-      "allowVendorInvoicesWithoutAPurchaseOrderOr": "السماح بفواتير البائع بدون أمر شراء أو مسار استلام البضائع.",
+      "allowVendorInvoicesWithoutAPurchaseOrderOr": "السماح بفواتير الموردين بدون أمر شراء أو مسار استلام بضائع.",
       "requirePurchaseOrdersForStockItems": "تتطلب أوامر الشراء لبنود المخزون",
       "forceStockItemProcurementToStartFromA": "إجبار شراء عناصر المخزون على البدء من أمر الشراء.",
       "simpleWorkflowAutomaticallyEnablesDirectInvoicingAndHides": "يعمل سير العمل البسيط تلقائيًا على تمكين إعداد الفواتير المباشرة وإخفاء أوامر الشراء وإيصالات البضائع عن المستخدمين النهائيين.",
@@ -946,7 +969,7 @@
       "requiredPurchasePostingAccountsMustBeConfiguredBefore": "يجب تكوين حسابات ترحيل الشراء المطلوبة قبل التهيئة.",
       "defaultAccountsPayable": "الحسابات الدائنة الافتراضية",
       "selectAPLiabilityAccount": "حدد حساب مسؤولية AP",
-      "primaryVendorLiabilityAccountUsuallyAccountsPayable": "حساب مسؤولية البائع الأساسي. عادة الحسابات المستحقة الدفع.",
+      "primaryVendorLiabilityAccountUsuallyAccountsPayable": "حساب الالتزام الرئيسي للمورد. عادةً يكون حساب الذمم الدائنة.",
       "defaultPurchaseExpense": "مصاريف الشراء الافتراضية",
       "selectExpenseAccountForNonStockPurchases": "حدد حساب المصاريف للمشتريات غير الأسهم",
       "optionalFallbackUsedForNonStockOrService": "يتم استخدام الإجراء الاحتياطي الاختياري لعمليات الشراء غير المتعلقة بالمخزون أو الخدمات عندما لا يتم تعيين حساب عنصر/فئة.",
@@ -1000,8 +1023,8 @@
       "noneSelectedYouCanAddThemLaterFrom": "لم يتم تحديد أي شيء. ويمكنك إضافتها لاحقًا من الإعدادات.",
       "defaultForm2": "النموذج الافتراضي",
       "total": "المجموع:",
-      "type": "يكتب",
-      "form": "استمارة",
+      "type": "النوع",
+      "form": "النموذج",
       "variantsWillInstallAsLockedDefaults": "سيتم تثبيت المتغيرات كإعدادات افتراضية مقفلة",
       "purchasesModuleInitialization": "تهيئة وحدة المشتريات",
       "setWorkflowAccountingDefaultsAndNumberingForProcurement": "قم بتعيين سير العمل والافتراضيات المحاسبية والترقيم للمشتريات.",

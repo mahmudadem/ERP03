@@ -4240,5 +4240,137 @@
   "Auto-sequence Item Code": "Auto-sequence Item Code",
   "Loading Item Master...": "Loading Item Master...",
   "Registers": "Registers",
-  "registers": "Registers"
+  "registers": "Registers",
+  "dataTable": {
+    "density": "Density",
+    "fontSize": "Font Size",
+    "columns": "Columns",
+    "actions": "Actions",
+    "reset": "Reset",
+    "noColumnsVisible": "No columns visible",
+    "resetToDefaults": "Reset to defaults",
+    "densities": {
+      "compact": "Compact",
+      "comfortable": "Comfortable",
+      "spacious": "Spacious"
+    },
+    "priority": {
+      "core": "Core",
+      "standard": "Standard",
+      "detail": "Detail"
+    },
+    "pagination": {
+      "showing": "Showing {{start}}-{{end}} of {{total}}",
+      "rowsPerPage": "Rows per page",
+      "pageSizeOption": "{{size}} / page",
+      "previousPage": "Previous page",
+      "nextPage": "Next page",
+      "pageOf": "Page {{page}} of {{totalPages}}"
+    },
+    "selection": {
+      "selectedCount": "{{selected}} of {{total}} selected",
+      "clear": "Clear"
+    }
+  },
+  "formsManagement": {
+    "title": "Forms Management — {{module}}",
+    "loading": "Loading {{module}} forms management...",
+    "installedTypes": "Installed Types ({{count}})",
+    "availableTypes": "Available Types ({{count}})",
+    "noInstalledTypes": "No voucher types installed yet. Pick one from Available below to install.",
+    "documentWizard": "Document Wizard",
+    "newForm": "New Form",
+    "formCount": "{{count}} form",
+    "activeCount": "{{count}} active",
+    "customCount": "{{count}} custom",
+    "defaultFormCount": "{{count}} default form",
+    "variants": "Variants: {{variants}}",
+    "addCustomForm": "Add Custom Form",
+    "builtInNative": "Built-in native",
+    "lockedDefault": "Locked default",
+    "active": "Active",
+    "off": "Off",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "formSettings": "Form settings",
+    "cloneTitle": "Clone (creates editable copy)",
+    "restrictedEdit": "View / restricted edit",
+    "moreOptions": "More options",
+    "exportJson": "Export JSON",
+    "viewSchema": "View Schema",
+    "sidebarGroup": "Sidebar Group",
+    "sidebarGroupPlaceholder": "Type or pick a group...",
+    "comingSoon": "Coming soon",
+    "installing": "Installing",
+    "install": "Install",
+    "installedToast": "Installed \"{{name}}\" — {{count}} default form added as locked, inactive.",
+    "instructions": {
+      "title": "Forms Management — {{module}}",
+      "helpTitle": "What is this page for?",
+      "open": "Open page instructions"
+    },
+    "formNames": {
+      "nativeVouchers": "Native Vouchers",
+      "nativeSalesInvoice": "Native Sales Invoice",
+      "nativeSalesOrder": "Native Sales Order",
+      "nativePurchaseInvoice": "Native Purchase Invoice",
+      "nativePurchaseOrder": "Native Purchase Order",
+      "goodsReceipt": "Goods Receipt",
+      "purchaseInvoiceService": "Purchase Invoice (Service)",
+      "purchaseInvoiceDirect": "Purchase Invoice (Direct)",
+      "purchaseInvoiceLinked": "Purchase Invoice (Linked)",
+      "purchaseReturn": "Purchase Return",
+      "purchaseOrder": "Purchase Order"
+    },
+    "persona": {
+      "direct": "Direct",
+      "linked": "Linked",
+      "service": "Service"
+    },
+    "settings": {
+      "accountDefaults": "Account Defaults",
+      "pricingBehavior": "Pricing Behavior"
+    },
+    "messages": {
+      "activated": "Form activated.",
+      "deactivated": "Form deactivated."
+    },
+    "errors": {
+      "loadFailed": "Could not load forms management data",
+      "updateStatusFailed": "Failed to update form status",
+      "installFailed": "Install failed",
+      "saveSettingsFailed": "Failed to save form settings."
+    }
+  },
+  "accountingIntegrationStatus": {
+    "modules": {
+      "inventory": "Inventory",
+      "purchases": "Purchases",
+      "sales": "Sales"
+    },
+    "modulesLower": {
+      "inventory": "inventory",
+      "purchases": "purchases",
+      "sales": "sales"
+    },
+    "notEnabled": {
+      "label": "Accounting Not Enabled",
+      "message": "{{module}} operations will track quantities and documents but will NOT create financial/GL postings.",
+      "action": "Enable Accounting"
+    },
+    "setupRequired": {
+      "label": "Accounting Enabled - Setup Required",
+      "message": "The Accounting module is enabled but has not been set up yet. Complete the Accounting setup first, then configure {{module}} financial integration.",
+      "action": "Complete Accounting Setup"
+    },
+    "pending": {
+      "label": "Financial Integration Pending",
+      "message": "Accounting is set up but {{module}} account mappings have not been configured. Financial postings will not be created until mappings are set.",
+      "action": "Configure Integration"
+    },
+    "active": {
+      "label": "Financial Integration Active",
+      "message": "{{module}} is fully integrated with Accounting. All operations create financial/GL postings."
+    }
+  }
 }

@@ -42,6 +42,7 @@ export const PurchaseFinancialIntegrationWizard: React.FC = () => {
   const [defaultGRNIAccountId, setDefaultGRNIAccountId] = useState('');
   const [exchangeGainLossAccountId, setExchangeGainLossAccountId] = useState('');
   const [invSettings, setInvSettings] = useState<any>(null);
+  const notSelectedLabel = t("auto.PurchaseFinancialIntegrationWizard.notSelected", "Not selected");
 
   const unwrap = <T,>(payload: any): T => {
     const data = payload?.data ?? payload;
@@ -227,21 +228,21 @@ export const PurchaseFinancialIntegrationWizard: React.FC = () => {
         <div className="rounded-lg border border-gray-200 bg-white p-4 space-y-3">
           <div className="text-sm">
             <span className="font-semibold text-gray-900">{t("auto.PurchaseFinancialIntegrationWizard.accountsPayable", "Accounts Payable:")}</span>{' '}
-            <span className="text-gray-700">{defaultAPAccountId ? accountLabel(liabilityAccounts.find(a => a.id === defaultAPAccountId)!) : 'Not selected'}</span>
+            <span className="text-gray-700">{defaultAPAccountId ? accountLabel(liabilityAccounts.find(a => a.id === defaultAPAccountId)!) : notSelectedLabel}</span>
           </div>
           <div className="text-sm">
             <span className="font-semibold text-gray-900">{t("auto.PurchaseFinancialIntegrationWizard.purchaseExpense", "Purchase Expense:")}</span>{' '}
-            <span className="text-gray-700">{defaultPurchaseExpenseAccountId ? accountLabel(expenseAccounts.find(a => a.id === defaultPurchaseExpenseAccountId)!) : 'Not selected'}</span>
+            <span className="text-gray-700">{defaultPurchaseExpenseAccountId ? accountLabel(expenseAccounts.find(a => a.id === defaultPurchaseExpenseAccountId)!) : notSelectedLabel}</span>
           </div>
           {isPerpetual && (
             <div className="text-sm">
               <span className="font-semibold text-gray-900">{t("auto.PurchaseFinancialIntegrationWizard.gRNI", "GRNI:")}</span>{' '}
-              <span className="text-gray-700">{defaultGRNIAccountId ? accountLabel(liabilityAccounts.find(a => a.id === defaultGRNIAccountId)!) : 'Not selected'}</span>
+              <span className="text-gray-700">{defaultGRNIAccountId ? accountLabel(liabilityAccounts.find(a => a.id === defaultGRNIAccountId)!) : notSelectedLabel}</span>
             </div>
           )}
           <div className="text-sm">
             <span className="font-semibold text-gray-900">{t("auto.PurchaseFinancialIntegrationWizard.fXGainLoss", "FX Gain/Loss:")}</span>{' '}
-            <span className="text-gray-700">{exchangeGainLossAccountId ? accountLabel(allAccounts.find(a => a.id === exchangeGainLossAccountId)!) : 'Not selected'}</span>
+            <span className="text-gray-700">{exchangeGainLossAccountId ? accountLabel(allAccounts.find(a => a.id === exchangeGainLossAccountId)!) : notSelectedLabel}</span>
           </div>
         </div>
 

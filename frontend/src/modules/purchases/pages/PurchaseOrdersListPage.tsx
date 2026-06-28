@@ -47,7 +47,7 @@ const statusChipClasses = (status: POStatus): string => {
 
 const PurchaseOrdersListPage: React.FC = () => {
   const navigate = useNavigate();
-  const { t } = useTranslation('common');
+  const { t } = useTranslation(['purchases', 'common']);
   const [orders, setOrders] = useState<PurchaseOrderDTO[]>([]);
   const [statusFilter, setStatusFilter] = useState<POStatus | 'ALL'>('ALL');
   const [vendorFilter, setVendorFilter] = useState<string>('ALL');
@@ -302,7 +302,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'vendorName',
-        label: t('purchaseOrdersList.labels.customerParty', 'Customer/Party'),
+        label: t('purchaseOrdersList.labels.vendor', 'Vendor'),
         width: '200px',
         priority: 1,
         sortable: true,
@@ -313,7 +313,7 @@ const PurchaseOrdersListPage: React.FC = () => {
       },
       {
         key: 'orderDate',
-        label: t('purchaseOrdersList.labels.orderDateAndTime', 'Order Date and time'),
+        label: t('purchaseOrdersList.labels.orderDateAndTime', 'Order Date and Time'),
         width: '180px',
         priority: 1,
         sortable: true,
@@ -367,7 +367,7 @@ const PurchaseOrdersListPage: React.FC = () => {
               statusChipClasses(val as any)
             )}
           >
-            {val}
+            {t(`ordersList.status.${val}`, val)}
           </span>
         ),
       },
@@ -420,7 +420,7 @@ const PurchaseOrdersListPage: React.FC = () => {
         label: t('purchaseOrdersList.labels.print', 'Print'),
         icon: Printer,
         onClick: (row) => {
-          toast.success(`Printing order ${row.orderNumber}...`);
+          toast.success(t('purchaseOrdersList.labels.printingOrder', 'Printing order {{orderNumber}}...', { orderNumber: row.orderNumber }));
           window.print();
         },
         primary: false,
@@ -476,7 +476,7 @@ const PurchaseOrdersListPage: React.FC = () => {
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status.value} value={status.value}>
-                  {status.value === 'ALL' ? t('ordersList.filters.statusPlaceholder', 'Status') : status.label}
+                  {status.value === 'ALL' ? t('ordersList.filters.statusPlaceholder', 'Status') : t(`ordersList.status.${status.value}`, status.label)}
                 </option>
               ))}
             </select>
