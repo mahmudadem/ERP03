@@ -385,7 +385,7 @@ const PosReturnPage: React.FC<Props> = () => {
                 >
                   <option value="CASH">{t('pos:return.payment.cash', { defaultValue: 'Cash' })}</option>
                   <option value="CARD">{t('pos:return.payment.card', { defaultValue: 'Card' })}</option>
-                  <option value="BANK_TRANSFER">BANK_TRANSFER</option>
+                  <option value="BANK_TRANSFER">{t('pos:return.payment.bankTransfer', { defaultValue: 'Bank transfer' })}</option>
                   <option value="CUSTOM">{t('pos:return.payment.custom', { defaultValue: 'Custom' })}</option>
                 </select>
               </div>

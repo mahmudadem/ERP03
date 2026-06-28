@@ -47,7 +47,19 @@
     "exchangeTitle": "Değişimi onayla",
     "voidHelp": "Kasiyer rolü satır iptali için onay gerektiriyorsa yönetici onayı kaydedin.",
     "saleHelp": "Kısıtlı indirim, fiyat, vergi veya iptal içeren satışı tamamlamadan önce onay kaydedin.",
-    "returnHelp": "Kasiyer rolü iade veya değişim için onay gerektiriyorsa yönetici onayı kaydedin."
+    "returnHelp": "Kasiyer rolü iade veya değişim için onay gerektiriyorsa yönetici onayı kaydedin.",
+    "errors": {
+      "loadUsers": "Şirket kullanıcıları yüklenemedi.",
+      "capture": "Yönetici onayı kaydedilemedi."
+    },
+    "actions": {
+      "VOID_LINE": "Satırı iptal et",
+      "PRICE_OVERRIDE": "Fiyat istisnası",
+      "DISCOUNT_OVERRIDE": "İndirim istisnası",
+      "TAX_OVERRIDE": "Vergi istisnası",
+      "RETURN": "İade",
+      "REPRINT": "Yeniden yazdır"
+    }
   },
   "terminal": {
     "searchTitle": "Ürün ara",
@@ -153,7 +165,9 @@
     "saleNotesPlaceholder": "Satış için isteğe bağlı notlar...",
     "creditSale": "Müşteri Hesabına Vadeli Ödeme",
     "needCustomerForCredit": "Vadeli satış için seçili bir müşteri gerekir.",
-    "creditSaleNeedsApproval": "Vadeli ödeme için yönetici onayı gerekir."
+    "creditSaleNeedsApproval": "Vadeli ödeme için yönetici onayı gerekir.",
+    "shortcuts": "Kısayollar",
+    "keyboardShortcuts": "Klavye kısayolları"
   },
   "settings": {
     "title": "POS Ayarları",
@@ -162,6 +176,9 @@
     "saved": "POS ayarları kaydedildi.",
     "general": {
       "title": "Genel"
+    },
+    "controls": {
+      "title": "Kontroller"
     },
     "requireOpenShift": "Satış için açık vardiya zorunlu",
     "allowPosDirectSales": "POS'tan doğrudan satışlara izin ver",
@@ -209,6 +226,21 @@
     },
     "cashOverContext": "Gelir",
     "cashShortContext": "Gider",
+    "defaultRevenueAccount": "Varsayılan gelir hesabı",
+    "defaultRevenueAccountHelp": "Üründe ve kategorisinde gelir hesabı yoksa POS satışları için kullanılacak yedek gelir hesabı. Kasadaki çözüm sırası: ürün → ürün kategorisi → bu varsayılan.",
+    "defaultRevenueContext": "Gelir hesabı",
+    "belowCost": {
+      "title": "Maliyet altı satış politikası",
+      "subtitle": "Maliyet veya maliyet altı satış için şirket genelinde geçerli kural. Satış modülüyle ortaktır — burada yapılan değişiklik her yerde geçerli olur.",
+      "mode": "Bir satır maliyetin altındaysa",
+      "allow": "İzin ver",
+      "block": "Engelle",
+      "requireApproval": "Onay iste — yönetici onaylayana kadar engelle",
+      "allowOverride": "Yönetici istisnasına izin ver (kapalıysa mutlak engel; onaylı istisna bile geçemez)",
+      "minMargin": "Minimum brüt marj (%)",
+      "minMarginPlaceholder": "Minimum yok",
+      "minMarginHelp": "İsteğe bağlı. Bu marjın altındaki satır maliyet altı satır gibi değerlendirilir. Yalnızca maliyet altı satışı engellemek için boş bırakın."
+    },
     "cashierPolicies": {
       "title": "Kasiyer rol politikaları",
       "noRoles": "Kasiyer rolü bulunamadı.",
@@ -284,7 +316,19 @@
     "allowedCashiersHelp": "Kullanıcı seçilmezse POS erişimi olan tüm kasiyerler bu kasada vardiya açabilir.",
     "cashAccountContext": "Nakit/Banka varlığı",
     "cashDrawerHelp": "Bu kasa için tüm nakit satışlar, nakit iadeler, nakit hareketleri ve fazla/eksik kapanış kayıtlarında kullanılır.",
-    "nonCashSettlementHelp": "Bu kasa bu nakit dışı yöntemi kabul ettiğinde kullanılır. Yöntem bu kasada kullanılmıyorsa boş bırakın."
+    "nonCashSettlementHelp": "Bu kasa bu nakit dışı yöntemi kabul ettiğinde kullanılır. Yöntem bu kasada kullanılmıyorsa boş bırakın.",
+    "settlement": {
+      "CARD": "Kart kapatma hesabı",
+      "BANK_TRANSFER": "Banka transferi kapatma hesabı",
+      "CUSTOM": "Özel kapatma hesabı"
+    },
+    "shortcuts": {
+      "title": "Kısayol yerleşimi",
+      "help": "Bu kasanın kullanacağı ürün kısayol yerleşimini seçin. Şirket varsayılanını kullanmak için boş bırakın.",
+      "configure": "Kısayolları yapılandır",
+      "dialogTitle": "Kasa kısayolları",
+      "dialogSubtitle": "Bu kasanın kullandığı ürün kısayol yerleşimini yönetin."
+    }
   },
   "shift": {
     "title": "POS Vardiyası",
@@ -312,6 +356,11 @@
     "cashSales": "Nakit satışlar",
     "refunds": "Nakit iadeler",
     "counted": "Sayılan nakit",
+    "countedPayment": {
+      "CARD": "Sayılan kart",
+      "BANK_TRANSFER": "Sayılan banka transferi",
+      "CUSTOM": "Sayılan özel"
+    },
     "close": "Kapat",
     "historyTitle": "Vardiya geçmişi",
     "historySubtitle": "Bu şirketin son vardiyaları.",
@@ -363,6 +412,7 @@
     "payment": {
       "cash": "Nakit",
       "card": "Kart",
+      "bankTransfer": "Banka transferi",
       "custom": "Özel"
     }
   },
@@ -399,6 +449,8 @@
     "shortcutEnabled": "Kısayol etkinleştirildi.",
     "shortcutDisabled": "Kısayol devre dışı bırakıldı.",
     "shortcutDeleted": "Kısayol silindi.",
+    "saved": "Klavye kısayolları kaydedildi.",
+    "customItemNotImplemented": "Özel ürün girişi henüz kullanılamıyor.",
     "actions": {
       "create": "Oluştur",
       "add": "Ekle",
