@@ -94,6 +94,7 @@ export class ManageUomConversionsUseCase {
     const from = await resolveConversionUom(input.companyId, this.uomRepo, 'from', input.fromUomId, input.fromUom);
     const to = await resolveConversionUom(input.companyId, this.uomRepo, 'to', input.toUomId, input.toUom);
     await this.assertUniqueActivePair(input.companyId, input.itemId, from, to);
+    await this.assertMathematicalConsistency(input.companyId, input.itemId, from, to, input.factor);
 
     const conversion = new UomConversion({
       id: randomUUID(),
@@ -124,6 +125,9 @@ export class ManageUomConversionsUseCase {
 
     if (data.active !== false) {
       await this.assertUniqueActivePair(current.companyId, current.itemId, from, to, current.id);
+      
+      const proposedFactor = data.factor ?? current.factor;
+      await this.assertMathematicalConsistency(current.companyId, current.itemId, from, to, proposedFactor, current.id);
     }
 
     await this.repo.updateConversion(id, stripUndefined({
@@ -164,6 +168,66 @@ export class ManageUomConversionsUseCase {
 
     if (duplicate) {
       throw new Error(`UOM conversion ${from.uom} -> ${to.uom} already exists for this item. Edit the existing conversion instead.`);
+    }
+  }
+
+  private async assertMathematicalConsistency(
+    companyId: string,
+    itemId: string,
+    from: { uomId?: string; uom: string },
+    to: { uomId?: string; uom: string },
+    proposedFactor: number,
+    ignoreId?: string
+  ): Promise<void> {
+    const activeConversions = await this.repo.getConversionsForItem(companyId, itemId, { active: true });
+    
+    // Build adjacency list for BFS
+    const graph: Record<string, { target: string, factor: number }[]> = {};
+    const addEdge = (u: string, v: string, factor: number) => {
+      if (!graph[u]) graph[u] = [];
+      graph[u].push({ target: v, factor });
+    };
+
+    activeConversions.forEach(conv => {
+      if (conv.id === ignoreId) return;
+      const uFrom = normalizeUomCode(conv.fromUom);
+      const uTo = normalizeUomCode(conv.toUom);
+      addEdge(uFrom, uTo, conv.factor);
+      if (conv.factor > 0) {
+        addEdge(uTo, uFrom, 1 / conv.factor);
+      }
+    });
+
+    const startNode = normalizeUomCode(from.uom);
+    const endNode = normalizeUomCode(to.uom);
+
+    // BFS to find implied factor
+    const queue: { node: string, accumulatedFactor: number }[] = [{ node: startNode, accumulatedFactor: 1 }];
+    const visited = new Set<string>([startNode]);
+
+    while (queue.length > 0) {
+      const { node, accumulatedFactor } = queue.shift()!;
+      
+      if (node === endNode) {
+        // Path found! Check consistency.
+        const epsilon = 1e-5;
+        if (Math.abs(accumulatedFactor - proposedFactor) > epsilon) {
+          // Format with max 5 decimal places to avoid noisy errors like "equals 3.0000000000000004"
+          const cleanImplied = parseFloat(accumulatedFactor.toFixed(5));
+          throw new Error(`Mathematical contradiction: Based on existing conversions, 1 ${from.uom} equals ${cleanImplied} ${to.uom}. The proposed factor conflicts with this.`);
+        }
+        return; // Consistent
+      }
+
+      for (const edge of graph[node] || []) {
+        if (!visited.has(edge.target)) {
+          visited.add(edge.target);
+          queue.push({ 
+            node: edge.target, 
+            accumulatedFactor: accumulatedFactor * edge.factor 
+          });
+        }
+      }
     }
   }
 }
