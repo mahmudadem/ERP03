@@ -12,6 +12,15 @@
 - **Deliverables created:** `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md` (strategic plan, decisions, blind spots), Epic `275-supabase-launch-epic.md` + tasks `275a`–`275f` (executor-ready with CTO audit gates), `docs/architecture/offline-sync-queue.md`, registered as TOP PRIORITY in `PRIORITIES.md` (supersedes "Deploy to real Firebase project"). Memory: [[supabase_deploy_decisions]].
 - **Next:** Assign executor agents to 275a + 275b (parallel, no deps), then 275c. CTO (Claude) audits each task at its gate before the next proceeds.
 
+### Session: 2026-06-27 (Task 272 - POS terminal barcode capture, focus reset, and add feedback)
+
+- **Goal:** Implement the owner-requested POS scanner behavior so barcode reads add directly to the cart from anywhere on the terminal, search refocuses after each add, and barcode/manual adds have distinct success feedback.
+- **What changed:** Added terminal-level fast-keyboard-burst scanner detection in `PosTerminalPage`, disabled scanner capture while operational dialogs are open, resolved scanned values through existing POS product search with exact barcode/code preference, unified barcode/manual/shortcut additions through one cart-add path, cleared/refocused search after successful adds, and added lightweight WebAudio tones. Added English/Arabic/Turkish barcode error keys and updated POS architecture/user docs plus Task 272 planning/done reports.
+- **Accounting/ERP impact:** UI/control only. No POS posting, tax calculation, stock movement, receipt persistence, payment settlement, COGS, GL voucher, approval policy, or tenant isolation behavior changed. Barcode lookup stays on the existing shared item repository + Commercial Core pricing path.
+- **Verification:** POS locale JSON parsed successfully for English/Arabic/Turkish. `npm --prefix frontend run typecheck` passed. `npm --prefix frontend run build` passed, including report/no-confirm/SoD guards and Vite production build.
+- **Time spent:** ~1.1h.
+- **Next:** Review diff, then prepare PR for owner QA.
+
 ### Session: 2026-06-26 (Task 271 - Purchase Return direct mode and source picker parity)
 
 - **Goal:** Finish the next active return workflow slice after PR #37: remove raw Purchase Return source-id entry, make direct PR accounting-safe, and expose GL Impact on posted PR.

@@ -10,7 +10,7 @@
  * Backend stays authoritative: `previewSale` supplies the tax-inclusive quote,
  * `completeSale` posts the POS_DIRECT_SALE. The screen only collects intent.
  */
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import toast from 'react-hot-toast';
 import {
@@ -65,7 +65,6 @@ import {
 import { usePosKeyboardShortcuts } from '../hooks/usePosKeyboardShortcuts';
 import { PosKeyboardShortcutsDialog } from '../components/PosKeyboardShortcutsDialog';
 import { userPreferencesApi } from '../../../api/userPreferencesApi';
-import { useScanner } from '../hooks/useScanner';
 
 const unwrap = <T,>(p: any): T => (p?.data ?? p) as T;
 
@@ -117,6 +116,32 @@ const makeLineId = (): string =>
   typeof crypto !== 'undefined' && 'randomUUID' in crypto
     ? crypto.randomUUID()
     : `line_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+const SCANNER_MIN_CHARS = 4;
+const SCANNER_MAX_KEY_INTERVAL_MS = 45;
+const SCANNER_IDLE_RESET_MS = 120;
+const SCANNER_MAX_TOTAL_MS = 1200;
+
+type AddFeedbackSource = 'manual' | 'barcode';
+
+const recalculateLine = (line: CartLine): CartLine => {
+  const gross = round2(line.qty * line.unitPrice);
+  const lineDiscount = line.discountType === 'PERCENT'
+    ? discountAmountFromPercent(line.qty, line.unitPrice, line.discountPercent ?? line.discountValue)
+    : Math.min(Math.max(0, round2(line.lineDiscount || line.discountValue || 0)), gross);
+  const discountPercent = discountPercentFromAmount(line.qty, line.unitPrice, lineDiscount);
+  return {
+    ...line,
+    lineDiscount,
+    discountPercent,
+    discountValue: lineDiscount > 0
+      ? line.discountType === 'PERCENT'
+        ? discountPercent
+        : lineDiscount
+      : undefined,
+    discountType: lineDiscount > 0 ? (line.discountType || 'AMOUNT') : undefined,
+    lineTotal: round2(gross - lineDiscount),
+  };
+};
 
 const METHOD_META: Record<PaymentMethod, { label: string; Icon: typeof Banknote }> = {
   CASH: { label: 'Cash', Icon: Banknote },
@@ -210,6 +235,39 @@ const PosTerminalPage: React.FC<Props> = () => {
   const [tenderRef, setTenderRef] = useState<string>('');
 
   const searchRef = useRef<HTMLInputElement>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+
+  const focusSearchInput = useCallback(() => {
+    window.setTimeout(() => searchRef.current?.focus(), 0);
+  }, []);
+
+  const playAddFeedback = useCallback((source: AddFeedbackSource) => {
+    try {
+      const AudioContextCtor = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextCtor) return;
+      const ctx = audioContextRef.current || new AudioContextCtor();
+      audioContextRef.current = ctx;
+      if (ctx.state === 'suspended') void ctx.resume();
+
+      const now = ctx.currentTime;
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+      oscillator.type = source === 'barcode' ? 'square' : 'sine';
+      oscillator.frequency.setValueAtTime(source === 'barcode' ? 1120 : 760, now);
+      if (source === 'barcode') {
+        oscillator.frequency.setValueAtTime(880, now + 0.055);
+      }
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(source === 'barcode' ? 0.055 : 0.035, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + (source === 'barcode' ? 0.11 : 0.08));
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+      oscillator.start(now);
+      oscillator.stop(now + (source === 'barcode' ? 0.12 : 0.09));
+    } catch {
+      // Audio feedback is best-effort; the cart update remains authoritative.
+    }
+  }, []);
 
   const { activeShortcuts } = usePosKeyboardShortcuts({
     register: bootstrap?.register || null,
@@ -328,6 +386,47 @@ const PosTerminalPage: React.FC<Props> = () => {
     };
   }, [bootstrap?.register?.branchId, bootstrap?.register?.id]);
 
+  const onAddToCart = useCallback((item: any, source: AddFeedbackSource = 'manual'): boolean => {
+    const unitPrice = Number(item.salePrice || 0);
+    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
+      toast.error(t('pos:terminal.priceRequired', { defaultValue: 'Set a sale price for this item before selling it in POS.' }));
+      focusSearchInput();
+      return false;
+    }
+    setCart((prev) => {
+      const existing = prev.find((l) => l.itemId === item.id && l.status !== 'VOIDED');
+      if (existing) {
+        return prev.map((l) =>
+          l.lineId === existing.lineId
+            ? recalculateLine({ ...l, qty: l.qty + 1 })
+            : l
+        );
+      }
+      return [
+        ...prev,
+        {
+          lineId: makeLineId(),
+          itemId: item.id,
+          itemCode: item.code || '',
+          itemName: item.name || '',
+          uom: item.uom || item.unitOfMeasure || '',
+          qty: 1,
+          unitPrice,
+          originalUnitPrice: unitPrice,
+          discountPercent: 0,
+          lineDiscount: 0,
+          lineTotal: round2(unitPrice),
+          taxCodeId: item.defaultSalesTaxCodeId,
+          status: 'ACTIVE',
+        },
+      ];
+    });
+    playAddFeedback(source);
+    setSearchQuery('');
+    focusSearchInput();
+    return true;
+  }, [focusSearchInput, playAddFeedback, t]);
+
   useEffect(() => {
     const q = searchQuery.trim();
     if (!q) {
@@ -347,6 +446,133 @@ const PosTerminalPage: React.FC<Props> = () => {
     }, 250);
     return () => clearTimeout(handle);
   }, [searchQuery]);
+
+  const handleBarcodeScan = useCallback(async (rawCode: string) => {
+    const code = rawCode.trim();
+    if (!code) return;
+    try {
+      const result = await posApi.searchProducts(code, 10);
+      const items = unwrap<{ items: any[] }>(result)?.items || [];
+      const normalized = code.toLowerCase();
+      const exactMatches = items.filter((item) =>
+        String(item.barcode || '').toLowerCase() === normalized ||
+        String(item.code || '').toLowerCase() === normalized
+      );
+      const matches = exactMatches.length > 0 ? exactMatches : items.length === 1 ? items : [];
+
+      if (matches.length === 1) {
+        onAddToCart(matches[0], 'barcode');
+        return;
+      }
+      if (matches.length > 1) {
+        toast.error(t('pos:terminal.barcodeMultipleMatches', { defaultValue: 'Barcode matches more than one product. Use product search.' }));
+        setSearchQuery(code);
+      } else {
+        toast.error(t('pos:terminal.barcodeNotFound', { defaultValue: 'Barcode not found.' }));
+        setSearchQuery('');
+      }
+      focusSearchInput();
+    } catch (err: any) {
+      errorHandler.showError(err?.response?.data?.error?.message || err?.message || t('pos:terminal.barcodeLookupFailed', { defaultValue: 'Failed to read barcode.' }));
+      focusSearchInput();
+    }
+  }, [focusSearchInput, onAddToCart, t]);
+
+  useEffect(() => {
+    const scanBlocked =
+      showPayDialog ||
+      Boolean(numberEditModal) ||
+      Boolean(voidTarget) ||
+      Boolean(editingLineId) ||
+      showVoidManagerOverride ||
+      showSaleManagerOverride ||
+      showShortcutsDialog ||
+      showHeldCarts;
+    if (scanBlocked) return;
+
+    let buffer = '';
+    let startedAt = 0;
+    let lastKeyAt = 0;
+    let maxInterval = 0;
+    let idleTimer: number | undefined;
+
+    const reset = () => {
+      buffer = '';
+      startedAt = 0;
+      lastKeyAt = 0;
+      maxInterval = 0;
+      if (idleTimer) {
+        window.clearTimeout(idleTimer);
+        idleTimer = undefined;
+      }
+    };
+
+    const scheduleIdleReset = () => {
+      if (idleTimer) window.clearTimeout(idleTimer);
+      idleTimer = window.setTimeout(reset, SCANNER_IDLE_RESET_MS);
+    };
+
+    const isScannerCandidate = (now: number) =>
+      buffer.length >= SCANNER_MIN_CHARS &&
+      startedAt > 0 &&
+      now - startedAt <= SCANNER_MAX_TOTAL_MS &&
+      maxInterval <= SCANNER_MAX_KEY_INTERVAL_MS;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.ctrlKey || event.altKey || event.metaKey) {
+        reset();
+        return;
+      }
+
+      if (event.key === 'Enter' || event.key === 'Tab') {
+        const now = performance.now();
+        if (isScannerCandidate(now)) {
+          event.preventDefault();
+          event.stopPropagation();
+          const scanned = buffer;
+          reset();
+          void handleBarcodeScan(scanned);
+          return;
+        }
+        reset();
+        return;
+      }
+
+      if (event.key.length !== 1) {
+        reset();
+        return;
+      }
+
+      const now = performance.now();
+      if (!startedAt || now - lastKeyAt > SCANNER_IDLE_RESET_MS) {
+        buffer = event.key;
+        startedAt = now;
+        maxInterval = 0;
+      } else {
+        const interval = now - lastKeyAt;
+        maxInterval = Math.max(maxInterval, interval);
+        buffer += event.key;
+      }
+      lastKeyAt = now;
+      scheduleIdleReset();
+    };
+
+    document.addEventListener('keydown', onKeyDown, true);
+    return () => {
+      document.removeEventListener('keydown', onKeyDown, true);
+      reset();
+    };
+  }, [
+    editingLineId,
+    handleBarcodeScan,
+    numberEditModal,
+    showHeldCarts,
+    showPayDialog,
+    showSaleManagerOverride,
+    showShortcutsDialog,
+    showVoidManagerOverride,
+    voidTarget,
+  ]);
 
   const activeCart = useMemo(() => cart.filter((l) => l.status !== 'VOIDED'), [cart]);
   const subtotal = useMemo(() => activeCart.reduce((s, l) => s + l.qty * l.unitPrice, 0), [activeCart]);
@@ -430,58 +656,6 @@ const PosTerminalPage: React.FC<Props> = () => {
     [runtimeLayout?.controlButtonsByZone]
   );
 
-  const onAddToCart = (item: any) => {
-    const unitPrice = Number(item.salePrice || 0);
-    if (!Number.isFinite(unitPrice) || unitPrice <= 0) {
-      toast.error(t('pos:terminal.priceRequired', { defaultValue: 'Set a sale price for this item before selling it in POS.' }));
-      return;
-    }
-    setCart((prev) => {
-      const existing = prev.find((l) => l.itemId === item.id && l.status !== 'VOIDED');
-      if (existing) {
-        return prev.map((l) =>
-          l.lineId === existing.lineId
-            ? recalculateLine({ ...l, qty: l.qty + 1 })
-            : l
-        );
-      }
-      return [
-        ...prev,
-        {
-          lineId: makeLineId(),
-          itemId: item.id,
-          itemCode: item.code || '',
-          itemName: item.name || '',
-          uom: item.uom || item.unitOfMeasure || '',
-          qty: 1,
-          unitPrice,
-          originalUnitPrice: unitPrice,
-          discountPercent: 0,
-          lineDiscount: 0,
-          lineTotal: round2(unitPrice),
-          taxCodeId: item.defaultSalesTaxCodeId,
-          status: 'ACTIVE',
-        },
-      ];
-    });
-  };
-
-  useScanner({
-    onScan: async (barcode) => {
-      try {
-        const result = await posApi.searchProducts(barcode, 1);
-        const match = unwrap<{ items: any[] }>(result);
-        if (match && match.items && match.items.length > 0) {
-          onAddToCart(match.items[0]);
-        } else {
-          toast.error(t('pos:terminal.barcodeNotFound', { defaultValue: 'Barcode not found.' }));
-        }
-      } catch (err) {
-        toast.error(t('pos:terminal.barcodeError', { defaultValue: 'Failed to scan barcode.' }));
-      }
-    }
-  });
-
   const onShortcutClick = (node: PosProductShortcutNodeDTO) => {
     if (node.nodeType === 'GROUP') {
       setShortcutPath((prev) => [...prev, node]);
@@ -491,11 +665,11 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.error(t('pos:terminal.shortcutItemMissing', { defaultValue: 'Shortcut item is unavailable.' }));
       return;
     }
-    onAddToCart({
+    const added = onAddToCart({
       ...node.item,
       uom: node.unitId || node.item.uom || node.item.unitOfMeasure,
-    });
-    if (node.predefinedQty && node.predefinedQty > 1) {
+    }, 'manual');
+    if (added && node.predefinedQty && node.predefinedQty > 1) {
       setCart((prev) =>
         prev.map((line) =>
           line.itemId === node.item?.id && line.status !== 'VOIDED'
@@ -561,26 +735,6 @@ const PosTerminalPage: React.FC<Props> = () => {
         toast(t('pos:terminal.commandReady', { defaultValue: 'Command is ready.' }));
         break;
     }
-  };
-
-  const recalculateLine = (line: CartLine): CartLine => {
-    const gross = round2(line.qty * line.unitPrice);
-    const lineDiscount = line.discountType === 'PERCENT'
-      ? discountAmountFromPercent(line.qty, line.unitPrice, line.discountPercent ?? line.discountValue)
-      : Math.min(Math.max(0, round2(line.lineDiscount || line.discountValue || 0)), gross);
-    const discountPercent = discountPercentFromAmount(line.qty, line.unitPrice, lineDiscount);
-    return {
-      ...line,
-      lineDiscount,
-      discountPercent,
-      discountValue: lineDiscount > 0
-        ? line.discountType === 'PERCENT'
-          ? discountPercent
-          : lineDiscount
-        : undefined,
-      discountType: lineDiscount > 0 ? (line.discountType || 'AMOUNT') : undefined,
-      lineTotal: round2(gross - lineDiscount),
-    };
   };
 
   const onUpdateQty = (lineId: string, qty: number) => {
@@ -838,8 +992,9 @@ const PosTerminalPage: React.FC<Props> = () => {
   const onSearchKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && searchResults.length > 0) {
       e.preventDefault();
-      onAddToCart(searchResults[0]);
+      onAddToCart(searchResults[0], 'manual');
       setSearchQuery('');
+      focusSearchInput();
     }
   };
 
