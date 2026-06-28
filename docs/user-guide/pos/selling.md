@@ -4,13 +4,21 @@ The cashier screen is at **POS → Terminal**. It is the most-used surface in th
 
 ## Layout
 
-- **Left column** — product search. Type a SKU, barcode, or part of the product name; results appear after a short debounce. Click to add to the cart.
+- **Left column** — product search. Type a SKU, barcode, or part of the product name; results appear after a short debounce. Click to add to the cart. A connected barcode scanner can also add products directly from anywhere on the terminal screen as long as no payment, edit, manager approval, or held-sale dialog is open.
 - **Middle column** — the cart. Each row shows the line, editable qty, unit price, line total, and a void button. Below: customer picker, subtotal, discount, grand total, and the **Pay** button.
 - **Right column** — the "Last receipt" card. After a sale, it shows the receipt number, the linked Sales Invoice number, and the change.
 
 ## Customer
 
 Defaults to the company-configured **walk-in customer** from POS Settings. To attach a named customer (e.g. a registered customer for history / credit-note purposes), use the customer picker to swap them. The sale still settles to cash/card.
+
+## Barcode scanning and add feedback
+
+Barcode scanning is treated as product entry, not as ordinary search typing. Scan a product barcode and the terminal looks up the matching item, adds it to the cart, clears the search box, and returns focus to search for the next item.
+
+If the scanner finds no matching item, the terminal shows a barcode error and leaves the cart unchanged. If the barcode is ambiguous, use product search and select the correct item manually.
+
+Successful barcode adds and manual product selections use different short tones so the cashier can tell whether the item was added by scanner or by touch/search selection. The same price, tax, and POS sale guards still apply either way.
 
 ## Voiding a cart line
 

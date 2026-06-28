@@ -146,6 +146,7 @@ If you are starting work on a priority item, record it here so other agents don'
 | OpenCode | Task 246 - Sales Gross Profit Facts & Reports (type-agnostic, absolute+direction, backend-first) | 2026-06-20 | ✅ Done (PR-ready on `codex/246-sales-gross-profit-facts`) |
 | Codex | Task 259 - POS shortcuts and control buttons | 2026-06-23 | ✅ Done (owner override; verification green) |
 | Codex | Task 271 - Returns layout parity and direct Purchase Return | 2026-06-26 | ✅ Done locally (`codex/271-returns-parity`) |
+| Codex | Task 272 - POS terminal barcode capture, focus reset, and add feedback | 2026-06-27 | ✅ Done on `codex/pos-barcode-scanner-audio` |
 
 
 **How to use:**

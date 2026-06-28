@@ -1,5 +1,29 @@
 # 🎯 Current Focus
 
+## Task 272 — POS Terminal barcode capture, focus reset, and add feedback (2026-06-27)
+
+**Status:** ✅ Implemented and verified on `codex/pos-barcode-scanner-audio`.
+
+- **Why:** Owner QA clarified that barcode scanner reads are cashier entry events, not ordinary search operations. A cashier should be able to scan from anywhere on the terminal screen, add the product directly, get clear feedback, and immediately continue scanning the next item.
+- **Recommended approach:** Keep this as a POS terminal input/feedback slice. Do not add a new inventory lookup or bypass the existing POS product search. Scanner detection should feed the same cart-add path used by manual product selection so pricing, tax, UOM, and backend sale guards remain unchanged.
+- **What changed:**
+  - POS Terminal now detects fast keyboard bursts ending in Enter/Tab as scanner input when operational dialogs are not open.
+  - Scanned values resolve through existing POS product search and prefer exact barcode/code matches.
+  - Barcode, manual search-result, Enter, and shortcut additions share one cart-add path.
+  - Successful additions clear/refocus search for the next item.
+  - Barcode and manual adds play distinct lightweight success tones.
+  - English/Arabic/Turkish POS barcode error keys were added.
+  - POS architecture and selling user docs were updated.
+- **Accounting/ERP impact:** UI/control only. No POS posting, tax, stock, receipt, payment settlement, COGS, GL voucher, approval, or tenant-isolation behavior changed.
+- **Verification:** POS locale JSON parsed; frontend typecheck passed; frontend production build passed, including report/no-confirm/SoD guards.
+- **Estimated/actual time:** 1-2h / ~1.1h.
+
+### Next action
+
+Review diff, then prepare PR for owner QA.
+
+---
+
 ## Task 271 — Sales/Purchase Return layout parity and direct Purchase Return (2026-06-26)
 
 **Status:** ✅ Complete locally on `codex/271-returns-parity` (pending PR/merge).
