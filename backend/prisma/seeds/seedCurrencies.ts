@@ -1,16 +1,19 @@
 /**
  * Seed script for currencies
- * 
- * Run with: npx ts-node prisma/seeds/seedCurrencies.ts
+ *
+ * Run standalone: npx ts-node prisma/seeds/seedCurrencies.ts
+ * Or imported by runSqlSeed.ts [275a]
  */
 
 import { PrismaClient } from '@prisma/client';
 import { CURRENCY_SEED_DATA } from './currencySeedData';
 
-const prisma = new PrismaClient();
-
-async function seedCurrencies() {
-  console.log('🌱 Seeding currencies...');
+/**
+ * Seed currencies into an existing PrismaClient.
+ * Exported for use by runSqlSeed.ts [275a].
+ */
+export async function seedCurrencies(prisma: PrismaClient): Promise<void> {
+  console.log('  Seeding currencies...');
 
   for (const currency of CURRENCY_SEED_DATA) {
     await prisma.currency.upsert({
@@ -29,17 +32,20 @@ async function seedCurrencies() {
         // Don't overwrite isActive on existing records
       },
     });
-    console.log(`  ✓ ${currency.code} (${currency.name})`);
   }
 
-  console.log(`\n✅ Seeded ${CURRENCY_SEED_DATA.length} currencies`);
+  console.log(`  ✓ ${CURRENCY_SEED_DATA.length} currencies upserted`);
 }
 
-seedCurrencies()
-  .catch((e) => {
-    console.error('❌ Seed failed:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// Allow standalone execution (original behaviour preserved)
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  seedCurrencies(prisma)
+    .catch((e) => {
+      console.error('Seed failed:', e);
+      process.exit(1);
+    })
+    .finally(async () => {
+      await prisma.$disconnect();
+    });
+}
