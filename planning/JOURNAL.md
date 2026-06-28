@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 — Task 275e: inventory slice + 2 more SQL bug fixes)
+
+- **Goal:** Continue 275e into the inventory money-path.
+- **What happened:** Extended `scripts/sql-integration-275e.ts` with an inventory flow — create item + warehouse, append a `PURCHASE_RECEIPT` stock movement, create a new stock level then blend-cost-update it under the version guard. 11 checks total now, green, run 2×.
+- **Caught + fixed 2 more launch-blocking SQL bugs** (running total: 4):
+  3. `PrismaStockLevelRepository.upsertLevel`/`upsertLevelInTransaction` were update-only (Firestore uses blind `.set()`), so the first persistence of a new stock level (v1, no prior row) threw RecordNotFound → receiving stock for any new item/warehouse broke. Fixed to a true create-or-update that keeps the optimistic-concurrency guard.
+  4. `PrismaStockMovementRepository.toDomain` mapped NULL settlement columns to `null`; the domain treats a present wrong-direction settlement field as an error → reading back ANY IN/OUT movement threw. Fixed: coalesce the 5 settlement fields NULL→undefined.
+- **Accounting/ERP impact:** Fixes are Prisma read/write shape only; no inventory costing/valuation math changed; Firestore path untouched.
+- **Verification:** `tsc --noEmit` clean; 11 checks pass twice. Report updated: `planning/done/275e-sql-integration-tests.md`.
+- **Next:** Sales (SI) + Purchases (PI) round-trips, then RBAC/Core/POS. Branch `feat/275-supabase-integration` stays unmerged.
+
 ### Session: 2026-06-28 (Epic 275 — Task 275e: SQL integration tests — accounting slice + 2 bug fixes)
 
 - **Goal:** Continue Epic 275 into 275e — real-Postgres integration tests of the service-level posting flows. Owner wants a QA-able SQL build.

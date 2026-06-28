@@ -26,6 +26,11 @@ import { VoucherValidationService } from '../src/domain/accounting/services/Vouc
 import { VoucherEntity } from '../src/domain/accounting/entities/VoucherEntity';
 import { VoucherLineEntity } from '../src/domain/accounting/entities/VoucherLineEntity';
 import { VoucherType, VoucherStatus } from '../src/domain/accounting/types/VoucherTypes';
+import { PrismaItemRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaItemRepository';
+import { PrismaWarehouseRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaWarehouseRepository';
+import { PrismaStockLevelRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaStockLevelRepository';
+import { PrismaStockMovementRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaStockMovementRepository';
+import { StockLevel } from '../src/domain/inventory/entities/StockLevel';
 
 let passed = 0;
 function check(label: string, ok: boolean): void {
@@ -107,11 +112,81 @@ async function flowAccounting(prisma: PrismaClient, cid: string): Promise<void> 
   check('replaceForVoucher does not duplicate ledger rows', afterReplace.length === 1);
 }
 
+async function flowInventory(prisma: PrismaClient, cid: string): Promise<void> {
+  console.log('\nB. Inventory — item + warehouse + stock movement + stock level (cost)');
+
+  const itemRepo = new PrismaItemRepository(prisma);
+  const warehouseRepo = new PrismaWarehouseRepository(prisma);
+  const levelRepo = new PrismaStockLevelRepository(prisma);
+  const movementRepo = new PrismaStockMovementRepository(prisma);
+
+  const itemId = `item-${cid}`;
+  const whId = `wh-${cid}`;
+  const now = new Date();
+
+  await warehouseRepo.createWarehouse({
+    id: whId, code: 'WH1', name: 'Main', companyId: cid, parentId: null,
+    address: null, active: true, isDefault: true, createdAt: now, updatedAt: now,
+  } as any);
+  await itemRepo.createItem({
+    id: itemId, companyId: cid, code: 'SKU1', name: 'Widget', type: 'STOCK',
+    baseUom: 'EA', costCurrency: 'USD', costingMethod: 'MOVING_AVERAGE',
+    trackInventory: true, tags: [], active: true, createdBy: 'it',
+  } as any);
+  check('item + warehouse created (inventory FKs)', true);
+
+  // Append a stock receipt movement: IN 10 @ unit cost 5 (total 50).
+  const movId = `mov-${cid}`;
+  await movementRepo.recordMovement({
+    id: movId, companyId: cid, date: '2026-03-15', postingSeq: 1, createdBy: 'it',
+    postedAt: now, itemId, warehouseId: whId, direction: 'IN', movementType: 'PURCHASE_RECEIPT',
+    qty: 10, uom: 'EA', referenceType: 'PURCHASE_INVOICE', referenceId: null,
+    unitCostBase: 5, totalCostBase: 50, unitCostCCY: 5, totalCostCCY: 50,
+    movementCurrency: 'USD', fxRateMovToBase: 1, fxRateCCYToBase: 1, fxRateKind: 'DOCUMENT',
+    avgCostBaseAfter: 5, avgCostCCYAfter: 5, qtyBefore: 0, qtyAfter: 10,
+    settlesNegativeQty: 0, newPositiveQty: 10,
+    negativeQtyAtPosting: false, costSettled: false, isBackdated: false, costSource: 'PURCHASE',
+  } as any);
+  const movements = await movementRepo.getItemMovements(cid, itemId);
+  check('stock movement appended and read back (qty 10 @ cost 5)',
+    movements.length === 1 && movements[0].qty === 10 && movements[0].unitCostBase === 5);
+
+  // First persistence of a brand-new stock level (version 1) — this is the path
+  // the old update-only "upsert" could not handle (it threw RecordNotFound).
+  const levelId = `lvl-${cid}`;
+  const level1 = StockLevel.fromJSON({
+    id: levelId, companyId: cid, itemId, warehouseId: whId, qtyOnHand: 10, reservedQty: 0,
+    avgCostBase: 5, avgCostCCY: 5, lastCostBase: 5, lastCostCCY: 5, postingSeq: 1,
+    maxBusinessDate: '2026-03-15', totalMovements: 1, lastMovementId: movId, version: 1,
+    updatedAt: now,
+  });
+  await levelRepo.upsertLevel(level1);
+  const afterCreate = await levelRepo.getLevel(cid, itemId, whId);
+  check('NEW stock level created via upsert (qty 10, avg cost 5, v1)',
+    !!afterCreate && afterCreate.qtyOnHand === 10 && afterCreate.avgCostBase === 5 && afterCreate.version === 1);
+
+  // Second receipt blends cost: now 15 units @ avg 6, version 2 -> UPDATE path under the guard.
+  const level2 = StockLevel.fromJSON({
+    id: levelId, companyId: cid, itemId, warehouseId: whId, qtyOnHand: 15, reservedQty: 0,
+    avgCostBase: 6, avgCostCCY: 6, lastCostBase: 8, lastCostCCY: 8, postingSeq: 2,
+    maxBusinessDate: '2026-03-16', totalMovements: 2, lastMovementId: movId, version: 2,
+    updatedAt: now,
+  });
+  await levelRepo.upsertLevel(level2);
+  const afterUpdate = await levelRepo.getLevel(cid, itemId, whId);
+  check('stock level UPDATE under version guard (qty 15, avg cost 6, v2)',
+    !!afterUpdate && afterUpdate.qtyOnHand === 15 && afterUpdate.avgCostBase === 6 && afterUpdate.version === 2);
+}
+
 async function cleanup(prisma: PrismaClient, cid: string): Promise<void> {
-  // Cascade from company removes accounts + ledger entries.
+  // Delete child rows first, then the company.
   try {
     await prisma.ledgerEntry.deleteMany({ where: { companyId: cid } });
     await prisma.account.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).stockMovement.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).stockLevel.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).item.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).warehouse.deleteMany({ where: { companyId: cid } });
     await prisma.company.deleteMany({ where: { id: cid } });
   } catch (e: any) {
     console.warn('Cleanup warning:', e.message);
@@ -131,6 +206,7 @@ async function main(): Promise<void> {
   try {
     await setupCompany(prisma, cid);
     await flowAccounting(prisma, cid);
+    await flowInventory(prisma, cid);
 
     console.log('\n====================================================');
     console.log(`  ALL ${passed} INTEGRATION CHECKS PASSED on real Postgres`);
