@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 planning — Supabase/PostgreSQL launch + offline-sync design)
+
+- **Goal:** Owner asked to plan the deployment and assess the gap to running on Supabase. Turned into a deep architecture session on DB choice, deployment modes, offline behavior, and conflict/sync.
+- **Strategic decision (owner):** First production launch runs on **Supabase / PostgreSQL, NOT Firestore.** Firestore demoted to dev/fallback only (the `DB_TYPE` toggle stays). Reason: reporting, costing, maintainability, and the offline/desktop future all need SQL. One production DB engine. Rejected "Firestore for free users" (free vs paid = feature-gating, not a second DB).
+- **Findings:** the dual-DB repository layer is ~78% built (96/123 repos have Prisma twins, 105-model schema, 111 `DB_TYPE` toggles) but **has never run against a real Postgres DB**. Real gap to launch: SQL seeders, `SettingsResolverSQL` stub, ~15 missing non-AI Prisma repos, and untested SQL-mode flows.
+- **Locked decisions:** Postgres-only prod; keep Firebase Auth/Storage/FCM for v1; AI module OFF (repos out of scope); host = Railway.
+- **Offline design (engineered, post-launch build):** single-authority queue-replay model. Cloud backend stays the only referee; offline work = stamped delayed requests; created-time = accounting date, acceptance-time = official order + contention winner; first-accepted wins (loser flagged, never overwritten); numbers assigned only at acceptance; idempotency IDs prevent double-post; stop at first hard block. "Move authority onto desktop (local backend)" parked as future. Documented in `docs/architecture/offline-sync-queue.md`.
+- **Deliverables created:** `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md` (strategic plan, decisions, blind spots), Epic `275-supabase-launch-epic.md` + tasks `275a`–`275f` (executor-ready with CTO audit gates), `docs/architecture/offline-sync-queue.md`, registered as TOP PRIORITY in `PRIORITIES.md` (supersedes "Deploy to real Firebase project"). Memory: [[supabase_deploy_decisions]].
+- **Next:** Assign executor agents to 275a + 275b (parallel, no deps), then 275c. CTO (Claude) audits each task at its gate before the next proceeds.
+
 ### Session: 2026-06-26 (Task 271 - Purchase Return direct mode and source picker parity)
 
 - **Goal:** Finish the next active return workflow slice after PR #37: remove raw Purchase Return source-id entry, make direct PR accounting-safe, and expose GL Impact on posted PR.
