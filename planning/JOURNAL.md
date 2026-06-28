@@ -21,6 +21,15 @@
 - **Time spent:** ~1.1h.
 - **Next:** Review diff, then prepare PR for owner QA.
 
+### Session: 2026-06-27 (POS fixes/layout handoff briefs)
+
+- **Goal:** Prepare implementation handoff files and isolated branch instructions for the owner-requested POS fixes batch and separate POS terminal layout experiment.
+- **What changed:** Added Task 272 for the POS fixes batch, Task 273 for the isolated terminal layout restructure, implementation briefs for both target branches, and an audit checklist for Codex review after another agent finishes.
+- **Accounting impact:** Planning/docs only. No runtime code, posting behavior, tax, inventory valuation, settlement, period-lock, voucher, or report calculation behavior changed. The briefs explicitly preserve current immediate POS stock/accounting posting and reserve deferred posting policy for a future task.
+- **Verification:** Confirmed the handoff worktree was on `codex/pos-handoff-briefs` and created only markdown planning/brief files.
+- **Actual time:** ~0.4h.
+- **Next:** Implementation agent should work on `codex/pos-fixes-batch` first, then `codex/pos-terminal-layout`; Codex should audit both branches before merge.
+
 ### Session: 2026-06-26 (Task 271 - Purchase Return direct mode and source picker parity)
 
 - **Goal:** Finish the next active return workflow slice after PR #37: remove raw Purchase Return source-id entry, make direct PR accounting-safe, and expose GL Impact on posted PR.
