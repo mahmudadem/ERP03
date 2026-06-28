@@ -10,7 +10,9 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
     await tx.salesInvoice.create({
       data: {
         id: si.id,
-        companyId: si.companyId,
+        // companyId is set via the `company` relation connect below; passing the
+        // scalar too is invalid in Prisma's checked create input (used because of
+        // the nested `lines.create`) -> "Unknown argument companyId".
         invoiceNumber: si.invoiceNumber,
         customerInvoiceNumber: si.customerInvoiceNumber || null,
         salesOrderId: si.salesOrderId || null,
@@ -25,6 +27,8 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
         paymentTermsDays: si.paymentTermsDays || null,
         paidAmountBase: si.paidAmountBase,
         outstandingAmountBase: si.outstandingAmountBase,
+        voucherType: si.voucherType || null,
+        voucherTypeId: (si as any).formType || null,
         voucherId: si.voucherId || null,
         cogsVoucherId: si.cogsVoucherId || null,
         subtotalBase: si.subtotalBase,
@@ -91,6 +95,8 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
         paymentTermsDays: si.paymentTermsDays || null,
         paidAmountBase: si.paidAmountBase,
         outstandingAmountBase: si.outstandingAmountBase,
+        voucherType: si.voucherType || null,
+        voucherTypeId: (si as any).formType || null,
         voucherId: si.voucherId || null,
         cogsVoucherId: si.cogsVoucherId || null,
         subtotalBase: si.subtotalBase,
@@ -237,6 +243,8 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
       paidAmountBase: record.paidAmountBase,
       outstandingAmountBase: record.outstandingAmountBase,
       status: record.status as SIStatus,
+      voucherType: record.voucherType || undefined,
+      formType: record.voucherTypeId || undefined,
       voucherId: record.voucherId || null,
       cogsVoucherId: record.cogsVoucherId || null,
       notes: record.notes || undefined,

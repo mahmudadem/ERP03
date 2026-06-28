@@ -2,6 +2,19 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-28 (Epic 275 — Task 275e: sales + purchases slices + 3 more SQL bug fixes)
+
+- **Goal:** Continue 275e into the Sales (SI) and Purchases (PI) money-path round-trips.
+- **What happened:** Extended `scripts/sql-integration-275e.ts` with Sales Invoice and Purchase Invoice create + read-back (header + line, reusing the inventory item). 15 checks total now, green, run 2×.
+- **Caught + fixed 3 more launch-blocking SQL bugs** (running total: 7 across 4 modules):
+  5. `PrismaSalesInvoiceRepository.create` and `PrismaPurchaseInvoiceRepository.create` passed both scalar `companyId` and `company: { connect }` under a nested `lines.create` (checked input) → "Unknown argument companyId". Every SI/PI create threw. Fixed: dropped the redundant scalar.
+  6. `SalesInvoice`/`PurchaseInvoice` Prisma models had no `voucherType` column, but the SI domain *requires* it (throws) and both persist it in Firestore via toJSON → SI read-back threw, value lost for PI. Fixed: added `voucherType` + `voucherTypeId` columns to both + mapped in create/update/toDomain.
+  7. `PurchaseInvoiceLine` model was missing 6 columns the repo writes (`trackInventory`, `uomId`, `taxCode`, `grnLineId`, `accountId`, `stockMovementId`) → PI was never persistable in SQL. Fixed: added the 6 columns (SalesInvoiceLine already had its equivalents).
+- **⚠️ Schema changed** (3 invoice models gained columns) → a `prisma db push` is needed after pulling the branch; pre-alpha so no data migration.
+- **Accounting/ERP impact:** Fixes are persistence shape/schema only; no posting/tax/cost math changed; Firestore path untouched.
+- **Verification:** `tsc --noEmit` clean; 15 checks pass twice. Report: `planning/done/275e-sql-integration-tests.md`.
+- **Next:** RBAC/Core/POS flows, then 275f (deploy). Branch `feat/275-supabase-integration` stays unmerged.
+
 ### Session: 2026-06-28 (Epic 275 — Task 275e: inventory slice + 2 more SQL bug fixes)
 
 - **Goal:** Continue 275e into the inventory money-path.

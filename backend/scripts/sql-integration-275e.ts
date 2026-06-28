@@ -31,6 +31,8 @@ import { PrismaWarehouseRepository } from '../src/infrastructure/prisma/reposito
 import { PrismaStockLevelRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaStockLevelRepository';
 import { PrismaStockMovementRepository } from '../src/infrastructure/prisma/repositories/inventory/PrismaStockMovementRepository';
 import { StockLevel } from '../src/domain/inventory/entities/StockLevel';
+import { PrismaSalesInvoiceRepository } from '../src/infrastructure/prisma/repositories/sales/PrismaSalesInvoiceRepository';
+import { PrismaPurchaseInvoiceRepository } from '../src/infrastructure/prisma/repositories/purchases/PrismaPurchaseInvoiceRepository';
 
 let passed = 0;
 function check(label: string, ok: boolean): void {
@@ -178,11 +180,64 @@ async function flowInventory(prisma: PrismaClient, cid: string): Promise<void> {
     !!afterUpdate && afterUpdate.qtyOnHand === 15 && afterUpdate.avgCostBase === 6 && afterUpdate.version === 2);
 }
 
+async function flowSales(prisma: PrismaClient, cid: string): Promise<void> {
+  console.log('\nC. Sales — Sales Invoice (header + line) round-trip');
+  const siRepo = new PrismaSalesInvoiceRepository(prisma);
+  const itemId = `item-${cid}`; // reuse the item created in the inventory flow
+  const siId = `si-${cid}`;
+
+  await siRepo.create({
+    id: siId, companyId: cid, invoiceNumber: 'SI-0001', customerId: 'cust-1', customerName: 'Acme',
+    invoiceDate: '2026-03-15', currency: 'USD', exchangeRate: 1, status: 'POSTED', paymentStatus: 'UNPAID',
+    voucherType: 'sales_invoice', formType: 'SALES_INVOICE',
+    paidAmountBase: 0, outstandingAmountBase: 100, subtotalBase: 100, taxTotalBase: 0, grandTotalBase: 100,
+    subtotalDoc: 100, taxTotalDoc: 0, grandTotalDoc: 100, createdBy: 'it',
+    lines: [{
+      lineId: 'sil-1', lineNo: 1, itemId, itemCode: 'SKU1', itemName: 'Widget', trackInventory: true,
+      invoicedQty: 2, uom: 'EA', unitPriceDoc: 50, lineTotalDoc: 100, unitPriceBase: 50, lineTotalBase: 100,
+      taxRate: 0, taxAmountDoc: 0, taxAmountBase: 0, revenueAccountId: 'rev-acct',
+    }],
+  } as any);
+  check('sales invoice + line created (no throw)', true);
+
+  const got = await siRepo.getById(cid, siId);
+  check('sales invoice read back with 1 line, grand total 100',
+    !!got && (got as any).lines.length === 1 && (got as any).grandTotalBase === 100 && (got as any).invoiceNumber === 'SI-0001');
+}
+
+async function flowPurchases(prisma: PrismaClient, cid: string): Promise<void> {
+  console.log('\nD. Purchases — Purchase Invoice (header + line) round-trip');
+  const piRepo = new PrismaPurchaseInvoiceRepository(prisma);
+  const itemId = `item-${cid}`; // reuse the inventory item
+  const piId = `pi-${cid}`;
+
+  await piRepo.create({
+    id: piId, companyId: cid, invoiceNumber: 'PI-0001', vendorId: 'vend-1', vendorName: 'Supplier Co',
+    invoiceDate: '2026-03-16', currency: 'USD', exchangeRate: 1, status: 'POSTED', paymentStatus: 'UNPAID',
+    voucherType: 'purchase_invoice', formType: 'PURCHASE_INVOICE',
+    paidAmountBase: 0, outstandingAmountBase: 20, subtotalBase: 20, taxTotalBase: 0, grandTotalBase: 20,
+    subtotalDoc: 20, taxTotalDoc: 0, grandTotalDoc: 20, createdBy: 'it',
+    lines: [{
+      lineId: 'pil-1', lineNo: 1, itemId, itemCode: 'SKU1', itemName: 'Widget', trackInventory: true,
+      invoicedQty: 4, uom: 'EA', unitPriceDoc: 5, lineTotalDoc: 20, unitPriceBase: 5, lineTotalBase: 20,
+      taxRate: 0, taxAmountDoc: 0, taxAmountBase: 0, accountId: 'exp-acct',
+    }],
+  } as any);
+  check('purchase invoice + line created (no throw)', true);
+
+  const got = await piRepo.getById(cid, piId);
+  check('purchase invoice read back with 1 line, grand total 20',
+    !!got && (got as any).lines.length === 1 && (got as any).grandTotalBase === 20 && (got as any).invoiceNumber === 'PI-0001');
+}
+
 async function cleanup(prisma: PrismaClient, cid: string): Promise<void> {
   // Delete child rows first, then the company.
   try {
     await prisma.ledgerEntry.deleteMany({ where: { companyId: cid } });
     await prisma.account.deleteMany({ where: { companyId: cid } });
+    // Invoices (lines cascade) must go before items — line.itemId FK is Restrict.
+    await (prisma as any).salesInvoice.deleteMany({ where: { companyId: cid } });
+    await (prisma as any).purchaseInvoice.deleteMany({ where: { companyId: cid } });
     await (prisma as any).stockMovement.deleteMany({ where: { companyId: cid } });
     await (prisma as any).stockLevel.deleteMany({ where: { companyId: cid } });
     await (prisma as any).item.deleteMany({ where: { companyId: cid } });
@@ -207,6 +262,8 @@ async function main(): Promise<void> {
     await setupCompany(prisma, cid);
     await flowAccounting(prisma, cid);
     await flowInventory(prisma, cid);
+    await flowSales(prisma, cid);
+    await flowPurchases(prisma, cid);
 
     console.log('\n====================================================');
     console.log(`  ALL ${passed} INTEGRATION CHECKS PASSED on real Postgres`);

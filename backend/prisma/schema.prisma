@@ -1167,6 +1167,8 @@ model PurchaseInvoice {
   paymentTermsDays Int?
   paidAmountBase   Float    @default(0)
   outstandingAmountBase Float @default(0)
+  voucherType      String?
+  voucherTypeId    String?
   voucherId        String?
   subtotalBase     Float    @default(0)
   taxTotalBase     Float    @default(0)
@@ -1199,18 +1201,24 @@ model PurchaseInvoiceLine {
   itemId          String
   itemCode        String
   itemName        String
+  trackInventory  Boolean  @default(false)
   invoicedQty     Float
+  uomId           String?
   uom             String
   unitPriceDoc    Float
   lineTotalDoc    Float
   unitPriceBase   Float
   lineTotalBase   Float
   taxCodeId       String?
+  taxCode         String?
   taxRate         Float    @default(0)
   taxAmountDoc    Float    @default(0)
   taxAmountBase   Float    @default(0)
   warehouseId     String?
   description     String?
+  grnLineId       String?
+  accountId       String?
+  stockMovementId String?
 
   invoice PurchaseInvoice @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
   item    Item            @relation(fields: [itemId], references: [id])
@@ -1427,6 +1435,8 @@ model SalesInvoice {
   paymentTermsDays     Int?
   paidAmountBase       Float    @default(0)
   outstandingAmountBase Float   @default(0)
+  voucherType          String?
+  voucherTypeId        String?
   voucherId            String?
   cogsVoucherId        String?
   subtotalBase         Float    @default(0)
