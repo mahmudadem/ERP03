@@ -2,6 +2,22 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (SQL readiness audit — "nothing worked" was environment, not code; backend re-verified on Postgres)
+
+- **Goal:** Owner's lived experience of the SQL path was "buggy everywhere, nothing prepared," which forced a revert to Firebase. Honest re-audit of what actually works on Postgres — no trusting planning-doc optimism.
+- **Lane decision recorded:** Firebase = live testing lane (`ERP03-unified`); SQL = parallel readiness (`ERP03`). Added a 🔒 SCOPE LOCK to `ACTIVE.md` + memory: agents are committed to their lane only; no SQL on the Firebase branch and vice versa.
+- **Root cause of "nothing works" = environment, not code:**
+  1. This worktree's `backend/` + `frontend/` `node_modules` were **empty** — `npm install` was never run here (git worktrees don't share `node_modules`). With no deps, nothing runs and `npx prisma` grabbed Prisma 7 (rejects the v5 schema).
+  2. Prisma client not generated.
+  3. DB schema stale → needed `prisma db push` (Task 277 added `uomBarcodes`/`uomBarcodeValues` columns).
+  4. **Real regression fixed (`1ffee919`):** `PrismaItemRepository.createItem` did `item.uomBarcodes.flatMap(...)` with no guard → crashed on any item without UOM barcodes. Defaulted to `[]`.
+  5. **Env trap:** `.env` has `DB_TYPE=FIRESTORE`; SQL override is in `.env.local`, but standalone scripts load `.env` and silently run in Firestore mode (smoke test first failed trying to reach real Firebase). Must force `DB_TYPE=SQL`.
+- **Verified after fixes (real Postgres, port 5432 `erp_db`):**
+  - `scripts/sql-integration-275e.ts` → **25/25 PASS** (Accounting, Inventory, Sales, Purchases, RBAC, Core, POS).
+  - `npm run smoke:companies` (forced SQL) → **PASS** — 2 companies end-to-end: 48-acct COA, 16 voucher types/forms, fiscal year, balanced journal posted, ledger balanced.
+- **Honest verdict:** the SQL *backend data layer* is genuinely far more ready than the experience suggested — the blocker was setup + 1 bug, not missing implementation. **Still unverified:** full running app on SQL (HTTP server boot + frontend/onboarding round-trip) — that's the next bar.
+- **Next:** boot the server in SQL mode and do a real round-trip; then 275f provisioning. Reproducible setup steps captured in `ACTIVE.md`.
+
 ### Session: 2026-06-29 (Production heal + live Firebase deploy — 503/500 fix reconciled into prod lane)
 
 - **Goal:** The verified production 503/500 storm fix (`9e5d0ac1`) was committed only on the SQL-readiness lane (`ERP03`), while production deploys run from the production lane (`ERP03-unified`). The prod lane had only *part* of the fix (server-ready/CORS) but was missing the 512MB memory bump, the `posShifts`/composite Firestore indexes, and the `COLLECTION_GROUP` fieldOverrides. Goal: make the prod lane carry the complete fix and deploy it live.

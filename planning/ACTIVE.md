@@ -49,10 +49,27 @@ tidy-up only, not an architecture change.
 
 ---
 
-## 🔶 SQL-readiness — Epic 275 (paused, awaiting owner go)
+## 🔶 SQL-readiness — Epic 275 (audit re-verified 2026-06-29)
 
-SQL path runs on real Postgres; Task 275e proved Accounting/Inventory/Sales/Purchases/RBAC/Core/POS.
-Two-company creation bug sweep done (`npm run smoke:companies` PASS). **Not merged to `main`.**
-Next when resumed: owner commit approval → 275f (provision Supabase, deploy backend Railway + frontend Vercel).
-Full detail: `planning/done/275*` and `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
-Local env: portable Postgres 16 on `localhost:5433`, db `erp_db` (`DATABASE_URL=postgresql://postgres@localhost:5433/erp_db?schema=public`).
+**Backend SQL layer = VERIFIED working on real Postgres (this session):**
+- `scripts/sql-integration-275e.ts` → **25/25 checks PASS** (Accounting, Inventory, Sales, Purchases, RBAC, Core, POS).
+- `npm run smoke:companies` (forced SQL) → **PASS** — 2 companies created end-to-end (48-acct COA, 16 voucher types/forms, FY, balanced journal, ledger balanced).
+
+**Why it felt "totally broken" before = environment, not code.** Root causes found + fixed:
+1. This worktree had **zero deps installed** (`npm install` was never run here — git worktrees don't share `node_modules`).
+2. Prisma client not generated.
+3. DB schema stale — needed `prisma db push` (Task 277 added `uomBarcodes` columns).
+4. One real regression fixed: `PrismaItemRepository.createItem` crashed on undefined `uomBarcodes` (commit `1ffee919`).
+5. **Env trap:** `.env` has `DB_TYPE=FIRESTORE`; SQL lives in `.env.local`, but standalone scripts load `.env` → they silently run in Firestore mode. Must force `DB_TYPE=SQL` for SQL runs.
+
+**Reproducible SQL setup (run in `backend/`):**
+```bash
+npm install
+node_modules/.bin/prisma generate
+node_modules/.bin/prisma db push --skip-generate            # uses .env DATABASE_URL (5432 erp_db)
+npx ts-node --transpile-only scripts/sql-integration-275e.ts          # expect 25/25
+DB_TYPE=SQL DATABASE_URL="postgresql://postgres:root@localhost:5432/erp_db?schema=public" npm run smoke:companies
+```
+Local DB the app uses: **port 5432**, `postgres:root`, db `erp_db` (per `.env`/`.env.local`). A second Postgres on 5433 exists but is unused/leftover.
+
+**Still UNVERIFIED (next):** full running app on SQL — boot the HTTP server in SQL mode + real frontend/onboarding round-trip (the bar the harnesses skip). Then 275f: Supabase + Railway/Vercel deploy. **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
