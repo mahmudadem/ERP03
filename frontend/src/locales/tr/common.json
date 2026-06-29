@@ -1,5 +1,18 @@
 {
   "appName": "ERP03",
+  "datePicker": {
+    "quickSelect": "Hızlı Seçim",
+    "today": "Bugün",
+    "now": "Şimdi",
+    "thisMonthFirst": "Bu Ayın İlk Günü",
+    "fyBeginning": "Mali Yıl Başlangıcı",
+    "fyClose": "Mali Yıl Kapanışı",
+    "yearEnd": "YIL SONU",
+    "periodOpening": "Dönem Açılışı",
+    "periodClose": "Dönem Kapanışı",
+    "start": "BAŞLANGIÇ",
+    "end": "BİTİŞ"
+  },
   "salesGrossProfit": {
     "titleByDocument": "Gross Profit by Document",
     "titleByItem": "Gross Profit by Item",

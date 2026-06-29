@@ -7,6 +7,11 @@ to Daily Summary, Receipt History, Cancelled Receipts, Cash Over/Short, Override
 Audit, and Reprint Audit. Grouped summaries such as Payment Methods, Cashier
 Sales, and Top Selling Items keep their own grouping or ranking order.
 
+Date filters default to the last 30 days: **Date from** is the older date and
+**Date to** is today. In Arabic/RTL sessions the fields still appear in that
+same business order so the range is not visually reversed. The date picker's
+quick-select menu is translated.
+
 ## Z Report (by shift)
 
 **Use:** finalized close summary for a single shift.

@@ -52,6 +52,11 @@ Grouped/ranked POS summaries are intentionally not forced into date order.
 Payment Methods remains grouped by method, Cashier Sales remains grouped by
 cashier, and Top Selling Items remains ranked by sales quantity/amount.
 
+The shared POS report date-range initiator forces left-to-right field placement
+for the filter row, even in RTL sessions: **Date from** appears before **Date to**
+visually, while labels remain localized. This avoids Arabic users seeing the
+default 30-day range as if the dates were reversed.
+
 ```
 domain/pos/entities/         PosRegister, PosSettings, PosShift, PosCashMovement,
                              PosReceipt, PosPayment, PosReturn — all pure classes

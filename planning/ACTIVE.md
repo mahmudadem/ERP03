@@ -51,8 +51,9 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278i POS report date/time sort:** complete; commits `e52683c0` and `cbdbd133`.
 - **278j Opening Stock legacy movement warning:** complete; commits `64117d93` and `d56d5832`.
 - **278k Sales dashboard / Purchase Settings translations:** complete; commit `bfd636e0`.
-- **278l POS shift-close summary modal:** validation passed; commit pending.
-- **Next:** commit 278l, then continue Telegram report/date/translation QA.
+- **278l POS shift-close summary modal:** complete; commit `f4917b14`.
+- **278m POS report date range / DatePicker i18n:** validation passed; commit pending.
+- **Next:** commit 278m, then continue all-report translation audit from Telegram photo 23.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

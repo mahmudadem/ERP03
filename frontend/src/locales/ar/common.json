@@ -1,5 +1,18 @@
 {
   "appName": "تخطيط موارد المؤسسات03",
+  "datePicker": {
+    "quickSelect": "اختيار سريع",
+    "today": "اليوم",
+    "now": "الآن",
+    "thisMonthFirst": "أول يوم في الشهر",
+    "fyBeginning": "بداية السنة المالية",
+    "fyClose": "إقفال السنة المالية",
+    "yearEnd": "نهاية السنة",
+    "periodOpening": "بداية الفترة",
+    "periodClose": "إقفال الفترة",
+    "start": "البداية",
+    "end": "النهاية"
+  },
   "salesGrossProfit": {
     "titleByDocument": "Gross Profit by Document",
     "titleByItem": "Gross Profit by Item",

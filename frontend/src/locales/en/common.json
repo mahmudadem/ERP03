@@ -1,5 +1,18 @@
 {
   "appName": "ERP03",
+  "datePicker": {
+    "quickSelect": "Quick Select",
+    "today": "Today",
+    "now": "Now",
+    "thisMonthFirst": "This Month First",
+    "fyBeginning": "FY Beginning",
+    "fyClose": "FY Close",
+    "yearEnd": "YEAR END",
+    "periodOpening": "Period Opening",
+    "periodClose": "Period Close",
+    "start": "START",
+    "end": "END"
+  },
   "salesGrossProfit": {
     "titleByDocument": "Gross Profit by Document",
     "titleByItem": "Gross Profit by Item",

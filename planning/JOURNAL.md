@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278m — POS report date range and DatePicker quick-select i18n)
+
+- **Goal:** Address Telegram screenshots 21–22 and note that POS report default dates looked reversed and DatePicker quick-select text was untranslated.
+- **Fix:** Forced the POS date-range initiator row to render Date from → Date to in a direction-stable order while keeping labels localized, and translated shared DatePicker quick-select labels under `common:datePicker.*`.
+- **Accounting impact:** Report filter UI only. No POS receipts, returns, shifts, vouchers, ledger, tenant data, or report calculations changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278m, then continue all-report translation audit from Telegram photo 23.
+
 ### Session: 2026-06-29 (Production QA 278l — POS shift close summary modal)
 
 - **Goal:** Address Telegram screenshot 20 and follow-up text asking for the POS close modal to show a shift summary first, use clear Arabic button text, and remove the extra generic close button.
