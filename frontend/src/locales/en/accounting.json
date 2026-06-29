@@ -1159,7 +1159,9 @@
     "actions": {
       "expandAll": "Expand All",
       "collapseAll": "Collapse All",
-      "newAccount": "New Account"
+      "newAccount": "New Account",
+      "expandAccount": "Expand {{account}}",
+      "collapseAccount": "Collapse {{account}}"
     },
     "columns": {
       "accountCodeName": "Account Code & Name",

@@ -1147,7 +1147,9 @@
     "actions": {
       "expandAll": "توسيع الكل",
       "collapseAll": "طي الكل",
-      "newAccount": "حساب جديد"
+      "newAccount": "حساب جديد",
+      "expandAccount": "توسيع {{account}}",
+      "collapseAccount": "طي {{account}}"
     },
     "columns": {
       "accountCodeName": "رمز واسم الحساب",

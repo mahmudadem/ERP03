@@ -1133,7 +1133,9 @@
     "actions": {
       "expandAll": "Tümünü Aç",
       "collapseAll": "Tümünü Kapat",
-      "newAccount": "Yeni Hesap"
+      "newAccount": "Yeni Hesap",
+      "expandAccount": "{{account}} hesabını aç",
+      "collapseAccount": "{{account}} hesabını kapat"
     },
     "columns": {
       "accountCodeName": "Hesap Kodu ve Adı",

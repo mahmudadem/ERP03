@@ -6,13 +6,14 @@ import { accountingApi, Account, AccountClassification, AccountRole, CurrencyPol
 import { AccountForm } from '../components/AccountForm';
 import { errorHandler } from '../../../services/errorHandler';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
-import { Folder, FolderOpen, FileText, Lock, AlertTriangle, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle, Sliders } from 'lucide-react';
+import { Folder, FolderOpen, FileText, Lock, AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle, Sliders } from 'lucide-react';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
 import { AccountDrilldownModal } from '../components/AccountDrilldownModal';
 import { Spinner } from '../../../components/ui/Spinner';
 
 export default function AccountsListPage() {
-    const { t } = useTranslation('accounting');
+    const { t, i18n } = useTranslation('accounting');
+    const isRtl = i18n.dir() === 'rtl';
     const queryClient = useQueryClient();
     const [searchParams, setSearchParams] = useSearchParams();
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
@@ -37,9 +38,6 @@ export default function AccountsListPage() {
     };
 
     const expandAll = () => {
-        const headerIds = accounts
-            .filter(a => a.accountRole === 'HEADER' || (a as any).hasChildren)
-            .map(a => a.id);
         setCollapsedIds(new Set());
     };
 
@@ -322,26 +320,27 @@ export default function AccountsListPage() {
                         )}
                     </div>
                     
-                    <div className="flex items-center space-x-3">
-                        <div className="flex rounded-md p-0.5 border border-gray-200">
+                    <div className="flex items-center gap-3 flex-wrap md:flex-nowrap shrink-0">
+                        <div className="flex shrink-0 rounded-md p-0.5 border border-gray-200">
                             <button
                                 onClick={expandAll}
-                                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all border-r border-gray-200"
+                                className="px-3 py-1.5 min-h-9 whitespace-nowrap text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all border-e border-gray-200"
                             >
                                 {t('accountsList.actions.expandAll', { defaultValue: 'Expand All' })}
                             </button>
                             <button
                                 onClick={collapseAll}
-                                className="px-3 py-1.5 text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all"
+                                className="px-3 py-1.5 min-h-9 whitespace-nowrap text-xs font-bold text-gray-700 hover:bg-gray-50 transition-all"
                             >
                                 {t('accountsList.actions.collapseAll', { defaultValue: 'Collapse All' })}
                             </button>
                         </div>
                         <button
                             onClick={() => setIsCreateModalOpen(true)}
-                            className="px-4 py-1.5 bg-blue-600 text-white font-bold text-sm rounded hover:bg-blue-700 shadow-sm transition-colors flex items-center"
+                            className="px-4 py-1.5 min-h-10 shrink-0 whitespace-nowrap bg-blue-600 text-white font-bold text-sm rounded hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1.5"
                         >
-                            <span className="text-lg mr-1 leading-none">+</span> {t('accountsList.actions.newAccount', { defaultValue: 'New Account' })}
+                            <span className="text-lg leading-none">+</span>
+                            <span>{t('accountsList.actions.newAccount', { defaultValue: 'New Account' })}</span>
                         </button>
                     </div>
                 </div>
@@ -418,7 +417,7 @@ export default function AccountsListPage() {
                                     })}
 
                                     {/* Current node tree lines and chevron */}
-                                    <div className="w-8 flex-shrink-0 relative flex items-center justify-center">
+                                    <div className="w-[40px] flex-shrink-0 relative flex items-center justify-center">
                                         {account.level > 0 && (
                                             <>
                                                 {/* Curved elbow connecting from parent */}
@@ -431,21 +430,32 @@ export default function AccountsListPage() {
                                             </>
                                         )}
 
-                                        <div 
-                                            className="w-5 h-5 flex items-center justify-center cursor-pointer hover:bg-gray-200 rounded-full bg-white z-10 relative"
-                                            onClick={(e) => {
-                                                if (canExpand) {
-                                                    e.stopPropagation();
-                                                    toggleCollapse(account.id, e as any);
-                                                }
-                                            }}
-                                        >
-                                            {canExpand ? (
-                                                isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-gray-500" strokeWidth={2.5} /> : <ChevronRight className="w-3.5 h-3.5 text-gray-500" strokeWidth={2.5} />
-                                            ) : (
-                                                <div className="w-3.5 h-3.5" />
-                                            )}
-                                        </div>
+                                        {canExpand ? (
+                                            <button
+                                                type="button"
+                                                className="w-[36px] h-[36px] shrink-0 flex items-center justify-center cursor-pointer hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full bg-white z-10 relative"
+                                                onClick={(e) => toggleCollapse(account.id, e)}
+                                                aria-expanded={isExpanded}
+                                                aria-label={t(
+                                                    isExpanded ? 'accountsList.actions.collapseAccount' : 'accountsList.actions.expandAccount',
+                                                    { account: account.name }
+                                                )}
+                                                title={t(
+                                                    isExpanded ? 'accountsList.actions.collapseAccount' : 'accountsList.actions.expandAccount',
+                                                    { account: account.name }
+                                                )}
+                                            >
+                                                {isExpanded ? (
+                                                    <ChevronDown className="w-4 h-4 text-gray-600" strokeWidth={2.5} />
+                                                ) : isRtl ? (
+                                                    <ChevronLeft className="w-4 h-4 text-gray-600" strokeWidth={2.5} />
+                                                ) : (
+                                                    <ChevronRight className="w-4 h-4 text-gray-600" strokeWidth={2.5} />
+                                                )}
+                                            </button>
+                                        ) : (
+                                            <div className="w-[36px] h-[36px] z-10 relative" aria-hidden="true" />
+                                        )}
                                     </div>
 
                                     <div className="flex items-center gap-3 py-2.5 ms-2">
