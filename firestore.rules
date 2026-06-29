@@ -29,7 +29,14 @@ service cloud.firestore {
     }
 
     function isMemberOf(cid) {
-      return isSignedIn() ? exists(/databases/$(database)/documents/company_users/$(cid + '_' + request.auth.uid)) : false;
+      // Membership is authoritatively stored in the RBAC subcollection
+      // companies/{cid}/users/{uid} (see backend authMiddleware -> rbac
+      // FirestoreCompanyUserRepository). The legacy top-level
+      // company_users/{cid}_{uid} doc is kept as a fallback for older tenants.
+      return isSignedIn() ? (
+        exists(/databases/$(database)/documents/companies/$(cid)/users/$(request.auth.uid))
+        || exists(/databases/$(database)/documents/company_users/$(cid + '_' + request.auth.uid))
+      ) : false;
     }
 
     // ---- system_metadata ----

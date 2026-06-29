@@ -188,7 +188,7 @@ export const FormSection: React.FC<{ title: string; children: React.ReactNode }>
 export const Field: React.FC<{ label: string; required?: boolean; children: React.ReactNode }> = ({ label, required, children }) => (
     <div className="space-y-1">
         <label className="text-[10px] font-bold text-slate-600 dark:text-slate-400 uppercase tracking-tight">
-            {label} {required && <span className="text-red-500">*</span>}
+            {required && <span className="text-red-500">* </span>}{label}
         </label>
         {children}
     </div>

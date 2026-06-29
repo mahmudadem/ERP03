@@ -568,6 +568,17 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                 const type = e.target.value as InventoryItemDTO['type'];
                 setItem(p => ({ ...p, type, trackInventory: type === 'SERVICE' ? false : p.trackInventory }));
               }}><option value="PRODUCT">{t('PRODUCT', 'PRODUCT')}</option><option value="SERVICE">{t('SERVICE', 'SERVICE')}</option></select></Field>
+              <div className="col-span-1 sm:col-span-2 flex items-center pt-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    className="h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    checked={item.active !== false} 
+                    onChange={e => setItem(p => ({ ...p, active: e.target.checked }))} 
+                  />
+                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{t('Active Item', 'Active Item')}</span>
+                </label>
+              </div>
             </div>
           </FormSection>
         </div>

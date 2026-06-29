@@ -1,5 +1,15 @@
 # 🎯 Current Focus
 
+## Worktree Coordination Notice (2026-06-29)
+
+**Important:** `D:\DEV2026\ERP03` is currently the **SQL-readiness preservation worktree**, not the production-fix worktree.
+
+- **Do not use `D:\DEV2026\ERP03` for production bug fixes or Firebase/Firestore deploys.**
+- **Use `D:\DEV2026\ERP03-unified` for all current production investigation, code changes, validation, and deploys.**
+- Keep `D:\DEV2026\ERP03` intact until the SQL-readiness dirty work is intentionally reconciled into the production lane.
+- If the task is "fix production", "retest production", "deploy Firebase Functions", or "stabilize current live behavior", work in **`D:\DEV2026\ERP03-unified`**.
+- If the task is "resume SQL readiness / Supabase / PostgreSQL launch work", work in **`D:\DEV2026\ERP03`** unless and until a deliberate reconciliation plan is executed.
+
 ## Task 277 — Item UOM barcodes and multilingual UOM names (2026-06-29)
 
 **Status:** ✅ Complete locally on `codex/items-uom-barcodes`.

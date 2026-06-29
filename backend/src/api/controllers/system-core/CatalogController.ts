@@ -7,7 +7,11 @@ import { validateCreateItemInput, validateUpdateItemInput } from '../../validato
 
 export class CatalogController {
   private static getCompanyId(req: Request): string {
-    const companyId = (req as any).company?.id;
+    // Company context is populated on req.user.companyId by authMiddleware
+    // (same source InventoryController/PosController use). The old req.company.id
+    // was never set by any middleware, so every CatalogController call threw
+    // "Company context missing".
+    const companyId = (req as any).user?.companyId;
     if (!companyId) throw new Error('Company context missing');
     return companyId;
   }

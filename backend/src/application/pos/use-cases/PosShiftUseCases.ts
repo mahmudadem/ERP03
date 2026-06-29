@@ -74,20 +74,29 @@ export class OpenPosShiftUseCase {
       updatedAt: now,
     });
 
-    const openingMovement = new PosCashMovement({
-      id: `cm_${randomUUID()}`,
-      companyId: input.companyId,
-      shiftId: shift.id,
-      registerId: input.registerId,
-      type: 'OPENING_FLOAT',
-      amount: round2(input.openingFloat),
-      createdBy: input.actor.userId,
-      createdAt: now,
-    });
+    // A cash movement represents an actual cash event and must be > 0. Opening a
+    // shift with a zero opening float is legitimate ("no cash counted in"), so we
+    // only record an OPENING_FLOAT movement when there is actually cash to record.
+    const openingAmount = round2(input.openingFloat);
+    const openingMovement =
+      openingAmount > 0
+        ? new PosCashMovement({
+            id: `cm_${randomUUID()}`,
+            companyId: input.companyId,
+            shiftId: shift.id,
+            registerId: input.registerId,
+            type: 'OPENING_FLOAT',
+            amount: openingAmount,
+            createdBy: input.actor.userId,
+            createdAt: now,
+          })
+        : null;
 
     await this.transactionManager.runTransaction(async (tx) => {
       await this.shiftRepo.create(shift, tx);
-      await this.cashMovementRepo.create(openingMovement, tx);
+      if (openingMovement) {
+        await this.cashMovementRepo.create(openingMovement, tx);
+      }
     });
 
     return shift;

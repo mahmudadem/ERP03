@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Worktree coordination lock — production fixes live in ERP03-unified)
+
+- **Goal:** Prevent the next agent from editing the wrong worktree while production stabilization is still active.
+- **What was decided:** `D:\DEV2026\ERP03` is the **SQL-readiness preservation lane** and must not be used for current production bug fixing or Firebase/Firestore deploys. `D:\DEV2026\ERP03-unified` is the **production lane** and is the only worktree to use for live production investigation, code changes, validation, and deploys until reconciliation is intentionally planned.
+- **Why:** Production fixes are currently being deployed from `ERP03-unified`, while `ERP03` still holds unreconciled SQL-readiness dirty work that must not be lost.
+- **Operational rule:** 
+  - Production fix / retest / Firebase deploy -> `D:\DEV2026\ERP03-unified`
+  - SQL readiness / Supabase / PostgreSQL continuation -> `D:\DEV2026\ERP03`
+- **Safety action:** Worktree state backups were exported under `D:\DEV2026\ERP03-worktree-backups\20260629-160718` before cleanup/reconciliation decisions.
+- **Next:** Keep production work in `ERP03-unified` until the live bug stream settles, then reconcile SQL-readiness work into the canonical lane deliberately instead of ad hoc.
+
 ### Session: 2026-06-29 (Task 277 audit cleanup — conversion-factor lock made honest)
 
 - **Goal:** Audit of Task 277 (`a173dfa1`) found the "used conversion factor is immutable" rule was bolted onto the top of `applyUomConversionCorrection` as `if (impact.used) throw`. Since `impact.used === impactedMovements.length > 0`, the guard fired exactly when the old in-place "smart correction" delta-adjustment engine below it had work to do — making ~150 lines unreachable dead code, leaving a self-contradictory delete-path message, and a frontend dialog still promising auto-adjustments the backend now rejects. No test covered the lock.
