@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-30 (Production QA 278u — Sales AR Aging report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with the Sales AR Aging report.
+- **Fix:** Localized AR Aging title/subtitle, as-of/customer filters, customer selector placeholder, generate button, expanded invoice-detail headers, unallocated credit/JV labels, load-error fallback, as-of chip, customer-count/total-AR summary, loading/empty states, aging table headers, and totals label using `common:sales.arAging.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AR aging bucket calculation, customer filter behavior, outstanding balance logic, credit/JV adjustment display, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278u, then continue remaining all-report translation audit with Sales Customer Statement.
+
 ### Session: 2026-06-30 (Production QA 278t — Purchases Vendor Statement report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit with the Purchases Vendor Statement report.

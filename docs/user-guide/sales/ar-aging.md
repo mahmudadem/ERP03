@@ -2,6 +2,8 @@
 
 The AR Aging report shows how much money customers owe you right now, organized by how old each balance is. It is your primary collections tool — at a glance you can see who is overdue, by how much, and for how long.
 
+The report follows the selected interface language. Filters, aging buckets, totals, empty/loading messages, and the expanded invoice-detail rows are localized without changing the receivables aging logic.
+
 ---
 
 ## What the report shows
