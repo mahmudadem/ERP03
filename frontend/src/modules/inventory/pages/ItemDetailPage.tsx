@@ -31,6 +31,7 @@ const ItemDetailPage: React.FC = () => {
         itemId={id} 
         onClose={handleClose}
         onSaved={handleSaved}
+        onNewItem={() => navigate(`${itemsBasePath}/new`)}
         isWindow={false}
       />
     </div>

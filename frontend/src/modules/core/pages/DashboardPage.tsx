@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card } from '../../../components/ui/Card';
 import { ModuleSetupCard } from '../../../components/dashboard/ModuleSetupCard';
 import { 
@@ -18,12 +19,71 @@ import {
 } from 'lucide-react';
 import { useCompanySettings } from '../../../hooks/useCompanySettings';
 import { formatCompanyDate } from '../../../utils/dateUtils';
+import { formatMoney } from '../../../utils/formatMoney';
 import { useTranslation } from 'react-i18next';
+import { useWindowManager } from '../../../context/WindowManagerContext';
+import { useUserPreferencesContext } from '../../../context/UserPreferencesContext';
+import { salesApi, SalesInvoiceDTO } from '../../../api/salesApi';
+import { purchasesApi } from '../../../api/purchasesApi';
+import { sharedApi } from '../../../api/sharedApi';
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
   const { settings } = useCompanySettings();
   const currentDate = formatCompanyDate(new Date(), settings);
+  
+  const navigate = useNavigate();
+  const { openWindow } = useWindowManager();
+  const { uiMode } = useUserPreferencesContext();
+  const isWindowsMode = uiMode === 'windows';
+
+  const [invoices, setInvoices] = useState<SalesInvoiceDTO[]>([]);
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [totalExpenses, setTotalExpenses] = useState(0);
+  const [totalCustomers, setTotalCustomers] = useState(0);
+
+  useEffect(() => {
+    salesApi.listSIs({ limit: 5 }).then(res => {
+      const body = res.data || res;
+      const arr = body.data || body.items || body;
+      if (Array.isArray(arr)) {
+        setInvoices(arr);
+        const sum = arr.reduce((acc, inv) => acc + (inv.grandTotalDoc || 0), 0);
+        setTotalRevenue(sum);
+      }
+    }).catch(console.error);
+
+    purchasesApi.listPIs({ limit: 5 }).then(res => {
+      const body = res.data || res;
+      const arr = body.data || body.items || body;
+      if (Array.isArray(arr)) {
+        const sum = arr.reduce((acc, inv) => acc + (inv.grandTotalDoc || 0), 0);
+        setTotalExpenses(sum);
+      }
+    }).catch(console.error);
+
+    sharedApi.listParties({ role: 'CUSTOMER', active: true }).then(res => {
+      const body = res.data || res;
+      const arr = body.data || body.items || body;
+      if (Array.isArray(arr)) {
+        setTotalCustomers(arr.length);
+      }
+    }).catch(console.error);
+  }, []);
+
+  const handleAction = (type: string) => {
+    if (isWindowsMode) {
+      if (type === 'invoice') openWindow({ type: 'sales_invoice', title: 'New Invoice', data: { invoiceId: 'new' }, size: { width: 1100, height: 750 } });
+      if (type === 'vendor') openWindow({ type: 'supplier', title: 'New Vendor', data: { partyId: 'new' }, size: { width: 800, height: 600 } });
+      if (type === 'expense') openWindow({ type: 'purchase_invoice', title: 'New Expense', data: { invoiceId: 'new' }, size: { width: 1100, height: 750 } });
+      if (type === 'product') openWindow({ type: 'inventory_item', title: 'New Product', data: { itemId: 'new' }, size: { width: 900, height: 700 } });
+    } else {
+      if (type === 'invoice') navigate('/sales/invoices/new');
+      if (type === 'vendor') navigate('/purchases/suppliers/new');
+      if (type === 'expense') navigate('/purchases/invoices/new');
+      if (type === 'product') navigate('/inventory/items/new');
+    }
+  };
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto p-2">
@@ -54,34 +114,34 @@ const DashboardPage: React.FC = () => {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
          <StatsCard 
             label={t('stats.totalRevenue', { defaultValue: 'Total Revenue' })} 
-            value="$124,500" 
-            metric="+12.5%" 
-            trend="up" 
+            value={formatMoney(totalRevenue, settings?.baseCurrency || 'USD')} 
+            metric="Live" 
+            trend="neutral" 
             icon={<DollarSign className="w-5 h-5 text-emerald-600" />} 
             color="emerald"
          />
          <StatsCard 
             label={t('stats.expenses', { defaultValue: 'Expenses' })} 
-            value="$82,100" 
-            metric="-2.4%" 
-            trend="down" 
+            value={formatMoney(totalExpenses, settings?.baseCurrency || 'USD')} 
+            metric="Live" 
+            trend="neutral" 
             icon={<CreditCard className="w-5 h-5 text-rose-600" />}
             color="rose"
          />
          <StatsCard 
             label={t('stats.netProfit', { defaultValue: 'Net Profit' })} 
-            value="$42,400" 
-            metric="+8.1%" 
-            trend="up" 
+            value={formatMoney(totalRevenue - totalExpenses, settings?.baseCurrency || 'USD')} 
+            metric="Live" 
+            trend="neutral" 
             icon={<TrendingUp className="w-5 h-5 text-blue-600" />}
             color="blue"
          />
          <StatsCard 
-            label={t('stats.activeProjects', { defaultValue: 'Active Projects' })} 
-            value="12" 
-            metric={t('stats.onTrack', { defaultValue: 'On Track' })} 
+            label={t('stats.activeCustomers', { defaultValue: 'Active Customers' })} 
+            value={totalCustomers} 
+            metric="Live" 
             trend="neutral" 
-            icon={<Briefcase className="w-5 h-5 text-indigo-600" />}
+            icon={<Users className="w-5 h-5 text-indigo-600" />}
             color="indigo"
          />
       </div>
@@ -98,10 +158,10 @@ const DashboardPage: React.FC = () => {
                  <Activity className="w-5 h-5 text-gray-400" /> {t('quickActions', { defaultValue: 'Quick Actions' })}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <ActionBtn label={t('actions.newInvoice', { defaultValue: 'New Invoice' })} icon={<FileText className="w-5 h-5" />} color="text-violet-600 bg-violet-50 hover:bg-violet-100" />
-                 <ActionBtn label={t('actions.addVendor', { defaultValue: 'Add Vendor' })} icon={<Users className="w-5 h-5" />} color="text-pink-600 bg-pink-50 hover:bg-pink-100" />
-                 <ActionBtn label={t('actions.recordExpense', { defaultValue: 'Record Expense' })} icon={<DollarSign className="w-5 h-5" />} color="text-amber-600 bg-amber-50 hover:bg-amber-100" />
-                 <ActionBtn label={t('actions.addProduct', { defaultValue: 'Add Product' })} icon={<Package className="w-5 h-5" />} color="text-cyan-600 bg-cyan-50 hover:bg-cyan-100" />
+                 <ActionBtn onClick={() => handleAction('invoice')} label={t('actions.newInvoice', { defaultValue: 'New Invoice' })} icon={<FileText className="w-5 h-5" />} color="text-violet-600 bg-violet-50 hover:bg-violet-100" />
+                 <ActionBtn onClick={() => handleAction('vendor')} label={t('actions.addVendor', { defaultValue: 'Add Vendor' })} icon={<Users className="w-5 h-5" />} color="text-pink-600 bg-pink-50 hover:bg-pink-100" />
+                 <ActionBtn onClick={() => handleAction('expense')} label={t('actions.recordExpense', { defaultValue: 'Record Expense' })} icon={<DollarSign className="w-5 h-5" />} color="text-amber-600 bg-amber-50 hover:bg-amber-100" />
+                 <ActionBtn onClick={() => handleAction('product')} label={t('actions.addProduct', { defaultValue: 'Add Product' })} icon={<Package className="w-5 h-5" />} color="text-cyan-600 bg-cyan-50 hover:bg-cyan-100" />
               </div>
            </section>
 
@@ -114,11 +174,18 @@ const DashboardPage: React.FC = () => {
                  </button>
               </div>
               <div className="divide-y divide-gray-100">
-                 <TransactionRow title={t('transactions.paymentFromAcme', { defaultValue: 'Payment from Acme Corp' })} subtitle={t('transactions.invoiceRef', { defaultValue: 'Invoice #INV-2023-001' })} amount="+$1,200.00" date={t('transactions.todayTime', { defaultValue: 'Today, 10:23 AM' })} type="income" />
-                 <TransactionRow title={t('transactions.officeSupplies', { defaultValue: 'Office Supplies' })} subtitle={t('transactions.staplesInc', { defaultValue: 'Staples Inc.' })} amount="-$350.00" date={t('transactions.yesterday', { defaultValue: 'Yesterday' })} type="expense" />
-                 <TransactionRow title={t('transactions.subscriptionRenewal', { defaultValue: 'Subscription Renewal' })} subtitle={t('transactions.adobe', { defaultValue: 'Adobe Creative Cloud' })} amount="-$54.99" date="Oct 24, 2023" type="expense" />
-                 <TransactionRow title={t('transactions.consultingFees', { defaultValue: 'Consulting Fees' })} subtitle={t('transactions.techSolutions', { defaultValue: 'Tech Solutions Ltd' })} amount="+$2,500.00" date="Oct 22, 2023" type="income" />
-                 <TransactionRow title={t('transactions.serverCosts', { defaultValue: 'Server Costs' })} subtitle={t('transactions.aws', { defaultValue: 'AWS Web Services' })} amount="-$120.50" date="Oct 21, 2023" type="expense" />
+                 {invoices.length > 0 ? invoices.map(inv => (
+                    <TransactionRow 
+                       key={inv.id}
+                       title={`Sales Invoice ${inv.invoiceNumber}`} 
+                       subtitle={inv.customerName || 'Walk-in Customer'} 
+                       amount={`+${formatMoney(inv.grandTotalDoc || 0, inv.currency || settings?.baseCurrency || 'USD')}`} 
+                       date={formatCompanyDate(inv.invoiceDate || inv.createdAt, settings)} 
+                       type="income" 
+                    />
+                 )) : (
+                    <div className="p-8 text-center text-gray-500 text-sm">No recent transactions</div>
+                 )}
               </div>
            </Card>
         </div>
@@ -185,8 +252,8 @@ const StatsCard = ({ label, value, metric, trend, icon, color }: any) => (
    </Card>
 );
 
-const ActionBtn = ({ label, icon, color }: any) => (
-   <button className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md transition-all group">
+const ActionBtn = ({ label, icon, color, onClick }: any) => (
+   <button onClick={onClick} className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md transition-all group w-full">
       <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors ${color}`}>
          {icon}
       </div>

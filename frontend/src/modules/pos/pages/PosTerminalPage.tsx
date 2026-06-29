@@ -2038,7 +2038,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
         }
         tone="info"
-        onConfirm={onCompleteSale}
+        onConfirm={() => onCompleteSale(false)}
         onCancel={() => setShowPayDialog(false)}
         confirmLabel={completing
           ? t('common.processing', { defaultValue: 'Processing…' })

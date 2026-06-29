@@ -26,6 +26,7 @@ import { PosRegister } from '../../../domain/pos/entities/PosRegister';
 import { Party } from '../../../domain/shared/entities/Party';
 
 export type SimpleTradingCompanyMode = 'PERIODIC' | 'INVOICE_DRIVEN' | 'PERPETUAL';
+export type SimpleTradingCompanyCoaTemplate = 'periodic_trading' | 'periodic_trading_ar' | 'standard' | 'standard_ar';
 
 export interface SimpleTradingCompanyPolicySummary {
   templateId: 'simple-trading-company';
@@ -33,7 +34,7 @@ export interface SimpleTradingCompanyPolicySummary {
   modulesInitialized: string[];
   baseCurrency: string;
   accounting: {
-    coaTemplate: 'periodic_trading' | 'standard';
+    coaTemplate: SimpleTradingCompanyCoaTemplate;
     fiscalYearStart: string;
     fiscalYearEnd: string;
     approvalRequired: false;
@@ -294,7 +295,8 @@ export class SimpleTradingCompanyInitializer {
      * field left undefined falls back to the mode-derived default so the existing
      * mode → policy mapping is the unchanged default behaviour.
      */
-    coaTemplate?: 'periodic_trading' | 'standard';
+    coaTemplate?: SimpleTradingCompanyCoaTemplate;
+    locale?: string;
     costingBasis?: 'GLOBAL' | 'WAREHOUSE';
     defaultWarehouseCode?: string;
     defaultWarehouseName?: string;
@@ -310,7 +312,7 @@ export class SimpleTradingCompanyInitializer {
 
     // NOTE-01: honor the user's explicit wizard choices when provided;
     // otherwise fall back to the mode-derived default.
-    const coaTemplate = input.coaTemplate ?? policy.coaTemplate;
+    const coaTemplate = input.coaTemplate ?? this.localizeCoaTemplate(policy.coaTemplate, input.locale);
     const costingBasis = input.costingBasis ?? policy.inventory.costingBasis;
     const defaultWarehouseCode = (input.defaultWarehouseCode || 'MAIN').toString().trim().toUpperCase() || 'MAIN';
     const defaultWarehouseName = (input.defaultWarehouseName || 'Main Warehouse').toString().trim() || 'Main Warehouse';
@@ -508,6 +510,15 @@ export class SimpleTradingCompanyInitializer {
       .filter((template: any) => String(template.module || '').trim().toUpperCase() === 'ACCOUNTING')
       .map((template: any) => template.id)
       .filter(Boolean);
+  }
+
+  private localizeCoaTemplate(
+    template: 'periodic_trading' | 'standard',
+    locale?: string
+  ): SimpleTradingCompanyCoaTemplate {
+    const normalizedLocale = String(locale || '').trim().toLowerCase();
+    if (!normalizedLocale.startsWith('ar')) return template;
+    return template === 'periodic_trading' ? 'periodic_trading_ar' : 'standard_ar';
   }
 
   private async initializePosIfInstalled(input: {

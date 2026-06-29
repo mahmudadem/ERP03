@@ -16,6 +16,8 @@ import {
   SimplifiedCOA,
   ComprehensiveCOA,
   PeriodicTradingCOA,
+  ArabicStandardCOA,
+  ArabicPeriodicTradingCOA,
 } from '../../src/application/accounting/templates/COATemplates';
 import {
   ManufacturingCOA,
@@ -53,11 +55,25 @@ const COA_TEMPLATES = [
     isDefault: false,
   },
   {
+    code: 'periodic_trading_ar',
+    name: 'شركة تجارية - دوري',
+    industry: 'trading',
+    accounts: ArabicPeriodicTradingCOA,
+    isDefault: false,
+  },
+  {
     code: 'standard',
     name: 'Standard (Recommended)',
     industry: null,
     accounts: StandardCOA,
     isDefault: true,
+  },
+  {
+    code: 'standard_ar',
+    name: 'قياسي (موصى به)',
+    industry: null,
+    accounts: ArabicStandardCOA,
+    isDefault: false,
   },
   {
     code: 'manufacturing',

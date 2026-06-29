@@ -1,4 +1,5 @@
 import { SimpleTradingCompanyInitializer } from '../SimpleTradingCompanyInitializer';
+import { ArabicPeriodicTradingCOA } from '../../../accounting/templates/COATemplates';
 
 const periodicAccounts = [
   ['1', 'Assets', 'asset', null],
@@ -214,6 +215,140 @@ describe('SimpleTradingCompanyInitializer', () => {
     expect(posRegisters[0].warehouseId).toBe(warehouses[0].id);
     expect(posRegisters[0].cashDrawerAccountId).toBe(summary.linkedAccounts.cash.id);
     expect(parties.get('WALKIN').defaultARAccountId).toBe(summary.linkedAccounts.arParent.id);
+  });
+
+  it('uses Arabic starter COA for Arabic onboarding while preserving POS account resolution', async () => {
+    const accounts = new Map<string, any>();
+    const modules = new Map<string, any>();
+    const inventorySettings: any[] = [];
+    const salesSettings: any[] = [];
+    const purchaseSettings: any[] = [];
+    const warehouses: any[] = [];
+    const posSettings: any[] = [];
+    const posRegisters: any[] = [];
+    const parties = new Map<string, any>();
+
+    const accountRepo: any = {
+      list: jest.fn(async () => Array.from(accounts.values())),
+      getById: jest.fn(async (_companyId: string, id: string) =>
+        Array.from(accounts.values()).find((account) => account.id === id) || null
+      ),
+      getByCode: jest.fn(async (_companyId: string, code: string) => accounts.get(code.toUpperCase()) || null),
+      getByUserCode: jest.fn(async (_companyId: string, code: string) => accounts.get(code.toUpperCase()) || null),
+      create: jest.fn(async (_companyId: string, data: any) => {
+        const code = String(data.userCode || data.code).toUpperCase();
+        const account = {
+          id: data.id || `acc-${code}`,
+          userCode: code,
+          name: data.name,
+          classification: String(data.classification || data.type).toUpperCase(),
+          accountRole: data.accountRole || 'POSTING',
+          parentId: data.parentId,
+        };
+        accounts.set(code, account);
+        return account;
+      }),
+    };
+
+    const companyModuleRepo: any = {
+      get: jest.fn(async (_companyId: string, moduleCode: string) => modules.get(moduleCode) || null),
+      update: jest.fn(async (_companyId: string, moduleCode: string, data: any) => {
+        modules.set(moduleCode, { ...(modules.get(moduleCode) || {}), moduleCode, ...data });
+      }),
+      create: jest.fn(async (data: any) => {
+        modules.set(data.moduleCode, data);
+      }),
+    };
+    modules.set('pos', { companyId: 'cmp-ar', moduleCode: 'pos', isEnabled: true, initialized: false, config: {} });
+
+    const initializer = new SimpleTradingCompanyInitializer({
+      companyRepo: {
+        findById: jest.fn(async () => ({ id: 'cmp-ar', baseCurrency: 'SYP' })),
+        update: jest.fn(),
+      } as any,
+      companyModuleRepo,
+      accountRepo,
+      systemMetadataRepo: {
+        getMetadata: jest.fn(async (key: string) => {
+          if (key === 'coa_templates') {
+            return [
+              { id: 'periodic_trading_ar', accounts: ArabicPeriodicTradingCOA },
+              { id: 'periodic_trading', accounts: periodicAccounts },
+            ];
+          }
+          if (key === 'currencies') return [{ code: 'SYP', name: 'Syrian Pound', symbol: 'SYP', decimalPlaces: 2 }];
+          return [];
+        }),
+      } as any,
+      companyModuleSettingsRepo: { saveSettings: jest.fn() } as any,
+      companySettingsRepo: { updateSettings: jest.fn() } as any,
+      currencyRepo: { seedCurrencies: jest.fn() } as any,
+      fiscalYearRepo: { findByCompany: jest.fn(async () => []), save: jest.fn() } as any,
+      voucherTypeRepo: {
+        getSystemTemplates: jest.fn(async () => []),
+        getByCompanyId: jest.fn(async () => []),
+        createVoucherType: jest.fn(),
+      } as any,
+      voucherFormRepo: {
+        getAllByCompany: jest.fn(async () => []),
+        create: jest.fn(),
+        update: jest.fn(),
+      } as any,
+      inventorySettingsRepo: {
+        getSettings: jest.fn(async () => null),
+        saveSettings: jest.fn(async (settings: any) => inventorySettings.push(settings)),
+      } as any,
+      warehouseRepo: {
+        getCompanyWarehouses: jest.fn(async () => warehouses),
+        createWarehouse: jest.fn(async (warehouse: any) => warehouses.push(warehouse)),
+      } as any,
+      uomRepo: {
+        getCompanyUoms: jest.fn(async () => []),
+        createUom: jest.fn(),
+      } as any,
+      salesSettingsRepo: {
+        saveSettings: jest.fn(async (settings: any) => salesSettings.push(settings)),
+      } as any,
+      purchaseSettingsRepo: {
+        saveSettings: jest.fn(async (settings: any) => purchaseSettings.push(settings)),
+      } as any,
+      posSettingsRepo: {
+        getSettings: jest.fn(async () => null),
+        saveSettings: jest.fn(async (settings: any) => posSettings.push(settings)),
+      } as any,
+      posRegisterRepo: {
+        list: jest.fn(async () => posRegisters),
+        create: jest.fn(async (register: any) => posRegisters.push(register)),
+      } as any,
+      partyRepo: {
+        getByCode: jest.fn(async (_companyId: string, code: string) => parties.get(code) || null),
+        create: jest.fn(async (party: any) => parties.set(party.code, party)),
+      } as any,
+    });
+
+    const summary = await initializer.execute({
+      companyId: 'cmp-ar',
+      userId: 'user-1',
+      baseCurrency: 'SYP',
+      locale: 'ar',
+    });
+
+    expect(summary.accounting.coaTemplate).toBe('periodic_trading_ar');
+    expect(summary.modulesInitialized).toEqual(['accounting', 'inventory', 'sales', 'purchase', 'pos']);
+    expect(accounts.get('10101').name).toBe('الصندوق - المكتب الرئيسي');
+    expect(accounts.get('20100').name).toBe('الذمم الدائنة - عام');
+    expect(summary.linkedAccounts.cash.code).toBe('10101');
+    expect(summary.linkedAccounts.inventoryAsset.code).toBe('10301');
+    expect(summary.linkedAccounts.arParent.code).toBe('10401');
+    expect(summary.linkedAccounts.apParent.code).toBe('20100');
+    expect(summary.linkedAccounts.salesRevenue.code).toBe('400');
+    expect(summary.linkedAccounts.cogs.code).toBe('50101');
+    expect(posSettings[0].defaultRevenueAccountId).toBe(summary.linkedAccounts.salesRevenue.id);
+    expect(posRegisters[0].cashDrawerAccountId).toBe(summary.linkedAccounts.cash.id);
+    expect(parties.get('WALKIN').defaultARAccountId).toBe(summary.linkedAccounts.arParent.id);
+    expect(inventorySettings[0].defaultInventoryAssetAccountId).toBe(summary.linkedAccounts.inventoryAsset.id);
+    expect(salesSettings[0].defaultRevenueAccountId).toBe(summary.linkedAccounts.salesRevenue.id);
+    expect(purchaseSettings[0].defaultAPAccountId).toBe(summary.linkedAccounts.apParent.id);
   });
 
   it('re-seeds the starter policy when mode changes before any transaction history exists', async () => {

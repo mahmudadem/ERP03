@@ -21,7 +21,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
   title,
   subtitle
 }) => {
-  const { t } = useTranslation('pos');
+  const { t } = useTranslation(['pos', 'common']);
   const [shortcuts, setShortcuts] = useState<Record<string, string>>({});
   const [capturingAction, setCapturingAction] = useState<PosShortcutAction | null>(null);
 
@@ -153,7 +153,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
             onClick={onClose}
             className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700"
           >
-            {t('common.cancel', { defaultValue: 'Cancel' })}
+            {t('cancel', { ns: 'common', defaultValue: 'Cancel' })}
           </button>
           <button
             type="button"
@@ -161,7 +161,7 @@ export const PosKeyboardShortcutsDialog: React.FC<PosKeyboardShortcutsDialogProp
             className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 flex items-center gap-2"
           >
             <Save className="w-4 h-4" />
-            {t('common.save', { defaultValue: 'Save' })}
+            {t('save', { ns: 'common', defaultValue: 'Save' })}
           </button>
         </div>
       </div>

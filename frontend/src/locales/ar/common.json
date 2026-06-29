@@ -322,7 +322,9 @@
     "edit": "تعديل",
     "delete": "حذف",
     "cancel": "إلغاء",
-    "update": "تحديث"
+    "update": "تحديث",
+    "view": "عرض",
+    "print": "طباعة"
   },
   "notifications": {
     "title": "إشعارات",
@@ -2545,6 +2547,10 @@
         "loadFailed": "فشل تحميل أصناف المخزون"
       }
     },
+    "itemMaster": {
+      "active": "نشط",
+      "activeDesc": "السماح باستخدام هذا الصنف في العمليات المالية والمخزنية"
+    },
     "transfers": {
       "title": "تحويلات المخزون",
       "newButton": "تحويل جديد",
@@ -2818,45 +2824,51 @@
       }
     },
     "invoicesList": {
-      "title": "Sales Invoices",
-      "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newButton": "New Invoice",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales invoices...",
-      "loadError": "Failed to load sales invoices.",
+      "title": "فواتير المبيعات",
+      "newButton": "فاتورة جديدة",
+      "newWindowTitle": "فاتورة مبيعات جديدة",
       "filters": {
-        "status": "Status",
-        "payment": "Payment",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
-      },
-      "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "PENDING_APPROVAL": "في انتظار الموافقة",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
+        "searchPlaceholder": "رقم الفاتورة، العميل، المستخدم...",
+        "allCustomers": "جميع العملاء",
+        "typePlaceholder": "النوع",
+        "direct": "مباشر",
+        "pos": "نقاط البيع",
+        "statusPlaceholder": "الحالة",
+        "paymentPlaceholder": "الدفع",
+        "dateFrom": "من تاريخ",
+        "dateTo": "إلى تاريخ",
+        "apply": "تطبيق",
+        "clear": "مسح الفلاتر"
       },
       "payment": {
-        "ALL": "All",
-        "UNPAID": "Unpaid",
-        "PARTIALLY_PAID": "Partially Paid",
-        "PAID": "Paid"
+        "PAID": "مدفوع",
+        "PARTIALLY_PAID": "مدفوع جزئياً",
+        "UNPAID": "غير مدفوع"
       },
-      "headers": {
-        "invoiceNumber": "Invoice #",
-        "customer": "Customer",
-        "invoiceDate": "Invoice Date",
-        "grandTotal": "Grand Total",
-        "payment": "Payment",
-        "status": "Status",
-        "actions": "Actions"
+      "status": {
+        "DRAFT": "مسودة",
+        "PENDING_APPROVAL": "في انتظار الموافقة",
+        "POSTED": "مُرحل",
+        "CANCELLED": "ملغى"
+      },
+      "columns": {
+        "invoiceNumber": "رقم الفاتورة",
+        "customer": "العميل/الجهة",
+        "date": "تاريخ ووقت الفاتورة",
+        "total": "الإجمالي",
+        "currency": "العملة",
+        "persona": "نوع الفاتورة",
+        "paymentStatus": "الدفعات",
+        "status": "الحالة",
+        "createdBy": "بواسطة",
+        "dueDate": "تاريخ الاستحقاق",
+        "postedAt": "تاريخ الترحيل"
       },
       "empty": {
-        "title": "No sales invoices yet",
-        "description": "Create your first invoice to recognize revenue and receivables."
+        "title": "لا توجد فواتير مبيعات حتى الآن"
+      },
+      "deleteConfirm": {
+        "title": "حذف الفاتورة"
       }
     },
     "governance": {
@@ -3684,30 +3696,125 @@
       "creditOverrideDisabled": "العميل تجاوز حده الائتماني. تم تعطيل التجاوزات بواسطة سياسة الشركة.",
       "creditOverrideNoPermission": "العميل تجاوز حده الائتماني. ليس لديك صلاحية للتجاوز.",
       "loadFailed": "فشل تحميل أمر البيع."
+    },
+    "customersPage": {
+      "title": "العملاء",
+      "subtitle": "إدارة سجلات العملاء وحساباتهم",
+      "addCustomer": "إضافة عميل",
+      "kpi": {
+        "total": "إجمالي العملاء",
+        "records": "سجلات",
+        "active": "العملاء النشطون",
+        "operational": "للتشغيل",
+        "withEmail": "لديهم بريد",
+        "contactable": "للتواصل",
+        "withCreditLimit": "بحد ائتماني",
+        "creditLines": "خطوط ائتمان"
+      },
+      "search": "البحث عن عملاء",
+      "searchPlaceholder": "بحث بالرمز، الاسم، البريد، الهاتف...",
+      "statusFilter": {
+        "all": "جميع الحالات",
+        "active": "النشط فقط",
+        "inactive": "غير النشط فقط"
+      },
+      "columns": {
+        "code": "الرمز",
+        "name": "الاسم",
+        "roles": "الأدوار",
+        "phone": "الهاتف",
+        "email": "البريد",
+        "credit": "الحد الائتماني",
+        "status": "الحالة"
+      },
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط"
+      },
+      "emptyFiltered": "لا يوجد عملاء يطابقون البحث.",
+      "empty": "لا يوجد عملاء مسجلين.",
+      "footerCount": "عرض {{shown}} من أصل {{total}} عملاء",
+      "messages": {
+        "loadFailed": "فشل تحميل العملاء"
+      }
     }
   },
   "parties": {
     "form": {
+      "supplierTitle": "مورد",
+      "customerTitle": "عميل",
+      "registeringNew": "تسجيل جديد - {{role}}",
+      "masterRecord": "السجل الرئيسي: {{role}}",
+      "saveNewVendor": "حفظ المورد الجديد",
+      "saveNewCustomer": "حفظ العميل الجديد",
+      "updateVendor": "تحديث المورد",
+      "updateCustomer": "تحديث العميل",
+      "legalIdentity": "الهوية القانونية",
+      "roleCode": "رمز ال{{role}}",
+      "codePlaceholderCust": "مثال: CUST-0001",
+      "codePlaceholderVend": "مثال: SUP-0001",
+      "generateCode": "إنشاء الرمز التالي",
+      "taxId": "الرقم الضريبي / VAT",
+      "legalName": "اسم الكيان القانوني (كما في السجل التجاري)",
+      "displayName": "الاسم التجاري / اسم العرض",
+      "engagementDetails": "تفاصيل الارتباط",
+      "contactPerson": "الشخص المسؤول عن التواصل",
+      "recordStatus": "حالة السجل",
+      "statusActive": "نشط",
+      "statusSuspended": "موقوف",
+      "communicationChannels": "قنوات التواصل",
+      "phoneNumber": "رقم الهاتف / الجوال",
+      "email": "البريد الإلكتروني",
+      "address": "العنوان الأساسي / موقع المقر",
+      "agreedTerms": "الشروط المتفق عليها",
+      "paymentTerms": "شروط الدفع (أيام الائتمان)",
+      "currency": "العملة القياسية",
+      "currencySelection": "(اختر العملة)",
+      "customerSegmentation": "تصنيف العملاء والائتمان",
+      "customerGroup": "مجموعة العملاء",
+      "noGroup": "(بدون مجموعة)",
+      "defaultPriceList": "قائمة الأسعار الافتراضية",
+      "noPriceList": "(بدون قائمة أسعار)",
+      "creditLimit": "الحد الائتماني",
+      "creditHoldPolicy": "سياسة إيقاف الائتمان",
+      "policyNone": "لا يوجد",
+      "policyWarn": "تحذير",
+      "policyBlock": "حظر",
+      "taxExempt": "معفى من الضرائب",
+      "taxExemptHelp": "العميل معفى من الضرائب",
       "accounting": {
-        "title": "Accounting",
-        "strategyLabel": "Account Strategy *",
-        "autoCreate": "Auto-create sub-account",
-        "autoCreateHelp": "Creates a dedicated account from settings format and parent.",
-        "pickExisting": "Pick existing account",
-        "pickExistingHelp": "Manually bind this party to an existing AR/AP account.",
-        "strategyPrompt": "Choose one strategy before saving this party.",
-        "strategyEditNote": "Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.",
-        "previewTitle": "Generated account preview",
-        "missingArParent": "Sales Settings is missing AR Parent Account. Configure it first.",
-        "missingApParent": "Purchase Settings is missing AP Parent Account. Configure it first.",
-        "previewNeedsCode": "Enter a party code to preview the generated account code.",
-        "previewFormat": "Format: {{format}}",
-        "previewUnavailable": "Preview unavailable",
-        "accountHelp": "Primary GL posting target for transactions associated with this party.",
-        "strategyRequired": "Select an account strategy before saving.",
-        "arRequired": "Linked AR account is required for customers when using Pick Existing.",
-        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
-      }
+        "title": "المحاسبة",
+        "strategyLabel": "استراتيجية الحساب *",
+        "autoCreate": "إنشاء حساب فرعي تلقائياً",
+        "autoCreateHelp": "يُنشئ حساباً مخصصاً بناءً على تنسيق الإعدادات والحساب الرئيسي.",
+        "pickExisting": "اختيار حساب حالي",
+        "pickExistingHelp": "ربط هذا الطرف يدوياً بحساب ذمم مدينة/موردين موجود.",
+        "strategyPrompt": "يرجى اختيار استراتيجية قبل حفظ هذا الطرف.",
+        "strategyEditNote": "يتم الإنشاء التلقائي أثناء تسجيل طرف جديد. يمكن إعادة تعيين الأطراف الحالية باستخدام خيار اختيار حساب حالي.",
+        "previewTitle": "معاينة الحساب المُنشأ",
+        "missingArParent": "إعدادات المبيعات تفتقد الحساب الرئيسي للذمم المدينة. قم بتهيئته أولاً.",
+        "missingApParent": "إعدادات المشتريات تفتقد الحساب الرئيسي للذمم الدائنة. قم بتهيئته أولاً.",
+        "previewNeedsCode": "أدخل رمز الطرف لمعاينة رمز الحساب المُنشأ.",
+        "previewFormat": "التنسيق: {{format}}",
+        "previewUnavailable": "المعاينة غير متاحة",
+        "codeFormatManagedHint": "تنسيق رمز الحساب هو أحد إعدادات الشركة. قم بتغييره من {{where}} ← الإعدادات ← تنسيق حساب الطرف.",
+        "accountHelp": "الهدف الرئيسي للترحيل في دفتر الأستاذ العام للمعاملات المرتبطة بهذا الطرف.",
+        "strategyRequired": "اختر استراتيجية الحساب قبل الحفظ.",
+        "arRequired": "الحساب المرتبط للذمم المدينة مطلوب للعملاء عند استخدام اختيار حساب حالي.",
+        "apRequired": "الحساب المرتبط للذمم الدائنة مطلوب للموردين عند استخدام اختيار حساب حالي."
+      },
+      "customerCodeLabel": "رمز العميل",
+      "vendorCodeLabel": "رمز المورد",
+      "registeringNewCustomer": "تسجيل عميل جديد",
+      "registeringNewVendor": "تسجيل مورد جديد",
+      "customerMasterRecord": "السجل الرئيسي: عميل",
+      "vendorMasterRecord": "السجل الرئيسي: مورد"
+    },
+    "tabs": {
+      "general": "الهوية والشؤون القانونية",
+      "contact": "قنوات التواصل",
+      "commercial": "الشروط التجارية",
+      "accounting": "الإعدادات المالية"
     }
   },
   "fulfillment": {
@@ -4252,7 +4359,7 @@
   "Master Record Details": "تفاصيل السجل الرئيسي",
   "Master Entry": "إدخال رئيسي",
   "Sync": "مزامنة",
-  "Active": "نشط",
+  "active": "نشط",
   "CLOSE": "إغلاق",
   "BACK": "رجوع",
   "Save": "حفظ",
@@ -4738,5 +4845,8 @@
   "New factor must be a positive number.": "يجب أن يكون المعامل الجديد رقماً إيجابياً.",
   "Failed to analyze conversion impact": "فشل في تحليل تأثير التحويل",
   "Failed to apply conversion correction": "فشل في تطبيق تصحيح التحويل",
-  "Could not predict next SKU": "تعذر التنبؤ برمز الـ SKU التالي"
+  "Could not predict next SKU": "تعذر التنبؤ برمز الـ SKU التالي",
+  "masterCard": {
+    "newTitle": "{{title}} جديد"
+  }
 }

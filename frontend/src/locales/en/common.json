@@ -2472,6 +2472,10 @@
         "loadFailed": "Failed to load inventory items"
       }
     },
+    "itemMaster": {
+      "active": "Active",
+      "activeDesc": "Allow this item to be used in transactions"
+    },
     "transfers": {
       "title": "Stock Transfers",
       "newButton": "New Transfer",

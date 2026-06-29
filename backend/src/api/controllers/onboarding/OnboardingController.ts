@@ -193,7 +193,12 @@ export class OnboardingController {
           ? accountingMode
           : undefined;
       const normalizedCoaTemplate =
-        coaTemplate === 'periodic_trading' || coaTemplate === 'standard' ? coaTemplate : undefined;
+        coaTemplate === 'periodic_trading'
+        || coaTemplate === 'periodic_trading_ar'
+        || coaTemplate === 'standard'
+        || coaTemplate === 'standard_ar'
+          ? coaTemplate
+          : undefined;
       const normalizedCostingBasis =
         costingBasis === 'GLOBAL' || costingBasis === 'WAREHOUSE' ? costingBasis : undefined;
       const normalizedSalesWorkflowMode =
@@ -208,7 +213,7 @@ export class OnboardingController {
         return next(ApiError.badRequest('accountingMode must be PERIODIC, INVOICE_DRIVEN, or PERPETUAL.'));
       }
       if (autoInitializeModules && coaTemplate !== undefined && !normalizedCoaTemplate) {
-        return next(ApiError.badRequest('coaTemplate must be "periodic_trading" or "standard".'));
+        return next(ApiError.badRequest('coaTemplate must be "periodic_trading", "periodic_trading_ar", "standard", or "standard_ar".'));
       }
       if (autoInitializeModules && costingBasis !== undefined && !normalizedCostingBasis) {
         return next(ApiError.badRequest('costingBasis must be "GLOBAL" or "WAREHOUSE".'));
@@ -298,6 +303,7 @@ const useCase = new CreateCompanyUseCase(
             baseCurrency: normalizedCurrency,
             accountingMode: normalizedAccountingMode,
             coaTemplate: normalizedCoaTemplate,
+            locale: language,
             costingBasis: normalizedCostingBasis,
             defaultWarehouseCode: typeof defaultWarehouseCode === 'string' ? defaultWarehouseCode : undefined,
             defaultWarehouseName: typeof defaultWarehouseName === 'string' ? defaultWarehouseName : undefined,

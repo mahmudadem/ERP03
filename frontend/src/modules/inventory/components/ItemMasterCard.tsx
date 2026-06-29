@@ -42,18 +42,22 @@ import { Modal } from '../../../components/ui/Modal';
 
 interface ItemMasterCardProps {
   itemId?: string;
+  initialItem?: Partial<InventoryItemDTO>;
   isWindow?: boolean;
   onClose?: () => void;
   onSaved?: (item: InventoryItemDTO) => void;
+  onNewItem?: () => void;
 }
 
 // ITEM_TABS will be defined inside the component to use the translation hook.
 
 const ItemMasterCard: React.FC<ItemMasterCardProps> = ({ 
   itemId, 
+  initialItem,
   isWindow = false, 
   onClose, 
-  onSaved 
+  onSaved,
+  onNewItem
 }) => {
   const { t, i18n } = useTranslation();
   const { hasPermission } = useRBAC();
@@ -79,7 +83,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
   const [editingBarcodeIdx, setEditingBarcodeIdx] = useState<number | null>(null);
   const [editingBarcodeDraft, setEditingBarcodeDraft] = useState({ barcode: '', details: '' });
 
-  const [item, setItem] = useState<Partial<InventoryItemDTO>>({
+  const emptyItem: Partial<InventoryItemDTO> = {
     code: '',
     name: '',
     type: 'PRODUCT',
@@ -91,9 +95,10 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       dimensions: { weightUom: 'kg', dimensionUom: 'cm' },
       prices: { groups: [{ name: 'Retail', price: 0 }] }
     }
-  });
+  };
 
-  const isNew = !itemId || itemId === 'new';
+  const [item, setItem] = useState<Partial<InventoryItemDTO>>(initialItem || emptyItem);
+  const [isNew, setIsNew] = useState(!itemId || itemId === 'new');
   const canEdit = hasPermission('inventory.items.manage');
 
   const ITEM_TABS: MasterCardTab[] = [
@@ -236,6 +241,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
           prices: { groups: normalized?.metadata?.prices?.groups || [{ name: 'Retail', price: 0 }] },
         },
       });
+      setIsNew(false);
       if (normalized?.id) {
         await loadConversions(normalized.id);
       }
@@ -420,6 +426,22 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     }
   };
 
+  const handleNewItem = async () => {
+    setItem(emptyItem);
+    setIsNew(true);
+    setError(null);
+    setConversions([]);
+    setConversionFactorDrafts({});
+    setConversionImpactById({});
+    setActiveTab('GENERAL');
+    
+    if (onNewItem) {
+        onNewItem();
+    }
+    
+    await handleAutoGenerateCode();
+  };
+
   const formatMoney = (value?: number, currency?: string) => {
     if (value === undefined || value === null || Number.isNaN(value)) return '—';
     const code = currency || 'USD';
@@ -469,6 +491,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       canEdit={canEdit}
       onSave={handleSave}
       onClose={onClose}
+      onNew={handleNewItem}
       updatedAt={item.updatedAt}
       error={error}
       saveNewLabel={t('Save New Item', 'Save New Item')}
@@ -482,7 +505,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                  <div className="relative flex items-center gap-1 group">
                     <input 
                         disabled={!isNew}
-                        className="form-control font-bold pr-10" 
+                        className="form-control font-bold ltr:pr-10 rtl:pl-10" 
                         value={item.code} 
                         onChange={e => setItem(p => ({ ...p, code: e.target.value.toUpperCase() }))} 
                         placeholder={t('e.g. ITM-0001', 'e.g. ITM-0001')}
@@ -491,7 +514,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                         <button 
                             type="button" 
                             onClick={handleAutoGenerateCode}
-                            className="absolute right-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
+                            className="absolute ltr:right-2 rtl:left-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
                             title={t('Auto-sequence Item Code', 'Auto-sequence Item Code')}
                         >
                             <Sparkles size={14} />
@@ -532,6 +555,22 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
                 const type = e.target.value as InventoryItemDTO['type'];
                 setItem(p => ({ ...p, type, trackInventory: type === 'SERVICE' ? false : p.trackInventory }));
               }}><option value="PRODUCT">{t('PRODUCT', 'PRODUCT')}</option><option value="SERVICE">{t('SERVICE', 'SERVICE')}</option></select></Field>
+              <div className="col-span-1 sm:col-span-2 flex items-center pt-3 pb-2">
+                <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto">
+                  <div className="flex h-5 items-center mt-0.5 shrink-0">
+                    <input 
+                      type="checkbox" 
+                      className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
+                      checked={item.active !== false} 
+                      onChange={e => setItem(p => ({ ...p, active: e.target.checked }))} 
+                    />
+                  </div>
+                  <div className="flex flex-col text-start">
+                    <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">{t('inventory.itemMaster.active', 'Active')}</span>
+                    <span className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-relaxed">{t('inventory.itemMaster.activeDesc', 'Allow this item to be used in transactions')}</span>
+                  </div>
+                </label>
+              </div>
             </div>
           </FormSection>
         </div>
