@@ -807,7 +807,10 @@
       "toDate": "Bitiş Tarihi",
       "generateReport": "Rapor Oluştur",
       "row": " satır",
+      "rowCount": "{{count}} satır",
+      "rowCount_other": "{{count}} satır",
       "loadingReport": "Rapor yükleniyor...",
+      "failedToLoadReport": "Rapor yüklenemedi",
       "purchasesByVendor": "Tedarikçiye Göre Satınalma",
       "noDataForThisPeriod": "Bu dönem için veri yok.",
       "totals": "Toplamlar",
@@ -815,7 +818,16 @@
       "noDataForThisPeriod2": "Bu dönem için veri yok.",
       "totals2": "Toplamlar",
       "purchasesAnalytics": "Satınalma Analizi",
-      "purchaseSpendByVendorOrItem": "Tedarikçi veya kaleme göre satınalma harcaması"
+      "purchaseSpendByVendorOrItem": "Tedarikçi veya kaleme göre satınalma harcaması",
+      "vendor": "Tedarikçi",
+      "invoices": "Faturalar",
+      "cost": "Maliyet",
+      "tax": "Vergi",
+      "gross": "Brüt",
+      "code": "Kod",
+      "item": "Kalem",
+      "lines": "Satırlar",
+      "qtyPurchased": "Satın Alınan Miktar"
     },
     "PurchaseSettingsPage": {
       "workflowMode": "İş Akışı Modu",

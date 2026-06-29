@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { Card } from '../../../components/ui/Card';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 type Mode = 'BY_CUSTOMER' | 'BY_ITEM' | 'BY_SALESPERSON';
 
@@ -35,6 +36,7 @@ const Initiator: React.FC<{
   onSubmit: (p: AnalyticsParams) => void;
   initialParams?: AnalyticsParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('common');
   const [mode, setMode]         = useState<Mode>(initialParams?.mode || 'BY_CUSTOMER');
   const [fromDate, setFromDate] = useState(initialParams?.fromDate || firstOfYear());
   const [toDate, setToDate]     = useState(initialParams?.toDate || today());
@@ -51,23 +53,23 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-violet-500" />
-            Group By
+            {t('sales.analytics.groupBy')}
           </label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Mode)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-violet-300 focus:bg-white focus:border-violet-500 focus:ring-4 focus:ring-violet-500/10 outline-none transition-all"
           >
-            <option value="BY_CUSTOMER">By Customer</option>
-            <option value="BY_ITEM">By Item</option>
-            <option value="BY_SALESPERSON">By Salesperson</option>
+            <option value="BY_CUSTOMER">{t('sales.analytics.byCustomer')}</option>
+            <option value="BY_ITEM">{t('sales.analytics.byItem')}</option>
+            <option value="BY_SALESPERSON">{t('sales.analytics.bySalesperson')}</option>
           </select>
         </div>
 
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            From Date
+            {t('sales.analytics.fromDate')}
           </label>
           <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
         </div>
@@ -75,7 +77,7 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            To Date
+            {t('sales.analytics.toDate')}
           </label>
           <DatePicker value={toDate} onChange={setToDate} className="w-full" />
         </div>
@@ -87,7 +89,7 @@ const Initiator: React.FC<{
           className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
         >
           <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
+            {t('sales.analytics.generateReport')}
             <ChevronRight className="w-4 h-4" />
           </span>
         </Button>
@@ -103,6 +105,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+  const { t } = useTranslation('common');
   const [byCustomer, setByCustomer] = useState<SalesByCustomerReportDTO | null>(null);
   const [byItem, setByItem] = useState<SalesByItemReportDTO | null>(null);
   const [bySalesperson, setBySalesperson] = useState<SalesBySalespersonReportDTO | null>(null);
@@ -122,7 +125,7 @@ const ReportContent: React.FC<{
       : salesReportingApi.getSalesBySalesperson(dateRange).then((d) => { if (!cancelled) setBySalesperson(d); });
 
     promise
-      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
+      .catch((err) => { if (!cancelled) setError(err?.message || t('sales.analytics.failedToLoadReport')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [params.mode, params.fromDate, params.toDate]);
@@ -131,7 +134,31 @@ const ReportContent: React.FC<{
   useEffect(() => { setTotalItems?.(rows); }, [rows, setTotalItems]);
 
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
-  const modeLabel = params.mode === 'BY_CUSTOMER' ? 'By Customer' : params.mode === 'BY_ITEM' ? 'By Item' : 'By Salesperson';
+  const modeLabel = params.mode === 'BY_CUSTOMER'
+    ? t('sales.analytics.byCustomer')
+    : params.mode === 'BY_ITEM'
+      ? t('sales.analytics.byItem')
+      : t('sales.analytics.bySalesperson');
+  const byCustomerHeaders = [
+    t('sales.analytics.customer'),
+    t('sales.analytics.invoices'),
+    t('sales.analytics.revenue'),
+    t('sales.analytics.tax'),
+    t('sales.analytics.gross'),
+  ];
+  const byItemHeaders = [
+    t('sales.analytics.code'),
+    t('sales.analytics.item'),
+    t('sales.analytics.lines'),
+    t('sales.analytics.qtySold'),
+    t('sales.analytics.revenue'),
+  ];
+  const bySalespersonHeaders = [
+    t('sales.analytics.salesperson'),
+    t('sales.analytics.invoices'),
+    t('sales.analytics.revenue'),
+    t('sales.analytics.gross'),
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -145,7 +172,9 @@ const ReportContent: React.FC<{
             <CalendarDays className="w-3 h-3 text-blue-600" />
             {params.fromDate} → {params.toDate}
           </span>
-          <span className="text-xs font-bold text-slate-500 ml-auto">{rows} row{rows === 1 ? '' : 's'}</span>
+          <span className="text-xs font-bold text-slate-500 ml-auto">
+            {t('sales.analytics.rowCount', { count: rows })}
+          </span>
         </div>
       </div>
 
@@ -156,22 +185,22 @@ const ReportContent: React.FC<{
           )}
 
           {loading && (
-            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">Loading report...</div>
+            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">{t('sales.analytics.loadingReport')}</div>
           )}
 
           {!loading && byCustomer && (
             <Card className="p-0 overflow-hidden">
               <div className="bg-slate-50/50 px-6 py-4 border-b">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sales by Customer</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('sales.analytics.salesByCustomer')}</p>
               </div>
               {byCustomer.rows.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-400">No data for this period.</div>
+                <div className="py-10 text-center text-sm text-slate-400">{t('sales.analytics.noDataForThisPeriod')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/80">
-                        {['Customer', 'Invoices', 'Revenue', 'Tax', 'Gross'].map((h, i) => (
+                        {byCustomerHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, 'text-[10px] font-black text-slate-400 uppercase tracking-widest', i === 0 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -189,7 +218,7 @@ const ReportContent: React.FC<{
                     </tbody>
                     <tfoot>
                       <tr className="bg-slate-100 border-t-2 border-slate-200">
-                        <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`}>Totals</td>
+                        <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`}>{t('sales.analytics.totals')}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{byCustomer.totals.invoiceCount}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmt(byCustomer.totals.totalRevenueBase)}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-500`}>{fmt(byCustomer.totals.totalTaxBase)}</td>
@@ -205,16 +234,16 @@ const ReportContent: React.FC<{
           {!loading && byItem && (
             <Card className="p-0 overflow-hidden">
               <div className="bg-slate-50/50 px-6 py-4 border-b">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sales by Item</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('sales.analytics.salesByItem')}</p>
               </div>
               {byItem.rows.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-400">No data for this period.</div>
+                <div className="py-10 text-center text-sm text-slate-400">{t('sales.analytics.noDataForThisPeriod')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/80">
-                        {['Code', 'Item', 'Lines', 'Qty Sold', 'Revenue'].map((h, i) => (
+                        {byItemHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, 'text-[10px] font-black text-slate-400 uppercase tracking-widest', i < 2 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -232,7 +261,7 @@ const ReportContent: React.FC<{
                     </tbody>
                     <tfoot>
                       <tr className="bg-slate-100 border-t-2 border-slate-200">
-                        <td colSpan={2} className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`}>Totals</td>
+                        <td colSpan={2} className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`}>{t('sales.analytics.totals')}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{byItem.totals.lineCount}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmtQty(byItem.totals.totalQty)}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-black text-slate-900`}>{fmt(byItem.totals.totalRevenueBase)}</td>
@@ -247,16 +276,16 @@ const ReportContent: React.FC<{
           {!loading && bySalesperson && (
             <Card className="p-0 overflow-hidden">
               <div className="bg-slate-50/50 px-6 py-4 border-b">
-                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">Sales by Salesperson</p>
+                <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('sales.analytics.salesBySalesperson')}</p>
               </div>
               {bySalesperson.rows.length === 0 ? (
-                <div className="py-10 text-center text-sm text-slate-400">No data for this period.</div>
+                <div className="py-10 text-center text-sm text-slate-400">{t('sales.analytics.noDataForThisPeriod')}</div>
               ) : (
                 <div className="overflow-x-auto">
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/80">
-                        {['Salesperson', 'Invoices', 'Revenue', 'Gross'].map((h, i) => (
+                        {bySalespersonHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, 'text-[10px] font-black text-slate-400 uppercase tracking-widest', i === 0 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -273,7 +302,7 @@ const ReportContent: React.FC<{
                     </tbody>
                     <tfoot>
                       <tr className="bg-slate-100 border-t-2 border-slate-200">
-                        <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`}>Totals</td>
+                        <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`}>{t('sales.analytics.totals')}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{bySalesperson.totals.invoiceCount}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmt(bySalesperson.totals.totalRevenueBase)}</td>
                         <td className={`${cellPad} text-xs tabular-nums text-right font-black text-slate-900`}>{fmt(bySalesperson.totals.totalGrossBase)}</td>
@@ -292,14 +321,18 @@ const ReportContent: React.FC<{
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-const SalesAnalyticsPage: React.FC = () => (
-  <ReportContainer<AnalyticsParams>
-    title="Sales Analytics"
-    subtitle="Sales performance by customer, item, or salesperson"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: false }}
-  />
-);
+const SalesAnalyticsPage: React.FC = () => {
+  const { t } = useTranslation('common');
+
+  return (
+    <ReportContainer<AnalyticsParams>
+      title={t('sales.analytics.title')}
+      subtitle={t('sales.analytics.subtitle')}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: false }}
+    />
+  );
+};
 
 export default SalesAnalyticsPage;

@@ -114,7 +114,7 @@ const ReportContent: React.FC<{
         : purchasesApi.getPurchasesByItem(dateRange).then((d) => { if (!cancelled) setByItem(d); });
 
     promise
-      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
+      .catch((err) => { if (!cancelled) setError(err?.message || t("auto.PurchasesAnalyticsPage.failedToLoadReport", "Failed to load report")); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [params.mode, params.fromDate, params.toDate]);
@@ -123,7 +123,23 @@ const ReportContent: React.FC<{
   useEffect(() => { setTotalItems?.(rows); }, [rows, setTotalItems]);
 
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
-  const modeLabel = params.mode === 'BY_VENDOR' ? 'By Vendor' : 'By Item';
+  const modeLabel = params.mode === 'BY_VENDOR'
+    ? t("auto.PurchasesAnalyticsPage.byVendor", "By Vendor")
+    : t("auto.PurchasesAnalyticsPage.byItem", "By Item");
+  const byVendorHeaders = [
+    t("auto.PurchasesAnalyticsPage.vendor", "Vendor"),
+    t("auto.PurchasesAnalyticsPage.invoices", "Invoices"),
+    t("auto.PurchasesAnalyticsPage.cost", "Cost"),
+    t("auto.PurchasesAnalyticsPage.tax", "Tax"),
+    t("auto.PurchasesAnalyticsPage.gross", "Gross"),
+  ];
+  const byItemHeaders = [
+    t("auto.PurchasesAnalyticsPage.code", "Code"),
+    t("auto.PurchasesAnalyticsPage.item", "Item"),
+    t("auto.PurchasesAnalyticsPage.lines", "Lines"),
+    t("auto.PurchasesAnalyticsPage.qtyPurchased", "Qty Purchased"),
+    t("auto.PurchasesAnalyticsPage.cost", "Cost"),
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -137,7 +153,9 @@ const ReportContent: React.FC<{
             <CalendarDays className="w-3 h-3 text-blue-600" />
             {params.fromDate} → {params.toDate}
           </span>
-          <span className="text-xs font-bold text-slate-500 ml-auto">{rows}{t("auto.PurchasesAnalyticsPage.row", "row")}{rows === 1 ? '' : 's'}</span>
+          <span className="text-xs font-bold text-slate-500 ml-auto">
+            {t("auto.PurchasesAnalyticsPage.rowCount", "{{count}} rows", { count: rows })}
+          </span>
         </div>
       </div>
 
@@ -163,7 +181,7 @@ const ReportContent: React.FC<{
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/80">
-                        {['Vendor', 'Invoices', 'Cost', 'Tax', 'Gross'].map((h, i) => (
+                        {byVendorHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, 'text-[10px] font-black text-slate-400 uppercase tracking-widest', i === 0 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -206,7 +224,7 @@ const ReportContent: React.FC<{
                   <table className="w-full">
                     <thead>
                       <tr className="border-b border-slate-200 bg-slate-50/80">
-                        {['Code', 'Item', 'Lines', 'Qty Purchased', 'Cost'].map((h, i) => (
+                        {byItemHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, 'text-[10px] font-black text-slate-400 uppercase tracking-widest', i < 2 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>

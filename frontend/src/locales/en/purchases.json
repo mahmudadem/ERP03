@@ -806,7 +806,10 @@
       "toDate": "To Date",
       "generateReport": "Generate Report",
       "row": "row",
+      "rowCount": "{{count}} row",
+      "rowCount_other": "{{count}} rows",
       "loadingReport": "Loading report...",
+      "failedToLoadReport": "Failed to load report",
       "purchasesByVendor": "Purchases by Vendor",
       "noDataForThisPeriod": "No data for this period.",
       "totals": "Totals",
@@ -814,7 +817,16 @@
       "noDataForThisPeriod2": "No data for this period.",
       "totals2": "Totals",
       "purchasesAnalytics": "Purchases Analytics",
-      "purchaseSpendByVendorOrItem": "Purchase spend by vendor or item"
+      "purchaseSpendByVendorOrItem": "Purchase spend by vendor or item",
+      "vendor": "Vendor",
+      "invoices": "Invoices",
+      "cost": "Cost",
+      "tax": "Tax",
+      "gross": "Gross",
+      "code": "Code",
+      "item": "Item",
+      "lines": "Lines",
+      "qtyPurchased": "Qty Purchased"
     },
     "PurchaseSettingsPage": {
       "workflowMode": "Workflow Mode",

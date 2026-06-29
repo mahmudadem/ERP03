@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+# 2026-06-30 — Production QA 278w Sales/Purchases Analytics report translation
+
+- **Goal:** Continue the Telegram all-report translation audit with the Sales Analytics and Purchases Analytics reports.
+- **Fix:** Localized Sales Analytics title/subtitle, grouping/date filters, mode labels, report action, mode chip, row-count text, loading/error fallback, section titles, empty states, table headers, and totals labels using `common:sales.analytics.*` keys in English/Arabic/Turkish. Completed Purchases Analytics i18n by localizing the remaining table headers, mode chip, fallback error, and row-count pluralization using `purchases:auto.PurchasesAnalyticsPage.*`.
+- **Accounting/ERP impact:** Presentation only. No report calculation, API contract, posting, AR/AP, tax, stock, settlement, permissions, tenant isolation, or audit behavior changed.
+- **Verification:** Locale JSON parse passed. Frontend typecheck passed. Frontend production build passed, with only existing browser-data/chunk-size/import warnings.
+- **Docs:** Added `planning/done/278w-sales-purchases-analytics-report-translation.md`.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278w after owner approval, then continue the remaining all-report translation audit with Sales Gross Profit or accounting report pages.
+
 ### Session: 2026-06-30 (Production QA 278v — Sales Customer Statement report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit with the Sales Customer Statement report.

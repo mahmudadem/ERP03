@@ -807,7 +807,10 @@
       "toDate": "إلى تاريخ",
       "generateReport": "إنشاء التقرير",
       "row": " صف",
+      "rowCount": "{{count}} صف",
+      "rowCount_other": "{{count}} صفوف",
       "loadingReport": "جارٍ تحميل التقرير...",
+      "failedToLoadReport": "فشل تحميل التقرير",
       "purchasesByVendor": "المشتريات حسب المورد",
       "noDataForThisPeriod": "لا توجد بيانات لهذه الفترة.",
       "totals": "الإجماليات",
@@ -815,7 +818,16 @@
       "noDataForThisPeriod2": "لا توجد بيانات لهذه الفترة.",
       "totals2": "الإجماليات",
       "purchasesAnalytics": "تحليلات المشتريات",
-      "purchaseSpendByVendorOrItem": "إنفاق الشراء حسب المورد أو الصنف"
+      "purchaseSpendByVendorOrItem": "إنفاق الشراء حسب المورد أو الصنف",
+      "vendor": "المورد",
+      "invoices": "الفواتير",
+      "cost": "التكلفة",
+      "tax": "الضريبة",
+      "gross": "الإجمالي",
+      "code": "الكود",
+      "item": "الصنف",
+      "lines": "السطور",
+      "qtyPurchased": "الكمية المشتراة"
     },
     "PurchaseSettingsPage": {
       "workflowMode": "وضع سير العمل",
