@@ -28,11 +28,12 @@ Enter the amount and an optional reason. Save. The X report's expected-cash math
 2. In the live card, click **Close shift**.
 3. Count the cash in the drawer. Enter the **counted cash**.
 4. Enter counted non-cash totals for CARD, BANK_TRANSFER, and CUSTOM from the terminal/bank/other settlement slips.
-5. Review the dialog:
+5. Click **View shift summary**.
+6. Review the summary:
    - **Expected cash** is computed from the opening float + sales − refunds + pay-ins − pay-outs − drops.
    - Non-cash expected totals are computed from the receipt payment rows.
    - **Cash over/short** = counted cash − expected cash.
-6. Confirm. If every method balances, the shift status becomes `RECONCILED`. If cash variance is **non-zero** and the matching over/short account is configured, a balanced journal voucher is posted and linked to the shift (visible in the **Cash Over/Short** report). If the matching account is **missing**, the close is blocked with a readable error — go to **POS → Settings** and configure the missing account.
+7. Click **Confirm end session** only after the summary is correct. If every method balances, the shift status becomes `RECONCILED`. If cash variance is **non-zero** and the matching over/short account is configured, a balanced journal voucher is posted and linked to the shift (visible in the **Cash Over/Short** report). If the matching account is **missing**, the close is blocked with a readable error — go to **POS → Settings** and configure the missing account.
 
 The blocked close does not post a partial voucher and does not close the shift.
 After configuring the missing account, return to the open shift and close it

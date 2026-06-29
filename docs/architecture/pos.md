@@ -24,6 +24,18 @@ The shift remains OPEN and neither the voucher nor shift mutation runs. Raw
 `Error` must not be used for this condition because the API fallback maps it to
 HTTP 500 and hides the actionable configuration message.
 
+### Shift-close modal confirmation
+
+The frontend close-shift modal is a two-step flow:
+
+1. The cashier enters counted cash and counted non-cash payment totals.
+2. ERP03 shows a close summary with expected cash, counted cash, and cash variance.
+3. Only the summary screen exposes the final **Confirm end session** action.
+
+The shared `Modal` footer is hidden for this flow so there is no duplicate generic
+`Close` button beneath the real POS actions. This is a UI safety step only; the
+backend close, over/short validation, and voucher posting rules remain authoritative.
+
 ### POS report ordering
 
 POS reports that list dated transaction/audit rows must render newest entries
