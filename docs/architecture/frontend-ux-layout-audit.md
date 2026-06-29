@@ -553,6 +553,22 @@ A UX issue in an ERP is often also a control issue. The following are the highes
 5. Inconsistent settings taxonomy can hide posting/accounting configuration in different places per module.
 6. Incomplete RTL/i18n creates adoption and training risk for Arabic users.
 
+### Chart-of-Accounts tree controls
+
+The account tree uses logical RTL behavior without changing its accounting
+hierarchy:
+
+- Expanded nodes use a downward chevron in every language.
+- Collapsed nodes use a right chevron in LTR and a left chevron in RTL.
+- Each expand/collapse control is a semantic button with a 36 by 36 pixel hit
+  target, translated accessible name, and `aria-expanded` state.
+- Toolbar actions use non-wrapping labels so Expand All, Collapse All, and New
+  Account remain one-line controls.
+
+These are presentation and accessibility rules only. The tree source,
+parent/child relationships, header/posting roles, account codes, and mutation
+behavior remain unchanged.
+
 ## Recommended Implementation Sequence
 
 1. Phase 0: Baseline cleanup and guardrails.

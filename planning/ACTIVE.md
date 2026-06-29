@@ -45,9 +45,10 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278c Purchase invoice query index:** committed as `a3990984`; awaiting final deployment.
 - **278d POS shift-close validation:** committed as `300eab98`; awaiting final deployment.
 - **278e Default Arabic language:** committed as `4090ccee`; awaiting final deployment.
-- **278f Account form translation:** phase 1 committed as `e7a72724`; phase 2 component
-  wiring complete and awaiting commit approval.
-- **Next:** commit verified 278f phase 2, then continue with Telegram photo 7 account-tree interactions.
+- **278f Account form translation:** complete; commits `e7a72724` and `798a92a4`.
+- **278g Account tree RTL controls:** UI/i18n committed as `c3d3ec33`; documentation
+  complete and awaiting commit approval.
+- **Next:** commit 278g documentation, then inspect Telegram photos 9–11 error-labeling cluster.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

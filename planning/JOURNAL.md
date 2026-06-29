@@ -5585,3 +5585,19 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
   is not installed/available in this environment.
 - Phase 2 actual time: approximately 30 minutes; total task time approximately 50 minutes.
 - Deploy: deferred until the full Telegram QA queue is complete.
+
+## 2026-06-29 — Telegram QA fix 278g account tree controls
+
+- Telegram photo 7 requested correct RTL arrow direction, a larger precision
+  target for opening tree branches, and single-line top action buttons.
+- Added direction-aware collapsed chevrons, semantic translated tree buttons,
+  explicit 36 by 36 pixel hit targets, and non-wrapping toolbar controls.
+- Accounting impact: presentation/accessibility only; no hierarchy, account
+  values, posting, balances, permissions, tenant isolation, or audit behavior changed.
+- Verification: locale parsing, frontend typecheck, and production build passed.
+  Local Arabic/RTL browser QA confirmed the Assets branch collapses, children
+  disappear, the collapsed icon points left, and toolbar labels do not wrap.
+- Existing React Router future warnings were the only console warnings.
+- `graphify update .` could not run because the Graphify CLI is unavailable.
+- Actual time: approximately 40 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.
