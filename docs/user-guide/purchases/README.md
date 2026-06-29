@@ -22,6 +22,8 @@ Key guides:
 - [Purchase Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-attachments.md)
 - [Purchase Price Lists](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-price-lists.md)
 
+Purchases reports follow the selected interface language. The AP Aging report localizes its filters, summary, aging buckets, empty state, and expanded invoice-detail rows, while keeping the same posted-payables aging logic.
+
 ---
 
 ## What you can do here

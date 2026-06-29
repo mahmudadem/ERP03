@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-30 (Production QA 278s — Purchases AP Aging report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with Purchases reporting.
+- **Fix:** Localized the AP Aging report remaining hardcoded labels: aging table headers, expanded invoice-detail headers, as-of-date chip/empty state, vendor-count summary, debit-note/JV adjustment label, and unallocated-balance label using `purchases:auto.ApAgingReportPage.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AP aging bucket calculation, vendor balance sign convention, unallocated debit/credit handling, invoice matching, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** purchases locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278s, then continue remaining all-report translation audit with Purchases Vendor Statement.
+
 ### Session: 2026-06-30 (Production QA 278r — Inventory GL Reconciliation report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit for Inventory report pages, including the accounting-sensitive stock-to-GL reconciliation screen.
