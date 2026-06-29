@@ -46,9 +46,9 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278d POS shift-close validation:** committed as `300eab98`; awaiting final deployment.
 - **278e Default Arabic language:** committed as `4090ccee`; awaiting final deployment.
 - **278f Account form translation:** complete; commits `e7a72724` and `798a92a4`.
-- **278g Account tree RTL controls:** UI/i18n committed as `c3d3ec33`; documentation
-  complete and awaiting commit approval.
-- **Next:** commit 278g documentation, then inspect Telegram photos 9–11 error-labeling cluster.
+- **278g Account tree RTL controls:** complete; commits `c3d3ec33` and `12754d34`.
+- **278h Clear API error labels:** code committed as `ccd97a81`; documentation pending commit.
+- **Next:** commit 278h documentation, then continue the next Telegram QA issue.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

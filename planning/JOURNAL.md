@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278h — clear API error labels)
+
+- **Goal:** Fix Telegram photos 9–11 where Approval Center and Account Statement showed generic production errors such as "An unexpected error occurred" and "Request failed with status code 500".
+- **Root cause:** Genuine backend 500 responses were being surfaced through the shared modal without enough request context, so screenshots did not identify the failing accounting operation.
+- **Fix:** Enriched frontend API errors with HTTP status, method, and path; mapped key accounting endpoints to localized operation labels; and added a safe technical reference to the error modal.
+- **Accounting impact:** Diagnostics/presentation only. No approval, voucher, ledger, balance, statement, posting, tenant-scope, or audit behavior changed.
+- **Verification:** locale JSON parse passed; frontend typecheck passed; frontend production build passed. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278h docs, then continue the next Telegram QA issue.
+
 ### Session: 2026-06-29 (Production QA 278d — POS shift-close validation)
 
 - **Goal:** Fix POS shift close showing a generic HTTP 500.
