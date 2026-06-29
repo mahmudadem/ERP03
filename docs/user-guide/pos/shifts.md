@@ -34,6 +34,10 @@ Enter the amount and an optional reason. Save. The X report's expected-cash math
    - **Cash over/short** = counted cash − expected cash.
 6. Confirm. If every method balances, the shift status becomes `RECONCILED`. If cash variance is **non-zero** and the matching over/short account is configured, a balanced journal voucher is posted and linked to the shift (visible in the **Cash Over/Short** report). If the matching account is **missing**, the close is blocked with a readable error — go to **POS → Settings** and configure the missing account.
 
+The blocked close does not post a partial voucher and does not close the shift.
+After configuring the missing account, return to the open shift and close it
+again with the verified counted totals.
+
 Non-cash differences are saved on the shift as reconciliation variances. They do not auto-post to the ledger; card and bank clearing differences should be reviewed through the later settlement/bank-reconciliation process.
 
 ## Force-close (manager)

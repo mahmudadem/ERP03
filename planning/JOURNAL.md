@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278d — POS shift-close validation)
+
+- **Goal:** Fix POS shift close showing a generic HTTP 500.
+- **Root cause:** Production correctly blocked a cash shortage because no Cash Short account was configured, but the use-case threw raw `Error`, which the API classified as an internal failure.
+- **Fix:** Emit structured `ValidationError` with field and POS Settings path while preserving the accounting block.
+- **Accounting impact:** No fallback posting. Failed close leaves shift OPEN and creates no voucher.
+- **Verification:** POS shift + System Core suites 41/41 passed; backend build passed.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full QA fix queue is complete.
+- **Next:** Commit 278d, then repair Approval Center's reported HTTP 500.
+
 ### Session: 2026-06-29 (Production QA 278c — Purchase invoice query index)
 
 - **Goal:** Fix the Purchase dashboard/analytics HTTP 500 when loading posted invoices.

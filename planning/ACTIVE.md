@@ -43,8 +43,10 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278b Purchase item API route:** committed as `26fa87ac`; frontend production deployment
   remains pending until the full fix queue finishes.
 - **278c Purchase invoice query index:** implementation and verification complete; awaiting
+  deployment with the final batch.
+- **278d POS shift-close validation:** implementation and verification complete; awaiting
   commit approval.
-- **Next:** investigate POS shift closing and remaining report failures.
+- **Next:** repair Approval Center's reported HTTP 500.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

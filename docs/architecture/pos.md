@@ -10,6 +10,20 @@
 
 The POS module follows the project's **layered clean architecture** (see [POS_MODULE_ARCHITECTURE_DECISION.md](./POS_MODULE_ARCHITECTURE_DECISION.md) for the rationale and the rejected alternatives).
 
+### Shift-close configuration failures
+
+Cash over/short posting requires the configured Cash Over or Cash Short account.
+`ClosePosShiftUseCase` must preserve that accounting guard and must not guess an
+offset account. A missing account is a recoverable `ValidationError` with:
+
+- HTTP status `400`
+- field `cashOverAccountId` or `cashShortAccountId`
+- context path `/pos/settings`
+
+The shift remains OPEN and neither the voucher nor shift mutation runs. Raw
+`Error` must not be used for this condition because the API fallback maps it to
+HTTP 500 and hides the actionable configuration message.
+
 ```
 domain/pos/entities/         PosRegister, PosSettings, PosShift, PosCashMovement,
                              PosReceipt, PosPayment, PosReturn — all pure classes
