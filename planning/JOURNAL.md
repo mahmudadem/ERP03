@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-30 (Production QA 278q — Inventory Item Movement report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit for Inventory report pages.
+- **Fix:** Localized the Item Movement report title, subtitle, item/warehouse/date/direction/movement/source filters, selector placeholders, direction/movement/source options, generate button, chips, movement count summary, loading text, empty state, table columns, and displayed movement/source type labels using `common:inventory.itemMovement.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock movement retrieval, filtering semantics, running quantity, running value, source routing, tenant data, permission, voucher, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278q, then continue remaining all-report translation audit.
+
 ### Session: 2026-06-30 (Production QA 278p — Inventory Stock Levels report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit for Inventory report pages.

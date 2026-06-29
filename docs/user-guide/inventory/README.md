@@ -108,6 +108,9 @@ Use this when an auditor asks "show me every transaction that touched item X in 
 The report shows running quantity and running value. If the source document has a supported detail page, the source
 reference is clickable. If not, the reference remains plain text.
 
+The Item Movement report title, filters, direction/source/movement options, table columns, source labels, loading state,
+and empty state follow your selected language.
+
 ### Maintaining item UOM conversions
 
 Open `Inventory → Items`, then open the item card. In both Web mode and Windows mode, go to **Stock Control** and use

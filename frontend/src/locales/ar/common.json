@@ -2564,6 +2564,74 @@
       "active": "نشط",
       "activeDesc": "السماح باستخدام هذا الصنف في العمليات المالية والمخزنية"
     },
+    "itemMovement": {
+      "title": "حركة الصنف",
+      "subtitle": "سجل تاريخي للحركات مع الرصيد الكمي والقيمة المتراكمة",
+      "loadFailed": "فشل تحميل تقرير حركة الصنف",
+      "loading": "جارٍ تحميل حركة الصنف...",
+      "empty": "لا توجد حركات صنف تطابق عوامل التصفية.",
+      "filters": {
+        "item": "الصنف",
+        "selectTrackedItem": "اختر صنفًا متتبعًا",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "from": "من",
+        "to": "إلى",
+        "direction": "الاتجاه",
+        "movementType": "نوع الحركة",
+        "sourceType": "نوع المصدر"
+      },
+      "direction": {
+        "all": "الكل",
+        "in": "داخل",
+        "out": "خارج"
+      },
+      "movementType": {
+        "OPENING_STOCK": "رصيد افتتاحي",
+        "PURCHASE_RECEIPT": "استلام شراء",
+        "SALES_DELIVERY": "تسليم مبيعات",
+        "ADJUSTMENT_IN": "تسوية زيادة",
+        "ADJUSTMENT_OUT": "تسوية نقصان",
+        "TRANSFER_IN": "تحويل وارد",
+        "TRANSFER_OUT": "تحويل صادر",
+        "RETURN_IN": "مرتجع وارد",
+        "RETURN_OUT": "مرتجع صادر"
+      },
+      "sourceType": {
+        "PURCHASE_INVOICE": "فاتورة شراء",
+        "GOODS_RECEIPT": "استلام بضاعة",
+        "PURCHASE_RETURN": "مرتجع شراء",
+        "SALES_INVOICE": "فاتورة مبيعات",
+        "DELIVERY_NOTE": "إشعار تسليم",
+        "SALES_RETURN": "مرتجع مبيعات",
+        "STOCK_ADJUSTMENT": "تسوية مخزون",
+        "STOCK_TRANSFER": "تحويل مخزون",
+        "OPENING": "افتتاحي",
+        "POS_DIRECT_SALE": "بيع نقاط البيع",
+        "POS_RETURN": "مرتجع نقاط البيع"
+      },
+      "chips": {
+        "item": "الصنف",
+        "warehouseShort": "مستودع"
+      },
+      "summary": {
+        "movements": "الحركات"
+      },
+      "columns": {
+        "date": "التاريخ",
+        "warehouse": "المستودع",
+        "movement": "الحركة",
+        "source": "المصدر",
+        "qtyIn": "كمية داخلة",
+        "qtyOut": "كمية خارجة",
+        "runningQty": "الرصيد الكمي",
+        "unitCost": "تكلفة الوحدة",
+        "movementValue": "قيمة الحركة",
+        "runningValue": "القيمة المتراكمة",
+        "createdBy": "أنشأها",
+        "notes": "ملاحظات"
+      }
+    },
     "stockLevels": {
       "title": "أرصدة المخزون",
       "subtitle": "الكمية المتاحة والتقييم حسب الصنف أو المستودع",

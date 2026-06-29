@@ -2557,6 +2557,74 @@
         "loadFailed": "Stok kalemleri yüklenemedi"
       }
     },
+    "itemMovement": {
+      "title": "Kalem Hareketi",
+      "subtitle": "Kümülatif miktar ve değerle tarihsel hareket defteri",
+      "loadFailed": "Kalem hareketi raporu yüklenemedi",
+      "loading": "Kalem hareketi yükleniyor...",
+      "empty": "Filtrelerle eşleşen kalem hareketi yok.",
+      "filters": {
+        "item": "Kalem",
+        "selectTrackedItem": "İzlenen kalem seç",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "from": "Başlangıç",
+        "to": "Bitiş",
+        "direction": "Yön",
+        "movementType": "Hareket Türü",
+        "sourceType": "Kaynak Türü"
+      },
+      "direction": {
+        "all": "Tümü",
+        "in": "Giriş",
+        "out": "Çıkış"
+      },
+      "movementType": {
+        "OPENING_STOCK": "Açılış",
+        "PURCHASE_RECEIPT": "Satın alma kabulü",
+        "SALES_DELIVERY": "Satış teslimi",
+        "ADJUSTMENT_IN": "Düzeltme girişi",
+        "ADJUSTMENT_OUT": "Düzeltme çıkışı",
+        "TRANSFER_IN": "Transfer girişi",
+        "TRANSFER_OUT": "Transfer çıkışı",
+        "RETURN_IN": "İade girişi",
+        "RETURN_OUT": "İade çıkışı"
+      },
+      "sourceType": {
+        "PURCHASE_INVOICE": "Satın Alma Faturası",
+        "GOODS_RECEIPT": "Mal Kabul",
+        "PURCHASE_RETURN": "Satın Alma İadesi",
+        "SALES_INVOICE": "Satış Faturası",
+        "DELIVERY_NOTE": "Teslimat Notu",
+        "SALES_RETURN": "Satış İadesi",
+        "STOCK_ADJUSTMENT": "Stok Düzeltmesi",
+        "STOCK_TRANSFER": "Stok Transferi",
+        "OPENING": "Açılış",
+        "POS_DIRECT_SALE": "POS Satışı",
+        "POS_RETURN": "POS İadesi"
+      },
+      "chips": {
+        "item": "Kalem",
+        "warehouseShort": "Depo"
+      },
+      "summary": {
+        "movements": "Hareketler"
+      },
+      "columns": {
+        "date": "Tarih",
+        "warehouse": "Depo",
+        "movement": "Hareket",
+        "source": "Kaynak",
+        "qtyIn": "Giriş Miktarı",
+        "qtyOut": "Çıkış Miktarı",
+        "runningQty": "Kümülatif Miktar",
+        "unitCost": "Birim Maliyet",
+        "movementValue": "Hareket Değeri",
+        "runningValue": "Kümülatif Değer",
+        "createdBy": "Oluşturan",
+        "notes": "Notlar"
+      }
+    },
     "stockLevels": {
       "title": "Stok Seviyeleri",
       "subtitle": "Kalem veya depoya göre eldeki miktar ve değerleme",

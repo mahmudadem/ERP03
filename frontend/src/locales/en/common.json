@@ -2489,6 +2489,74 @@
       "active": "Active",
       "activeDesc": "Allow this item to be used in transactions"
     },
+    "itemMovement": {
+      "title": "Item Movement",
+      "subtitle": "Historical movement ledger with running quantity and value",
+      "loadFailed": "Failed to load item movement report",
+      "loading": "Loading item movement...",
+      "empty": "No item movements match the filters.",
+      "filters": {
+        "item": "Item",
+        "selectTrackedItem": "Select tracked item",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "from": "From",
+        "to": "To",
+        "direction": "Direction",
+        "movementType": "Movement Type",
+        "sourceType": "Source Type"
+      },
+      "direction": {
+        "all": "All",
+        "in": "In",
+        "out": "Out"
+      },
+      "movementType": {
+        "OPENING_STOCK": "Opening",
+        "PURCHASE_RECEIPT": "Purchase receipt",
+        "SALES_DELIVERY": "Sales delivery",
+        "ADJUSTMENT_IN": "Adjustment in",
+        "ADJUSTMENT_OUT": "Adjustment out",
+        "TRANSFER_IN": "Transfer in",
+        "TRANSFER_OUT": "Transfer out",
+        "RETURN_IN": "Return in",
+        "RETURN_OUT": "Return out"
+      },
+      "sourceType": {
+        "PURCHASE_INVOICE": "Purchase Invoice",
+        "GOODS_RECEIPT": "Goods Receipt",
+        "PURCHASE_RETURN": "Purchase Return",
+        "SALES_INVOICE": "Sales Invoice",
+        "DELIVERY_NOTE": "Delivery Note",
+        "SALES_RETURN": "Sales Return",
+        "STOCK_ADJUSTMENT": "Stock Adjustment",
+        "STOCK_TRANSFER": "Stock Transfer",
+        "OPENING": "Opening",
+        "POS_DIRECT_SALE": "POS Sale",
+        "POS_RETURN": "POS Return"
+      },
+      "chips": {
+        "item": "Item",
+        "warehouseShort": "WH"
+      },
+      "summary": {
+        "movements": "Movements"
+      },
+      "columns": {
+        "date": "Date",
+        "warehouse": "Warehouse",
+        "movement": "Movement",
+        "source": "Source",
+        "qtyIn": "Qty In",
+        "qtyOut": "Qty Out",
+        "runningQty": "Running Qty",
+        "unitCost": "Unit Cost",
+        "movementValue": "Movement Value",
+        "runningValue": "Running Value",
+        "createdBy": "Created By",
+        "notes": "Notes"
+      }
+    },
     "stockLevels": {
       "title": "Stock Levels",
       "subtitle": "On-hand quantity and valuation by item or warehouse",
