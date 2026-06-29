@@ -42,11 +42,10 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
   pending until the full fix queue finishes.
 - **278b Purchase item API route:** committed as `26fa87ac`; frontend production deployment
   remains pending until the full fix queue finishes.
-- **278c Purchase invoice query index:** implementation and verification complete; awaiting
-  deployment with the final batch.
-- **278d POS shift-close validation:** implementation and verification complete; awaiting
-  commit approval.
-- **Next:** repair Approval Center's reported HTTP 500.
+- **278c Purchase invoice query index:** committed as `a3990984`; awaiting final deployment.
+- **278d POS shift-close validation:** committed as `300eab98`; awaiting final deployment.
+- **278e Default Arabic language:** implementation and builds complete; commit approval pending.
+- **Next:** commit 278e after owner approval, then continue the remaining Telegram QA queue.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

@@ -255,7 +255,11 @@ The app has i18n infrastructure and direction handling, but many module pages st
 Evidence:
 
 - `frontend/src/i18n/config.ts` changes `document.documentElement.dir` based on language.
-- Startup language is hardcoded to English.
+- Startup language defaults to Arabic when the user has no saved language
+  preference. `erp_language` remains the authoritative local preference, and a
+  saved backend preference overrides the startup default after authentication.
+  The legacy IP detector is prevented from replacing either value by seeding
+  its compatibility key during i18n initialization.
 - Source search found many module pages without `useTranslation`.
 - Many classes use explicit left/right terminology instead of logical direction-aware layout utilities.
 

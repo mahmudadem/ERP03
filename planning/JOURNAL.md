@@ -5541,3 +5541,18 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - Deploy: Firebase project `erp-03`; Vercel production alias `https://erp-03.vercel.app`, deployment `dpl_8r3mzce1Ymg92UN8hfaWMfbgmoff`.
 - Time spent: ~0.8h.
 - Next: owner hard-refresh and open `Sales -> Invoices -> New`; Network should show one startup bundle call instead of the old 11-call fan-out, with later opens using the in-page cache.
+
+# 2026-06-29 — Telegram QA fix 278e default Arabic
+
+- Goal: make Arabic the first-run interface language for every user unless the
+  user has manually saved another language.
+- Approach: use `erp_language` as the explicit local choice, otherwise initialize
+  i18n and preference fallbacks in Arabic. Preserve authenticated backend
+  preferences as the final authority.
+- Removed navigator/HTML language selection from startup and prevented the
+  legacy IP detector from overriding the chosen value.
+- Accounting/security impact: none; UI language and document direction only.
+- Verification: frontend typecheck and production build passed; backend build
+  passed.
+- Actual time: approximately 25 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.

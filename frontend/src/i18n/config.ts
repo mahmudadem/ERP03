@@ -31,6 +31,19 @@ const resources = {
 };
 
 const RTL_LANGS = ['ar'];
+const DEFAULT_LANGUAGE = 'ar';
+
+const getInitialLanguage = () => {
+  if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
+
+  const savedLanguage = window.localStorage.getItem('erp_language');
+  const initialLanguage = savedLanguage || DEFAULT_LANGUAGE;
+
+  // App.tsx still runs the legacy IP detector. Seed its compatibility key so
+  // geography cannot override the product default or an explicit user choice.
+  window.localStorage.setItem('i18nextLng', initialLanguage);
+  return initialLanguage;
+};
 
 const applyDirection = (lng: string) => {
   const isRtl = RTL_LANGS.includes(lng);
@@ -45,12 +58,13 @@ i18n
   .use(initReactI18next)
   .init({
     resources,
-    fallbackLng: 'en',
+    lng: getInitialLanguage(),
+    fallbackLng: DEFAULT_LANGUAGE,
     supportedLngs: ['en', 'ar', 'tr'],
     ns: ['common', 'dashboard', 'accounting', 'aiAssistant', 'pos', 'controls', 'purchases'],
     defaultNS: 'common',
     detection: {
-      order: ['localStorage', 'navigator', 'htmlTag'],
+      order: ['localStorage'],
       caches: ['localStorage'],
     },
     interpolation: { escapeValue: false },

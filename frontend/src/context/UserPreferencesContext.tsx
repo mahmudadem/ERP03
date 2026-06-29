@@ -82,10 +82,10 @@ export const UserPreferencesProvider: React.FC<{ children: React.ReactNode }> = 
     return saved === null ? false : saved === 'true';
   });
 
-  const [language, setLanguage] = useState('en');
+  const [language, setLanguage] = useState('ar');
   const [loadedFromServer, setLoadedFromServer] = useState(false);
   useEffect(() => {
-    const savedLang = localStorage.getItem('erp_language') || i18n.language || 'en';
+    const savedLang = localStorage.getItem('erp_language') || i18n.language || 'ar';
     setLanguage(savedLang);
     if (i18n.language !== savedLang) {
       i18n.changeLanguage(savedLang);
@@ -304,7 +304,7 @@ export const useUserPreferencesContext = () => {
     return saved === null ? false : saved === 'true';
   });
   const [fallbackLanguage, setFallbackLanguage] = useState(() => {
-    return localStorage.getItem('erp_language') || i18n.language || 'en';
+    return localStorage.getItem('erp_language') || i18n.language || 'ar';
   });
   const [fallbackAppearanceSettings, setFallbackAppearanceSettings] = useState<UserAppearanceSettings>(() => {
     return loadLocalUserAppearance();
