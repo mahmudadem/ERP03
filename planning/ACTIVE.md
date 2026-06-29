@@ -72,4 +72,8 @@ DB_TYPE=SQL DATABASE_URL="postgresql://postgres:root@localhost:5432/erp_db?schem
 ```
 Local DB the app uses: **port 5432**, `postgres:root`, db `erp_db` (per `.env`/`.env.local`). A second Postgres on 5433 exists but is unused/leftover.
 
-**Still UNVERIFIED (next):** full running app on SQL — boot the HTTP server in SQL mode + real frontend/onboarding round-trip (the bar the harnesses skip). Then 275f: Supabase + Railway/Vercel deploy. **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
+**Running app on SQL = VERIFIED (2026-06-29, via in-process probe, now removed):** the real Express app boots in SQL mode (startup validation reads Postgres), serves `/health` (200), enforces auth (401 without a token), creates+initializes a company through the running DI (42–48 accounts, voucher types/forms, fiscal year), and an authenticated owner request `GET /tenant/accounting/accounts` returns **200 with 48 accounts** — full HTTP→auth→tenant→controller→use-case→Prisma→Postgres. (Only the Firebase token *signature* check was stubbed; it's DB-agnostic.)
+
+**Known gaps (not blockers):**
+- Deleting a company that has transactions fails on `voucher_lines→accounts` RESTRICT (documented; cleanup-ordering follow-up). One stale `SMOKE-*` company left in local QA db because of this.
+- **Still UNVERIFIED:** literal browser end-to-end (frontend dev server + Firebase Auth emulator click-through) and cloud deploy (275f: Supabase + Railway/Vercel). **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
