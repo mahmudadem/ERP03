@@ -2489,6 +2489,38 @@
       "active": "Active",
       "activeDesc": "Allow this item to be used in transactions"
     },
+    "glReconciliation": {
+      "title": "Inventory ↔ GL Reconciliation",
+      "subtitle": "Stock sub-ledger value vs General Ledger inventory balances",
+      "help": "Compares the inventory sub-ledger (Σ qty × avg cost, grouped by each item's Inventory Asset account) against the General Ledger balance of those accounts. Any difference is costing/posting drift.",
+      "loadFailed": "Failed to load reconciliation",
+      "reconciling": "Reconciling…",
+      "empty": "No inventory asset accounts with stock value or GL balance.",
+      "filters": {
+        "asOfDate": "As Of Date"
+      },
+      "status": {
+        "ties": "Inventory ties to the GL",
+        "driftDetected": "Drift detected between stock and GL",
+        "matched": "Matched",
+        "drift": "Drift"
+      },
+      "summary": {
+        "asOf": "As of",
+        "stockValue": "Stock value",
+        "glBalance": "GL balance",
+        "difference": "Difference",
+        "unmappedStockValue": "Unmapped stock value"
+      },
+      "columns": {
+        "account": "Account",
+        "name": "Name",
+        "stockValueBase": "Stock Value (Base)",
+        "glBalanceBase": "GL Balance (Base)",
+        "difference": "Difference",
+        "status": "Status"
+      }
+    },
     "itemMovement": {
       "title": "Item Movement",
       "subtitle": "Historical movement ledger with running quantity and value",

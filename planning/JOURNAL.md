@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-30 (Production QA 278r — Inventory GL Reconciliation report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit for Inventory report pages, including the accounting-sensitive stock-to-GL reconciliation screen.
+- **Fix:** Localized the Inventory GL Reconciliation report title, subtitle, as-of date filter, explanatory help text, generate button, loading text, reconciled/drift banner, summary labels, table columns, matched/drift badges, and empty state using `common:inventory.glReconciliation.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock sub-ledger value, GL balance retrieval, drift calculation, mapping, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278r, then continue remaining all-report translation audit.
+
 ### Session: 2026-06-30 (Production QA 278q — Inventory Item Movement report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit for Inventory report pages.

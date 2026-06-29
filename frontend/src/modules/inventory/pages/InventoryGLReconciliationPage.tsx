@@ -5,6 +5,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from 'react-i18next';
 
 interface GLReconParams {
   asOfDate: string;
@@ -19,6 +20,7 @@ const Initiator: React.FC<{
   onSubmit: (p: GLReconParams) => void;
   initialParams?: GLReconParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('common');
   const [asOfDate, setAsOfDate] = useState(initialParams?.asOfDate || today());
 
   return (
@@ -33,20 +35,21 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            As Of Date
+            {t('inventory.glReconciliation.filters.asOfDate', { defaultValue: 'As Of Date' })}
           </label>
           <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
         </div>
         <div className="md:col-span-8 text-xs text-slate-500 italic">
-          Compares the inventory sub-ledger (Σ qty × avg cost, grouped by each item&apos;s Inventory Asset account)
-          against the General Ledger balance of those accounts. Any difference is costing/posting drift.
+          {t('inventory.glReconciliation.help', {
+            defaultValue: "Compares the inventory sub-ledger (Σ qty × avg cost, grouped by each item's Inventory Asset account) against the General Ledger balance of those accounts. Any difference is costing/posting drift.",
+          })}
         </div>
       </div>
 
       <div className="flex justify-end pt-4 border-t border-slate-100">
         <Button type="submit" className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all">
           <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
+            {t('common.generate', { defaultValue: 'Generate Report' })}
             <ChevronRight className="w-4 h-4" />
           </span>
         </Button>
@@ -61,6 +64,7 @@ const ReportContent: React.FC<{
   params: GLReconParams;
   density?: 'compact' | 'comfortable';
 }> = ({ params, density }) => {
+  const { t } = useTranslation('common');
   const [data, setData] = useState<InventoryGLReconciliationDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -77,7 +81,7 @@ const ReportContent: React.FC<{
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.response?.data?.error?.message || err?.message || 'Failed to load reconciliation');
+        setError(err?.response?.data?.error?.message || err?.message || t('inventory.glReconciliation.loadFailed', { defaultValue: 'Failed to load reconciliation' }));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
@@ -94,7 +98,7 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Reconciling…</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('inventory.glReconciliation.reconciling', { defaultValue: 'Reconciling…' })}</p>
             </div>
           </div>
         ) : data ? (
@@ -109,13 +113,15 @@ const ReportContent: React.FC<{
               {data.isReconciled ? <CheckCircle2 className="h-6 w-6" /> : <AlertTriangle className="h-6 w-6" />}
               <div>
                 <div className="text-sm font-black uppercase tracking-wide">
-                  {data.isReconciled ? 'Inventory ties to the GL' : 'Drift detected between stock and GL'}
+                  {data.isReconciled
+                    ? t('inventory.glReconciliation.status.ties', { defaultValue: 'Inventory ties to the GL' })
+                    : t('inventory.glReconciliation.status.driftDetected', { defaultValue: 'Drift detected between stock and GL' })}
                 </div>
                 <div className="text-xs">
-                  As of {data.asOfDate} · Stock value {fmt(data.totalStockValueBase)} · GL balance {fmt(data.totalGLBalanceBase)} · Difference{' '}
+                  {t('inventory.glReconciliation.summary.asOf', { defaultValue: 'As of' })} {data.asOfDate} · {t('inventory.glReconciliation.summary.stockValue', { defaultValue: 'Stock value' })} {fmt(data.totalStockValueBase)} · {t('inventory.glReconciliation.summary.glBalance', { defaultValue: 'GL balance' })} {fmt(data.totalGLBalanceBase)} · {t('inventory.glReconciliation.summary.difference', { defaultValue: 'Difference' })}{' '}
                   <span className="font-bold">{fmt(data.totalDifferenceBase)}</span>
                   {data.unmappedStockValueBase !== 0 && (
-                    <> · Unmapped stock value {fmt(data.unmappedStockValueBase)}</>
+                    <> · {t('inventory.glReconciliation.summary.unmappedStockValue', { defaultValue: 'Unmapped stock value' })} {fmt(data.unmappedStockValueBase)}</>
                   )}
                 </div>
               </div>
@@ -125,12 +131,12 @@ const ReportContent: React.FC<{
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className={`${cellPad} text-left`}>Account</th>
-                    <th className={`${cellPad} text-left`}>Name</th>
-                    <th className={`${cellPad} text-right`}>Stock Value (Base)</th>
-                    <th className={`${cellPad} text-right`}>GL Balance (Base)</th>
-                    <th className={`${cellPad} text-right`}>Difference</th>
-                    <th className={`${cellPad} text-center`}>Status</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.glReconciliation.columns.account', { defaultValue: 'Account' })}</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.glReconciliation.columns.name', { defaultValue: 'Name' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.glReconciliation.columns.stockValueBase', { defaultValue: 'Stock Value (Base)' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.glReconciliation.columns.glBalanceBase', { defaultValue: 'GL Balance (Base)' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.glReconciliation.columns.difference', { defaultValue: 'Difference' })}</th>
+                    <th className={`${cellPad} text-center`}>{t('inventory.glReconciliation.columns.status', { defaultValue: 'Status' })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -145,9 +151,9 @@ const ReportContent: React.FC<{
                       </td>
                       <td className={`${cellPad} text-center`}>
                         {line.matched ? (
-                          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">Matched</span>
+                          <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-2 py-0.5 text-[10px] font-bold uppercase text-emerald-700">{t('inventory.glReconciliation.status.matched', { defaultValue: 'Matched' })}</span>
                         ) : (
-                          <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">Drift</span>
+                          <span className="inline-flex rounded-full border border-amber-300 bg-amber-50 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-700">{t('inventory.glReconciliation.status.drift', { defaultValue: 'Drift' })}</span>
                         )}
                       </td>
                     </tr>
@@ -156,7 +162,7 @@ const ReportContent: React.FC<{
                     <tr>
                       <td colSpan={6} className="py-10 text-center text-slate-400">
                         <Scale className="mx-auto mb-2 h-8 w-8 text-slate-300" />
-                        No inventory asset accounts with stock value or GL balance.
+                        {t('inventory.glReconciliation.empty', { defaultValue: 'No inventory asset accounts with stock value or GL balance.' })}
                       </td>
                     </tr>
                   )}
@@ -170,14 +176,17 @@ const ReportContent: React.FC<{
   );
 };
 
-const InventoryGLReconciliationPage: React.FC = () => (
-  <ReportContainer<GLReconParams>
-    title="Inventory ↔ GL Reconciliation"
-    subtitle="Stock sub-ledger value vs General Ledger inventory balances"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: false }}
-  />
-);
+const InventoryGLReconciliationPage: React.FC = () => {
+  const { t } = useTranslation('common');
+  return (
+    <ReportContainer<GLReconParams>
+      title={t('inventory.glReconciliation.title', { defaultValue: 'Inventory ↔ GL Reconciliation' })}
+      subtitle={t('inventory.glReconciliation.subtitle', { defaultValue: 'Stock sub-ledger value vs General Ledger inventory balances' })}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: false }}
+    />
+  );
+};
 
 export default InventoryGLReconciliationPage;

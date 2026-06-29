@@ -56,8 +56,9 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278n Inventory Unsettled Costs report translation:** complete; commit `1ecda880`.
 - **278o Inventory Valuation report translation:** complete; commit `5b663468`.
 - **278p Inventory Stock Levels report translation:** complete; commit `a07c78d4`.
-- **278q Inventory Item Movement report translation:** validation passed; commit pending.
-- **Next:** commit 278q, then continue remaining all-report translation audit.
+- **278q Inventory Item Movement report translation:** complete; commit `1aee7dd8`.
+- **278r Inventory GL Reconciliation report translation:** validation passed; commit pending.
+- **Next:** commit 278r, then continue remaining all-report translation audit.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

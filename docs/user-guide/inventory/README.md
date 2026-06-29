@@ -133,6 +133,12 @@ The report title, filters, table columns, loading state, empty state, and summar
 
 For periodic companies, this report is also the source for the Balance Sheet inventory figure and the Trading / Profit & Loss cost-of-sales calculation.
 
+### Reconciling stock to the GL — Inventory GL Reconciliation
+
+Open `Inventory → Reports → Inventory GL Reconciliation`.
+
+Use this report to compare inventory sub-ledger value with the General Ledger inventory asset balances as of a selected date. The report title, explanation, status banner, summary values, table columns, status badges, loading state, and empty state follow your selected language.
+
 ---
 
 ## How costing works

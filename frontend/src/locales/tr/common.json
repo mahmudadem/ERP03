@@ -2557,6 +2557,38 @@
         "loadFailed": "Stok kalemleri yüklenemedi"
       }
     },
+    "glReconciliation": {
+      "title": "Stok ↔ Genel Muhasebe Mutabakatı",
+      "subtitle": "Stok alt defter değeri ile Genel Muhasebe stok bakiyeleri",
+      "help": "Stok alt defterini (Σ miktar × ortalama maliyet, her kalemin Stok Varlık hesabına göre gruplanmış) bu hesapların Genel Muhasebe bakiyesiyle karşılaştırır. Her fark maliyet/posting sapmasıdır.",
+      "loadFailed": "Mutabakat yüklenemedi",
+      "reconciling": "Mutabakat yapılıyor…",
+      "empty": "Stok değeri veya Genel Muhasebe bakiyesi olan stok varlık hesabı yok.",
+      "filters": {
+        "asOfDate": "Tarih İtibarıyla"
+      },
+      "status": {
+        "ties": "Stok Genel Muhasebe ile uyumlu",
+        "driftDetected": "Stok ile Genel Muhasebe arasında sapma tespit edildi",
+        "matched": "Eşleşti",
+        "drift": "Sapma"
+      },
+      "summary": {
+        "asOf": "İtibarıyla",
+        "stockValue": "Stok değeri",
+        "glBalance": "GM bakiyesi",
+        "difference": "Fark",
+        "unmappedStockValue": "Eşlenmemiş stok değeri"
+      },
+      "columns": {
+        "account": "Hesap",
+        "name": "Ad",
+        "stockValueBase": "Stok Değeri (Ana)",
+        "glBalanceBase": "GM Bakiyesi (Ana)",
+        "difference": "Fark",
+        "status": "Durum"
+      }
+    },
     "itemMovement": {
       "title": "Kalem Hareketi",
       "subtitle": "Kümülatif miktar ve değerle tarihsel hareket defteri",
