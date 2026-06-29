@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { posApi } from '../../../api/posApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { sortReportRowsByDateTimeDesc } from '../../../components/reports/reportSorting';
 import { PosDateRangeInitiator, PosDateRangeParams } from './PosDateRangeInitiator';
 
 const PosReceiptHistoryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
@@ -17,7 +18,13 @@ const PosReceiptHistoryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindo
       let cancelled = false;
       setLoading(true);
       posApi.getReceiptHistoryReport({ dateFrom: params.dateFrom, dateTo: params.dateTo, limit: 500 })
-        .then((d) => { if (!cancelled) { setRows(d || []); setTotalItems?.((d || []).length); } })
+        .then((d) => {
+          if (!cancelled) {
+            const nextRows = sortReportRowsByDateTimeDesc(d || [], ['createdAt', 'date']);
+            setRows(nextRows);
+            setTotalItems?.(nextRows.length);
+          }
+        })
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
     }, [params.dateFrom, params.dateTo]);

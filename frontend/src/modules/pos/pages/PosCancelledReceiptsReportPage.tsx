@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { posApi } from '../../../api/posApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { sortReportRowsByDateTimeDesc } from '../../../components/reports/reportSorting';
 import { PosDateRangeInitiator, PosDateRangeParams } from './PosDateRangeInitiator';
 
 interface CancelledReceiptRow {
@@ -36,7 +37,7 @@ const PosCancelledReceiptsReportPage: React.FC<{ isWindow?: boolean }> = ({ isWi
       posApi.getCancelledReceiptsReport({ dateFrom: params.dateFrom, dateTo: params.dateTo, limit: 500 })
         .then((data) => {
           if (!cancelled) {
-            const nextRows = (data || []) as CancelledReceiptRow[];
+            const nextRows = sortReportRowsByDateTimeDesc((data || []) as CancelledReceiptRow[], ['createdAt']);
             setRows(nextRows);
             setTotalItems?.(nextRows.length);
           }
