@@ -195,7 +195,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
     try {
       setLoading(true);
       const itemsBasePath = window.location.pathname.startsWith('/sales/') ? '/sales/items' :
-                            window.location.pathname.startsWith('/purchases/') ? '/purchases/items' :
+                            window.location.pathname.startsWith('/purchases/') ? '/purchase/items' :
                             window.location.pathname.startsWith('/pos/') ? '/pos/items' :
                             '/inventory/items';
       const result = await client.get(`/tenant${itemsBasePath}/${id}`);
@@ -227,7 +227,7 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
       setSaving(true);
       setError(null);
       const itemsBasePath = window.location.pathname.startsWith('/sales/') ? '/sales/items' :
-                            window.location.pathname.startsWith('/purchases/') ? '/purchases/items' :
+                            window.location.pathname.startsWith('/purchases/') ? '/purchase/items' :
                             window.location.pathname.startsWith('/pos/') ? '/pos/items' :
                             '/inventory/items';
       const result = isNew 

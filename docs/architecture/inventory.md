@@ -535,3 +535,16 @@ Conversion factors become immutable after any posted stock movement references
 the conversion. Direct update/delete and the former smart-correction endpoint
 all reject used conversions. This prevents retrospective quantity, valuation,
 COGS, and GL drift.
+
+## Shared item page route mapping
+
+`ItemsListPage` and `ItemMasterCard` are reused by Inventory, Sales, Purchases,
+and POS. Browser navigation uses `/purchases/items`, but the Purchase module is
+mounted at the singular API prefix `/tenant/purchase`. The shared components
+must therefore keep the Purchases navigation path separate from its API path:
+
+- Browser route: `/purchases/items`
+- API route: `/tenant/purchase/items`
+
+Sales, Inventory, and POS browser/API prefixes already match. Do not derive the
+Purchases API URL directly from `window.location.pathname`.

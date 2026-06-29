@@ -38,10 +38,11 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 
 ## 🔄 Production QA fixes — Telegram export
 
-- **278a ledger statement indexes:** implementation and verification complete; awaiting commit
-  approval and production deployment.
-- **Next 278b:** repair the frontend/backend API contract for
-  `GET /api/v1/tenant/purchases/items`, currently returning 404.
+- **278a ledger statement indexes:** committed as `7ef1917b`; production deployment remains
+  pending because the Firestore Rules API rejected three deployment attempts.
+- **278b Purchase item API route:** implementation and frontend build complete; awaiting commit
+  approval.
+- **Next:** deploy 278a/278b together, then diagnose the remaining production 500 failures.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278b — Purchase item API route)
+
+- **Goal:** Fix Purchases -> Products & Services returning `Endpoint not found: GET /api/v1/tenant/purchases/items`.
+- **Root cause:** Reused item components treated the plural browser route as the API mount; the Purchase module API is singular.
+- **Fix:** Kept `/purchases/items` for navigation and mapped Purchase item API calls to `/tenant/purchase/items` in list and detail/save flows.
+- **Safety:** Existing Catalog Core controller, tenant context, and `purchase.items.*` permission guards remain authoritative.
+- **Verification:** frontend typecheck and full production build passed; Vite LAN process restored on port 5173.
+- **Time spent:** ~0.5h.
+- **Next:** Commit 278b, then continue with the remaining production 500 failures. Retry the combined Firebase deployment; the Firestore Rules API blocked three 278a attempts.
+
 ### Session: 2026-06-29 (Production QA 278a — ledger statement indexes)
 
 - **Goal:** Fix production HTTP 500 failures in account-backed vendor/customer statements reported in the Telegram QA export.
