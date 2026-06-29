@@ -22,7 +22,8 @@ export function registerAllModules(): void {
         registry.register(module);
     };
 
-    // Register modules
+    // Register modules (idempotent: registerOnce skips already-registered modules,
+    // so the boot-retry loop can safely re-run this after a transient DB outage).
     registerOnce(new AccountingModule());
     registerOnce(new InventoryModule());
     registerOnce(new PurchaseModule());
