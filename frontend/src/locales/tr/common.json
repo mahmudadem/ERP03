@@ -2557,6 +2557,59 @@
         "loadFailed": "Stok kalemleri yüklenemedi"
       }
     },
+    "stockLevels": {
+      "title": "Stok Seviyeleri",
+      "subtitle": "Kalem veya depoya göre eldeki miktar ve değerleme",
+      "loadFailed": "Stok seviyeleri yüklenemedi",
+      "loading": "Stok seviyeleri yükleniyor...",
+      "empty": "Filtrelerle eşleşen stok seviyesi yok.",
+      "unvalued": "Değerlenmemiş",
+      "filters": {
+        "item": "Kalem",
+        "allTrackedItems": "Tüm izlenen kalemler",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "view": "Görünüm",
+        "includeZero": "Sıfır miktarları dahil et",
+        "includeNegative": "Negatif stoku dahil et"
+      },
+      "viewMode": {
+        "byItem": "Kaleme göre",
+        "byWarehouse": "Depoya göre"
+      },
+      "chips": {
+        "negativeLines": "Negatif satırlar: {{count}}",
+        "unvaluedNegatives": "Değerlenmemiş negatifler: {{count}}"
+      },
+      "summary": {
+        "lines": "Satırlar",
+        "value": "Değer"
+      },
+      "columns": {
+        "item": "Kalem",
+        "warehouses": "Depolar",
+        "totalQty": "Toplam Miktar",
+        "blendedCost": "Karma Maliyet",
+        "totalValue": "Toplam Değer",
+        "status": "Durum",
+        "warehouse": "Depo",
+        "qty": "Miktar",
+        "reportCost": "Rapor Maliyeti",
+        "basis": "Esas",
+        "reportValue": "Rapor Değeri",
+        "warning": "Uyarı"
+      },
+      "costBasis": {
+        "average": "Ortalama",
+        "lastKnown": "Son bilinen",
+        "missing": "Eksik"
+      },
+      "status": {
+        "unvaluedNegative": "Negatif stok için maliyet esası yok",
+        "negativeValued": "Değerlenmiş negatif stok",
+        "valued": "Değerlenmiş"
+      }
+    },
     "valuation": {
       "title": "Stok Değerlemesi",
       "subtitle": "Kalem, depo ve fiyatlandırma politikasına göre stok değeri",

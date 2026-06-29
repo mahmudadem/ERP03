@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-30 (Production QA 278p — Inventory Stock Levels report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit for Inventory report pages.
+- **Fix:** Localized the Stock Levels report title, subtitle, item/warehouse/view filters, selector placeholders, checkbox labels, generate button, view chips, negative-stock chips, summary labels, loading text, empty state, table columns, cost-basis labels, and stock-warning labels using `common:inventory.stockLevels.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock levels, quantities, valuation math, cost-basis selection, negative-stock exposure, tenant data, permission, voucher, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278p, then continue remaining all-report translation audit.
+
 ### Session: 2026-06-29 (Production QA 278o — Inventory Valuation report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit after Inventory reports showed English labels in Arabic.

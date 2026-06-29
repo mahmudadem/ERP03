@@ -96,6 +96,8 @@ If negative stock is allowed, the report still shows the financial exposure. Exa
 shows value `-2400`. If there is no known cost basis, the report marks the line as **Unvalued negative stock** instead
 of showing a clean zero.
 
+The Stock Levels report title, filters, view selector, table columns, warnings, and summary chips follow your selected language.
+
 ### Tracking history — Item Movement
 
 `Inventory → Reports → Item Movement`. Select an item to see the full append-only ledger for that item. Filter by

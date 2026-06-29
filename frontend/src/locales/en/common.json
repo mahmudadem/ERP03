@@ -2489,6 +2489,59 @@
       "active": "Active",
       "activeDesc": "Allow this item to be used in transactions"
     },
+    "stockLevels": {
+      "title": "Stock Levels",
+      "subtitle": "On-hand quantity and valuation by item or warehouse",
+      "loadFailed": "Failed to load stock levels",
+      "loading": "Loading stock levels...",
+      "empty": "No stock levels match the filters.",
+      "unvalued": "Unvalued",
+      "filters": {
+        "item": "Item",
+        "allTrackedItems": "All tracked items",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "view": "View",
+        "includeZero": "Include zero quantity",
+        "includeNegative": "Include negative stock"
+      },
+      "viewMode": {
+        "byItem": "By item",
+        "byWarehouse": "By warehouse"
+      },
+      "chips": {
+        "negativeLines": "Negative lines: {{count}}",
+        "unvaluedNegatives": "Unvalued negatives: {{count}}"
+      },
+      "summary": {
+        "lines": "Lines",
+        "value": "Value"
+      },
+      "columns": {
+        "item": "Item",
+        "warehouses": "Warehouses",
+        "totalQty": "Total Qty",
+        "blendedCost": "Blended Cost",
+        "totalValue": "Total Value",
+        "status": "Status",
+        "warehouse": "Warehouse",
+        "qty": "Qty",
+        "reportCost": "Report Cost",
+        "basis": "Basis",
+        "reportValue": "Report Value",
+        "warning": "Warning"
+      },
+      "costBasis": {
+        "average": "Average",
+        "lastKnown": "Last known",
+        "missing": "Missing"
+      },
+      "status": {
+        "unvaluedNegative": "Negative stock has no cost basis",
+        "negativeValued": "Negative valued stock",
+        "valued": "Valued"
+      }
+    },
     "valuation": {
       "title": "Inventory Valuation",
       "subtitle": "Stock value by item, warehouse, and pricing policy",

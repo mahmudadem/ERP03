@@ -2564,6 +2564,59 @@
       "active": "نشط",
       "activeDesc": "السماح باستخدام هذا الصنف في العمليات المالية والمخزنية"
     },
+    "stockLevels": {
+      "title": "أرصدة المخزون",
+      "subtitle": "الكمية المتاحة والتقييم حسب الصنف أو المستودع",
+      "loadFailed": "فشل تحميل أرصدة المخزون",
+      "loading": "جارٍ تحميل أرصدة المخزون...",
+      "empty": "لا توجد أرصدة مخزون تطابق عوامل التصفية.",
+      "unvalued": "غير مقيّم",
+      "filters": {
+        "item": "الصنف",
+        "allTrackedItems": "كل الأصناف المتتبعة",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "view": "العرض",
+        "includeZero": "إظهار الكميات الصفرية",
+        "includeNegative": "إظهار المخزون السالب"
+      },
+      "viewMode": {
+        "byItem": "حسب الصنف",
+        "byWarehouse": "حسب المستودع"
+      },
+      "chips": {
+        "negativeLines": "سطور سالبة: {{count}}",
+        "unvaluedNegatives": "سوالب غير مقيّمة: {{count}}"
+      },
+      "summary": {
+        "lines": "السطور",
+        "value": "القيمة"
+      },
+      "columns": {
+        "item": "الصنف",
+        "warehouses": "المستودعات",
+        "totalQty": "إجمالي الكمية",
+        "blendedCost": "التكلفة الممزوجة",
+        "totalValue": "إجمالي القيمة",
+        "status": "الحالة",
+        "warehouse": "المستودع",
+        "qty": "الكمية",
+        "reportCost": "تكلفة التقرير",
+        "basis": "أساس التكلفة",
+        "reportValue": "قيمة التقرير",
+        "warning": "تحذير"
+      },
+      "costBasis": {
+        "average": "المتوسط",
+        "lastKnown": "آخر تكلفة معروفة",
+        "missing": "مفقود"
+      },
+      "status": {
+        "unvaluedNegative": "المخزون السالب لا يملك أساس تكلفة",
+        "negativeValued": "مخزون سالب مقيّم",
+        "valued": "مقيّم"
+      }
+    },
     "valuation": {
       "title": "تقييم المخزون",
       "subtitle": "قيمة المخزون حسب الصنف والمستودع وسياسة التسعير",
