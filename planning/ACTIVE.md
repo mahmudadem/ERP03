@@ -74,6 +74,11 @@ Local DB the app uses: **port 5432**, `postgres:root`, db `erp_db` (per `.env`/`
 
 **Running app on SQL = VERIFIED (2026-06-29, via in-process probe, now removed):** the real Express app boots in SQL mode (startup validation reads Postgres), serves `/health` (200), enforces auth (401 without a token), creates+initializes a company through the running DI (42–48 accounts, voucher types/forms, fiscal year), and an authenticated owner request `GET /tenant/accounting/accounts` returns **200 with 48 accounts** — full HTTP→auth→tenant→controller→use-case→Prisma→Postgres. (Only the Firebase token *signature* check was stubbed; it's DB-agnostic.)
 
+**Browser end-to-end on SQL = VERIFIED (2026-06-29):** real frontend (Vite) + Firebase Auth emulator + standalone SQL backend (Express on Postgres). Logged in as `sa@test.com` → auth emulator `signInWithPassword` 200 → app routed to the Super Admin portal and rendered, with authenticated API round-trips to the SQL backend all 200 (`/auth/me/permissions`, `/user/preferences`, `/super-admin/overview`). Proves the *whole stack* works on SQL in a browser. (Setup: standalone Express backend on an alt port + the running Auth emulator, to avoid colliding with Codex's production-lane emulators on the default ports.)
+
 **Known gaps (not blockers):**
+- **Super Admin overview stats return all zeros in SQL mode** (`totalUsers/totalCompanies/...` = 0 though Postgres has 3 users) — the overview aggregation isn't wired for Postgres. Minor reporting gap; the page loads fine.
 - Deleting a company that has transactions fails on `voucher_lines→accounts` RESTRICT (documented; cleanup-ordering follow-up). One stale `SMOKE-*` company left in local QA db because of this.
-- **Still UNVERIFIED:** literal browser end-to-end (frontend dev server + Firebase Auth emulator click-through) and cloud deploy (275f: Supabase + Railway/Vercel). **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
+- **Still UNVERIFIED:** cloud deploy (275f: Supabase + Railway/Vercel). **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
+
+> Browser-E2E note: `sa@test.com`'s password in the local Auth emulator was set to `password123` (the repo's `testLogin.ts` convention) during this test.
