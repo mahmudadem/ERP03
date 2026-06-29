@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278a — ledger statement indexes)
+
+- **Goal:** Fix production HTTP 500 failures in account-backed vendor/customer statements reported in the Telegram QA export.
+- **Root cause:** `FirestoreLedgerRepository.getAccountStatement` queries `ledger` by account, posted state, and date, but the deployed Firestore manifest had no matching composite indexes.
+- **Fix:** Added `accountId + isPosted + date` and `accountId + date` indexes plus an architecture regression test.
+- **Accounting impact:** Retrieval-only. No voucher, ledger entry, balance, posting rule, or tenant scope changed.
+- **Verification:** index contract 2/2 passed; backend build passed.
+- **Time spent:** ~0.5h.
+- **Next:** Commit/deploy 278a, verify index readiness, then fix the broken `/tenant/purchases/items` API contract as 278b.
+
 ### Session: 2026-06-29 (Production heal + live Firebase deploy — 503/500 fix reconciled into prod lane)
 
 - **Goal:** The verified production 503/500 storm fix (`9e5d0ac1`) was committed only on the SQL-readiness lane (`ERP03`), while production deploys run from the production lane (`ERP03-unified`). The prod lane had only *part* of the fix (server-ready/CORS) but was missing the 512MB memory bump, the `posShifts`/composite Firestore indexes, and the `COLLECTION_GROUP` fieldOverrides. Goal: make the prod lane carry the complete fix and deploy it live.

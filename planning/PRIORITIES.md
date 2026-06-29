@@ -106,6 +106,7 @@ If you are starting work on a priority item, record it here so other agents don'
 
 | Agent | Task | Started | Status |
 |-------|------|---------|--------|
+| Codex | Production QA fixes — Telegram export, sequential commits | 2026-06-29 | 🔄 278a verified, awaiting commit/deploy; 278b purchases/items next |
 | Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 | Codex | Phase F - Vendor Groups | 2026-05-28 | ✅ Done |
 | Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |

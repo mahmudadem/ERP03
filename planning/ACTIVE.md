@@ -36,7 +36,17 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 
 ---
 
-## ⏭️ Next: collapse to ONE canonical worktree
+## 🔄 Production QA fixes — Telegram export
+
+- **278a ledger statement indexes:** implementation and verification complete; awaiting commit
+  approval and production deployment.
+- **Next 278b:** repair the frontend/backend API contract for
+  `GET /api/v1/tenant/purchases/items`, currently returning 404.
+- Work remains sequential: one verified fix and one commit at a time.
+
+---
+
+## ⏭️ Later: collapse to ONE canonical worktree
 
 Hold the two-lane model until production is confirmed stable under ~1 day of real use, **then**:
 
