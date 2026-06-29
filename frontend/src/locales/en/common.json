@@ -2489,6 +2489,53 @@
       "active": "Active",
       "activeDesc": "Allow this item to be used in transactions"
     },
+    "valuation": {
+      "title": "Inventory Valuation",
+      "subtitle": "Stock value by item, warehouse, and pricing policy",
+      "loadFailed": "Failed to load valuation",
+      "loading": "Loading valuation...",
+      "empty": "No stock lines to value",
+      "grandTotalServer": "Grand Total (server)",
+      "filters": {
+        "mode": "Mode",
+        "asOfDate": "As Of Date",
+        "pricingPolicy": "Pricing Policy",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "item": "Item",
+        "allItems": "All items"
+      },
+      "mode": {
+        "current": "Current (live)",
+        "asOf": "As of a date"
+      },
+      "pricingPolicy": {
+        "average": "Average Cost",
+        "lastPurchase": "Last Purchase Cost",
+        "averageShort": "Average",
+        "lastPurchaseShort": "Last Purchase"
+      },
+      "chips": {
+        "asOf": "As of {{date}}",
+        "policy": "Policy",
+        "basedOnSnapshot": "Based on snapshot {{snapshot}}",
+        "warehouseShort": "WH",
+        "item": "Item"
+      },
+      "summary": {
+        "totalLinesFullSet": "Total lines (full set)",
+        "totalValueBase": "Total value (base)"
+      },
+      "columns": {
+        "itemCode": "Item Code",
+        "itemName": "Item Name",
+        "warehouse": "Warehouse",
+        "qtyOnHand": "Qty on Hand",
+        "policyCostBase": "Policy Cost (Base)",
+        "avgCostBase": "Avg Cost (Base)",
+        "valueBase": "Value (Base)"
+      }
+    },
     "unsettledCosts": {
       "title": "Unsettled Costs",
       "subtitle": "Stock-out movements awaiting cost settlement",

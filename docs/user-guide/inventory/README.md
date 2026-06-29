@@ -124,6 +124,8 @@ Use it when you need:
 - an as-of-date stock value
 - a quick comparison between **Average** and **Last Purchase** pricing
 
+The report title, filters, table columns, loading state, empty state, and summary chips follow your selected language.
+
 For periodic companies, this report is also the source for the Balance Sheet inventory figure and the Trading / Profit & Loss cost-of-sales calculation.
 
 ---

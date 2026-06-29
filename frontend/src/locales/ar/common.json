@@ -2564,6 +2564,53 @@
       "active": "نشط",
       "activeDesc": "السماح باستخدام هذا الصنف في العمليات المالية والمخزنية"
     },
+    "valuation": {
+      "title": "تقييم المخزون",
+      "subtitle": "قيمة المخزون حسب الصنف والمستودع وسياسة التسعير",
+      "loadFailed": "فشل تحميل تقييم المخزون",
+      "loading": "جارٍ تحميل تقييم المخزون...",
+      "empty": "لا توجد أرصدة مخزون للتقييم",
+      "grandTotalServer": "الإجمالي العام (من الخادم)",
+      "filters": {
+        "mode": "الوضع",
+        "asOfDate": "كما في تاريخ",
+        "pricingPolicy": "سياسة التسعير",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "item": "الصنف",
+        "allItems": "كل الأصناف"
+      },
+      "mode": {
+        "current": "الحالي (مباشر)",
+        "asOf": "كما في تاريخ"
+      },
+      "pricingPolicy": {
+        "average": "متوسط التكلفة",
+        "lastPurchase": "آخر تكلفة شراء",
+        "averageShort": "المتوسط",
+        "lastPurchaseShort": "آخر شراء"
+      },
+      "chips": {
+        "asOf": "كما في {{date}}",
+        "policy": "السياسة",
+        "basedOnSnapshot": "بناءً على اللقطة {{snapshot}}",
+        "warehouseShort": "مستودع",
+        "item": "الصنف"
+      },
+      "summary": {
+        "totalLinesFullSet": "إجمالي السطور (كامل المجموعة)",
+        "totalValueBase": "إجمالي القيمة (بالعملة الأساسية)"
+      },
+      "columns": {
+        "itemCode": "كود الصنف",
+        "itemName": "اسم الصنف",
+        "warehouse": "المستودع",
+        "qtyOnHand": "الكمية المتاحة",
+        "policyCostBase": "تكلفة السياسة (أساسية)",
+        "avgCostBase": "متوسط التكلفة (أساسية)",
+        "valueBase": "القيمة (أساسية)"
+      }
+    },
     "unsettledCosts": {
       "title": "التكاليف غير المسواة",
       "subtitle": "حركات إخراج مخزون بانتظار تسوية التكلفة",

@@ -2557,6 +2557,53 @@
         "loadFailed": "Stok kalemleri yüklenemedi"
       }
     },
+    "valuation": {
+      "title": "Stok Değerlemesi",
+      "subtitle": "Kalem, depo ve fiyatlandırma politikasına göre stok değeri",
+      "loadFailed": "Stok değerlemesi yüklenemedi",
+      "loading": "Stok değerlemesi yükleniyor...",
+      "empty": "Değerlendirilecek stok satırı yok",
+      "grandTotalServer": "Genel Toplam (sunucu)",
+      "filters": {
+        "mode": "Mod",
+        "asOfDate": "Tarih İtibarıyla",
+        "pricingPolicy": "Fiyatlandırma Politikası",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "item": "Kalem",
+        "allItems": "Tüm kalemler"
+      },
+      "mode": {
+        "current": "Güncel (canlı)",
+        "asOf": "Belirli tarih itibarıyla"
+      },
+      "pricingPolicy": {
+        "average": "Ortalama Maliyet",
+        "lastPurchase": "Son Satın Alma Maliyeti",
+        "averageShort": "Ortalama",
+        "lastPurchaseShort": "Son Satın Alma"
+      },
+      "chips": {
+        "asOf": "{{date}} itibarıyla",
+        "policy": "Politika",
+        "basedOnSnapshot": "{{snapshot}} anlık görüntüsüne göre",
+        "warehouseShort": "Depo",
+        "item": "Kalem"
+      },
+      "summary": {
+        "totalLinesFullSet": "Toplam satır (tam küme)",
+        "totalValueBase": "Toplam değer (ana para)"
+      },
+      "columns": {
+        "itemCode": "Kalem Kodu",
+        "itemName": "Kalem Adı",
+        "warehouse": "Depo",
+        "qtyOnHand": "Eldeki Miktar",
+        "policyCostBase": "Politika Maliyeti (Ana)",
+        "avgCostBase": "Ort. Maliyet (Ana)",
+        "valueBase": "Değer (Ana)"
+      }
+    },
     "unsettledCosts": {
       "title": "Yerleşmemiş Maliyetler",
       "subtitle": "Maliyet yerleşimi bekleyen stok çıkış hareketleri",

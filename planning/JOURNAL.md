@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278o — Inventory Valuation report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit after Inventory reports showed English labels in Arabic.
+- **Fix:** Localized the Inventory Valuation report title, subtitle, filters, mode/pricing-policy options, generate button, chips, summary, loading text, empty state, table columns, and grand-total label using `common:inventory.valuation.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock valuation, average-cost, last-purchase-cost, as-of valuation, voucher, ledger, tenant data, permission, or report calculation logic changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278o, then continue remaining all-report translation audit.
+
 ### Session: 2026-06-29 (Production QA 278n — Inventory Unsettled Costs report translation)
 
 - **Goal:** Address Telegram photo 23 showing Inventory Unsettled Costs report English text in an Arabic session.
