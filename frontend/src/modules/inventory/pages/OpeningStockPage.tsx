@@ -1,12 +1,14 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
+import { useTranslation } from 'react-i18next';
 import { AlertCircle, Check, Eye, Filter, Package, RotateCcw, Search, Trash2 } from 'lucide-react';
 import { clsx } from 'clsx';
 import {
   InventorySettingsDTO,
   InventoryWarehouseDTO,
   OpeningStockDocumentDTO,
+  StockMovementDTO,
   inventoryApi,
 } from '../../../api/inventoryApi';
 import { accountingApi } from '../../../api/accountingApi';
@@ -77,6 +79,7 @@ const getErrorMessage = (error: any) =>
   'Failed to process Opening Stock Document.';
 
 const OpeningStockPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const { company } = useCompanyAccess();
@@ -91,6 +94,7 @@ const OpeningStockPage: React.FC = () => {
 
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
   const [documents, setDocuments] = useState<OpeningStockDocumentDTO[]>([]);
+  const [legacyOpeningMovements, setLegacyOpeningMovements] = useState<StockMovementDTO[]>([]);
   const [inventorySettings, setInventorySettings] = useState<InventorySettingsDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -143,16 +147,19 @@ const OpeningStockPage: React.FC = () => {
     try {
       setLoading(true);
       setError(null);
-      const [warehouseResponse, documentResponse, settingsResponse] = await Promise.all([
+      const [warehouseResponse, documentResponse, settingsResponse, movementResponse] = await Promise.all([
         inventoryApi.listWarehouses({ active: true }),
         inventoryApi.listOpeningStockDocuments(),
         inventoryApi.getSettings(),
+        inventoryApi.getMovements({ limit: 300, offset: 0 }),
       ]);
       const nextWarehouses = unwrap<InventoryWarehouseDTO[]>(warehouseResponse) || [];
       const nextDocuments = unwrap<OpeningStockDocumentDTO[]>(documentResponse) || [];
       const nextSettings = unwrap<InventorySettingsDTO | null>(settingsResponse);
+      const nextMovements = unwrap<StockMovementDTO[]>(movementResponse) || [];
       setWarehouses(nextWarehouses);
       setDocuments(nextDocuments);
+      setLegacyOpeningMovements(nextMovements.filter((movement) => movement.movementType === 'OPENING_STOCK'));
       setInventorySettings(nextSettings);
       setForm((prev) => ({
         ...prev,
@@ -734,6 +741,7 @@ const OpeningStockPage: React.FC = () => {
 
   const totalPages = Math.max(1, Math.ceil(sortedData.length / pageSize));
   const paginatedData = sortedData.slice((page - 1) * pageSize, page * pageSize);
+  const showLegacyOpeningStockWarning = documents.length === 0 && legacyOpeningMovements.length > 0;
   const hasActiveFilters =
     statusFilter !== 'ALL' ||
     searchFilter !== '' ||
@@ -813,6 +821,29 @@ const OpeningStockPage: React.FC = () => {
         title="Opening Stock Documents"
         subtitle=""
         compactHeader
+        summaryWidgets={showLegacyOpeningStockWarning ? (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-100">
+            <div className="flex items-start gap-2">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div className="space-y-1">
+                <p className="font-semibold">
+                  {t('openingStockDocuments.legacyOpeningMovementsTitle', {
+                    count: legacyOpeningMovements.length,
+                    defaultValue: '{{count}} legacy opening stock movement(s) found',
+                  })}
+                </p>
+                <p>
+                  {t('openingStockDocuments.legacyOpeningMovementsBody', {
+                    defaultValue: 'These movements were recorded through the older direct opening-stock flow, so they do not have Opening Stock Document headers. Review Stock Movements before creating a new opening document to avoid duplicate stock.',
+                  })}
+                </p>
+                <Link to="/inventory/movements" className="inline-flex font-semibold text-amber-950 underline underline-offset-2 dark:text-amber-100">
+                  {t('openingStockDocuments.reviewStockMovements', { defaultValue: 'Review Stock Movements' })}
+                </Link>
+              </div>
+            </div>
+          </div>
+        ) : undefined}
         statusFilterConfig={statusFilterConfig}
         newButtonLabel="New Document"
         onNewClick={() => navigate('/inventory/opening-stock/new')}

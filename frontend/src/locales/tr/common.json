@@ -4239,6 +4239,11 @@
       "apiRequest": "Sunucu isteği"
     }
   },
+  "openingStockDocuments": {
+    "legacyOpeningMovementsTitle": "{{count}} eski açılış stok hareketi bulundu",
+    "legacyOpeningMovementsBody": "Bu hareketler eski doğrudan açılış stoku akışıyla kaydedildiği için Açılış Stok Belgesi başlığına sahip değildir. Çift stok oluşmasını önlemek için yeni açılış belgesi oluşturmadan önce Stok Hareketlerini inceleyin.",
+    "reviewStockMovements": "Stok Hareketlerini incele"
+  },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "{{itemLabel}} ürünü {{warehouseLabel}} deposundan çıkışı yapılamıyor — stokta yalnızca {{current}} var ancak {{requested}} istendi (kalan {{resulting}} olurdu). Negatif stok kapalı. Önce stok girişi yapın veya Envanter Ayarları’ndan negatif stoğu etkinleştirin."
   },

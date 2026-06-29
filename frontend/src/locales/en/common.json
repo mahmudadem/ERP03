@@ -4167,6 +4167,11 @@
       "apiRequest": "Server request"
     }
   },
+  "openingStockDocuments": {
+    "legacyOpeningMovementsTitle": "{{count}} legacy opening stock movement(s) found",
+    "legacyOpeningMovementsBody": "These movements were recorded through the older direct opening-stock flow, so they do not have Opening Stock Document headers. Review Stock Movements before creating a new opening document to avoid duplicate stock.",
+    "reviewStockMovements": "Review Stock Movements"
+  },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "Can’t issue {{itemLabel}} from warehouse {{warehouseLabel}} — only {{current}} in stock but {{requested}} requested (would leave {{resulting}}). Negative stock is turned off. Receive stock first, or enable negative stock in Inventory Settings."
   },
