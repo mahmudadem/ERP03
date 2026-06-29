@@ -12,6 +12,7 @@ import {
   SalesMessagingAccountDTO,
   SalesInvoiceDTO,
   SalesInvoiceLineInputDTO,
+  SalesInvoiceStartupReferenceDataDTO,
   SalesOrderDTO,
   salesApi,
   SalesSettingsDTO,
@@ -1375,13 +1376,26 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     const cacheKey = company?.id || 'active-company';
     const now = Date.now();
     const cached = salesInvoiceReferenceCache.get(cacheKey);
+    const normalizeReferenceData = (referenceData: SalesInvoiceReferenceData): SalesInvoiceReferenceData => ({
+      settings: referenceData.settings ?? null,
+      customers: Array.isArray(referenceData.customers) ? referenceData.customers : [],
+      items: Array.isArray(referenceData.items) ? referenceData.items : [],
+      taxCodes: Array.isArray(referenceData.taxCodes) ? referenceData.taxCodes : [],
+      warehouses: Array.isArray(referenceData.warehouses) ? referenceData.warehouses : [],
+      salesOrders: Array.isArray(referenceData.salesOrders) ? referenceData.salesOrders : [],
+      salespersons: Array.isArray(referenceData.salespersons) ? referenceData.salespersons : [],
+      commSettings: referenceData.commSettings ?? null,
+      accountingPolicy: referenceData.accountingPolicy ?? null,
+      invoiceTemplates: Array.isArray(referenceData.invoiceTemplates) ? referenceData.invoiceTemplates : [],
+      formSettings: Array.isArray(referenceData.formSettings) ? referenceData.formSettings : [],
+    });
 
     setStartupProgress({ cacheStatus: 'checking', activeLabel: t('sales.invoiceDetail.loadingCheckingCache', 'Checking startup cache') });
 
     if (cached?.data && cached.expiresAt > now) {
       setStartupProgress({
         cacheStatus: 'hit',
-        completedCalls: Math.max(10, loadingProgress?.completedCalls || 0),
+        completedCalls: Math.max(11, loadingProgress?.completedCalls || 0),
         activeLabel: t('sales.invoiceDetail.loadingCacheHit', 'Using cached startup data'),
       });
       return cached.data;
@@ -1396,6 +1410,29 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
     }
 
     setStartupProgress({ cacheStatus: 'miss', activeLabel: t('sales.invoiceDetail.loadingReferenceData', 'Loading reference data') });
+
+    try {
+      const bundled = await trackStartupCall(
+        t('sales.invoiceDetail.loadingReferenceData', 'Loading reference data'),
+        () => salesApi.getInvoiceStartupReferenceData()
+      ).then(unwrap<SalesInvoiceStartupReferenceDataDTO>);
+      const data = normalizeReferenceData(bundled);
+      salesInvoiceReferenceCache.set(cacheKey, {
+        expiresAt: Date.now() + SALES_INVOICE_REFERENCE_CACHE_TTL_MS,
+        data,
+      });
+      setStartupProgress({
+        completedCalls: 11,
+        activeLabel: t('sales.invoiceDetail.loadingFinalizing', 'Finalizing form'),
+      });
+      return data;
+    } catch (bundleError) {
+      console.warn('[SalesInvoiceDetail] startup bundle failed, falling back to individual calls:', bundleError);
+      setStartupProgress({
+        completedCalls: 0,
+        activeLabel: t('sales.invoiceDetail.loadingReferenceData', 'Loading reference data'),
+      });
+    }
 
     const promise = Promise.all([
       trackStartupCall(t('sales.invoiceDetail.loadingSalesSettings', 'Sales settings'), () => salesApi.getSettings()).then(unwrap<SalesSettingsDTO | null>),
@@ -1424,18 +1461,18 @@ export const SalesInvoiceDetail: React.FC<SalesInvoiceDetailProps> = ({
       accountingPolicy,
       invoiceTemplates,
       formSettings,
-    ]) => ({
+    ]) => normalizeReferenceData({
       settings,
-      customers: Array.isArray(customers) ? customers : [],
-      items: Array.isArray(items) ? items : [],
-      taxCodes: Array.isArray(taxCodes) ? taxCodes : [],
-      warehouses: Array.isArray(warehouses) ? warehouses : [],
-      salesOrders: Array.isArray(salesOrders) ? salesOrders : [],
-      salespersons: Array.isArray(salespersons) ? salespersons : [],
+      customers,
+      items,
+      taxCodes,
+      warehouses,
+      salesOrders,
+      salespersons,
       commSettings,
       accountingPolicy,
-      invoiceTemplates: Array.isArray(invoiceTemplates) ? invoiceTemplates : [],
-      formSettings: Array.isArray(formSettings) ? formSettings : [],
+      invoiceTemplates,
+      formSettings,
     }));
 
     salesInvoiceReferenceCache.set(cacheKey, {

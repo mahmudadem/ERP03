@@ -78,6 +78,13 @@ export const StandardCOA = [
     parentCode: "103",
     isProtected: false,
   },
+  {
+    code: "10303",
+    name: "Inventory Transfer Clearing",
+    type: "asset",
+    parentCode: "103",
+    isProtected: false,
+  },
   // Accounts Receivable
   {
     code: "104",
@@ -211,6 +218,22 @@ export const StandardCOA = [
     isProtected: false,
     equitySubgroup: "RETAINED_EARNINGS",
   },
+  {
+    code: "303",
+    name: "Opening Balance Equity",
+    type: "equity",
+    parentCode: "3",
+    isProtected: false,
+    equitySubgroup: "RESERVES",
+  },
+  {
+    code: "304",
+    name: "Inventory Revaluation Reserve",
+    type: "equity",
+    parentCode: "3",
+    isProtected: false,
+    equitySubgroup: "RESERVES",
+  },
 
   // ========== REVENUE ==========
   {
@@ -271,6 +294,14 @@ export const StandardCOA = [
     isProtected: false,
     plSubgroup: "SALES",
   },
+  {
+    code: "406",
+    name: "Inventory Adjustment Gain",
+    type: "revenue",
+    parentCode: "4",
+    isProtected: false,
+    plSubgroup: "OTHER_REVENUE",
+  },
 
   // ========== EXPENSES ==========
   {
@@ -313,6 +344,22 @@ export const StandardCOA = [
     isProtected: false,
     plSubgroup: "COST_OF_SALES",
   },
+  {
+    code: "50103",
+    name: "Purchase Returns",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
+    plSubgroup: "COST_OF_SALES",
+  },
+  {
+    code: "50104",
+    name: "Purchase Discounts Received",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
+    plSubgroup: "COST_OF_SALES",
+  },
   // Operating Expenses
   {
     code: "502",
@@ -333,6 +380,22 @@ export const StandardCOA = [
   {
     code: "50202",
     name: "Sales & Marketing",
+    type: "expense",
+    parentCode: "502",
+    isProtected: false,
+    plSubgroup: "OPERATING_EXPENSES",
+  },
+  {
+    code: "50203",
+    name: "Inventory Adjustment Loss",
+    type: "expense",
+    parentCode: "502",
+    isProtected: false,
+    plSubgroup: "OPERATING_EXPENSES",
+  },
+  {
+    code: "50204",
+    name: "Inventory Revaluation Expense",
     type: "expense",
     parentCode: "502",
     isProtected: false,

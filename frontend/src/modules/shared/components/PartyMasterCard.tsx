@@ -294,9 +294,8 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       legalName: '',
       displayName: '',
       taxId: '',
-      role,
+      roles: [role],
       active: true,
-      communicationChannels: [],
       paymentTermsDays: 0
     });
     setAccountStrategy('');

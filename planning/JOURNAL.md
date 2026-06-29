@@ -5456,3 +5456,36 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
   the graphify CLI is not installed/available in this environment.
 - Actual time: ~2.5h.
 - Next: owner QA, PostgreSQL `prisma db push`, then merge.
+
+# 2026-06-29 — Emergency Firebase deploy QA fixes on unified worktree
+
+- Goal: clear owner-reported production QA blockers on Firebase/Vercel while staying on `D:\DEV2026\ERP03-unified`.
+- Deployed fixes already in the unified branch for POS item company context, Inventory UOM conversion query indexing, startup retry behavior, account-create notification blocking, and generic status-code error mapping.
+- Fixed Purchases Settings persistence for `exchangeGainLossAccountId`: the frontend already sent the field and the DTO could return it, but `UpdatePurchaseSettingsUseCase` and validator did not carry it through, causing a success toast followed by missing value after reload.
+- Added validation/account existence checks and a focused regression test proving the FX Gain/Loss account is saved and returned.
+- Verification: `npm test -- PurchaseSettingsUseCases.test.ts` PASS (9/9), `npm run build` PASS, `npx firebase deploy --only functions --project erp-03` PASS, recent live function logs show startup validation complete and 200 responses.
+- Accounting impact: preserves the configured purchase realized-FX account used by supplier exchange-difference posting; no posting math changed.
+- Time spent: ~0.7h on the Purchases settings persistence fix after earlier deploy fixes.
+- Next: owner retest `Purchases -> Settings`: select/save FX Gain/Loss account, navigate away/reopen, confirm the field persists.
+
+# 2026-06-29 — Emergency vendor/customer list 500 fix
+
+- Goal: clear owner-reported `Purchases -> Vendors` 500 after a vendor was successfully created.
+- Actual root cause from live logs: `GET /api/v1/tenant/shared/parties?active=true` and role-filtered party list calls hit Firestore `FAILED_PRECONDITION: The query requires an index` for party `active/displayName` and related role/active/displayName combinations.
+- Fix: changed `FirestorePartyRepository.list()` to use at most one server-side Firestore filter, then apply active filtering, display-name sorting, and offset/limit in memory. This avoids requiring undeployed Firestore composite indexes for Vendors, Customers, document party selectors, and shared `PartySelector` flows.
+- Added focused regression coverage in `FirestorePartyRepository.test.ts` proving role-filtered party lists do not call Firestore `orderBy`, `limit`, or `offset`.
+- Verification: `npm test -- FirestorePartyRepository.test.ts PurchaseSettingsUseCases.test.ts` PASS (10/10), backend `npm run build` PASS, `npx firebase deploy --only functions --project erp-03` PASS. Post-deploy logs show startup validation complete and no new 500s in the checked window.
+- Accounting impact: master-data read-path fix only. No vendor creation, AP sub-account, posting, settlement, voucher, tax, or ledger behavior changed.
+- Time spent: ~0.5h.
+- Next: owner hard-refresh and retest `Purchases -> Vendors`; also spot-check `Sales -> Customers` because it uses the same party list path.
+
+# 2026-06-29 — Sales Invoice startup bundle performance fix
+
+- Goal: explain and reduce owner-reported 20s+ `Sales -> Invoices -> New` form loading after hard refresh/deploy.
+- Root cause: the form opened by waiting on 11 independent startup API calls. On Firebase cold starts this fanned out into several slow function instances, so the UI waited for the slowest call while showing labels such as `Form settings`.
+- Fix: added read-only `/tenant/sales/invoices/startup-reference-data` and updated the Sales Invoice page to request the startup reference bundle first, with the existing 11-call path retained as fallback. Tax codes in the startup bundle use the master-data list directly because invoice open does not need posted-document lock metadata.
+- Accounting impact: read-only startup/reference-data optimization only. No invoice totals, tax calculation, posting, AR, COGS, stock, settlement, period lock, approval, voucher, or audit behavior changed.
+- Verification: backend clean build PASS, frontend production build PASS during Vercel deploy, Firebase functions deploy PASS/skipped unchanged package, deployed frontend bundle contains `startup-reference-data`, and unauthenticated live probe of the new endpoint returns 401 behind auth.
+- Deploy: Firebase project `erp-03`; Vercel production alias `https://erp-03.vercel.app`, deployment `dpl_8r3mzce1Ymg92UN8hfaWMfbgmoff`.
+- Time spent: ~0.8h.
+- Next: owner hard-refresh and open `Sales -> Invoices -> New`; Network should show one startup bundle call instead of the old 11-call fan-out, with later opens using the in-page cache.

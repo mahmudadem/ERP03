@@ -26,6 +26,13 @@ import { useUserPreferencesContext } from '../../../context/UserPreferencesConte
 import { salesApi, SalesInvoiceDTO } from '../../../api/salesApi';
 import { purchasesApi } from '../../../api/purchasesApi';
 import { sharedApi } from '../../../api/sharedApi';
+import { useCompanyModules } from '../../../hooks/useCompanyModules';
+
+const asList = <T,>(payload: T[] | { data?: T[]; items?: T[] } | any): T[] => {
+  const body = payload?.data ?? payload;
+  const list = body?.data ?? body?.items ?? body;
+  return Array.isArray(list) ? list : [];
+};
 
 const DashboardPage: React.FC = () => {
   const { t } = useTranslation('dashboard');
@@ -35,7 +42,12 @@ const DashboardPage: React.FC = () => {
   const navigate = useNavigate();
   const { openWindow } = useWindowManager();
   const { uiMode } = useUserPreferencesContext();
+  const { getModuleStatus, loading: modulesLoading } = useCompanyModules();
   const isWindowsMode = uiMode === 'windows';
+  const moduleReady = (moduleCode: string) => {
+    const module = getModuleStatus(moduleCode);
+    return !!module?.isEnabled && !!module?.initialized;
+  };
 
   const [invoices, setInvoices] = useState<SalesInvoiceDTO[]>([]);
   const [totalRevenue, setTotalRevenue] = useState(0);
@@ -43,40 +55,46 @@ const DashboardPage: React.FC = () => {
   const [totalCustomers, setTotalCustomers] = useState(0);
 
   useEffect(() => {
-    salesApi.listSIs({ limit: 5 }).then(res => {
-      const body = res.data || res;
-      const arr = body.data || body.items || body;
-      if (Array.isArray(arr)) {
+    if (modulesLoading) return;
+
+    if (moduleReady('sales')) {
+      salesApi.listSIs({ limit: 5 }).then(res => {
+      const arr = asList<SalesInvoiceDTO>(res);
+      if (arr.length > 0) {
         setInvoices(arr);
         const sum = arr.reduce((acc, inv) => acc + (inv.grandTotalDoc || 0), 0);
         setTotalRevenue(sum);
       }
-    }).catch(console.error);
+      }).catch(console.error);
+    }
 
-    purchasesApi.listPIs({ limit: 5 }).then(res => {
-      const body = res.data || res;
-      const arr = body.data || body.items || body;
-      if (Array.isArray(arr)) {
+    if (moduleReady('purchase')) {
+      purchasesApi.listPIs({ limit: 5 }).then(res => {
+      const arr = asList<any>(res);
+      if (arr.length > 0) {
         const sum = arr.reduce((acc, inv) => acc + (inv.grandTotalDoc || 0), 0);
         setTotalExpenses(sum);
       }
-    }).catch(console.error);
+      }).catch(console.error);
+    }
 
-    sharedApi.listParties({ role: 'CUSTOMER', active: true }).then(res => {
-      const body = res.data || res;
-      const arr = body.data || body.items || body;
-      if (Array.isArray(arr)) {
-        setTotalCustomers(arr.length);
-      }
-    }).catch(console.error);
-  }, []);
+    if (moduleReady('crm') || moduleReady('sales')) {
+      sharedApi.listParties({ role: 'CUSTOMER', active: true }).then(res => {
+      setTotalCustomers(asList(res).length);
+      }).catch(console.error);
+    }
+  }, [modulesLoading, getModuleStatus]);
 
   const handleAction = (type: string) => {
+    if (type === 'invoice' && !moduleReady('sales')) return;
+    if ((type === 'vendor' || type === 'expense') && !moduleReady('purchase')) return;
+    if (type === 'product' && !moduleReady('inventory')) return;
+
     if (isWindowsMode) {
       if (type === 'invoice') openWindow({ type: 'sales_invoice', title: 'New Invoice', data: { invoiceId: 'new' }, size: { width: 1100, height: 750 } });
-      if (type === 'vendor') openWindow({ type: 'supplier', title: 'New Vendor', data: { partyId: 'new' }, size: { width: 800, height: 600 } });
-      if (type === 'expense') openWindow({ type: 'purchase_invoice', title: 'New Expense', data: { invoiceId: 'new' }, size: { width: 1100, height: 750 } });
-      if (type === 'product') openWindow({ type: 'inventory_item', title: 'New Product', data: { itemId: 'new' }, size: { width: 900, height: 700 } });
+      if (type === 'vendor') openWindow({ type: 'party', title: 'New Vendor', data: { partyId: 'new', role: 'VENDOR' }, size: { width: 800, height: 600 } });
+      if (type === 'expense') openWindow({ type: 'document', title: 'New Expense', data: { docType: 'purchase_invoice', invoiceId: 'new' }, size: { width: 1100, height: 750 } });
+      if (type === 'product') openWindow({ type: 'item', title: 'New Product', data: { itemId: 'new' }, size: { width: 900, height: 700 } });
     } else {
       if (type === 'invoice') navigate('/sales/invoices/new');
       if (type === 'vendor') navigate('/purchases/suppliers/new');
@@ -158,10 +176,10 @@ const DashboardPage: React.FC = () => {
                  <Activity className="w-5 h-5 text-gray-400" /> {t('quickActions', { defaultValue: 'Quick Actions' })}
               </h3>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                 <ActionBtn onClick={() => handleAction('invoice')} label={t('actions.newInvoice', { defaultValue: 'New Invoice' })} icon={<FileText className="w-5 h-5" />} color="text-violet-600 bg-violet-50 hover:bg-violet-100" />
-                 <ActionBtn onClick={() => handleAction('vendor')} label={t('actions.addVendor', { defaultValue: 'Add Vendor' })} icon={<Users className="w-5 h-5" />} color="text-pink-600 bg-pink-50 hover:bg-pink-100" />
-                 <ActionBtn onClick={() => handleAction('expense')} label={t('actions.recordExpense', { defaultValue: 'Record Expense' })} icon={<DollarSign className="w-5 h-5" />} color="text-amber-600 bg-amber-50 hover:bg-amber-100" />
-                 <ActionBtn onClick={() => handleAction('product')} label={t('actions.addProduct', { defaultValue: 'Add Product' })} icon={<Package className="w-5 h-5" />} color="text-cyan-600 bg-cyan-50 hover:bg-cyan-100" />
+                 <ActionBtn onClick={() => handleAction('invoice')} disabled={!moduleReady('sales')} label={t('actions.newInvoice', { defaultValue: 'New Invoice' })} icon={<FileText className="w-5 h-5" />} color="text-violet-600 bg-violet-50 hover:bg-violet-100" />
+                 <ActionBtn onClick={() => handleAction('vendor')} disabled={!moduleReady('purchase')} label={t('actions.addVendor', { defaultValue: 'Add Vendor' })} icon={<Users className="w-5 h-5" />} color="text-pink-600 bg-pink-50 hover:bg-pink-100" />
+                 <ActionBtn onClick={() => handleAction('expense')} disabled={!moduleReady('purchase')} label={t('actions.recordExpense', { defaultValue: 'Record Expense' })} icon={<DollarSign className="w-5 h-5" />} color="text-amber-600 bg-amber-50 hover:bg-amber-100" />
+                 <ActionBtn onClick={() => handleAction('product')} disabled={!moduleReady('inventory')} label={t('actions.addProduct', { defaultValue: 'Add Product' })} icon={<Package className="w-5 h-5" />} color="text-cyan-600 bg-cyan-50 hover:bg-cyan-100" />
               </div>
            </section>
 
@@ -252,8 +270,8 @@ const StatsCard = ({ label, value, metric, trend, icon, color }: any) => (
    </Card>
 );
 
-const ActionBtn = ({ label, icon, color, onClick }: any) => (
-   <button onClick={onClick} className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md transition-all group w-full">
+const ActionBtn = ({ label, icon, color, onClick, disabled }: any) => (
+   <button disabled={disabled} onClick={onClick} className="flex flex-col items-center justify-center p-4 bg-white border border-gray-200 rounded-xl hover:border-gray-300 hover:shadow-md transition-all group w-full disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:shadow-none">
       <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-3 transition-colors ${color}`}>
          {icon}
       </div>

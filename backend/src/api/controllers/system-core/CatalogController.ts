@@ -46,6 +46,11 @@ export class CatalogController {
         type: (req as any).query.type,
         categoryId: (req as any).query.categoryId,
         active: (req as any).query.active === undefined ? undefined : (req as any).query.active === 'true',
+        trackInventory: (req as any).query.trackInventory === undefined
+          ? undefined
+          : String((req as any).query.trackInventory) === 'true',
+        limit: (req as any).query.limit ? Number((req as any).query.limit) : undefined,
+        offset: (req as any).query.offset ? Number((req as any).query.offset) : undefined,
       });
 
       (res as any).json({

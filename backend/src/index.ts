@@ -68,23 +68,20 @@ async function initServerWithRetry(): Promise<void> {
   }
 }
 
-initServerWithRetry();
+const serverInitPromise = initServerWithRetry();
 
 export const api = functions.https.onRequest(async (req: any, res: any) => {
   if (!serverReady || !server) {
-    // Add CORS headers manually since the Express app (which has the cors middleware) is not ready yet
-    res.set('Access-Control-Allow-Origin', '*');
-    res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-    res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-company-id, x-silent-error');
-    
-    // If it's a preflight request, return 204
     if (req.method === 'OPTIONS') {
+      // Add CORS headers manually because the Express CORS middleware is not ready yet.
+      res.set('Access-Control-Allow-Origin', '*');
+      res.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+      res.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-company-id, x-silent-error');
       res.status(204).send('');
       return;
     }
-    
-    res.status(503).json({ success: false, error: 'Server not ready, please retry' });
-    return;
+
+    await serverInitPromise;
   }
 
   server(req, res);

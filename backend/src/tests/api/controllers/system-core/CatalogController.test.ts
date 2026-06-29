@@ -54,8 +54,41 @@ describe('CatalogController tenant context', () => {
       type: undefined,
       categoryId: undefined,
       active: undefined,
+      trackInventory: undefined,
+      limit: undefined,
+      offset: undefined,
     });
     expect(res.json).toHaveBeenCalledWith({ success: true, data: [] });
+  });
+
+  it('forwards pagination and trackInventory filters to catalogCore.listItems', async () => {
+    const listItems = jest.fn().mockResolvedValue([]);
+    overrideContainer('catalogCore', { listItems });
+
+    const req: any = {
+      tenantContext: { companyId: 'cmp-A' },
+      user: { uid: 'user-1', companyId: 'cmp-A' },
+      query: {
+        active: 'true',
+        trackInventory: 'true',
+        limit: '1000',
+        offset: '25',
+      },
+    };
+    const res = makeRes();
+    const next = jest.fn();
+
+    await CatalogController.listItems(req, res, next);
+
+    expect(next).not.toHaveBeenCalled();
+    expect(listItems).toHaveBeenCalledWith('cmp-A', {
+      type: undefined,
+      categoryId: undefined,
+      active: true,
+      trackInventory: true,
+      limit: 1000,
+      offset: 25,
+    });
   });
 
   it('passes the authenticated company into item lookup', async () => {

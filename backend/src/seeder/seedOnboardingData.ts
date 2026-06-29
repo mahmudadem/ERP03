@@ -129,6 +129,21 @@ const MODULE_DEFINITIONS = [
     autoAttachToRoles: ['owner', 'admin']
   },
   {
+    moduleId: 'sales',
+    permissions: [
+      { id: 'sales.view', label: 'View Sales', enabled: true },
+      { id: 'sales.settings.view', label: 'View Sales Settings', enabled: true },
+      { id: 'sales.settings.manage', label: 'Manage Sales Settings', enabled: true },
+      { id: 'sales.orders.view', label: 'View Sales Orders', enabled: true },
+      { id: 'sales.orders.manage', label: 'Manage Sales Orders', enabled: true },
+      { id: 'sales.invoices.view', label: 'View Sales Invoices', enabled: true },
+      { id: 'sales.invoices.manage', label: 'Manage Sales Invoices', enabled: true },
+      { id: 'sales.items.view', label: 'View Sales Items', enabled: true },
+      { id: 'sales.items.manage', label: 'Manage Sales Items', enabled: true },
+    ],
+    autoAttachToRoles: ['owner', 'admin']
+  },
+  {
     moduleId: 'pos',
     permissions: [
       { id: 'pos.terminal.access', label: 'Access POS Terminal', enabled: true },

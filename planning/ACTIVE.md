@@ -1,5 +1,21 @@
 # 🎯 Current Focus
 
+## Emergency Firebase deploy QA fixes — unified worktree (2026-06-29)
+
+**Status:** ✅ Deployed to `erp-03` functions from `D:\DEV2026\ERP03-unified` on branch `codex/unified-firestore-deploy-20260628`.
+
+- POS Products & Services `/tenant/pos/items` company-context bug fixed before this note.
+- Inventory item UOM conversions index-dependent query fixed in code before this note.
+- Startup/retry 503 hard-refresh behavior reduced before this note.
+- Accounting account-create timeout/duplicate handling fixed before this note.
+- Purchases Settings FX Gain/Loss account persistence fixed: `exchangeGainLossAccountId` now flows through validator + Purchases settings use case and has a focused regression test.
+- Vendor/customer list 500 fixed: `FirestorePartyRepository.list()` no longer depends on Firestore composite indexes for `role`/`active`/`displayName`; final active filtering, sorting, and paging happen in memory.
+- Sales Invoice form startup latency fixed: the frontend now calls a single `/tenant/sales/invoices/startup-reference-data` bundle endpoint instead of blocking the form on 11 independent startup requests during cold Firebase/Vercel sessions. The old individual-call path remains as fallback.
+- Verification: focused Purchases settings + Firestore party repository tests PASS (10/10), backend build PASS, frontend production build PASS on Vercel, functions deploy PASS, live unauthenticated probe confirms the startup bundle route exists behind auth with 401, and deployed frontend bundle contains `startup-reference-data`.
+- Time spent on Purchases settings persistence fix: ~0.7h. Time spent on vendor/customer list fix: ~0.5h. Time spent on Sales Invoice startup bundle fix/deploy: ~0.8h.
+
+**Next:** owner should hard-refresh, retest `Sales -> Invoices -> New`, `Purchases -> Vendors`, `Sales -> Customers`, and `Purchases -> Settings` persistence.
+
 ## Task 277 — Item UOM barcodes and multilingual UOM names (2026-06-29)
 
 **Status:** ✅ Complete locally on `codex/items-uom-barcodes`.

@@ -85,3 +85,5 @@ extracted_code_*.txt
 
 # Claude Code harness state (worktrees managed by Claude — never commit)
 .claude/worktrees/
+.vercel
+.env*

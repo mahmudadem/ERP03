@@ -1,5 +1,11 @@
 import client from './client';
+import type { AccountingPolicyConfig } from './accountingApi';
 import type { PolicyConfigDTO, PolicyRule } from './controlsPoliciesApi';
+import type { CommunicationsSettingsDTO } from './communicationsApi';
+import type { InventoryItemDTO, InventoryWarehouseDTO } from './inventoryApi';
+import type { PartyDTO, TaxCodeDTO } from './sharedApi';
+import type { SalespersonDTO } from './salesMasterDataApi';
+import type { FormSettingsRecord, VoucherFormResponse } from './voucherFormApi';
 
 export type WorkflowMode = 'SIMPLE' | 'OPERATIONAL';
 
@@ -739,6 +745,20 @@ export interface SellingPolicyDTO {
   allowManagerOverride: boolean;
 }
 
+export interface SalesInvoiceStartupReferenceDataDTO {
+  settings: SalesSettingsDTO | null;
+  accountingPolicy: AccountingPolicyConfig | null;
+  commSettings: CommunicationsSettingsDTO | null;
+  customers: PartyDTO[];
+  items: InventoryItemDTO[];
+  taxCodes: TaxCodeDTO[];
+  warehouses: InventoryWarehouseDTO[];
+  salesOrders: SalesOrderDTO[];
+  salespersons: SalespersonDTO[];
+  invoiceTemplates: VoucherFormResponse[];
+  formSettings: FormSettingsRecord[];
+}
+
 export const salesApi = {
   initializeSales: (payload: InitializeSalesPayload): Promise<SalesSettingsDTO> =>
     client.post('/tenant/sales/initialize', payload),
@@ -818,6 +838,9 @@ export const salesApi = {
 
   createAndPostSI: (payload: CreateSalesInvoicePayload, periodLockOverrideReason?: string): Promise<SalesInvoiceDTO> =>
     client.post('/tenant/sales/invoices/create-and-post', { ...payload, periodLockOverrideReason }),
+
+  getInvoiceStartupReferenceData: (): Promise<SalesInvoiceStartupReferenceDataDTO> =>
+    client.get('/tenant/sales/invoices/startup-reference-data').then((r: any) => r?.data?.data ?? r?.data ?? r),
 
   updateAndPostSI: (id: string, payload: UpdateSalesInvoicePayload): Promise<SalesInvoiceDTO> =>
     client.put(`/tenant/sales/invoices/${id}/update-and-post`, payload),
