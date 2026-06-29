@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278i — POS report date/time sort)
+
+- **Goal:** Address Telegram note: "all reports using report container must start default sort by date and time, time is important."
+- **Decision:** Applied the fix first to POS reports with dated row-level output. Did not force date order onto grouped/ranked summaries because that would make Payment Methods, Cashier Sales, and Top Selling Items less meaningful.
+- **Fix:** Added shared `sortReportRowsByDateTimeDesc()` helper and applied it to POS Daily Summary, Receipt History, Cancelled Receipts, Cash Over/Short, Override Audit, and Reprint Audit.
+- **Accounting impact:** Display order only. No POS receipts, returns, payments, shifts, vouchers, stock, revenue, tax, cash, ledger, tenant, or audit records changed.
+- **Verification:** frontend typecheck passed; frontend production build passed. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278i docs, then continue the next Telegram QA issue.
+
 ### Session: 2026-06-29 (Production QA 278h — clear API error labels)
 
 - **Goal:** Fix Telegram photos 9–11 where Approval Center and Account Statement showed generic production errors such as "An unexpected error occurred" and "Request failed with status code 500".

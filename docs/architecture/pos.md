@@ -24,6 +24,22 @@ The shift remains OPEN and neither the voucher nor shift mutation runs. Raw
 `Error` must not be used for this condition because the API fallback maps it to
 HTTP 500 and hides the actionable configuration message.
 
+### POS report ordering
+
+POS reports that list dated transaction/audit rows must render newest entries
+first. The frontend uses the shared `sortReportRowsByDateTimeDesc()` helper for:
+
+- Daily Summary (`date`)
+- Receipt History (`createdAt`)
+- Cancelled Receipts (`createdAt`)
+- Cash Over/Short (`closedAt`)
+- Override Audit (`createdAt`)
+- Reprint Audit (`reprintedAt`)
+
+Grouped/ranked POS summaries are intentionally not forced into date order.
+Payment Methods remains grouped by method, Cashier Sales remains grouped by
+cashier, and Top Selling Items remains ranked by sales quantity/amount.
+
 ```
 domain/pos/entities/         PosRegister, PosSettings, PosShift, PosCashMovement,
                              PosReceipt, PosPayment, PosReturn — all pure classes
