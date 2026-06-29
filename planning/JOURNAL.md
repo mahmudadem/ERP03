@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production heal + live Firebase deploy — 503/500 fix reconciled into prod lane)
+
+- **Goal:** The verified production 503/500 storm fix (`9e5d0ac1`) was committed only on the SQL-readiness lane (`ERP03`), while production deploys run from the production lane (`ERP03-unified`). The prod lane had only *part* of the fix (server-ready/CORS) but was missing the 512MB memory bump, the `posShifts`/composite Firestore indexes, and the `COLLECTION_GROUP` fieldOverrides. Goal: make the prod lane carry the complete fix and deploy it live.
+- **Safety first:** committed + pushed both dirty worktrees to origin as savepoints; tagged prod lane `backup/unified-before-heal` for instant rollback.
+- **Heal:** cherry-picked `9e5d0ac1` onto `codex/unified-firestore-deploy-20260628`; resolved 4 conflicts — kept prod's idempotent `registerOnce` module registration; took the fix's `index.ts` (512MB `runWith` + fail-soft 90s init race); UNION-merged `firestore.indexes.json` (all prod indexes + warehouses/posShifts + 9 fieldOverrides); kept prod's deploy-proven `package-lock.json`. `tsc --noEmit` clean.
+- **Deploy:** built backend to `lib/` first (no predeploy hook), then `firebase deploy --only functions,firestore` to `erp-03`. `storage`/`database` targets skipped (never provisioned on this project). Functions + indexes deployed successfully; rules compiled clean (an earlier `firebaserules` API error was transient).
+- **Verified live:** `GET https://us-central1-erp-03.cloudfunctions.net/api/health` → structured 404 JSON (app fully booted, serving routes) — no more `503 Server not ready`.
+- **Time spent:** ~1h.
+- **Next:** let production run ~1 day under real use to confirm stable, then collapse the two worktrees into one canonical lane (route through `main`, then rebase SQL on top). SQL Epic 275 still awaits owner go.
+
 ### Session: 2026-06-29 (Task 277 audit cleanup — conversion-factor lock made honest)
 
 - **Goal:** Audit of Task 277 (`a173dfa1`) found the "used conversion factor is immutable" rule was bolted onto the top of `applyUomConversionCorrection` as `if (impact.used) throw`. Since `impact.used === impactedMovements.length > 0`, the guard fired exactly when the old in-place "smart correction" delta-adjustment engine below it had work to do — making ~150 lines unreachable dead code, leaving a self-contradictory delete-path message, and a frontend dialog still promising auto-adjustments the backend now rejects. No test covered the lock.
