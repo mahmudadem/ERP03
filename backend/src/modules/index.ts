@@ -16,13 +16,24 @@ import { AiAssistantModule } from './ai-assistant/AiAssistantModule';
 export function registerAllModules(): void {
     const registry = ModuleRegistry.getInstance();
 
-    // Register modules
-    registry.register(new AccountingModule());
-    registry.register(new InventoryModule());
-    registry.register(new PurchaseModule());
-    registry.register(new SalesModule());
-    registry.register(new PosModule());
-    registry.register(new AiAssistantModule());
+    // Idempotent: the startup path retries on a transient DB outage at boot, and
+    // each retry re-runs this function. Re-registering an already-registered
+    // module would throw ("Module X is already registered") and permanently
+    // brick the worker, defeating the retry. Register only what's missing.
+    const modules = [
+        new AccountingModule(),
+        new InventoryModule(),
+        new PurchaseModule(),
+        new SalesModule(),
+        new PosModule(),
+        new AiAssistantModule(),
+    ];
+
+    for (const module of modules) {
+        if (!registry.isModuleRegistered(module.metadata.id)) {
+            registry.register(module);
+        }
+    }
 
     console.log(`Registered ${registry.getAllModules().length} modules`);
 }
