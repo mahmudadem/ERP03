@@ -1,14 +1,17 @@
 import { Router } from 'express';
-import * as admin from 'firebase-admin';
 import { CompanyModulesController } from '../controllers/company/CompanyModulesController';
-import { FirestoreCompanyModuleRepository } from '../../infrastructure/firestore/repositories/company/FirestoreCompanyModuleRepository';
+import { diContainer } from '../../infrastructure/di/bindRepositories';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { companyContextMiddleware } from '../middlewares/companyContextMiddleware';
 import { requireCompanyParamMatchesContext } from '../middlewares/guards/companyContextGuard';
 
 const router = Router();
-const companyModuleRepo = new FirestoreCompanyModuleRepository(admin.firestore());
-const controller = new CompanyModulesController(companyModuleRepo);
+// Use the DI-bound repository so this honors DB_TYPE (Prisma in SQL mode,
+// Firestore in Firestore mode). Previously hardwired to Firestore, which made
+// the module list/initialize read/write the wrong database in SQL mode — the
+// frontend then never saw SQL-initialized modules and looped on setup wizards.
+const companyModuleRepo = diContainer.companyModuleRepository;
+const controller = new CompanyModulesController(companyModuleRepo as any);
 
 /**
  * All routes require authentication and company access
