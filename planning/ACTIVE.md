@@ -60,8 +60,9 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278r Inventory GL Reconciliation report translation:** complete; commit `9a42cfba`.
 - **278s Purchases AP Aging report translation:** complete; commit `5f47a7da`.
 - **278t Purchases Vendor Statement report translation:** complete; commit `05926af6`.
-- **278u Sales AR Aging report translation:** validation passed; commit pending.
-- **Next:** commit 278u, then continue remaining all-report translation audit with Sales Customer Statement.
+- **278u Sales AR Aging report translation:** complete; commit `be6d76a0`.
+- **278v Sales Customer Statement report translation:** validation passed; commit pending.
+- **Next:** commit 278v, then continue remaining all-report translation audit.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

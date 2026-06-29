@@ -2,6 +2,8 @@
 
 The Customer Statement and Customer Ledger give you a complete picture of a customer's account. The statement balance comes from the posted accounting ledger for that customer's AR account, so it includes invoices, payments, returns, refunds, and manual adjustments that affected the customer balance.
 
+The report follows the selected interface language. Filters, statement/ledger labels, balance rows, action buttons, open invoices, and open commitments are localized without changing the AR ledger source or statement balance logic.
+
 ---
 
 ## The two views
