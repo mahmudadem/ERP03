@@ -4,6 +4,15 @@ The Purchases module is the mirror image of Sales: it handles everything from "w
 
 It is wired into **Accounting** (bills become journal entries) and **Inventory** (receipts increment stock). The wiring is automatic — just use Purchases and the rest follows.
 
+## Dashboard and analytics
+
+The Purchases dashboard summarizes posted purchase invoices and recent purchase
+activity. Purchases analytics uses the same posted-invoice source.
+
+After the production Firestore index update, posted invoices appear in these
+views without a system-error dialog. The update does not recreate, repost, or
+change any purchase invoice.
+
 Key guides:
 
 - [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)

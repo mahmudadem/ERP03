@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278c — Purchase invoice query index)
+
+- **Goal:** Fix the Purchase dashboard/analytics HTTP 500 when loading posted invoices.
+- **Root cause:** `purchase_invoices` was queried by `status` ordered by `invoiceDate`, but only `sales_invoices` had that composite index.
+- **Fix:** Added the Purchase composite index and extended the production index-contract test.
+- **Accounting impact:** Retrieval-only; no PI, AP, tax, stock, ledger, or tenant data changed.
+- **Verification:** architecture suites 32/32 passed; backend build passed.
+- **Time spent:** ~0.3h.
+- **Deployment:** Deferred until all Telegram QA fixes finish, per owner instruction.
+- **Next:** Commit 278c, then investigate POS shift closing and remaining report failures.
+
 ### Session: 2026-06-29 (Production QA 278b — Purchase item API route)
 
 - **Goal:** Fix Purchases -> Products & Services returning `Endpoint not found: GET /api/v1/tenant/purchases/items`.

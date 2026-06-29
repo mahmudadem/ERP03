@@ -56,4 +56,19 @@ describe('Firestore production index contracts', () => {
       ])
     );
   });
+
+  it('defines the Purchase dashboard and analytics invoice index', () => {
+    expect(config.indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collectionGroup: 'purchase_invoices',
+          queryScope: 'COLLECTION',
+          fields: fieldSignature([
+            { fieldPath: 'status', order: 'ASCENDING' },
+            { fieldPath: 'invoiceDate', order: 'DESCENDING' }
+          ])
+        })
+      ])
+    );
+  });
 });

@@ -39,10 +39,12 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 ## 🔄 Production QA fixes — Telegram export
 
 - **278a ledger statement indexes:** committed as `7ef1917b`; production deployment remains
-  pending because the Firestore Rules API rejected three deployment attempts.
-- **278b Purchase item API route:** implementation and frontend build complete; awaiting commit
-  approval.
-- **Next:** deploy 278a/278b together, then diagnose the remaining production 500 failures.
+  pending until the full fix queue finishes.
+- **278b Purchase item API route:** committed as `26fa87ac`; frontend production deployment
+  remains pending until the full fix queue finishes.
+- **278c Purchase invoice query index:** implementation and verification complete; awaiting
+  commit approval.
+- **Next:** investigate POS shift closing and remaining report failures.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

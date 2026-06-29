@@ -47,6 +47,14 @@
       ]
     },
     {
+      "collectionGroup": "purchase_invoices",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "invoiceDate", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "vouchers",
       "queryScope": "COLLECTION",
       "fields": [
