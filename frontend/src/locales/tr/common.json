@@ -2557,6 +2557,49 @@
         "loadFailed": "Stok kalemleri yüklenemedi"
       }
     },
+    "unsettledCosts": {
+      "title": "Yerleşmemiş Maliyetler",
+      "subtitle": "Maliyet yerleşimi bekleyen stok çıkış hareketleri",
+      "loadFailed": "Rapor yüklenemedi",
+      "empty": "Filtrelerinize uyan yerleşmemiş hareket yok.",
+      "totals": "Toplamlar",
+      "filters": {
+        "fromDate": "Başlangıç Tarihi",
+        "toDate": "Bitiş Tarihi",
+        "item": "Kalem",
+        "allItems": "Tüm kalemler",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "costBasis": "Maliyet Esası"
+      },
+      "costBasis": {
+        "all": "Tümü",
+        "avg": "Hareketli Ortalama",
+        "lastKnown": "Son Bilinen",
+        "missing": "Eksik (maliyet yok)"
+      },
+      "chips": {
+        "item": "Kalem",
+        "warehouseShort": "Depo",
+        "basis": "Esas"
+      },
+      "summary": {
+        "rows": "{{count}} satır",
+        "rows_other": "{{count}} satır",
+        "unsettledQty": "Yerleşmemiş miktar",
+        "costBasisBase": "Maliyet esası (baz)"
+      },
+      "columns": {
+        "date": "Tarih",
+        "item": "Kalem",
+        "warehouse": "Depo",
+        "movementType": "Hareket Türü",
+        "qty": "Miktar",
+        "unsettledQty": "Yerleşmemiş Miktar",
+        "costBasis": "Maliyet Esası",
+        "totalCostBase": "Toplam Maliyet (Baz)"
+      }
+    },
     "transfers": {
       "title": "Stok Transferleri",
       "newButton": "Yeni Transfer",

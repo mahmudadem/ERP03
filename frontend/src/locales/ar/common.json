@@ -2564,6 +2564,49 @@
       "active": "نشط",
       "activeDesc": "السماح باستخدام هذا الصنف في العمليات المالية والمخزنية"
     },
+    "unsettledCosts": {
+      "title": "التكاليف غير المسواة",
+      "subtitle": "حركات إخراج مخزون بانتظار تسوية التكلفة",
+      "loadFailed": "فشل تحميل التقرير",
+      "empty": "لا توجد حركات غير مسواة تطابق الفلاتر.",
+      "totals": "الإجماليات",
+      "filters": {
+        "fromDate": "من تاريخ",
+        "toDate": "إلى تاريخ",
+        "item": "الصنف",
+        "allItems": "كل الأصناف",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "costBasis": "أساس التكلفة"
+      },
+      "costBasis": {
+        "all": "الكل",
+        "avg": "المتوسط المتحرك",
+        "lastKnown": "آخر تكلفة معروفة",
+        "missing": "مفقودة (لا توجد تكلفة)"
+      },
+      "chips": {
+        "item": "الصنف",
+        "warehouseShort": "مستودع",
+        "basis": "الأساس"
+      },
+      "summary": {
+        "rows": "{{count}} صف",
+        "rows_other": "{{count}} صفوف",
+        "unsettledQty": "الكمية غير المسواة",
+        "costBasisBase": "أساس التكلفة (العملة الأساسية)"
+      },
+      "columns": {
+        "date": "التاريخ",
+        "item": "الصنف",
+        "warehouse": "المستودع",
+        "movementType": "نوع الحركة",
+        "qty": "الكمية",
+        "unsettledQty": "الكمية غير المسواة",
+        "costBasis": "أساس التكلفة",
+        "totalCostBase": "إجمالي التكلفة (الأساس)"
+      }
+    },
     "transfers": {
       "title": "تحويلات المخزون",
       "newButton": "تحويل جديد",

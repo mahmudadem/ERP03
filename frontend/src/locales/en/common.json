@@ -2489,6 +2489,49 @@
       "active": "Active",
       "activeDesc": "Allow this item to be used in transactions"
     },
+    "unsettledCosts": {
+      "title": "Unsettled Costs",
+      "subtitle": "Stock-out movements awaiting cost settlement",
+      "loadFailed": "Failed to load report",
+      "empty": "No unsettled movements match your filters.",
+      "totals": "Totals",
+      "filters": {
+        "fromDate": "From Date",
+        "toDate": "To Date",
+        "item": "Item",
+        "allItems": "All items",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "costBasis": "Cost Basis"
+      },
+      "costBasis": {
+        "all": "All",
+        "avg": "Moving Average",
+        "lastKnown": "Last Known",
+        "missing": "Missing (no cost)"
+      },
+      "chips": {
+        "item": "Item",
+        "warehouseShort": "WH",
+        "basis": "Basis"
+      },
+      "summary": {
+        "rows": "{{count}} row",
+        "rows_other": "{{count}} rows",
+        "unsettledQty": "Unsettled qty",
+        "costBasisBase": "Cost basis (base)"
+      },
+      "columns": {
+        "date": "Date",
+        "item": "Item",
+        "warehouse": "Warehouse",
+        "movementType": "Movement Type",
+        "qty": "Qty",
+        "unsettledQty": "Unsettled Qty",
+        "costBasis": "Cost Basis",
+        "totalCostBase": "Total Cost (Base)"
+      }
+    },
     "transfers": {
       "title": "Stock Transfers",
       "newButton": "New Transfer",

@@ -22,6 +22,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 | **Inventory Valuation** | Value current or as-of stock using Average or Last Purchase policy. |
 | **Stock Levels** | See what's on hand, what's reserved, and the running average cost. |
 | **Stock Movements** | The full append-only ledger of every movement. |
+| **Unsettled Costs** | Review stock-out movements still waiting for cost settlement. |
 | **Alerts** | Items below minimum stock level. |
 | **Dashboard** | KPIs: total value, item count, low/negative stock, recent activity. |
 

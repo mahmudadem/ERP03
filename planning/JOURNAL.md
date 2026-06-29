@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278n — Inventory Unsettled Costs report translation)
+
+- **Goal:** Address Telegram photo 23 showing Inventory Unsettled Costs report English text in an Arabic session.
+- **Fix:** Localized the report title, subtitle, filters, cost-basis options, chips, summary totals, table columns, loading text, totals row, and empty state using `common:inventory.unsettledCosts.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No inventory movement, costing, voucher, ledger, tenant data, permission, or report calculation logic changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278n, then continue remaining all-report translation audit.
+
 ### Session: 2026-06-29 (Production QA 278m — POS report date range and DatePicker quick-select i18n)
 
 - **Goal:** Address Telegram screenshots 21–22 and note that POS report default dates looked reversed and DatePicker quick-select text was untranslated.
