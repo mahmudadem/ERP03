@@ -4156,7 +4156,16 @@
       "critical": "Critical Error"
     },
     "ok": "OK",
-    "close": "Close"
+    "close": "Close",
+    "technicalReference": "Technical reference",
+    "genericServerMessage": "{{operation}} failed on the server (HTTP {{status}}). Please retry. If it repeats, send this error reference to support.",
+    "operations": {
+      "accountingSourceApprovals": "Accounting source-document approvals",
+      "financialApprovals": "Financial approvals",
+      "custodyConfirmations": "Custody confirmations",
+      "accountStatement": "Account statement",
+      "apiRequest": "Server request"
+    }
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "Can’t issue {{itemLabel}} from warehouse {{warehouseLabel}} — only {{current}} in stock but {{requested}} requested (would leave {{resulting}}). Negative stock is turned off. Receive stock first, or enable negative stock in Inventory Settings."

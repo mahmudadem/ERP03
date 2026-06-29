@@ -4228,7 +4228,16 @@
       "critical": "Kritik Hata"
     },
     "ok": "Tamam",
-    "close": "Kapat"
+    "close": "Kapat",
+    "technicalReference": "Teknik referans",
+    "genericServerMessage": "{{operation}} sunucuda başarısız oldu (HTTP {{status}}). Lütfen yeniden deneyin. Tekrarlanırsa bu hata referansını desteğe gönderin.",
+    "operations": {
+      "accountingSourceApprovals": "Muhasebe kaynak belge onayları",
+      "financialApprovals": "Finansal onaylar",
+      "custodyConfirmations": "Muhafaza onayları",
+      "accountStatement": "Hesap ekstresi",
+      "apiRequest": "Sunucu isteği"
+    }
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "{{itemLabel}} ürünü {{warehouseLabel}} deposundan çıkışı yapılamıyor — stokta yalnızca {{current}} var ancak {{requested}} istendi (kalan {{resulting}} olurdu). Negatif stok kapalı. Önce stok girişi yapın veya Envanter Ayarları’ndan negatif stoğu etkinleştirin."

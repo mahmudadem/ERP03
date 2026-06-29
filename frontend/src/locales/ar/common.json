@@ -4332,7 +4332,16 @@
       "critical": "خطأ حرج"
     },
     "ok": "حسناً",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "technicalReference": "مرجع تقني",
+    "genericServerMessage": "فشل {{operation}} على الخادم (HTTP {{status}}). أعد المحاولة. إذا تكرر الخطأ، أرسل مرجع الخطأ هذا للدعم.",
+    "operations": {
+      "accountingSourceApprovals": "اعتمادات مستندات المصدر المحاسبية",
+      "financialApprovals": "الاعتمادات المالية",
+      "custodyConfirmations": "تأكيدات العهدة",
+      "accountStatement": "كشف الحساب",
+      "apiRequest": "طلب الخادم"
+    }
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "لا يمكن صرف {{itemLabel}} من المستودع {{warehouseLabel}} — المتوفر {{current}} فقط بينما المطلوب {{requested}} (سيصبح الرصيد {{resulting}}). المخزون السالب غير مسموح. استلم المخزون أولاً أو فعّل المخزون السالب في إعدادات المخزون."
