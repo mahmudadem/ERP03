@@ -24,10 +24,10 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
-const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; label: string }> = [
-  { template: '{parent}-{partyCode}', label: 'Parent-Party  (20101-V001)' },
-  { template: '{parent}.{partyCode}', label: 'Parent.Party  (20101.V001)' },
-  { template: '{parent}-{seq3}', label: 'Parent-Sequence  (20101-001)' },
+const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; labelKey: string; labelDefault: string }> = [
+  { template: '{parent}-{partyCode}', labelKey: 'settings.partyAccountFormat.presets.parentPartyDash', labelDefault: 'Parent-Party  (20101-V001)' },
+  { template: '{parent}.{partyCode}', labelKey: 'settings.partyAccountFormat.presets.parentPartyDot', labelDefault: 'Parent.Party  (20101.V001)' },
+  { template: '{parent}-{seq3}', labelKey: 'settings.partyAccountFormat.presets.parentSequence', labelDefault: 'Parent-Sequence  (20101-001)' },
 ];
 const DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID = 'purchase-direct-invoicing-company-policy';
 
@@ -556,7 +556,7 @@ const PurchaseSettingsPage: React.FC = () => {
                             }}
                           >
                             {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
-                              <option key={p.template} value={p.template}>{p.label}</option>
+                              <option key={p.template} value={p.template}>{t(p.labelKey, p.labelDefault)}</option>
                             ))}
                             <option value="CUSTOM">{t('settings.partyAccountFormat.custom', 'Custom…')}</option>
                           </select>

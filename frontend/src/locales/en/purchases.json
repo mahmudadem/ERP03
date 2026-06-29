@@ -609,7 +609,12 @@
     "partyAccountFormat": {
       "custom": "Custom…",
       "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.",
-      "label": "AP Sub-account Code Format"
+      "label": "AP Sub-account Code Format",
+      "presets": {
+        "parentPartyDash": "Parent-Party  (20101-V001)",
+        "parentPartyDot": "Parent.Party  (20101.V001)",
+        "parentSequence": "Parent-Sequence  (20101-001)"
+      }
     }
   },
   "vendorGroups": {

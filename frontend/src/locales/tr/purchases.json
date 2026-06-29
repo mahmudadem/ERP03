@@ -594,23 +594,28 @@
   },
   "settings": {
     "apGeneration": {
-      "backfillButton": "Backfill vendor AP sub-accounts",
-      "confirmAction": "Run Backfill",
-      "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
-      "confirmTitle": "Backfill Vendor AP Sub-accounts",
-      "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
-      "title": "AP Sub-account Generation"
+      "backfillButton": "Tedarikçi AP alt hesaplarını oluştur",
+      "confirmAction": "Oluşturmayı çalıştır",
+      "confirmMessage": "Aktif tedarikçiler taranır ve yapılandırılmış AP ana hesabı altında alt hesabı olmayan taraflar için özel AP alt hesapları oluşturulur.",
+      "confirmTitle": "Tedarikçi AP Alt Hesaplarını Oluştur",
+      "description": "Tedarikçi oluşturulurken tedarikçiye özel AP alt hesaplarının nasıl üretileceğini yapılandırın.",
+      "title": "AP Alt Hesap Oluşturma"
     },
     "apParent": {
-      "context": "Liability",
-      "help": "Parent account under which per-vendor AP sub-accounts are generated.",
-      "label": "AP Parent Account",
-      "placeholder": "Select AP parent account"
+      "context": "Yükümlülük",
+      "help": "Tedarikçi bazlı AP alt hesaplarının oluşturulacağı ana hesap.",
+      "label": "AP Ana Hesabı",
+      "placeholder": "AP ana hesabı seç"
     },
     "partyAccountFormat": {
-      "custom": "Custom…",
-      "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.",
-      "label": "AP Sub-account Code Format"
+      "custom": "Özel…",
+      "help": "Belirteçler: {parent}, {partyCode}, {seq3}. Örnek: {parent}-{partyCode}.",
+      "label": "AP Alt Hesap Kod Formatı",
+      "presets": {
+        "parentPartyDash": "Ana-Tedarikçi  (20101-V001)",
+        "parentPartyDot": "Ana.Tedarikçi  (20101.V001)",
+        "parentSequence": "Ana-Sıra  (20101-001)"
+      }
     }
   },
   "vendorGroups": {

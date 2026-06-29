@@ -594,23 +594,28 @@
   },
   "settings": {
     "apGeneration": {
-      "backfillButton": "Backfill vendor AP sub-accounts",
-      "confirmAction": "Run Backfill",
-      "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
-      "confirmTitle": "Backfill Vendor AP Sub-accounts",
-      "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
-      "title": "AP Sub-account Generation"
+      "backfillButton": "إنشاء حسابات الموردين الفرعية",
+      "confirmAction": "تشغيل الإنشاء",
+      "confirmMessage": "سيتم فحص الموردين النشطين وإنشاء حسابات ذمم دائنة فرعية مخصصة للأطراف التي لا تملك حسابًا تحت حساب الذمم الدائنة الأب.",
+      "confirmTitle": "إنشاء حسابات الذمم الدائنة الفرعية للموردين",
+      "description": "اضبط طريقة إنشاء حسابات الذمم الدائنة الفرعية الخاصة بكل مورد عند إنشاء المورد.",
+      "title": "إنشاء حسابات ذمم الموردين الفرعية"
     },
     "apParent": {
-      "context": "Liability",
-      "help": "Parent account under which per-vendor AP sub-accounts are generated.",
-      "label": "AP Parent Account",
-      "placeholder": "Select AP parent account"
+      "context": "التزامات",
+      "help": "الحساب الأب الذي تُنشأ تحته حسابات الذمم الدائنة الفرعية لكل مورد.",
+      "label": "حساب الذمم الدائنة الأب",
+      "placeholder": "اختر حساب الذمم الدائنة الأب"
     },
     "partyAccountFormat": {
-      "custom": "Custom…",
-      "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.",
-      "label": "AP Sub-account Code Format"
+      "custom": "مخصص…",
+      "help": "الرموز: {parent}، {partyCode}، {seq3}. مثال: {parent}-{partyCode}.",
+      "label": "صيغة رمز حساب الذمم الدائنة الفرعي",
+      "presets": {
+        "parentPartyDash": "الأب-المورد  (20101-V001)",
+        "parentPartyDot": "الأب.المورد  (20101.V001)",
+        "parentSequence": "الأب-تسلسل  (20101-001)"
+      }
     }
   },
   "vendorGroups": {

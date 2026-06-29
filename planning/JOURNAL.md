@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278k — Sales dashboard / Purchase Settings translations)
+
+- **Goal:** Address Telegram screenshots 14–15 showing Arabic sessions with English labels on Sales Dashboard and Purchase Settings AP-generation controls.
+- **Fix:** Moved Sales Dashboard visible labels to `common:sales.home.*`, translated them in English/Arabic/Turkish, translated Purchase Settings AP-generation/AP-parent/account-code-format labels, and made AP account-code preset labels translatable.
+- **Accounting impact:** Presentation only. No purchase settings values, AP parent accounts, vendors, invoices, vouchers, ledger, tenant data, or permissions changed.
+- **Verification:** locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278k, then continue the POS shift-close modal issue.
+
 ### Session: 2026-06-29 (Production QA 278j — Opening Stock legacy movement warning)
 
 - **Goal:** Address Telegram report where Opening Stock Documents showed no records while Stock Movements contained opening-stock rows.
