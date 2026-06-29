@@ -35,60 +35,21 @@ interface AccountFormProps {
     allowedClassifications?: AccountClassification[];
 }
 
-const CLASSIFICATIONS: { value: AccountClassification; label: string }[] = [
-    { value: 'ASSET', label: 'Asset' },
-    { value: 'LIABILITY', label: 'Liability' },
-    { value: 'EQUITY', label: 'Equity' },
-    { value: 'REVENUE', label: 'Revenue' },
-    { value: 'EXPENSE', label: 'Expense' },
+const CLASSIFICATIONS: AccountClassification[] = ['ASSET', 'LIABILITY', 'EQUITY', 'REVENUE', 'EXPENSE'];
+const ROLES: AccountRole[] = ['POSTING', 'HEADER'];
+const BALANCE_NATURES: BalanceNature[] = ['DEBIT', 'CREDIT', 'BOTH'];
+const BALANCE_ENFORCEMENT: BalanceEnforcement[] = ['WARN_ABNORMAL', 'BLOCK_ABNORMAL', 'ALLOW_ABNORMAL'];
+const CURRENCY_POLICIES: CurrencyPolicy[] = ['INHERIT', 'FIXED', 'OPEN'];
+const CASH_FLOW_CATEGORIES: (CashFlowCategory | '')[] = ['', 'OPERATING', 'INVESTING', 'FINANCING'];
+const PL_SUBGROUPS: { value: PlSubgroup | ''; forClassification: AccountClassification[] }[] = [
+    { value: '', forClassification: ['REVENUE', 'EXPENSE'] },
+    { value: 'SALES', forClassification: ['REVENUE'] },
+    { value: 'OTHER_REVENUE', forClassification: ['REVENUE'] },
+    { value: 'COST_OF_SALES', forClassification: ['EXPENSE'] },
+    { value: 'OPERATING_EXPENSES', forClassification: ['EXPENSE'] },
+    { value: 'OTHER_EXPENSES', forClassification: ['EXPENSE'] },
 ];
-
-const ROLES: { value: AccountRole; label: string }[] = [
-    { value: 'POSTING', label: 'Posting Account (Transaction)' },
-    { value: 'HEADER', label: 'Header Account (Folder)' },
-];
-
-const BALANCE_NATURES: { value: BalanceNature; label: string }[] = [
-    { value: 'DEBIT', label: 'Debit' },
-    { value: 'CREDIT', label: 'Credit' },
-    { value: 'BOTH', label: 'Both' },
-];
-
-const BALANCE_ENFORCEMENT: { value: BalanceEnforcement; label: string }[] = [
-    { value: 'WARN_ABNORMAL', label: 'Warn on abnormal balance' },
-    { value: 'BLOCK_ABNORMAL', label: 'Block abnormal balance' },
-    { value: 'ALLOW_ABNORMAL', label: 'Allow (No check)' },
-];
-
-const CURRENCY_POLICIES: { value: CurrencyPolicy; label: string }[] = [
-    { value: 'INHERIT', label: 'Inherit from Parent' },
-    { value: 'FIXED', label: 'Fixed Currency' },
-    { value: 'OPEN', label: 'Any Currency' },
-    // { value: 'RESTRICTED', label: 'Restricted (Select permitted)' }, // MVP: Restricted UI not fully implemented
-];
-
-const CASH_FLOW_CATEGORIES: { value: CashFlowCategory | ''; label: string }[] = [
-    { value: '', label: 'Auto (By Account Type)' },
-    { value: 'OPERATING', label: 'Operating' },
-    { value: 'INVESTING', label: 'Investing' },
-    { value: 'FINANCING', label: 'Financing' },
-];
-
-const PL_SUBGROUPS: { value: PlSubgroup | ''; label: string; forClassification: AccountClassification[] }[] = [
-    { value: '', label: 'None (Unassigned)', forClassification: ['REVENUE', 'EXPENSE'] },
-    { value: 'SALES', label: 'Sales', forClassification: ['REVENUE'] },
-    { value: 'OTHER_REVENUE', label: 'Other Revenue', forClassification: ['REVENUE'] },
-    { value: 'COST_OF_SALES', label: 'Cost of Sales (COGS)', forClassification: ['EXPENSE'] },
-    { value: 'OPERATING_EXPENSES', label: 'Operating Expenses', forClassification: ['EXPENSE'] },
-    { value: 'OTHER_EXPENSES', label: 'Other Expenses', forClassification: ['EXPENSE'] },
-];
-
-const EQUITY_SUBGROUPS: { value: EquitySubgroup | ''; label: string }[] = [
-    { value: '', label: 'None (Unassigned)' },
-    { value: 'RETAINED_EARNINGS', label: 'Retained Earnings' },
-    { value: 'CONTRIBUTED_CAPITAL', label: 'Contributed Capital' },
-    { value: 'RESERVES', label: 'Reserves' },
-];
+const EQUITY_SUBGROUPS: (EquitySubgroup | '')[] = ['', 'RETAINED_EARNINGS', 'CONTRIBUTED_CAPITAL', 'RESERVES'];
 
 export const AccountForm: React.FC<AccountFormProps> = ({
     mode,
@@ -103,7 +64,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
     // opened from a typed selector; lock it when exactly one classification is allowed.
     const hasClassificationConstraint = !!allowedClassifications && allowedClassifications.length > 0;
     const classificationOptions = hasClassificationConstraint
-        ? CLASSIFICATIONS.filter(c => allowedClassifications!.includes(c.value))
+        ? CLASSIFICATIONS.filter(classification => allowedClassifications!.includes(classification))
         : CLASSIFICATIONS;
     const classificationLocked = hasClassificationConstraint && allowedClassifications!.length === 1;
     // Determine defaults
@@ -243,7 +204,10 @@ export const AccountForm: React.FC<AccountFormProps> = ({
         if (parentId) {
             const parent = accounts.find(a => a.id === parentId);
             if (parent && parent.accountRole !== 'HEADER') {
-                errorHandler.showWarning(`Hierarchy Error: Account "${parent.name}" is a Posting account and cannot be selected as a parent.`);
+                errorHandler.showWarning(t('accountForm.hierarchyError', {
+                    account: parent.name,
+                    defaultValue: 'Hierarchy Error: Account "{{account}}" is a Posting account and cannot be selected as a parent.',
+                }));
                 return;
             }
         }
@@ -342,13 +306,13 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.generalTitle', 'General Information')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Configure identity and structural properties</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('accountForm.generalDescription')}</p>
                                 </div>
 
                                 <div className="group space-y-2 mb-4">
                                     <label className="flex items-center justify-between">
-                                        <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-500 uppercase tracking-widest leading-none">Parent Account (Start Here)</span>
-                                        {!parentId && <span className="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-bold">Root Level</span>}
+                                        <span className="text-[10px] font-extrabold text-blue-600 dark:text-blue-500 uppercase tracking-widest leading-none">{t('accountForm.parentAccount')}</span>
+                                        {!parentId && <span className="text-[9px] bg-amber-50 text-amber-600 px-1.5 py-0.5 rounded-full font-bold">{t('accountForm.rootLevel')}</span>}
                                     </label>
                                     <select
                                         value={parentId}
@@ -357,7 +321,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                             ${parentId ? 'bg-blue-50/10 border-blue-200 text-blue-900' : 'bg-gray-50 border-gray-100 text-gray-500'}`}
                                         disabled={isLocked || isUsed}
                                     >
-                                        <option value="">(No Parent - Declare as Root Account)</option>
+                                        <option value="">{t('accountForm.noParent')}</option>
                                         {(() => {
                                             const getDescendantIds = (parentId: string, visited = new Set<string>()): string[] => {
                                                 if (visited.has(parentId)) return [];
@@ -380,7 +344,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                         })()}
                                     </select>
                                     <p className="text-[10px] text-gray-400 font-medium italic">
-                                        Tip: Selecting a parent automatically locks the account type to ensure data integrity.
+                                        {t('accountForm.parentTip')}
                                     </p>
                                 </div>
 
@@ -395,28 +359,28 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                                 required
                                                 disabled={isLocked}
                                                 className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 font-mono text-sm uppercase disabled:opacity-50 shadow-sm"
-                                                placeholder="e.g. 1001"
+                                                placeholder={t('accountForm.codePlaceholder')}
                                             />
                                             <button 
                                                 type="button"
                                                 onClick={generateNextCode}
                                                 className="absolute right-2 top-1/2 -translate-y-1/2 p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                                title="Generate next available code"
+                                                title={t('accountForm.generateCode')}
                                             >
                                                 <LayoutGrid className="w-4 h-4" />
                                             </button>
                                         </div>
                                     </div>
                                     <div className="group space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Status</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('accountForm.status')}</label>
                                         <select 
                                             value={status} 
                                             onChange={(e) => setStatus(e.target.value as AccountStatus)}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm"
                                             disabled={isLocked}
                                         >
-                                            <option value="ACTIVE">Active</option>
-                                            <option value="INACTIVE">Inactive</option>
+                                            <option value="ACTIVE">{t('accountForm.active')}</option>
+                                            <option value="INACTIVE">{t('accountForm.inactive')}</option>
                                         </select>
                                     </div>
                                 </div>
@@ -435,7 +399,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                                 <div className="space-y-6">
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Account Classification</label>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t('accountForm.classification')}</label>
                                         <select
                                             value={classification}
                                             onChange={(e) => setClassification(e.target.value as AccountClassification)}
@@ -443,31 +407,33 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                                 ${(parentId || classificationLocked) ? 'bg-amber-50/10 border-amber-100 text-amber-700 cursor-not-allowed' : 'bg-white border-gray-200'}`}
                                             disabled={isUsed || isLocked || !!parentId || classificationLocked}
                                         >
-                                            {classificationOptions.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+                                            {classificationOptions.map(option => (
+                                                <option key={option} value={option}>{t(`accountForm.classifications.${option}`)}</option>
+                                            ))}
                                         </select>
                                         {parentId && (
                                             <div className="flex items-center gap-1.5 mt-1.5 px-1">
                                                 <div className="w-1.5 h-1.5 bg-amber-400 rounded-full animate-pulse" />
-                                                <p className="text-[10px] text-amber-600 font-extrabold uppercase tracking-tight">Inherited from Parent Header</p>
+                                                <p className="text-[10px] text-amber-600 font-extrabold uppercase tracking-tight">{t('accountForm.inheritedFromParent')}</p>
                                             </div>
                                         )}
                                         {!parentId && hasClassificationConstraint && (
                                             <div className="flex items-center gap-1.5 mt-1.5 px-1">
                                                 <div className="w-1.5 h-1.5 bg-indigo-400 rounded-full" />
-                                                <p className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-tight">Set by the field you're adding from</p>
+                                                <p className="text-[10px] text-indigo-600 font-extrabold uppercase tracking-tight">{t('accountForm.setBySourceField')}</p>
                                             </div>
                                         )}
                                     </div>
 
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">Account Role</label>
+                                        <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase tracking-widest">{t('accountForm.role')}</label>
                                          <select
                                             value={accountRole}
                                             onChange={(e) => setAccountRole(e.target.value as AccountRole)}
                                             className="w-full px-4 py-3 bg-white border border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all text-sm shadow-sm"
                                             disabled={isUsed || isLocked}
                                         >
-                                            {ROLES.map(r => <option key={r.value} value={r.value}>{r.label}</option>)}
+                                            {ROLES.map(role => <option key={role} value={role}>{t(`accountForm.roles.${role}`)}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -480,30 +446,30 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.accountingTitle', 'Accounting Semantics')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Rule enforcement and financial classification</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('accountForm.accountingDescription')}</p>
                                 </div>
 
                                 <div className="grid grid-cols-2 gap-6">
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Balance Nature</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('accountForm.balanceNature')}</label>
                                         <select
                                             value={balanceNature}
                                             onChange={(e) => setBalanceNature(e.target.value as BalanceNature)}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm disabled:opacity-50"
                                             disabled={isUsed}
                                         >
-                                             {BALANCE_NATURES.map(n => <option key={n.value} value={n.value}>{n.label}</option>)}
+                                             {BALANCE_NATURES.map(nature => <option key={nature} value={nature}>{t(`accountForm.balanceNatures.${nature}`)}</option>)}
                                         </select>
                                     </div>
                                     <div className="group space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Validation Rule</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('accountForm.validationRule')}</label>
                                         <select
                                             value={balanceEnforcement}
                                             onChange={(e) => setBalanceEnforcement(e.target.value as BalanceEnforcement)}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm disabled:opacity-50"
                                             disabled={accountRole !== 'POSTING'}
                                         >
-                                            {BALANCE_ENFORCEMENT.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+                                            {BALANCE_ENFORCEMENT.map(rule => <option key={rule} value={rule}>{t(`accountForm.balanceRules.${rule}`)}</option>)}
                                         </select>
                                     </div>
                                 </div>
@@ -518,38 +484,47 @@ export const AccountForm: React.FC<AccountFormProps> = ({
 
                                     {(classification === 'REVENUE' || classification === 'EXPENSE') && (
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">P&L Subgroup</label>
+                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('accountForm.plSubgroup')}</label>
                                             <select
                                                 value={plSubgroup}
                                                 onChange={(e) => setPlSubgroup(e.target.value as PlSubgroup | '')}
                                                 className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm"
                                             >
-                                                {PL_SUBGROUPS.filter(s => s.forClassification.includes(classification)).map(s => <option key={s.value || 'NONE'} value={s.value}>{s.label}</option>)}
+                                                {PL_SUBGROUPS.filter(s => s.forClassification.includes(classification)).map(s => {
+                                                    const key = s.value || 'NONE';
+                                                    return <option key={key} value={s.value}>{t(`accountForm.subgroups.${key}`)}</option>;
+                                                })}
                                             </select>
                                         </div>
                                     )}
 
                                     {classification === 'EQUITY' && (
                                         <div className="animate-in fade-in slide-in-from-top-2 duration-300 space-y-1.5">
-                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Equity Subgroup</label>
+                                            <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('accountForm.equitySubgroup')}</label>
                                             <select
                                                 value={equitySubgroup}
                                                 onChange={(e) => setEquitySubgroup(e.target.value as EquitySubgroup | '')}
                                                 className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm"
                                             >
-                                                {EQUITY_SUBGROUPS.map(s => <option key={s.value || 'NONE'} value={s.value}>{s.label}</option>)}
+                                                {EQUITY_SUBGROUPS.map(subgroup => {
+                                                    const key = subgroup || 'NONE';
+                                                    return <option key={key} value={subgroup}>{t(`accountForm.subgroups.${key}`)}</option>;
+                                                })}
                                             </select>
                                         </div>
                                     )}
 
                                     <div className="space-y-1.5">
-                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">Cash Flow Category</label>
+                                        <label className="block text-xs font-bold text-gray-400 dark:text-gray-500 uppercase tracking-widest">{t('accountForm.cashFlowCategory')}</label>
                                         <select
                                             value={cashFlowCategory}
                                             onChange={(e) => setCashFlowCategory(e.target.value as CashFlowCategory | '')}
                                             className="w-full px-4 py-3 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700/50 rounded-xl focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 outline-none transition-all duration-300 text-sm shadow-sm"
                                         >
-                                            {CASH_FLOW_CATEGORIES.map(c => <option key={c.value || 'AUTO'} value={c.value}>{c.label}</option>)}
+                                            {CASH_FLOW_CATEGORIES.map(category => {
+                                                const key = category || 'AUTO';
+                                                return <option key={key} value={category}>{t(`accountForm.cashFlowCategories.${key}`)}</option>;
+                                            })}
                                         </select>
                                     </div>
                                 </div>
@@ -562,7 +537,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.currencyTitle', 'Currency Policy')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Define multi-currency behavior for this account</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('accountForm.currencyDescription')}</p>
                                 </div>
 
                                 <div className="bg-amber-50/50 dark:bg-amber-900/5 p-4 rounded-xl border border-amber-100 dark:border-amber-900/30">
@@ -572,20 +547,20 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                         </div>
                                         <div className="flex-1 space-y-4">
                                             <div className="space-y-1.5">
-                                                <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">Policy Selection</label>
+                                                <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">{t('accountForm.policySelection')}</label>
                                                 <select
                                                     value={currencyPolicy}
                                                     onChange={(e) => setCurrencyPolicy(e.target.value as CurrencyPolicy)}
                                                     className="w-full px-4 py-3 bg-white dark:bg-gray-800 border border-amber-200 dark:border-gray-700 rounded-xl focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 outline-none transition-all text-sm shadow-sm disabled:opacity-50"
                                                     disabled={isUsed || (!parentId) || isParentForeign}
                                                 >
-                                                    {CURRENCY_POLICIES.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                                                    {CURRENCY_POLICIES.map(policy => <option key={policy} value={policy}>{t(`accountForm.currencyPolicies.${policy}`)}</option>)}
                                                 </select>
                                             </div>
 
                                             {(currencyPolicy === 'FIXED' || isParentForeign) && (
                                                 <div className="group space-y-1.5 animate-in fade-in slide-in-from-top-2 duration-300">
-                                                    <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">Fixed Currency</label>
+                                                    <label className="block text-xs font-bold text-amber-600 dark:text-amber-500 uppercase tracking-widest">{t('accountForm.fixedCurrency')}</label>
                                                     <CurrencySelector
                                                         value={fixedCurrencyCode}
                                                         onChange={setFixedCurrencyCode}
@@ -601,13 +576,13 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                 {(!parentId) && currencyPolicy === 'FIXED' && (
                                     <div className="p-3 bg-blue-50/50 text-blue-600 dark:bg-blue-900/10 dark:text-blue-400 rounded-xl text-xs font-medium flex items-center gap-2">
                                         <Info className="w-4 h-4 shrink-0" />
-                                        <span>Root level accounts are locked to the company base currency ({baseCurrency}).</span>
+                                        <span>{t('accountForm.rootCurrencyLocked', { currency: baseCurrency })}</span>
                                     </div>
                                 )}
                                 {isParentForeign && (
                                     <div className="p-3 bg-indigo-50/50 text-indigo-600 dark:bg-indigo-900/10 dark:text-indigo-400 rounded-xl text-xs font-medium flex items-center gap-2">
                                         <Info className="w-4 h-4 shrink-0" />
-                                        <span>This account resides in a foreign parent context ({parentAccount?.fixedCurrencyCode}). Parent's currency policy is enforced.</span>
+                                        <span>{t('accountForm.parentCurrencyEnforced', { currency: parentAccount?.fixedCurrencyCode })}</span>
                                     </div>
                                 )}
                             </div>
@@ -619,7 +594,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                     <h3 className="text-xl font-bold text-gray-900 dark:text-gray-100 tracking-tight">
                                         {t('accountForm.governanceTitle', 'Governance Gates')}
                                     </h3>
-                                    <p className="text-sm text-gray-500 mt-1">Approval workflows and custody confirmation</p>
+                                    <p className="text-sm text-gray-500 mt-1">{t('accountForm.governanceDescription')}</p>
                                 </div>
 
                                 <div className="space-y-4">
@@ -635,7 +610,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                             <div className="flex-1">
                                                 <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-tight tracking-wide">{t('accountForm.requiresApproval', 'Financial Verification')}</h4>
                                                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                                    Force management approval for every transaction involving this account. Recommended for cash and sensitive bank accounts.
+                                                    {t('accountForm.requiresApprovalDescription')}
                                                 </p>
                                             </div>
                                         </div>
@@ -653,7 +628,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                             <div className="flex-1">
                                                 <h4 className="text-sm font-bold text-gray-900 dark:text-gray-100 uppercase tracking-tight tracking-wide">{t('accountForm.requiresCustody', 'Physical Custody Gate')}</h4>
                                                 <p className="text-xs text-gray-500 mt-1 leading-relaxed">
-                                                    Transactions must be verified by the assigned custodian before posting.
+                                                    {t('accountForm.requiresCustodyDescription')}
                                                 </p>
                                                 
                                                 {requiresCustodyConfirmation && (
@@ -661,14 +636,14 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                                                         className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-xl border border-indigo-100 dark:border-indigo-900/30 animate-in zoom-in-95 duration-300"
                                                         onClick={(e) => e.stopPropagation()}
                                                     >
-                                                        <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">Assign Custodian User</label>
+                                                        <label className="block text-[10px] font-bold text-indigo-500 uppercase tracking-widest mb-2">{t('accountForm.assignCustodian')}</label>
                                                         <select
                                                             value={custodianUserId}
                                                             onChange={(e) => setCustodianUserId(e.target.value)}
                                                             required={requiresCustodyConfirmation}
                                                             className="w-full px-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition-all"
                                                         >
-                                                            <option value="">(Select Custodian...)</option>
+                                                            <option value="">{t('accountForm.selectCustodian')}</option>
                                                             {!isLoadingUsers && companyUsers?.map((u: any) => (
                                                                 <option key={u.id} value={u.id}>
                                                                     {u.displayName || u.email || u.id}
@@ -691,7 +666,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                 <div className="flex items-center gap-3">
                     <div className={`flex h-2 w-2 rounded-full ${isSubmitting ? 'bg-amber-400 animate-pulse' : 'bg-emerald-500'}`} />
                     <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400 dark:text-gray-500">
-                        {isSubmitting ? 'Processing Network Request...' : 'System Ready'}
+                        {isSubmitting ? t('accountForm.processing') : t('accountForm.ready')}
                     </span>
                 </div>
                 <div className="flex items-center gap-4">
@@ -701,7 +676,7 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                         disabled={isSubmitting}
                         className="px-6 py-2.5 text-sm font-bold text-gray-500 hover:text-gray-900 dark:hover:text-white transition-all transform active:scale-95"
                     >
-                        {t('common.cancel', 'Discard')}
+                        {t('accountForm.discard')}
                     </button>
                     <button
                         type="submit"
@@ -711,17 +686,17 @@ export const AccountForm: React.FC<AccountFormProps> = ({
                         {isSubmitting ? (
                             <>
                                 <Spinner size="sm" variant="white" />
-                                <span>Securing Data...</span>
+                                <span>{t('accountForm.securing')}</span>
                             </>
                         ) : (mode === 'create' ? (
                             <>
                                 <CheckCircle2 size={16} className="group-hover:text-indigo-500 transition-colors" />
-                                <span>Commit Creation</span>
+                                <span>{t('accountForm.createAction')}</span>
                             </>
                         ) : (
                             <>
                                 <CheckCircle2 size={16} className="group-hover:text-indigo-500 transition-colors" />
-                                <span>Update Authority</span>
+                                <span>{t('accountForm.updateAction')}</span>
                             </>
                         ))}
                     </button>

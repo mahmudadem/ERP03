@@ -2,23 +2,22 @@
 
 ## Status
 
-Phase 1 complete: translation resources added and validated. Phase 2 will wire
-all Account form copy to these keys.
+Complete. Translation resources are validated and the Account form now renders
+all user-facing copy through the accounting locale.
 
 ## Technical developer view
 
 Added one complete `accountForm` translation contract to the English, Arabic,
-and Turkish accounting locale files. It covers all four tabs, field labels,
-select options, guidance, financial-policy explanations, custody controls, and
-form action states.
-
-Phase 2 must replace the remaining hardcoded copy in
-`frontend/src/modules/accounting/components/AccountForm.tsx`.
+and Turkish accounting locale files. `AccountForm.tsx` now resolves all four
+tabs, field labels, option labels, guidance, financial-policy explanations,
+validation feedback, custody controls, and action states through those keys.
+The option constants retain only stable accounting values, so changing language
+does not alter submitted account data.
 
 ## End-user view
 
-After phase 2, the full Create/Edit Account window will follow the user's
-selected language instead of displaying English labels in Arabic mode.
+The full Create/Edit Account window follows the user's selected language
+instead of displaying English labels in Arabic mode.
 
 ## Accounting impact
 
@@ -29,8 +28,14 @@ posting, approval, currency, ledger, or audit behavior changes.
 
 - All three locale JSON files parsed successfully.
 - Frontend typecheck passed.
+- Frontend production build passed.
+- Hardcoded visible-text scan found no remaining English JSX copy.
+- `graphify update .` could not run because the Graphify CLI is unavailable in
+  this environment; no graph files were changed.
 
 ## Time
 
 - Estimate for complete fix: 45–60 minutes
 - Phase 1 actual: approximately 20 minutes
+- Phase 2 actual: approximately 30 minutes
+- Total actual: approximately 50 minutes

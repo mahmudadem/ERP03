@@ -5568,3 +5568,20 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - Phase 2 will replace all hardcoded component copy with the validated keys.
 - Phase 1 actual time: approximately 20 minutes.
 - Deploy: deferred until the full Telegram QA queue is complete.
+
+## 2026-06-29 — Telegram QA fix 278f phase 2
+
+- Wired every visible Account form label, option, hint, policy explanation,
+  validation warning, custody control, and submit state to the validated
+  English/Arabic/Turkish translation contract.
+- Kept stable enum values separate from translated labels so locale changes
+  cannot alter classification, role, balance, currency, cash-flow, or subgroup
+  payload values.
+- Accounting impact: presentation only; no account hierarchy rules, posting,
+  balances, currency enforcement, approval, tenant scope, or audit behavior changed.
+- Verification: locale JSON parsing passed, frontend typecheck passed, visible
+  hardcoded-English scan passed, and frontend production build passed.
+- Maintenance note: `graphify update .` could not run because the Graphify CLI
+  is not installed/available in this environment.
+- Phase 2 actual time: approximately 30 minutes; total task time approximately 50 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.
