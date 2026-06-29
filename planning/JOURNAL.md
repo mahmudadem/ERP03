@@ -5556,3 +5556,15 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
   passed.
 - Actual time: approximately 25 minutes.
 - Deploy: deferred until the full Telegram QA queue is complete.
+
+# 2026-06-29 — Telegram QA fix 278f account form translation
+
+- Telegram photo 8 showed the Edit Account modal remaining mostly English in
+  Arabic mode.
+- Phase 1 added a complete Account form translation contract to English,
+  Arabic, and Turkish accounting locales.
+- Accounting impact: display text only; no account structure, validation,
+  posting, approval, currency, or audit behavior changed.
+- Phase 2 will replace all hardcoded component copy with the validated keys.
+- Phase 1 actual time: approximately 20 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.

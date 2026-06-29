@@ -44,8 +44,9 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
   remains pending until the full fix queue finishes.
 - **278c Purchase invoice query index:** committed as `a3990984`; awaiting final deployment.
 - **278d POS shift-close validation:** committed as `300eab98`; awaiting final deployment.
-- **278e Default Arabic language:** implementation and builds complete; commit approval pending.
-- **Next:** commit 278e after owner approval, then continue the remaining Telegram QA queue.
+- **278e Default Arabic language:** committed as `4090ccee`; awaiting final deployment.
+- **278f Account form translation:** phase 1 resources in progress; phase 2 component wiring follows.
+- **Next:** validate and commit 278f phase 1, then wire the Account form.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

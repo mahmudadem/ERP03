@@ -269,6 +269,11 @@ Recommended direction:
 - Persist selected language and initialize i18n from that value before first render.
 - Replace left/right-specific layout assumptions with RTL-safe patterns where needed.
 - Require new user-facing strings to go through i18n.
+
+Account creation and editing now use a dedicated `accountForm` translation
+contract in every supported accounting locale. The contract covers tabs,
+fields, option labels, financial-policy explanations, custody controls, and
+submit states; the component must not retain English-only fallback copy.
 - Add Arabic visual QA for shell, sidebar, topbar, settings, lists, and reports.
 
 ### 7A. Entity cards must be UI-mode aware
