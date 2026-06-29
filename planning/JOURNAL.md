@@ -2,6 +2,17 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-29 (Production QA 278j — Opening Stock legacy movement warning)
+
+- **Goal:** Address Telegram report where Opening Stock Documents showed no records while Stock Movements contained opening-stock rows.
+- **Decision:** Added a warning instead of backfilling synthetic document headers. Old movement rows are real audit evidence, but generated headers would imply a document workflow that did not happen.
+- **Fix:** Opening Stock Documents list now detects legacy `OPENING_STOCK` movements when the document list is empty and shows an amber warning with a link to Stock Movements.
+- **Accounting impact:** Read-only display/reconciliation fix. No stock levels, costs, vouchers, ledger, tenant scope, or audit records changed.
+- **Verification:** locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278j docs, then continue the next Telegram QA issue.
+
 ### Session: 2026-06-29 (Production QA 278i — POS report date/time sort)
 
 - **Goal:** Address Telegram note: "all reports using report container must start default sort by date and time, time is important."

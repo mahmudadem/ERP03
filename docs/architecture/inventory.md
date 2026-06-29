@@ -269,6 +269,18 @@ Inventory document workflows now follow the same list-to-form shell used by Sale
 
 Opening Stock places the **Create Accounting Effect** toggle and warning in the scaffold `control` section. When accounting effect is enabled, the document pre-fills its offset account from `InventorySettings.defaultOpeningBalanceAccountId`, while still allowing a per-document override. The backend remains authoritative: the selected account must be an active POSTING EQUITY account.
 
+### Legacy direct opening-stock movements
+
+Production may contain older `OPENING_STOCK` stock movements that were created before the document-backed
+Opening Stock workflow became the canonical path. Those records are valid stock-movement audit rows, but they do
+not have matching Opening Stock Document headers.
+
+The Opening Stock list page now performs a read-only reconciliation check: when the document list is empty but
+legacy `OPENING_STOCK` movements exist, the page shows an amber warning that links users to Stock Movements.
+It intentionally does **not** generate synthetic Opening Stock Documents from those movements. Backfilling document
+headers from historical movement rows would create false document history and could mislead inventory and financial
+audits. Any correction remains an explicit inventory document or adjustment.
+
 ## Accounting Integration
 
 Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:

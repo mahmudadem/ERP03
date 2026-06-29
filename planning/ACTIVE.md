@@ -48,8 +48,9 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278f Account form translation:** complete; commits `e7a72724` and `798a92a4`.
 - **278g Account tree RTL controls:** complete; commits `c3d3ec33` and `12754d34`.
 - **278h Clear API error labels:** complete; commits `ccd97a81` and `75a4f6f0`.
-- **278i POS report date/time sort:** code committed as `e52683c0`; documentation pending commit.
-- **Next:** commit 278i documentation, then continue the next Telegram QA issue.
+- **278i POS report date/time sort:** complete; commits `e52683c0` and `cbdbd133`.
+- **278j Opening Stock legacy movement warning:** code committed as `64117d93`; documentation pending commit.
+- **Next:** commit 278j documentation, then continue the next Telegram QA issue.
 - Work remains sequential: one verified fix and one commit at a time.
 
 ---

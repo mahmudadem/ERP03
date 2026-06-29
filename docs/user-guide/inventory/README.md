@@ -42,7 +42,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
    - *(Optional)* GL accounts for inventory asset, revenue, and COGS — defaults come from category or company settings
    - UOM conversions such as `BOX → PCS`. Each From/To pair can appear only once per item; if the pair already exists,
      update its factor row instead of adding another row.
-6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
+6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset. If the Opening Stock list is empty but warns about legacy opening-stock movements, review **Stock Movements** first so you do not enter the same opening stock twice.
 
 ### Maintaining item UOM conversions
 

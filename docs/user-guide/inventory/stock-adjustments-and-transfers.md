@@ -61,6 +61,11 @@ Use this when you start using ERP03 and need to enter stock that already exists.
 6. Add stock-tracked item lines with quantity, unit cost, currency, and FX rates where needed.
 7. Save as draft, then post when reviewed. Drafts can be edited or deleted. Posted documents are locked.
 
+If the list says there are no Opening Stock Documents but shows a warning about legacy opening-stock movements,
+open **Stock Movements** from the warning and review those old rows before creating a new document. The stock may
+already have been entered through an older direct movement flow. Creating a new Opening Stock Document for the same
+items would duplicate the quantity.
+
 ## Stock Transfers — Flat vs Valued
 
 Go to **Inventory → Transfers**, choose source and destination warehouses, add item lines, then pick a **Mode**:
