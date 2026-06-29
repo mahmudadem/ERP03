@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-06-30 (Production QA 278t — Purchases Vendor Statement report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with the Purchases Vendor Statement report.
+- **Fix:** Localized remaining hardcoded Vendor Statement labels: ledger table headers, line-type badges, mode chip, date-range chip, report section titles, open-bill table headers, open-commitment table headers, and fallback load-error text using `purchases:auto.VendorStatementPage.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AP ledger source, opening/closing balance logic, debit/credit display, open-bill selection, open-commitment exclusion, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** purchases locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278t, then continue remaining all-report translation audit.
+
 ### Session: 2026-06-30 (Production QA 278s — Purchases AP Aging report translation)
 
 - **Goal:** Continue the Telegram all-report translation audit with Purchases reporting.
