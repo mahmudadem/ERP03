@@ -10,6 +10,12 @@
 
 Two worktrees, one repo. **Do not mix their roles.**
 
+> 🔒 **SCOPE LOCK — read before any edit.**
+> - Working in **this** folder (`ERP03`, branch `codex/sql-readiness-wip-20260628`)? You are committed to **SQL / PostgreSQL readiness ONLY**. Do **not** make Firebase/Firestore production fixes or deploys here.
+> - Working in `ERP03-unified` (branch `codex/unified-firestore-deploy-20260628`)? You are committed to **Firebase production ONLY**. Do **not** do SQL/Postgres work there.
+> - If a task doesn't match the lane you're in, **STOP and switch folders** — never let SQL changes land on the Firebase deploy branch, or production changes land on the SQL branch.
+> - Lanes stay separate until a deliberate reconciliation through `main`.
+
 | Worktree | Branch | Role |
 |---|---|---|
 | `D:\DEV2026\ERP03` | `codex/sql-readiness-wip-20260628` | **SQL-readiness lane** — Supabase / PostgreSQL continuation. |
