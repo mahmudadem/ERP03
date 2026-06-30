@@ -31,7 +31,7 @@ const resources = {
 };
 
 const RTL_LANGS = ['ar'];
-const DEFAULT_LANGUAGE = 'ar';
+const DEFAULT_LANGUAGE = 'en';
 
 const getInitialLanguage = () => {
   if (typeof window === 'undefined') return DEFAULT_LANGUAGE;

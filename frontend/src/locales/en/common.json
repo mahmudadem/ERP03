@@ -100,6 +100,12 @@
           "desc": "Warnings and alert-style notifications."
         }
       }
+    },
+    "dropdown": {
+      "yourProfile": "Your Profile",
+      "appearance": "Appearance",
+      "switchCompany": "Switch Company",
+      "signOut": "Sign out"
     }
   },
   "sidebar": {
@@ -1920,6 +1926,20 @@
         "emailInUse": "Email is already registered.",
         "weakPassword": "Password is too weak.",
         "networkError": "Network error. Please check your connection."
+      },
+      "nav": {
+        "features": "Features",
+        "solutions": "Solutions",
+        "pricing": "Pricing",
+        "enterprise": "Enterprise",
+        "login": "Log in",
+        "getStarted": "Get Started"
+      },
+      "stats": {
+        "industryBundles": "Industry Bundles",
+        "activeOrgs": "Active Orgs",
+        "uptimeSla": "Uptime SLA",
+        "globalSupport": "Global Support"
       }
     }
   },
@@ -5110,5 +5130,141 @@
   "Primary Barcode": "Primary Barcode",
   "Secondary Barcodes": "Secondary Barcodes",
   "Add secondary barcode...": "Add secondary barcode...",
-  "Press Enter to add": "Press Enter to add"
+  "Press Enter to add": "Press Enter to add",
+  "landing": {
+    "authFailed": "Authentication failed",
+    "nav": {
+      "features": "Features",
+      "solutions": "Solutions",
+      "pricing": "Pricing",
+      "enterprise": "Enterprise",
+      "login": "Log in",
+      "getStarted": "Get Started"
+    },
+    "badge": "New ERP System v3.0",
+    "hero": {
+      "titlePrefix": "Everything you need to",
+      "titleHighlight": "manage",
+      "titleSuffix": "your business.",
+      "subtitle": "The all-in-one platform built for modern enterprises. Seamlessly integrated accounting, operations, and HR tools.",
+      "freeTrial": "Free Trial",
+      "noCard": "No credit card required"
+    },
+    "authTabs": {
+      "createAccount": "CREATE ACCOUNT",
+      "signIn": "SIGN IN"
+    },
+    "auth": {
+      "joinTitle": "Join ERP03",
+      "welcomeTitle": "Welcome back",
+      "joinSubtitle": "Start your journey with us today.",
+      "welcomeSubtitle": "Please enter your credentials to continue."
+    },
+    "form": {
+      "firstName": "First Name",
+      "firstPlaceholder": "First",
+      "lastName": "Last Name",
+      "lastPlaceholder": "Last",
+      "email": "Email Address",
+      "emailPlaceholder": "email@company.com",
+      "password": "Password",
+      "submitCreate": "Create Account",
+      "submitSignIn": "Sign In"
+    },
+    "admin": {
+      "prefix": "System Admin?",
+      "portal": "Portal Access"
+    },
+    "legal": {
+      "prefix": "By continuing, you agree to our",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    },
+    "modules": {
+      "availableNow": "Available Now",
+      "comingSoon": "Coming Soon",
+      "accounting": {
+        "title": "Accounting & Finance",
+        "desc": "Full ledger management, cost centers, and period closing."
+      },
+      "sales": {
+        "title": "Sales Management",
+        "desc": "Invoicing, quotations, and customer receivables tracking."
+      },
+      "purchases": {
+        "title": "Purchase Management",
+        "desc": "Purchase orders, vendor bills, and vendor management."
+      },
+      "inventory": {
+        "title": "Inventory Management",
+        "desc": "Stock movements, warehouses, and physical counts."
+      },
+      "pos": {
+        "title": "Point of Sale",
+        "desc": "Fast retail interface integrated with inventory and accounting."
+      },
+      "users": {
+        "title": "Users & Permissions",
+        "desc": "Advanced role-based access control system."
+      },
+      "reports": {
+        "title": "Reports & Forms",
+        "desc": "Comprehensive reporting with a custom print form designer."
+      },
+      "crm": {
+        "title": "CRM",
+        "desc": "Track leads, opportunities, and sales pipeline."
+      },
+      "hr": {
+        "title": "HR & Payroll",
+        "desc": "Employee management, payroll, and attendance."
+      },
+      "messaging": {
+        "title": "Internal Messaging",
+        "desc": "E-signatures, archiving, and document approval workflows."
+      },
+      "manufacturing": {
+        "title": "Manufacturing",
+        "desc": "Bill of materials and workstation tracking."
+      },
+      "projects": {
+        "title": "Projects & Tasks",
+        "desc": "Track tasks, timesheets, and project budgets."
+      },
+      "ai": {
+        "title": "AI Assistant",
+        "desc": "Intelligent assistant and automated rules (Pre-release)."
+      }
+    },
+    "features": {
+      "titlePrefix": "Everything you need to",
+      "titleHighlight": "scale",
+      "subtitle": "Modular, scalable, and easy to use. Choose the apps you need and add more as you grow."
+    },
+    "errors": {
+      "invalidCredential": "Invalid email or password.",
+      "wrongPassword": "Incorrect password.",
+      "emailInUse": "Email is already registered.",
+      "weakPassword": "Password is too weak.",
+      "networkError": "Network error. Please check your connection."
+    },
+    "allInOne": {
+      "title": "All in one place",
+      "desc": "Seamlessly integrated to eliminate data silos and double entry."
+    },
+    "mockups": {
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "recentInvoices": "Recent Invoices",
+      "newInvoice": "New Invoice",
+      "paid": "Paid",
+      "aiPrompt": "Show me the net profit for Q2 compared to Q1.",
+      "aiResponse": "Net profit for Q2 was $42,400, which is a 15% increase from Q1.",
+      "aiPlaceholder": "Ask the AI assistant...",
+      "stockAlerts": "Stock Alerts",
+      "qty": "Qty",
+      "low": "Low",
+      "action": "Action"
+    }
+  }
 }
