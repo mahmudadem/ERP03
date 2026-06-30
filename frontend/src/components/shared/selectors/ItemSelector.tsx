@@ -333,18 +333,18 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
   const getCreateErrorMessage = (error: unknown): string => {
     if (typeof error === 'object' && error && 'response' in error) {
       const response = (error as any).response;
-      return response?.data?.message || response?.data?.error || 'Failed to create item.';
+      return response?.data?.message || response?.data?.error || t('itemSelector.createFailed');
     }
 
     if (error instanceof Error) return error.message;
-    return 'Failed to create item.';
+    return t('itemSelector.createFailed');
   };
 
   const handleCreateItem = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!createForm.code.trim() || !createForm.name.trim() || !createForm.baseUom.trim() || !createForm.costCurrency.trim()) {
-      setCreateError('Code, name, base UoM, and cost currency are required.');
+      setCreateError(t('itemSelector.createRequired'));
       return;
     }
 
@@ -442,7 +442,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                   ref={modalInputRef}
                   autoFocus
                   className="flex-1 border-none bg-transparent text-sm outline-none"
-                  placeholder="Search items by name, code or barcode..."
+                  placeholder={t('itemSelector.searchPlaceholder')}
                   value={modalSearch}
                   onChange={(e) => {
                     setModalSearch(e.target.value);
@@ -487,8 +487,8 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                 {searchResults.length === 0 && !isSearchingServer && (
                   <div className="flex flex-col items-center p-8 text-center">
                     <Box size={32} className="mb-2 text-slate-200" />
-                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">No items found in local cache</p>
-                    <p className="mt-1 text-xs text-slate-500">Matching "{modalSearch}"</p>
+                    <p className="text-sm font-medium text-slate-800 dark:text-slate-100">{t('itemSelector.noLocalResults')}</p>
+                    <p className="mt-1 text-xs text-slate-500">{t('itemSelector.matching', { query: modalSearch })}</p>
                     
                     <div className="mt-6 flex flex-col gap-2">
                       <button
@@ -496,7 +496,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                         onClick={() => performSearch(modalSearch)}
                         className="flex items-center justify-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors shadow-sm"
                       >
-                        <Search size={14} /> Search Entire Database
+                        <Search size={14} /> {t('itemSelector.searchEntireDatabase')}
                       </button>
                       
                       <button
@@ -504,7 +504,7 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                         onClick={handleOpenCreateModal}
                         className="flex items-center justify-center gap-2 rounded-lg border border-slate-200 bg-white px-4 py-2 text-xs font-bold text-slate-600 hover:bg-slate-50 transition-colors"
                       >
-                        <Plus size={14} /> Create "{modalSearch}"
+                        <Plus size={14} /> {t('itemSelector.createNamed', { query: modalSearch })}
                       </button>
                     </div>
                   </div>
@@ -513,8 +513,8 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                 {isSearchingServer && (
                   <div className="flex flex-col items-center p-12 text-center">
                     <RefreshCw size={32} className="mb-3 animate-spin text-indigo-500" />
-                    <p className="text-sm font-bold text-slate-700">Searching server...</p>
-                    <p className="text-xs text-slate-400">Scanning full item registry</p>
+                    <p className="text-sm font-bold text-slate-700">{t('itemSelector.searchingServer')}</p>
+                    <p className="text-xs text-slate-400">{t('itemSelector.scanningRegistry')}</p>
                   </div>
                 )}
 
@@ -532,12 +532,12 @@ export const ItemSelector = forwardRef<HTMLInputElement, ItemSelectorProps>(({
                         <span className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-[10px] uppercase tracking-wider text-slate-500 dark:bg-slate-800">
                           {item.code}
                         </span>
-                        {item.barcode && <span className="text-[10px] text-slate-400">Scan: {item.barcode}</span>}
+                        {item.barcode && <span className="text-[10px] text-slate-400">{t('itemSelector.scan', { barcode: item.barcode })}</span>}
                       </div>
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       <span className="rounded bg-indigo-50 px-1.5 py-0.5 text-[10px] font-bold uppercase text-indigo-500">{item.type}</span>
-                      <span className="text-[9px] text-slate-400">Unit: {item.baseUom}</span>
+                      <span className="text-[9px] text-slate-400">{t('itemSelector.unit', { uom: item.baseUom })}</span>
                     </div>
                   </div>
                 ))}

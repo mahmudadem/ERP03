@@ -1,0 +1,29 @@
+{
+  "itemSelector": {
+    "placeholder": "Kalem sec...",
+    "refresh": "Kalemleri yenile",
+    "create": "Yeni kalem olustur",
+    "searchPlaceholder": "Kalemleri ad, kod veya barkod ile ara...",
+    "noLocalResults": "Yerel bellekte kalem bulunamadi",
+    "matching": "\"{{query}}\" ile eslesen",
+    "searchEntireDatabase": "Tum veritabaninda ara",
+    "createNamed": "\"{{query}}\" olustur",
+    "searchingServer": "Sunucuda araniyor...",
+    "scanningRegistry": "Tum kalem kayitlari taraniyor",
+    "scan": "Barkod: {{barcode}}",
+    "unit": "Birim: {{uom}}",
+    "createRequired": "Kod, ad, temel olcu birimi ve maliyet para birimi zorunludur.",
+    "createFailed": "Kalem olusturulamadi."
+  },
+  "warehouseSelector": {
+    "placeholder": "Depo sec...",
+    "searchPlaceholder": "Depolarda ara...",
+    "refresh": "Depolari yenile",
+    "create": "Yeni depo olustur",
+    "loading": "Depolar yukleniyor...",
+    "noResults": "\"{{query}}\" ile eslesen depo bulunamadi",
+    "default": "Varsayilan",
+    "createRequired": "Depo kodu ve adi zorunludur.",
+    "createFailed": "Depo olusturulamadi."
+  }
+}

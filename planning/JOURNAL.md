@@ -2,6 +2,22 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-01 (Reconcile Firebase production fixes onto SQL-converged main)
+
+- **Goal:** Stop the Firebase/SQL lane split by bringing post-main production fixes from
+  `D:\DEV2026\ERP03-unified` onto a clean branch from `origin/main` while preserving SQL fixes.
+- **Branch/worktree:** `D:\DEV2026\ERP03-reconcile` on `codex/reconcile-prod-sql-20260701`.
+- **Included from SQL lane:** post-PR #54 SQL frontend catalog fix (`voucherTypesService` now uses
+  the API catalog) plus convergence documentation.
+- **Included from Firebase production lane:** filtered Sales/Purchase invoice list query workaround,
+  Firestore index tiebreaker metadata, i18n namespace guard, shared selector translations, and
+  Purchases translation audit checkpoint docs.
+- **Accounting/ERP impact:** invoice-list query reliability and localization only for the Firebase
+  production fixes; no posting, tax, inventory valuation, settlement, approval, tenant isolation, or
+  ledger math changed. SQL catalog fix is read-path wizard/bootstrap behavior, not posting logic.
+- **Next:** apply/review the dirty unified deployed slice, run verification, then deploy both
+  frontend and Firebase backend from the same reconciled line.
+
 ### Session: 2026-07-01 (Converge to one branch + kill SQL-mode "talks-to-Firebase" bugs via live QA)
 
 - **Trigger:** owner did live browser QA on the SQL stack and hit a frozen "Securing Data…" spinner on account create; broader concern that "a lot of hidden issues still exist" and that the two lanes were drifting (SQL branch was 53 commits behind `main`).

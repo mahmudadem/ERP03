@@ -170,7 +170,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to load purchase return.'
+          || t('returnDetail.errors.loadFailed', 'Failed to load purchase return.')
       );
     } finally {
       setLoading(false);
@@ -253,11 +253,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
           returnQty: 0,
         })));
       } else {
-        setError('Please enter a Purchase Invoice ID or Goods Receipt ID first.');
+        setError(t('returnDetail.errors.sourceRequired', 'Please enter a Purchase Invoice ID or Goods Receipt ID first.'));
       }
     } catch (err: any) {
       console.error('Failed to fetch source data', err);
-      setError('Failed to fetch source document. Check the ID.');
+      setError(t('returnDetail.errors.fetchSourceFailed', 'Failed to fetch source document. Check the ID.'));
     } finally {
       setBusy(false);
     }
@@ -286,7 +286,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       setSelectedPiId(existingSelection ? purchaseInvoiceId : list[0].id);
     } catch (err) {
       console.error('Failed to load latest purchase invoices', err);
-      setPiPickerError('Failed to load latest purchase invoices.');
+      setPiPickerError(t('returnDetail.errors.loadLatestPurchaseInvoicesFailed', 'Failed to load latest purchase invoices.'));
       setPiOptions([]);
       setSelectedPiId('');
     } finally {
@@ -296,7 +296,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
   const handlePullSelectedPI = async () => {
     if (!selectedPiId) {
-      setPiPickerError('Please select a Purchase Invoice.');
+      setPiPickerError(t('returnDetail.errors.selectPurchaseInvoice', 'Please select a Purchase Invoice.'));
       return;
     }
 
@@ -331,7 +331,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       setSelectedGrnId(existingSelection ? goodsReceiptId : list[0].id);
     } catch (err) {
       console.error('Failed to load latest goods receipts', err);
-      setGrnPickerError('Failed to load latest goods receipts.');
+      setGrnPickerError(t('returnDetail.errors.loadLatestGoodsReceiptsFailed', 'Failed to load latest goods receipts.'));
       setGrnOptions([]);
       setSelectedGrnId('');
     } finally {
@@ -341,7 +341,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
 
   const handlePullSelectedGRN = async () => {
     if (!selectedGrnId) {
-      setGrnPickerError('Please select a Goods Receipt.');
+      setGrnPickerError(t('returnDetail.errors.selectGoodsReceipt', 'Please select a Goods Receipt.'));
       return;
     }
 
@@ -466,28 +466,28 @@ const PurchaseReturnDetailPage: React.FC = () => {
       setError(null);
 
       if (sourceMode === 'FROM_PI' && !purchaseInvoiceId) {
-        setError('Select a posted Purchase Invoice first.');
+        setError(t('returnDetail.validation.postedPurchaseInvoiceRequired', 'Select a posted Purchase Invoice first.'));
         return;
       }
       if (sourceMode === 'FROM_GRN' && !goodsReceiptId) {
-        setError('Select a posted Goods Receipt first.');
+        setError(t('returnDetail.validation.postedGoodsReceiptRequired', 'Select a posted Goods Receipt first.'));
         return;
       }
       if (sourceMode === 'DIRECT' && !vendorId) {
-        setError('Vendor is required for direct purchase return.');
+        setError(t('returnDetail.validation.directVendorRequired', 'Vendor is required for direct purchase return.'));
         return;
       }
       if (!returnDate) {
-        setError('Return date is required.');
+        setError(t('returnDetail.validation.returnDateRequired', 'Return date is required.'));
         return;
       }
       if (!reason.trim()) {
-        setError('Reason is required.');
+        setError(t('returnDetail.validation.reasonRequired', 'Reason is required.'));
         return;
       }
       const activeLines = selectedLines.filter(l => l.itemId && l.returnQty > 0);
       if (activeLines.length === 0) {
-        setError('At least one item with a return quantity is required.');
+        setError(t('returnDetail.validation.linesRequired', 'At least one item with a return quantity is required.'));
         return;
       }
 
@@ -527,7 +527,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to create purchase return draft.'
+          || t('returnDetail.errors.createDraftFailed', 'Failed to create purchase return draft.')
       );
     } finally {
       setBusy(false);
@@ -568,7 +568,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to post purchase return.'
+          || t('returnDetail.errors.postFailed', 'Failed to post purchase return.')
       );
     } finally {
       setBusy(false);
@@ -589,7 +589,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to unpost purchase return.'
+          || t('returnDetail.errors.unpostFailed', 'Failed to unpost purchase return.')
       );
     } finally {
       setBusy(false);
@@ -661,7 +661,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         err?.response?.data?.error?.message
           || err?.response?.data?.message
           || err?.message
-          || 'Failed to update purchase return.'
+          || t('returnDetail.errors.updateFailed', 'Failed to update purchase return.')
       );
     } finally {
       setBusy(false);
@@ -866,12 +866,12 @@ const PurchaseReturnDetailPage: React.FC = () => {
                 })}
                 isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName)}
                 onRowAdd={addLine}
-                addLabel="Add Item"
+                addLabel={t('returnDetail.addItem', 'Add Item')}
                 minTableWidth="980px"
                 columns={[
                   {
                     id: 'item',
-                    label: 'Item',
+                    label: t('returnDetail.item', 'Item'),
                     kind: 'custom',
                     width: '280px',
                     render: (line, index) => sourceDocument ? (
@@ -896,11 +896,11 @@ const PurchaseReturnDetailPage: React.FC = () => {
                       />
                     ),
                   } as ColumnDef<any>,
-                  { id: 'available', label: 'Available', kind: 'computed', width: '100px', compute: (line) => line.availableQty ?? '-' },
-                  { id: 'returnQty', label: 'Return Qty', kind: 'number', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: Number(value) }) },
+                  { id: 'available', label: t('returnDetail.available', 'Available'), kind: 'computed', width: '100px', compute: (line) => line.availableQty ?? '-' },
+                  { id: 'returnQty', label: t('returnDetail.returnQty', 'Return Qty'), kind: 'number', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: Number(value) }) },
                   {
                     id: 'uom',
-                    label: 'UOM',
+                    label: t('returnDetail.uom', 'UOM'),
                     kind: 'custom',
                     width: '100px',
                     render: (line) => (
@@ -916,10 +916,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
                       />
                     ),
                   },
-                  { id: 'unitCost', label: 'Unit Price', kind: 'number', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }) },
+                  { id: 'unitCost', label: t('returnDetail.unitPrice', 'Unit Price'), kind: 'number', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }) },
                   {
                     id: 'discountType',
-                    label: 'Discount Type',
+                    label: t('returnDetail.discountType', 'Discount Type'),
                     kind: 'custom',
                     width: '64px',
                     render: (line, index) => (
@@ -933,10 +933,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
                       />
                     ),
                   },
-                  { id: 'discountValue', label: 'Discount', kind: 'number', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }) },
+                  { id: 'discountValue', label: t('returnDetail.discount', 'Discount'), kind: 'number', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }) },
                   {
                     id: 'tax',
-                    label: 'Tax',
+                    label: t('returnDetail.tax', 'Tax'),
                     kind: 'custom',
                     width: '150px',
                     render: (line) => (
@@ -953,7 +953,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
                   },
                   {
                     id: 'total',
-                    label: 'Total',
+                    label: t('returnDetail.total', 'Total'),
                     kind: 'computed',
                     width: '120px',
                     compute: computeLineTotalDoc,
@@ -1016,8 +1016,8 @@ const PurchaseReturnDetailPage: React.FC = () => {
           <div className="mt-6 p-4 rounded-lg bg-slate-50 border border-slate-200 text-xs text-slate-500">
             <p className="font-semibold mb-1 uppercase tracking-wider text-slate-600">{t("auto.PurchaseReturnDetailPage.information", "Information")}</p>
             {selectedLines.length === 0 
-              ? "Start by adding items manually or fetch from a source document." 
-              : "Items already fetched from source are restricted to source quantities. Manual entries can search from the full catalog."}
+              ? t('returnDetail.emptyLineHelp', 'Start by adding items manually or fetch from a source document.')
+              : t('returnDetail.sourceLineHelp', 'Items already fetched from source are restricted to source quantities. Manual entries can search from the full catalog.')}
           </div>
 
         </Card>
@@ -1028,7 +1028,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
           onClick={createDraft}
           disabled={busy}
         >
-          {busy ? 'Creating...' : 'Create Draft Return'}
+          {busy ? t('returnDetail.creating', 'Creating...') : t('returnDetail.createDraftReturn', 'Create Draft Return')}
         </button>
 
         {showPiPicker && (
@@ -1239,46 +1239,46 @@ const PurchaseReturnDetailPage: React.FC = () => {
     : purchaseReturn.grandTotalDoc;
   const viewRailSections: DocumentScaffoldRailSections = {
     info: {
-      title: 'Info',
+      title: t('returnDetail.rail.info', 'Info'),
       action: <DocumentPill tone="blue">{purchaseReturn.returnContext}</DocumentPill>,
       content: (
         <DocumentRailKeyValueList
           items={[
-            { label: 'Vendor', value: purchaseReturn.vendorName || purchaseReturn.vendorId || '-' },
-            { label: 'Return Date', value: isEditMode ? editReturnDate : purchaseReturn.returnDate },
-            { label: 'Warehouse', value: isEditMode ? editWarehouseId : purchaseReturn.warehouseId || '-' },
+            { label: t('returnDetail.vendor', 'Vendor'), value: purchaseReturn.vendorName || purchaseReturn.vendorId || '-' },
+            { label: t('returnDetail.returnDate', 'Return Date'), value: isEditMode ? editReturnDate : purchaseReturn.returnDate },
+            { label: t('returnDetail.warehouse', 'Warehouse'), value: isEditMode ? editWarehouseId : purchaseReturn.warehouseId || '-' },
           ]}
         />
       ),
     },
     readiness: {
-      title: 'Document Status',
+      title: t('returnDetail.rail.documentStatus', 'Document Status'),
       content: (
         <DocumentRailKeyValueList
           items={[
             {
-              label: 'Status',
+              label: t('returnDetail.status', 'Status'),
               value: (
                 <DocumentPill tone={purchaseReturn.status === 'POSTED' ? 'green' : 'slate'}>
                   {purchaseReturn.status}
                 </DocumentPill>
               ),
             },
-            { label: 'Lines', value: (isEditMode ? editLines : purchaseReturn.lines).length },
+            { label: t('returnDetail.lines', 'Lines'), value: (isEditMode ? editLines : purchaseReturn.lines).length },
           ]}
         />
       ),
     },
     totals: {
-      title: 'Totals',
+      title: t('returnDetail.rail.totals', 'Totals'),
       action: <DocumentPill tone="slate">{purchaseReturn.currency}</DocumentPill>,
       content: (
         <DocumentRailTotals
           rows={[
-            { label: 'Subtotal', value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
-            { label: 'Tax', value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}` },
+            { label: t('returnDetail.subtotal', 'Subtotal'), value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
+            { label: t('returnDetail.tax', 'Tax'), value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}` },
           ]}
-          grand={{ label: 'Grand Total', value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}` }}
+          grand={{ label: t('returnDetail.grandTotal', 'Grand Total'), value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}` }}
         />
       ),
     },
@@ -1291,7 +1291,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
       onClick={saveEdit}
       disabled={busy}
     >
-      {busy ? 'Saving...' : 'Save Changes'}
+      {busy ? t('common.saving', 'Saving...') : t('returnDetail.saveChanges', 'Save Changes')}
     </button>
   ) : (
     <>
@@ -1303,7 +1303,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             onClick={postDraft}
             disabled={busy}
           >
-            {busy ? 'Posting...' : 'Post Return'}
+            {busy ? t('returnDetail.posting', 'Posting...') : t('returnDetail.postReturn', 'Post Return')}
           </button>
           <button
             type="button"
@@ -1329,7 +1329,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
             onClick={() => setUnpostConfirmOpen(true)}
             disabled={busy}
           >
-            {busy ? 'Unposting...' : 'Unpost Return'}
+            {busy ? t('returnDetail.unposting', 'Unposting...') : t('returnDetail.unpostReturn', 'Unpost Return')}
           </button>
         </>
       )}
@@ -1340,9 +1340,9 @@ const PurchaseReturnDetailPage: React.FC = () => {
     <>
     <DocumentDetailScaffold
       title={purchaseReturn.returnNumber}
-      subtitle={`Vendor: ${purchaseReturn.vendorName || purchaseReturn.vendorId || '-'}`}
+      subtitle={t('returnDetail.viewSubtitle', 'Vendor: {{vendor}}', { vendor: purchaseReturn.vendorName || purchaseReturn.vendorId || '-' })}
       icon={FileText}
-      backLabel={isEditMode ? 'Cancel edit' : 'Back to purchase returns'}
+      backLabel={isEditMode ? t('returnDetail.cancelEdit', 'Cancel edit') : t('returnDetail.backToPurchaseReturns', 'Back to purchase returns')}
       onBack={() => (isEditMode ? cancelEditMode() : navigate('/purchases/returns'))}
       badges={
         <>
@@ -1352,21 +1352,21 @@ const PurchaseReturnDetailPage: React.FC = () => {
         </>
       }
       newAction={{
-        label: 'New Return',
-        title: 'New Return',
+        label: t('returnDetail.newReturn', 'New Return'),
+        title: t('returnDetail.newReturn', 'New Return'),
         hasUnsavedChanges: hasUnsavedDocumentChanges,
         onNew: openNewPurchaseReturnForm,
       }}
       railSections={viewRailSections}
-      railTitle="Purchase return side rail"
+      railTitle={t('returnDetail.rail.title', 'Purchase return side rail')}
       footerSections={{
         totals: {
           content: (
         <DocumentFooterTotalsStrip
           totals={[
-            { label: 'Subtotal', value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
-            { label: 'Tax', value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
-            { label: 'Grand', value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}`, tone: 'green' },
+            { label: t('returnDetail.subtotal', 'Subtotal'), value: `${purchaseReturn.currency} ${purchaseReturn.subtotalDoc.toFixed(2)}` },
+            { label: t('returnDetail.tax', 'Tax'), value: `${purchaseReturn.currency} ${purchaseReturn.taxTotalDoc.toFixed(2)}`, tone: 'blue' },
+            { label: t('returnDetail.grand', 'Grand'), value: `${purchaseReturn.currency} ${activeGrandTotal.toFixed(2)}`, tone: 'green' },
           ]}
         />
           ),
@@ -1464,7 +1464,7 @@ const PurchaseReturnDetailPage: React.FC = () => {
         columns={[
           {
             id: 'item',
-            label: 'Item',
+            label: t('returnDetail.item', 'Item'),
             kind: 'custom',
             width: '260px',
             render: (line) => (
@@ -1474,10 +1474,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
               </div>
             ),
           } as ColumnDef<any>,
-          { id: 'returnQty', label: 'Return Qty', kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: Number(value) }), compute: (line) => line.returnQty },
+          { id: 'returnQty', label: t('returnDetail.returnQty', 'Return Qty'), kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.returnQty, setter: (value) => ({ returnQty: Number(value) }), compute: (line) => line.returnQty },
           {
             id: 'uom',
-            label: 'UOM',
+            label: t('returnDetail.uom', 'UOM'),
             kind: 'custom',
             width: '110px',
             render: (line, index) => isEditMode ? (
@@ -1501,10 +1501,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
               <div className="flex h-9 items-center px-2 text-xs uppercase text-slate-700 dark:text-slate-200">{line.uom}</div>
             ),
           },
-          { id: 'unitCost', label: 'Unit Cost', kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }), compute: (line) => line.unitCostDoc },
+          { id: 'unitCost', label: t('returnDetail.unitCost', 'Unit Cost'), kind: isEditMode ? 'number' : 'computed', width: '120px', accessor: (line) => line.unitCostDoc, setter: (value) => ({ unitCostDoc: Number(value) }), compute: (line) => line.unitCostDoc },
           {
             id: 'discountType',
-            label: 'Discount Type',
+            label: t('returnDetail.discountType', 'Discount Type'),
             kind: 'custom',
             width: '64px',
             render: (line, index) => isEditMode ? (
@@ -1522,10 +1522,10 @@ const PurchaseReturnDetailPage: React.FC = () => {
               </div>
             ),
           },
-          { id: 'discountValue', label: 'Discount', kind: isEditMode ? 'number' : 'computed', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }), compute: (line) => line.discountValue || 0 },
+          { id: 'discountValue', label: t('returnDetail.discount', 'Discount'), kind: isEditMode ? 'number' : 'computed', width: '90px', accessor: (line) => line.discountValue || 0, setter: (value) => ({ discountValue: Number(value) }), compute: (line) => line.discountValue || 0 },
           {
             id: 'lineTotal',
-            label: 'Line Total',
+            label: t('returnDetail.lineTotal', 'Line Total'),
             kind: 'computed',
             width: '130px',
             compute: (line) => {
@@ -1597,9 +1597,9 @@ const PurchaseReturnDetailPage: React.FC = () => {
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
         title={t("auto.PurchaseReturnDetailPage.unpostPurchaseReturn", "Unpost Purchase Return")}
-        message="This will reverse all accounting and inventory entries posted for this purchase return. The action is auditable but cannot be undone in place. Continue?"
-        confirmLabel="Unpost Return"
-        cancelLabel="Cancel"
+        message={t('returnDetail.unpost.confirmMessage', 'This will reverse all accounting and inventory entries posted for this purchase return. The action is auditable but cannot be undone in place. Continue?')}
+        confirmLabel={t('returnDetail.unpostReturn', 'Unpost Return')}
+        cancelLabel={t('common.cancel', 'Cancel')}
         tone="danger"
         isConfirming={busy}
         onConfirm={unpostReturn}

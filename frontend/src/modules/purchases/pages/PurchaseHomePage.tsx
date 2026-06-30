@@ -117,7 +117,7 @@ const PurchaseHomePage: React.FC = () => {
         error?.response?.data?.error?.message
           || error?.response?.data?.message
           || error?.message
-          || 'Failed to load purchases module.'
+          || t('PurchaseHomePage.failedToLoadPurchasesModule', 'Failed to load purchases module.')
       );
     } finally {
       setLoading(false);
@@ -195,8 +195,8 @@ const PurchaseHomePage: React.FC = () => {
   if (loading && initialized === null) {
     return (
       <div className="space-y-6 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseHomePage.purchasesOverview", "Purchases Overview")}</h1>
-        <Card className="p-6">{t("auto.PurchaseHomePage.loadingPurchasesModule", "Loading purchases module...")}</Card>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("PurchaseHomePage.purchasesOverview", "Purchases Overview")}</h1>
+        <Card className="p-6">{t("PurchaseHomePage.loadingPurchasesModule", "Loading purchases module...")}</Card>
       </div>
     );
   }
@@ -204,7 +204,7 @@ const PurchaseHomePage: React.FC = () => {
   if (loadError && initialized === null) {
     return (
       <div className="space-y-6 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("auto.PurchaseHomePage.purchasesOverview2", "Purchases Overview")}</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t("PurchaseHomePage.purchasesOverview2", "Purchases Overview")}</h1>
         <Card className="p-6 text-sm text-red-700">{loadError}</Card>
       </div>
     );
@@ -231,10 +231,10 @@ const PurchaseHomePage: React.FC = () => {
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{t("auto.PurchaseHomePage.purchasesOverviewModule", "Purchases Overview Module")}</h1>
-              <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">{t("auto.PurchaseHomePage.moduleDashboard", "Module Dashboard")}</span>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">{t("PurchaseHomePage.purchasesOverviewModule", "Purchases Overview Module")}</h1>
+              <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">{t("PurchaseHomePage.moduleDashboard", "Module Dashboard")}</span>
             </div>
-            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("auto.PurchaseHomePage.manageVendorsTrackPurchaseOrdersAndReceiptsAnd", "Manage vendors, track purchase orders and receipts, and process vendor invoices.")}</div>
+            <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">{t("PurchaseHomePage.manageVendorsTrackPurchaseOrdersAndReceiptsAnd", "Manage vendors, track purchase orders and receipts, and process vendor invoices.")}</div>
           </div>
         </div>
         <div className="flex gap-2">
@@ -243,13 +243,13 @@ const PurchaseHomePage: React.FC = () => {
             onClick={() => navigate(showOperational ? '/purchases/orders/new' : '/purchases/invoices/new')}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
-            {showOperational ? 'New PO' : 'New Purchase Invoice'}
+            {showOperational ? t('PurchaseHomePage.newPO', 'New PO') : t('PurchaseHomePage.newPurchaseInvoice', 'New Purchase Invoice')}
           </button>
           <button
             type="button"
             onClick={() => navigate('/purchases/settings')}
             className="rounded-lg border border-slate-300 px-4 py-2 text-sm font-medium"
-          >{t("auto.PurchaseHomePage.settings", "Settings")}</button>
+          >{t("PurchaseHomePage.settings", "Settings")}</button>
         </div>
       </div>
 
@@ -258,25 +258,25 @@ const PurchaseHomePage: React.FC = () => {
           <>
             <StatsCard
               icon={<ShoppingCart className="h-5 w-5" />}
-              label="Open POs"
+              label={t('PurchaseHomePage.openPOs', 'Open POs')}
               value={loading ? '...' : String(openPOsCount)}
               accentClass="bg-blue-100 text-blue-700"
             />
             <StatsCard
               icon={<ClipboardList className="h-5 w-5" />}
-              label="Pending GRNs"
+              label={t('PurchaseHomePage.pendingGRNs', 'Pending GRNs')}
               value={loading ? '...' : String(pendingGRNsCount)}
               accentClass="bg-amber-100 text-amber-700"
             />
             <StatsCard
               icon={<FileText className="h-5 w-5" />}
-              label="Unpaid Invoices"
+              label={t('PurchaseHomePage.unpaidInvoices', 'Unpaid Invoices')}
               value={loading ? '...' : String(unpaidInvoicesCount)}
               accentClass="bg-emerald-100 text-emerald-700"
             />
             <StatsCard
               icon={<AlertTriangle className="h-5 w-5" />}
-              label="Overdue Invoices"
+              label={t('PurchaseHomePage.overdueInvoices', 'Overdue Invoices')}
               value={loading ? '...' : String(overdueInvoicesCount)}
               accentClass="bg-rose-100 text-rose-700"
             />
@@ -285,25 +285,25 @@ const PurchaseHomePage: React.FC = () => {
           <>
             <StatsCard
               icon={<FileText className="h-5 w-5" />}
-              label="Total Purchases"
+              label={t('PurchaseHomePage.totalPurchases', 'Total Purchases')}
               value={loading ? '...' : totalPurchases.toFixed(2)}
               accentClass="bg-emerald-100 text-emerald-700"
             />
             <StatsCard
               icon={<ClipboardList className="h-5 w-5" />}
-              label="Posted Invoices"
+              label={t('PurchaseHomePage.postedInvoices', 'Posted Invoices')}
               value={loading ? '...' : String(postedInvoices.length)}
               accentClass="bg-blue-100 text-blue-700"
             />
             <StatsCard
               icon={<AlertTriangle className="h-5 w-5" />}
-              label="Overdue Invoices"
+              label={t('auto.PurchaseHomePage.overdueInvoices', 'Overdue Invoices')}
               value={loading ? '...' : String(overdueInvoicesCount)}
               accentClass="bg-rose-100 text-rose-700"
             />
             <StatsCard
               icon={<Undo2 className="h-5 w-5" />}
-              label="Posted Returns"
+              label={t('PurchaseHomePage.postedReturns', 'Posted Returns')}
               value={loading ? '...' : String(postedReturnsCount)}
               accentClass="bg-amber-100 text-amber-700"
             />
@@ -314,7 +314,7 @@ const PurchaseHomePage: React.FC = () => {
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {showOperational ? 'Recent Activity' : 'Recent Purchase Invoices & Returns'}
+            {showOperational ? t('PurchaseHomePage.recentActivity', 'Recent Activity') : t('PurchaseHomePage.recentPurchaseInvoicesAndReturns', 'Recent Purchase Invoices & Returns')}
           </h2>
           <button
             type="button"
@@ -322,7 +322,7 @@ const PurchaseHomePage: React.FC = () => {
             onClick={() => navigate(showOperational ? '/purchases/returns' : '/purchases/invoices')}
           >
             <Undo2 className="h-4 w-4" />
-            {showOperational ? 'Returns' : 'Invoices'}
+            {showOperational ? t('PurchaseHomePage.returns', 'Returns') : t('PurchaseHomePage.invoices', 'Invoices')}
           </button>
         </div>
         <div className="space-y-2">
@@ -341,7 +341,7 @@ const PurchaseHomePage: React.FC = () => {
             </button>
           ))}
           {!loading && recentActivity.length === 0 && (
-            <div className="py-4 text-center text-sm text-slate-500">{t("auto.PurchaseHomePage.noRecentActivityYet", "No recent activity yet.")}</div>
+            <div className="py-4 text-center text-sm text-slate-500">{t("PurchaseHomePage.noRecentActivityYet", "No recent activity yet.")}</div>
           )}
         </div>
       </Card>

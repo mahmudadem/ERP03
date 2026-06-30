@@ -86,11 +86,11 @@ export const PurchaseFinancialIntegrationWizard: React.FC = () => {
 
   const stepError = useMemo(() => {
     if (currentStep === 1) {
-      if (!defaultAPAccountId) return 'Default Accounts Payable account is required.';
-      if (isPerpetual && !defaultGRNIAccountId) return 'Default GRNI account is required for perpetual accounting mode.';
+      if (!defaultAPAccountId) return t('auto.PurchaseFinancialIntegrationWizard.defaultAPRequired', 'Default Accounts Payable account is required.');
+      if (isPerpetual && !defaultGRNIAccountId) return t('auto.PurchaseFinancialIntegrationWizard.defaultGRNIRequired', 'Default GRNI account is required for perpetual accounting mode.');
     }
     return null;
-  }, [currentStep, defaultAPAccountId, defaultGRNIAccountId, isPerpetual]);
+  }, [currentStep, defaultAPAccountId, defaultGRNIAccountId, isPerpetual, t]);
 
   const goNext = () => {
     if (stepError) { setError(stepError); return; }
@@ -123,7 +123,7 @@ export const PurchaseFinancialIntegrationWizard: React.FC = () => {
       emitCompanyModulesRefresh({ moduleCode: 'purchase' });
       navigate('/purchases/settings');
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || err?.message || 'Failed to configure financial integration.');
+      setError(err?.response?.data?.error?.message || err?.message || t('auto.PurchaseFinancialIntegrationWizard.configureFailed', 'Failed to configure financial integration.'));
     } finally {
       setSubmitting(false);
     }

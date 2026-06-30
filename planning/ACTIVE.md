@@ -79,6 +79,20 @@ translations (`bfd636e0`); 278l POS shift-close summary modal (`f4917b14`); 278m
 range / DatePicker i18n (`37a2feb0`); 278n–278v inventory/purchases/sales report translations;
 278w–278z analytics/voucher-name/AP-selector/onboarding-RTL — all complete on `main`.
 
+**Reconciliation branch `codex/reconcile-prod-sql-20260701`:** adds the post-main Firebase
+production fixes from `ERP03-unified` back onto the SQL-converged main line:
+- **278aa Purchase/Sales filtered invoice list production 500:** fixed and deployed live to
+  Firebase Functions on 2026-06-30. Backend now avoids the failing filtered invoice composite-index
+  query by sorting/limiting after equality-filter reads; index config still includes the tiebreaker.
+- **278ab i18n namespace guard + shared selector translations:** restored Arabic default, registered
+  `inventory` and `shared` locales, localized shared selectors, and added the build guard.
+- **278ac Purchases translation audit batch 1/2:** Purchases list/detail/report/home/settings
+  translation cleanup continued; remaining audit work is still tracked in
+  `planning/tasks/278ac-production-translation-audit.md`.
+
+**Next:** finish reconciliation verification, then deploy both frontend and Firebase backend from the
+same main-derived branch so Firebase and SQL fixes stop living in separate lanes.
+
 ---
 
 ## 🔶 SQL-readiness — Epic 275 (remediation DONE 2026-06-30)

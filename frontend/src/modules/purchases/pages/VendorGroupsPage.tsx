@@ -306,7 +306,7 @@ const VendorGroupsPage: React.FC = () => {
                             ? 'border-green-200 bg-green-50 text-green-600'
                             : 'border-slate-200 bg-slate-50 text-slate-400'
                         )}>
-                          {group.status}
+                          {group.status === 'ACTIVE' ? t('common.active', 'Active') : t('common.inactive', 'Inactive')}
                         </div>
                         <button
                           onClick={() => setEditingId(group.id)}

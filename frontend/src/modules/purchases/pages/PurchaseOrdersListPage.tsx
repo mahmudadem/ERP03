@@ -132,10 +132,10 @@ const PurchaseOrdersListPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to load purchase orders', err);
       setError(
-        err?.response?.data?.error?.message ||
+          err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load purchase orders.'
+          t('purchaseOrdersList.errors.loadFailed', 'Failed to load purchase orders.')
       );
       setOrders([]);
     } finally {

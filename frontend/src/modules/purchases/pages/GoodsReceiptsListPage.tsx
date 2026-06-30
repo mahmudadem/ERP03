@@ -64,7 +64,7 @@ const GoodsReceiptsListPage: React.FC = () => {
       setWarehouses(unwrap<InventoryWarehouseDTO[]>(warehouseResult) || []);
     } catch (err: any) {
       console.error('Failed to load goods receipts', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Failed to load goods receipts.');
+      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('goodsReceiptsList.errors.loadFailed', 'Failed to load goods receipts.'));
       setReceipts([]);
     } finally {
       setLoading(false);

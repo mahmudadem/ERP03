@@ -157,10 +157,10 @@ const PurchaseInvoicesListPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to load purchase invoices', err);
       setError(
-        err?.response?.data?.error?.message ||
+          err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load purchase invoices.'
+          t('invoicesList.errors.loadFailed', 'Failed to load purchase invoices.')
       );
       setInvoices([]);
     } finally {

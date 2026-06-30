@@ -63,16 +63,28 @@ export class FirestorePurchaseInvoiceRepository implements IPurchaseInvoiceRepos
 
   async list(companyId: string, opts?: PurchaseInvoiceListOptions): Promise<PurchaseInvoice[]> {
     let query: Query = this.collection(companyId);
+    const hasFilters = !!(
+      opts?.vendorId ||
+      opts?.purchaseOrderId ||
+      opts?.status ||
+      opts?.paymentStatus
+    );
 
     if (opts?.vendorId) query = query.where('vendorId', '==', opts.vendorId);
     if (opts?.purchaseOrderId) query = query.where('purchaseOrderId', '==', opts.purchaseOrderId);
     if (opts?.status) query = query.where('status', '==', opts.status);
     if (opts?.paymentStatus) query = query.where('paymentStatus', '==', opts.paymentStatus);
 
-    query = query.orderBy('invoiceDate', 'desc');
-    if (opts?.limit) query = query.limit(opts.limit);
+    if (!hasFilters) {
+      query = query.orderBy('invoiceDate', 'desc');
+      if (opts?.limit) query = query.limit(opts.limit);
+    }
 
     const snap = await query.get();
-    return snap.docs.map((doc) => PurchaseInvoiceMapper.toDomain(doc.data()));
+    const invoices = snap.docs
+      .map((doc) => PurchaseInvoiceMapper.toDomain(doc.data()))
+      .sort((a, b) => new Date(b.invoiceDate).getTime() - new Date(a.invoiceDate).getTime());
+
+    return hasFilters && opts?.limit ? invoices.slice(0, opts.limit) : invoices;
   }
 }

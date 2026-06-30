@@ -1,37 +1,84 @@
 {
   "common": {
-    "active": "Active",
-    "cancel": "Cancel",
-    "currency": "Currency",
-    "default": "DEFAULT",
-    "delete": "Delete",
-    "edit": "Edit",
-    "general": "General",
-    "inactive": "Inactive",
-    "loading": "Loading...",
-    "name": "Name",
-    "save": "Save",
-    "saving": "Saving...",
-    "status": "Status",
-    "validFrom": "Valid From",
-    "validTo": "Valid To"
+    "active": "نشط",
+    "cancel": "إلغاء",
+    "currency": "العملة",
+    "default": "افتراضي",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "general": "عام",
+    "inactive": "غير نشط",
+    "loading": "جارٍ التحميل...",
+    "name": "الاسم",
+    "save": "حفظ",
+    "saving": "جارٍ الحفظ...",
+    "status": "الحالة",
+    "validFrom": "صالح من",
+    "validTo": "صالح إلى"
   },
   "goodsReceiptDetail": {
     "labels": {
-      "draftReceiptPostingWillUpdateInventoryReceiptStateThroughTheExistingPurchaseFlow": "Draft receipt. Posting will update inventory receipt state through the existing purchase flow.",
-      "item": "Item",
-      "lines": "Lines",
-      "newGoodsReceipt": "New Goods Receipt",
-      "purchaseOrder": "Purchase Order",
-      "receiptDate": "Receipt Date",
-      "received": "Received",
-      "receivedQty": "Received Qty",
-      "sourcePOLinesCanBeLoadedIntoThisReceipt": "Source PO lines can be loaded into this receipt.",
-      "uOM": "UOM",
-      "vendor": "Vendor",
-      "warehouse": "Warehouse"
+      "draftReceiptPostingWillUpdateInventoryReceiptStateThroughTheExistingPurchaseFlow": "إيصال مسودة. عند الترحيل سيتم تحديث حالة استلام المخزون من خلال مسار المشتريات الحالي.",
+      "item": "الصنف",
+      "lineItems": "بنود الأصناف",
+      "lines": "البنود",
+      "addItem": "إضافة صنف",
+      "backToGoodsReceipts": "العودة إلى إيصالات الاستلام",
+      "cancelEdit": "إلغاء التعديل",
+      "cannotUnpostLinkedPi": "لا يمكن إلغاء الترحيل لأن إيصال الاستلام مرتبط بفاتورة شراء",
+      "createDraftGrn": "إنشاء مسودة إيصال استلام",
+      "editGoodsReceipt": "تعديل {{number}}",
+      "loadPoLines": "تحميل بنود أمر الشراء",
+      "newGoodsReceipt": "إيصال استلام جديد",
+      "poReference": "مرجع أمر الشراء",
+      "postGrn": "ترحيل إيصال الاستلام",
+      "posting": "جارٍ الترحيل...",
+      "purchaseOrder": "أمر الشراء",
+      "receiptDate": "تاريخ الاستلام",
+      "received": "مستلم",
+      "receivedQty": "الكمية المستلمة",
+      "sourcePOLinesCanBeLoadedIntoThisReceipt": "يمكن تحميل بنود أمر الشراء المصدر إلى هذا الإيصال.",
+      "unpostGrn": "إلغاء ترحيل إيصال الاستلام",
+      "unposting": "جارٍ إلغاء الترحيل...",
+      "updateDraft": "تحديث المسودة",
+      "uOM": "وحدة القياس",
+      "vendor": "المورد",
+      "vendorStandaloneOnly": "المورد (للاستلام المباشر فقط)",
+      "viewSubtitle": "المورد: {{vendor}}{{poPart}}",
+      "viewSubtitlePoPart": " | أمر الشراء: {{po}}",
+      "warehouse": "المستودع"
     },
-    "title": "Unpost Goods Receipt"
+    "errors": {
+      "loadFailed": "فشل تحميل إيصال الاستلام.",
+      "loadPoLinesFailed": "فشل تحميل البنود من أمر الشراء.",
+      "noOpenStockLines": "لا توجد بنود مخزون مفتوحة في أمر الشراء هذا.",
+      "poReferenceRequired": "أدخل مرجع أمر الشراء أولاً.",
+      "postFailed": "فشل ترحيل إيصال الاستلام.",
+      "saveDraftFailed": "فشل حفظ مسودة إيصال الاستلام.",
+      "unpostFailed": "فشل إلغاء ترحيل إيصال الاستلام."
+    },
+    "rail": {
+      "direct": "مباشر",
+      "documentStatus": "حالة المستند",
+      "info": "معلومات",
+      "po": "أمر شراء",
+      "title": "الشريط الجانبي لإيصال الاستلام",
+      "totals": "الإجماليات"
+    },
+    "subtitle": "مستند استلام مستودعي. عند الترحيل يسجل المخزون المستلم من خلال مسار المشتريات الحالي.",
+    "title": "إيصال استلام",
+    "unpost": {
+      "confirmTitle": "إلغاء ترحيل إيصال الاستلام",
+      "confirmMessage": "سيؤدي هذا إلى عكس جميع حركات المخزون المسجلة لهذا الإيصال. الإجراء قابل للتدقيق ولكن لا يمكن التراجع عنه في مكانه. هل تريد المتابعة؟"
+    },
+    "validation": {
+      "directLinesRequired": "مطلوب بند واحد على الأقل لإيصالات الاستلام المباشرة.",
+      "lineItemRequired": "البند {{lineNum}}: الصنف مطلوب.",
+      "lineReceivedQtyPositive": "البند {{lineNum}}: يجب أن تكون الكمية المستلمة أكبر من 0.",
+      "receiptDateRequired": "تاريخ الاستلام مطلوب.",
+      "vendorRequiredWithoutPo": "المورد مطلوب عند عدم وجود أمر شراء.",
+      "warehouseRequired": "المستودع مطلوب."
+    }
   },
   "goodsReceiptsList": {
     "emptyMessage": "لا توجد إشعارات استلام بضائع.",
@@ -45,6 +92,9 @@
     },
     "newButton": "إشعار استلام جديد",
     "title": "إشعارات استلام بضائع",
+    "errors": {
+      "loadFailed": "فشل تحميل إيصالات الاستلام."
+    },
     "filters": {
       "statusPlaceholder": "الحالة",
       "clear": "مسح"
@@ -111,8 +161,8 @@
     },
     "columns": {
       "addLabel": "إضافة صنف",
-      "discount": "Discount",
-      "discountType": "Discount Type",
+      "discount": "الخصم",
+      "discountType": "نوع الخصم",
       "item": "الصنف",
       "lineTotal": "إجمالي البند",
       "net": "صافي",
@@ -156,7 +206,7 @@
       "tax": "الضريبة"
     },
     "fromPOPill": "من أمر شراء",
-    "glImpact": "GL Impact",
+    "glImpact": "الأثر على دفتر الأستاذ",
     "header": {
       "apReady": "حساب دائنون جاهز",
       "currency": "العملة",
@@ -165,7 +215,7 @@
       "exchangeRate": "سعر الصرف",
       "fromPO": "الرأس - من أمر شراء",
       "invoiceDate": "تاريخ الفاتورة",
-      "mainWarehouse": "Main Warehouse",
+      "mainWarehouse": "المستودع الرئيسي",
       "notes": "ملاحظات",
       "purchaseOrder": "أمر الشراء",
       "selectPO": "اختر أمر شراء قابل للفوترة...",
@@ -177,7 +227,7 @@
     "importNotConnected": "استيراد فاتورة المشتريات من ملف غير متصل بعد.",
     "loadingMessage": "جاري تحميل فاتورة المشتريات...",
     "loadingTitle": "فاتورة مشتريات",
-    "newInvoice": "New Invoice",
+    "newInvoice": "فاتورة جديدة",
     "notFoundMessage": "فاتورة المشتريات غير موجودة.",
     "notFoundTitle": "فاتورة مشتريات",
     "pendingApproval": {
@@ -189,11 +239,11 @@
     "policyOK": "السياسة سليمة",
     "postInvoice": "ترحيل الفاتورة",
     "posting": "جاري الترحيل...",
-    "print": "Print",
-    "printFailed": "فشل طباعة فاتورة الشراء.",
+    "print": "طباعة",
+    "printFailed": "فشلت طباعة فاتورة الشراء.",
     "printPopupBlocked": "تم حظر نافذة الطباعة المنبثقة.",
     "printStarted": "تم فتح معاينة الطباعة.",
-    "printing": "جاري الطباعة...",
+    "printing": "جارٍ الطباعة...",
     "rail": {
       "account": "حساب",
       "directBill": "فاتورة مباشرة",
@@ -201,10 +251,10 @@
       "helpDraft": "اختر أو مرر المؤشر فوق بند صنف لمراجعة تفاصيل الشراء والمستودع والضريبة وأثر حساب الدائنون.",
       "helpView": "راجع فاتورة المورد وتكلفة المخزون والضريبة ورصيد الدائنون وإجراءات الترحيل القانونية من هذه النافذة.",
       "info": "معلومات",
-      "item": "Item",
-      "itemFocusNote": "Select a header warehouse before posting stock items on a direct purchase invoice.",
-      "itemFocusNoteWithWarehouse": "This line receives into {{warehouse}} unless the source document already fixed the warehouse.",
-      "itemFocusTitle": "Item line",
+      "item": "الصنف",
+      "itemFocusNote": "اختر مستودع الترويسة قبل ترحيل أصناف المخزون في فاتورة شراء مباشرة.",
+      "itemFocusNoteWithWarehouse": "سيتم استلام هذا البند في {{warehouse}} ما لم يكن المستند المصدر قد حدد المستودع مسبقًا.",
+      "itemFocusTitle": "بند الصنف",
       "po": "أمر شراء",
       "readinessBalanced": "معاينة ترحيل دائنون متوازن",
       "readinessLedgerCreated": "تم إنشاء قيد الأستاذ",
@@ -222,15 +272,15 @@
       "totalsSubtotal": "المجموع الفرعي",
       "totalsTax": "الضريبة",
       "totalsTitle": "الإجماليات",
-      "vendor": "Vendor",
-      "vendorFocusNote": "Vendor focus controls AP settlement, payment terms, currency, and purchase history.",
-      "vendorFocusSubtitle": "Vendor bill and AP account context",
-      "vendorFocusTitle": "Vendor",
+      "vendor": "المورد",
+      "vendorFocusNote": "سياق المورد يتحكم في تسوية الذمم الدائنة وشروط الدفع والعملة وسجل المشتريات.",
+      "vendorFocusSubtitle": "سياق فاتورة المورد وحساب الدائنين",
+      "vendorFocusTitle": "المورد",
       "vendorInvoiceMissing": "لم يتم إدخال فاتورة المورد / المرجع",
-      "warehouse": "Warehouse",
-      "warehouseFocusNote": "For direct purchase invoices, this header warehouse is applied to stock lines that do not come from a purchase order.",
-      "warehouseFocusSubtitle": "Direct PI stock receipt location",
-      "warehouseFocusTitle": "Warehouse"
+      "warehouse": "المستودع",
+      "warehouseFocusNote": "في فواتير الشراء المباشرة، يطبق مستودع الترويسة على بنود المخزون غير القادمة من أمر شراء.",
+      "warehouseFocusSubtitle": "موقع استلام مخزون فاتورة الشراء المباشرة",
+      "warehouseFocusTitle": "المستودع"
     },
     "railTitle": "الشريط الجانبي لفاتورة المشتريات",
     "readFromImage": "قراءة من صورة",
@@ -247,7 +297,7 @@
     "sourceLockedPO": "المصدر مقفل من أمر الشراء",
     "sourcePickPO": "اختر أمر الشراء في الترويسة",
     "subtitle": "مستند فاتورة مورد. الترحيل ينشئ قيود دائنون ومشتريات/مخزون.",
-    "taxCodeEmptyHint": "No purchase tax codes set up. Create one with scope PURCHASE or BOTH to use it here.",
+    "taxCodeEmptyHint": "لا توجد رموز ضريبة مشتريات معدة. أنشئ رمزًا بنطاق PURCHASE أو BOTH لاستخدامه هنا.",
     "unpostInvoice": "إلغاء ترحيل الفاتورة",
     "unposting": "جاري إلغاء الترحيل...",
     "updateDraft": "تحديث المسودة",
@@ -336,6 +386,9 @@
     },
     "emptyDescription": "أنشئ فاتورة مورد جديدة أو غيّر الفلاتر للعثور على فواتير موجودة.",
     "emptyTitle": "لا توجد فواتير مشتريات",
+    "errors": {
+      "loadFailed": "فشل تحميل فواتير المشتريات."
+    },
     "filters": {
       "allTypes": "النوع",
       "apply": "تطبيق",
@@ -401,8 +454,8 @@
     "currency": "العملة",
     "currencyRequired": "العملة مطلوبة.",
     "delete": "حذف",
-    "discountColumn": "Discount",
-    "discountTypeColumn": "Discount Type",
+    "discountColumn": "الخصم",
+    "discountTypeColumn": "نوع الخصم",
     "exchangeRate": "سعر الصرف",
     "exchangeRatePositive": "يجب أن يكون سعر الصرف أكبر من 0.",
     "expectedDelivery": "التسليم المتوقع",
@@ -450,7 +503,7 @@
     "tax": "الضريبة",
     "taxBase": "الضريبة (أساس)",
     "taxCodeColumn": "رمز الضريبة",
-    "taxCodeEmptyHint": "No purchase tax codes set up. Create one with scope PURCHASE or BOTH to use it here.",
+    "taxCodeEmptyHint": "لا توجد رموز ضريبة مشتريات معدة. أنشئ رمزًا بنطاق PURCHASE أو BOTH لاستخدامه هنا.",
     "taxColumn": "الضريبة",
     "taxWithCurrency": "الضريبة ({{currency}})",
     "title": "أمر شراء",
@@ -482,6 +535,7 @@
       "created": "تم إنشاء قائمة أسعار الشراء بنجاح",
       "deleteFailed": "فشل حذف قائمة الأسعار",
       "deleted": "تم حذف قائمة الأسعار بنجاح",
+      "loadFailed": "فشل تحميل قوائم أسعار الشراء",
       "saveFailed": "فشل حفظ قائمة الأسعار",
       "updated": "تم تحديث قائمة أسعار الشراء بنجاح"
     },
@@ -493,26 +547,38 @@
     "subtitle": "إعداد قائمة أسعار الشراء",
     "title": "قوائم أسعار الشراء",
     "validation": {
-      "nameRequired": "Price list name is required."
+      "nameRequired": "اسم قائمة الأسعار مطلوب."
     },
+    "table": {
+      "item": "الصنف",
+      "minQty": "الحد الأدنى",
+      "unitPrice": "سعر الوحدة",
+      "discountPct": "نسبة الخصم",
+      "comment": "تعليق"
+    },
+    "validFromShort": "من",
+    "validToShort": "إلى",
     "vendorFieldLabel": "قائمة الأسعار الافتراضية"
   },
   "pricing": {
     "override": {
-      "headerMenuTitle": "Right-click the Unit Price column header to override the document source",
-      "toastDocumentOverrideSet": "Document price source set to {{source}}",
-      "toastLineLocked": "Line locked — price will not be auto-resolved",
-      "toastLineOverrideSet": "Line price source set to {{source}}",
-      "toastOverrideCleared": "Override cleared — using document source"
+      "headerMenuTitle": "انقر بزر الفأرة الأيمن على عنوان عمود سعر الوحدة لتغيير مصدر سعر المستند",
+      "toastDocumentOverrideSet": "تم تعيين مصدر سعر المستند إلى {{source}}",
+      "toastLineLocked": "تم تثبيت البند؛ لن يتم حل السعر تلقائيًا",
+      "toastLineOverrideSet": "تم تعيين مصدر سعر البند إلى {{source}}",
+      "toastOverrideCleared": "تم إلغاء التجاوز؛ سيتم استخدام مصدر المستند"
     }
   },
   "purchaseOrdersList": {
     "emptyMessage": "لا توجد طلبات شراء.",
+    "errors": {
+      "loadFailed": "فشل تحميل أوامر الشراء."
+    },
     "labels": {
       "confirmedAt": "وقت التأكيد",
       "createdBy": "أنشأه",
       "currency": "العملة",
-      "customerParty": "Customer/Party",
+      "customerParty": "العميل/الطرف",
       "expectedDelivery": "التسليم المتوقع",
       "grandTotal": "الإجمالي الكلي",
       "order": "رقم الطلب",
@@ -557,45 +623,129 @@
     }
   },
   "returnDetail": {
+    "addItem": "إضافة صنف",
+    "available": "المتاح",
+    "backToPurchaseReturns": "العودة إلى مردودات الشراء",
+    "cancelEdit": "إلغاء التعديل",
+    "createDraftReturn": "إنشاء مسودة مردود",
+    "creating": "جارٍ الإنشاء...",
+    "directVendorRequired": "المورد مطلوب للمردود المباشر.",
+    "discount": "الخصم",
+    "discountType": "نوع الخصم",
+    "emptyLineHelp": "ابدأ بإضافة الأصناف يدويًا أو بجلبها من مستند مصدر.",
+    "errors": {
+      "createDraftFailed": "فشل إنشاء مسودة مردود الشراء.",
+      "fetchSourceFailed": "فشل جلب المستند المصدر. تحقق من المعرف.",
+      "loadFailed": "فشل تحميل مردود الشراء.",
+      "loadLatestGoodsReceiptsFailed": "فشل تحميل أحدث إيصالات الاستلام.",
+      "loadLatestPurchaseInvoicesFailed": "فشل تحميل أحدث فواتير الشراء.",
+      "postFailed": "فشل ترحيل مردود الشراء.",
+      "selectGoodsReceipt": "اختر إيصال استلام.",
+      "selectPurchaseInvoice": "اختر فاتورة شراء.",
+      "sourceRequired": "أدخل معرف فاتورة الشراء أو معرف إيصال الاستلام أولاً.",
+      "unpostFailed": "فشل إلغاء ترحيل مردود الشراء.",
+      "updateFailed": "فشل تحديث مردود الشراء."
+    },
     "glImpact": "الأثر المحاسبي",
     "goodsReceipt": "استلام البضاعة",
+    "grand": "الإجمالي",
+    "grandTotal": "الإجمالي الكلي",
     "grnNo": "رقم الاستلام",
+    "item": "الصنف",
+    "lineTotal": "إجمالي البند",
     "lines": "البنود",
     "loadingGoodsReceipts": "جارٍ تحميل استلامات البضاعة...",
     "modeDirect": "مباشر",
     "modeFromGrn": "من استلام بضاعة",
     "modeFromPi": "من فاتورة شراء",
+    "newReturn": "مردود جديد",
     "noPostedGoodsReceipts": "لا توجد استلامات بضاعة مرحلة.",
     "noPurchaseTaxCodes": "لا توجد رموز ضريبة شراء.",
+    "postReturn": "ترحيل المردود",
+    "posting": "جارٍ الترحيل...",
     "pullSelectedReceipt": "سحب الاستلام المحدد",
     "purchaseInvoice": "فاتورة الشراء",
+    "rail": {
+      "documentStatus": "حالة المستند",
+      "info": "معلومات",
+      "title": "الشريط الجانبي لمردود الشراء",
+      "totals": "الإجماليات"
+    },
     "receiptDate": "تاريخ الاستلام",
     "returnMode": "وضع الإرجاع",
+    "returnDate": "تاريخ الإرجاع",
+    "returnQty": "كمية الإرجاع",
+    "saveChanges": "حفظ التغييرات",
     "selectGoodsReceiptHint": "أحدث استلامات البضاعة المرحلة. اختر واحدًا لسحب البنود إلى هذا الإرجاع.",
     "selectGoodsReceiptTitle": "اختيار استلام بضاعة",
     "selectPostedGrn": "اختر استلام بضاعة مرحل",
     "selectPostedPi": "اختر فاتورة شراء مرحلة",
     "selectVendor": "اختر المورد",
-    "vendor": "المورد"
+    "sourceLineHelp": "الأصناف المجلوبة من المصدر مقيدة بكميات المصدر. أما الإدخالات اليدوية فيمكن البحث عنها من كامل دليل الأصناف.",
+    "status": "الحالة",
+    "subtotal": "المجموع الفرعي",
+    "tax": "الضريبة",
+    "total": "الإجمالي",
+    "unitCost": "تكلفة الوحدة",
+    "unitPrice": "سعر الوحدة",
+    "unpost": {
+      "confirmMessage": "سيؤدي هذا إلى عكس جميع قيود المحاسبة والمخزون المرحلة لهذا المردود. الإجراء قابل للتدقيق ولكن لا يمكن التراجع عنه في مكانه. هل تريد المتابعة؟"
+    },
+    "unpostReturn": "إلغاء ترحيل المردود",
+    "unposting": "جارٍ إلغاء الترحيل...",
+    "uom": "وحدة القياس",
+    "validation": {
+      "directVendorRequired": "المورد مطلوب للمردود المباشر.",
+      "linesRequired": "مطلوب صنف واحد على الأقل بكمية إرجاع.",
+      "postedGoodsReceiptRequired": "اختر إيصال استلام مرحل أولاً.",
+      "postedPurchaseInvoiceRequired": "اختر فاتورة شراء مرحلة أولاً.",
+      "reasonRequired": "سبب الإرجاع مطلوب.",
+      "returnDateRequired": "تاريخ الإرجاع مطلوب."
+    },
+    "vendor": "المورد",
+    "viewSubtitle": "المورد: {{vendor}}",
+    "warehouse": "المستودع"
   },
   "returnsList": {
     "actions": {
-      "open": "Open"
+      "open": "فتح"
     },
     "columns": {
-      "context": "Context",
-      "grandTotal": "Grand Total",
-      "returnDate": "Return Date",
-      "returnNumber": "Return #",
-      "status": "Status",
-      "vendorName": "Vendor"
+      "context": "السياق",
+      "grandTotal": "الإجمالي الكلي",
+      "returnDate": "تاريخ الإرجاع",
+      "returnNumber": "رقم الإرجاع",
+      "status": "الحالة",
+      "vendorName": "المورد"
     },
-    "newReturn": "New Return",
-    "title": "Purchase Returns"
+    "context": {
+      "AFTER_INVOICE": "بعد الفاتورة",
+      "ALL": "كل السياقات",
+      "BEFORE_INVOICE": "قبل الفاتورة"
+    },
+    "emptyMessage": "لا توجد مردودات شراء.",
+    "errors": {
+      "loadFailed": "فشل تحميل مردودات الشراء."
+    },
+    "filters": {
+      "contextPlaceholder": "السياق",
+      "statusPlaceholder": "الحالة"
+    },
+    "newReturn": "مردود شراء جديد",
+    "status": {
+      "ALL": "الكل",
+      "CANCELLED": "ملغى",
+      "DRAFT": "مسودة",
+      "POSTED": "مرحل"
+    },
+    "title": "مردودات الشراء"
   },
   "settings": {
     "apGeneration": {
       "backfillButton": "إنشاء حسابات الموردين الفرعية",
+      "backfillCompleted": "اكتمل إنشاء حسابات الموردين الفرعية. تم الإنشاء: {{created}}، تم التخطي: {{skipped}}.",
+      "backfillCompletedWithIssues": "اكتمل إنشاء حسابات الموردين الفرعية مع ملاحظات. تم الإنشاء: {{created}}، تم التخطي: {{skipped}}، الأخطاء: {{errors}}.",
+      "backfillFailed": "فشل إنشاء حسابات الذمم الدائنة الفرعية للموردين.",
       "confirmAction": "تشغيل الإنشاء",
       "confirmMessage": "سيتم فحص الموردين النشطين وإنشاء حسابات ذمم دائنة فرعية مخصصة للأطراف التي لا تملك حسابًا تحت حساب الذمم الدائنة الأب.",
       "confirmTitle": "إنشاء حسابات الذمم الدائنة الفرعية للموردين",
@@ -660,6 +810,10 @@
     "vendorFormHelp": "تستخدم المجموعات لتصنيف الموردين للتصفية والتقارير ولا تغير قيود الدائنين أو سلوك الدفع.",
     "vendorFormTitle": "تصنيف المورد"
   },
+  "vendorsList": {
+    "newWindowTitle": "مورد جديد",
+    "windowTitle": "المورد: {{name}}"
+  },
   "auto": {
     "ApAgingReportPage": {
       "asOfDate": "حتى تاريخ",
@@ -694,30 +848,32 @@
       "outstanding": "المتبقي",
       "debitNotesJVAdjustments": "إشعارات مدينة / تسويات قيود يومية",
       "unallocatedBalance": "رصيد غير مخصص"
+      ,
+      "failedToLoadReport": "فشل تحميل التقرير"
     },
     "GoodsReceiptDetailPage": {
       "goodsReceipt": "استلام البضائع",
       "loadingGoodsReceipt": "جارٍ تحميل إيصال البضائع...",
       "draft": "مسودة",
-      "purchaseOrderId": "معرف طلب الشراء",
-      "notes": "ملحوظات",
-      "ifPOIsProvidedLinesArePreFilled": "إذا تم توفير أمر الشراء، فسيتم تعبئة الخطوط مسبقًا من خطوط المخزون المفتوحة باستخدام القواعد من جانب الخادم.",
-      "selectItem": "حدد العنصر",
-      "selectWarehouse": "حدد المستودع",
-      "goodsReceipt2": "استلام البضائع",
-      "goodsReceiptNotFound": "لم يتم العثور على استلام البضائع.",
+      "purchaseOrderId": "معرف أمر الشراء",
+      "notes": "ملاحظات",
+      "ifPOIsProvidedLinesArePreFilled": "عند إدخال أمر شراء، يتم تعبئة البنود من بنود المخزون المفتوحة وفق قواعد الخادم.",
+      "selectItem": "اختر الصنف",
+      "selectWarehouse": "اختر المستودع",
+      "goodsReceipt2": "إيصال استلام",
+      "goodsReceiptNotFound": "لم يتم العثور على إيصال الاستلام.",
       "backToList": "العودة إلى القائمة",
-      "editDraft": "تحرير المسودة",
-      "createReturn": "إنشاء العودة",
+      "editDraft": "تعديل المسودة",
+      "createReturn": "إنشاء مردود",
       "receiptDate": "تاريخ الاستلام",
-      "warehouse": "مستودع",
-      "created": "مخلوق",
-      "lines": "خطوط",
-      "item": "غرض",
+      "warehouse": "المستودع",
+      "created": "تاريخ الإنشاء",
+      "lines": "البنود",
+      "item": "الصنف",
       "receivedQty": "الكمية المستلمة",
-      "uOM": "UOM",
+      "uOM": "وحدة القياس",
       "unitCost": "تكلفة الوحدة",
-      "currency": "عملة"
+      "currency": "العملة"
     },
     "GoodsReceiptsListPage": {
       "gRNVendorWarehouse": "رقم استلام البضائع، المورد، المستودع...",
@@ -730,6 +886,20 @@
       "purchasesOverviewModule": "وحدة نظرة عامة على المشتريات",
       "moduleDashboard": "لوحة معلومات الوحدة النمطية",
       "manageVendorsTrackPurchaseOrdersAndReceiptsAnd": "إدارة الموردين وتتبع أوامر الشراء والاستلامات ومعالجة فواتير الموردين.",
+      "failedToLoadPurchasesModule": "فشل تحميل وحدة المشتريات.",
+      "newPO": "أمر شراء جديد",
+      "newPurchaseInvoice": "فاتورة شراء جديدة",
+      "openPOs": "أوامر الشراء المفتوحة",
+      "pendingGRNs": "إيصالات استلام معلقة",
+      "unpaidInvoices": "فواتير غير مدفوعة",
+      "overdueInvoices": "فواتير متأخرة",
+      "totalPurchases": "إجمالي المشتريات",
+      "postedInvoices": "فواتير مرحلة",
+      "postedReturns": "مردودات مرحلة",
+      "recentActivity": "آخر النشاط",
+      "recentPurchaseInvoicesAndReturns": "آخر فواتير ومردودات الشراء",
+      "returns": "المردودات",
+      "invoices": "الفواتير",
       "settings": "إعدادات",
       "noRecentActivityYet": "لا يوجد نشاط حديث حتى الآن."
     },
@@ -994,7 +1164,7 @@
       "reviewYourFinancialIntegrationSettings": "قم بمراجعة إعدادات التكامل المالي الخاصة بك.",
       "accountsPayable": "الحسابات الدائنة:",
       "purchaseExpense": "تكلفة الشراء:",
-      "gRNI": "GRNI:",
+      "gRNI": "حساب استلام بضائع غير مفوترة:",
       "fXGainLoss": "مكاسب/خسائر العملات الأجنبية:",
       "notSelected": "غير محدد",
       "theseMappingsTakeEffectImmediatelyForAllFuture": "تدخل هذه التعيينات حيز التنفيذ على الفور لجميع معاملات الشراء المستقبلية.",
@@ -1004,6 +1174,10 @@
       "nextStep": "الخطوة التالية",
       "configuring": "جارٍ التكوين...",
       "enableIntegration": "تمكين التكامل"
+      ,
+      "defaultAPRequired": "حساب الذمم الدائنة الافتراضي مطلوب.",
+      "defaultGRNIRequired": "حساب استلام بضائع غير مفوترة الافتراضي مطلوب في وضع المحاسبة الدائمة.",
+      "configureFailed": "فشل إعداد التكامل المالي للمشتريات."
     },
     "PurchaseInitializationWizard": {
       "welcomeToPurchasesSetup": "مرحبًا بك في إعداد المشتريات",

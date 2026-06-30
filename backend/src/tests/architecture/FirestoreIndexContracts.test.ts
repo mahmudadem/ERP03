@@ -65,7 +65,24 @@ describe('Firestore production index contracts', () => {
           queryScope: 'COLLECTION',
           fields: fieldSignature([
             { fieldPath: 'status', order: 'ASCENDING' },
-            { fieldPath: 'invoiceDate', order: 'DESCENDING' }
+            { fieldPath: 'invoiceDate', order: 'DESCENDING' },
+            { fieldPath: '__name__', order: 'DESCENDING' }
+          ])
+        })
+      ])
+    );
+  });
+
+  it('defines the Sales dashboard invoice index with Firestore document-name tiebreaker', () => {
+    expect(config.indexes).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          collectionGroup: 'sales_invoices',
+          queryScope: 'COLLECTION',
+          fields: fieldSignature([
+            { fieldPath: 'status', order: 'ASCENDING' },
+            { fieldPath: 'invoiceDate', order: 'DESCENDING' },
+            { fieldPath: '__name__', order: 'DESCENDING' }
           ])
         })
       ])

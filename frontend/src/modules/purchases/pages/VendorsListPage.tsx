@@ -37,7 +37,7 @@ const VendorsListPage: React.FC = () => {
     if (uiMode === 'windows') {
       openWindow({
         type: 'party',
-        title: `Vendor: ${vendor.displayName}`,
+        title: t('vendorsList.windowTitle', 'Vendor: {{name}}', { name: vendor.displayName }),
         data: { partyId: vendor.id, role: 'VENDOR' },
         size: { width: 950, height: 650 }
       });
@@ -50,7 +50,7 @@ const VendorsListPage: React.FC = () => {
     if (uiMode === 'windows') {
        openWindow({
          type: 'party',
-         title: 'New Vendor',
+         title: t('vendorsList.newWindowTitle', 'New Vendor'),
          data: { partyId: 'new', role: 'VENDOR', onSaved: loadVendors },
          size: { width: 950, height: 650 }
        });

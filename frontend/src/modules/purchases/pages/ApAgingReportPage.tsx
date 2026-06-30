@@ -182,7 +182,7 @@ const ReportContent: React.FC<{
     setError(null);
     purchasesApi.getApAging({ asOfDate: params.asOfDate, vendorId: params.vendorId })
       .then((data) => { if (!cancelled) setReport(data); })
-      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
+      .catch((err) => { if (!cancelled) setError(err?.message || t('auto.ApAgingReportPage.failedToLoadReport', 'Failed to load report')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [params.asOfDate, params.vendorId]);

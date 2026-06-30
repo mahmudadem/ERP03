@@ -1,3 +1,29 @@
 {
-  "Select warehouse...": "اختر المستودع..."
+  "itemSelector": {
+    "placeholder": "اختر الصنف...",
+    "refresh": "تحديث الأصناف",
+    "create": "إنشاء صنف جديد",
+    "searchPlaceholder": "ابحث عن الأصناف بالاسم أو الرمز أو الباركود...",
+    "noLocalResults": "لا توجد أصناف في الذاكرة المحلية",
+    "matching": "مطابق لـ \"{{query}}\"",
+    "searchEntireDatabase": "البحث في كامل قاعدة البيانات",
+    "createNamed": "إنشاء \"{{query}}\"",
+    "searchingServer": "جار البحث في الخادم...",
+    "scanningRegistry": "فحص سجل الأصناف الكامل",
+    "scan": "باركود: {{barcode}}",
+    "unit": "الوحدة: {{uom}}",
+    "createRequired": "الرمز والاسم ووحدة القياس الأساسية وعملة التكلفة مطلوبة.",
+    "createFailed": "فشل إنشاء الصنف."
+  },
+  "warehouseSelector": {
+    "placeholder": "اختر المستودع...",
+    "searchPlaceholder": "ابحث في المستودعات...",
+    "refresh": "تحديث المستودعات",
+    "create": "إنشاء مستودع جديد",
+    "loading": "جار تحميل المستودعات...",
+    "noResults": "لا توجد مستودعات تطابق \"{{query}}\"",
+    "default": "افتراضي",
+    "createRequired": "رمز المستودع واسمه مطلوبان.",
+    "createFailed": "فشل إنشاء المستودع."
+  }
 }
