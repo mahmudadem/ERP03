@@ -6,11 +6,20 @@ import ts from 'typescript';
 
 const frontendDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const repoDir = path.resolve(frontendDir, '..');
+const seedSourcePath = path.join(repoDir, 'backend', 'src', 'seeder', 'seedSystemVoucherTypes.ts');
 
-const seedSource = fs.readFileSync(
-  path.join(repoDir, 'backend', 'src', 'seeder', 'seedSystemVoucherTypes.ts'),
-  'utf8',
-);
+if (!fs.existsSync(seedSourcePath)) {
+  if (process.env.VERCEL) {
+    console.warn(
+      `[check-voucher-locales] SKIP — backend seed source is not available in Vercel frontend-only build: ${seedSourcePath}`,
+    );
+    process.exit(0);
+  }
+
+  throw new Error(`Voucher seed source not found: ${seedSourcePath}`);
+}
+
+const seedSource = fs.readFileSync(seedSourcePath, 'utf8');
 const resolverSource = fs.readFileSync(
   path.join(frontendDir, 'src', 'utils', 'voucherDisplayName.ts'),
   'utf8',
