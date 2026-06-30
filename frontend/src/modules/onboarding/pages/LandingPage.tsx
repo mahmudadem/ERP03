@@ -352,7 +352,7 @@ const LandingPage: React.FC = () => {
                         ) : (
                         <>
                           {authMode === 'signup' ? t('onboarding.landing.form.submitCreate', { defaultValue: 'Create Account' }) : t('onboarding.landing.form.submitSignIn', { defaultValue: 'Sign In' })}
-                          <ArrowRight className="rtl:-scale-x-100" className="ml-2 h-4 w-4" />
+                          <ArrowRight className="rtl:-scale-x-100 ml-2 h-4 w-4" />
                         </>
                       )}
                     </button>
@@ -432,7 +432,7 @@ const LandingPage: React.FC = () => {
                           <h3 className="text-3xl md:text-4xl font-extrabold text-[var(--color-text-primary)] tracking-tight">{t(`landing.modules.${mod.key}.title`)}</h3>
                           <p className="text-lg text-[var(--color-text-secondary)] leading-relaxed font-medium">{t(`landing.modules.${mod.key}.desc`)}</p>
                           <div className="pt-4 flex items-center gap-2 text-primary-600 dark:text-primary-400 font-bold uppercase tracking-widest text-xs cursor-pointer hover:opacity-75 transition-opacity">
-                             Explore Module <ArrowRight className="rtl:-scale-x-100" className="w-4 h-4" />
+                             Explore Module <ArrowRight className="rtl:-scale-x-100 w-4 h-4" />
                           </div>
                        </div>
                        <div className="flex-1 w-full">
