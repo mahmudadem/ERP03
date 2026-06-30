@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IVoucherTypeDefinitionRepository } from '../../../../repository/interfaces/designer/IVoucherTypeDefinitionRepository';
 import { VoucherTypeDefinition, TableColumn } from '../../../../domain/designer/entities/VoucherTypeDefinition';
 import { FieldDefinition } from '../../../../domain/designer/entities/FieldDefinition';
@@ -15,16 +15,16 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
         name: def.name,
         code: def.code,
         module: def.module,
-        headerFields: def.headerFields as any,
-        tableColumns: def.tableColumns as any,
-        layout: def.layout as any,
+        headerFields: def.headerFields as unknown as Prisma.InputJsonValue,
+        tableColumns: def.tableColumns as unknown as Prisma.InputJsonValue,
+        layout: def.layout,
         schemaVersion: def.schemaVersion,
         requiredPostingRoles: (def.requiredPostingRoles || []) as string[],
-        workflow: def.workflow as any,
-        uiModeOverrides: def.uiModeOverrides as any,
+        workflow: def.workflow,
+        uiModeOverrides: def.uiModeOverrides,
         isMultiLine: def.isMultiLine ?? true,
-        rules: def.rules as any,
-        actions: def.actions as any,
+        rules: def.rules,
+        actions: def.actions,
         defaultCurrency: def.defaultCurrency ?? 'USD',
       },
     });
@@ -37,16 +37,16 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
         name: data.name,
         code: data.code,
         module: data.module,
-        headerFields: data.headerFields as any,
-        tableColumns: data.tableColumns as any,
-        layout: data.layout as any,
+        headerFields: data.headerFields as unknown as Prisma.InputJsonValue,
+        tableColumns: data.tableColumns as unknown as Prisma.InputJsonValue,
+        layout: data.layout,
         schemaVersion: data.schemaVersion,
-        requiredPostingRoles: data.requiredPostingRoles as any,
-        workflow: data.workflow as any,
-        uiModeOverrides: data.uiModeOverrides as any,
+        requiredPostingRoles: data.requiredPostingRoles,
+        workflow: data.workflow,
+        uiModeOverrides: data.uiModeOverrides,
         isMultiLine: data.isMultiLine,
-        rules: data.rules as any,
-        actions: data.actions as any,
+        rules: data.rules,
+        actions: data.actions,
         defaultCurrency: data.defaultCurrency,
       },
     });
@@ -87,7 +87,7 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
   async updateLayout(companyId: string, code: string, layout: any): Promise<void> {
     await this.prisma.voucherTypeDefinition.updateMany({
       where: { companyId, code },
-      data: { layout: layout as any },
+      data: { layout: layout },
     });
   }
 
@@ -119,11 +119,11 @@ export class PrismaVoucherTypeDefinitionRepository implements IVoucherTypeDefini
       layout,
       record.schemaVersion,
       (record.requiredPostingRoles as PostingRole[]) || [],
-      record.workflow as any,
-      record.uiModeOverrides as any,
+      record.workflow,
+      record.uiModeOverrides,
       record.isMultiLine,
-      (record.rules as any[]) || [],
-      (record.actions as any[]) || [],
+      (record.rules as unknown[]) || [],
+      (record.actions as unknown[]) || [],
       record.defaultCurrency,
       typeof meta.voucherType === 'string' ? meta.voucherType : record.code,
       typeof meta.persona === 'string' ? meta.persona : undefined,

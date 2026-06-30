@@ -6,7 +6,7 @@
  * USED detection, hierarchy management, and audit event recording.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IAccountRepository, CashFlowCategory, PlSubgroup, EquitySubgroup } from '../../../../repository/interfaces/accounting/IAccountRepository';
 import { Account, AccountClassification, AccountRole, AccountStatus, BalanceNature, BalanceEnforcement, CurrencyPolicy, normalizeClassification } from '../../../../domain/accounting/models/Account';
 
@@ -152,7 +152,7 @@ export class PrismaAccountRepository implements IAccountRepository {
         custodianUserId,
         createdBy,
         updatedBy: createdBy,
-      } as any,
+      },
     });
 
     return this.toDomain(record);
@@ -320,16 +320,18 @@ export class PrismaAccountRepository implements IAccountRepository {
     await this.prisma.auditLog.create({
       data: {
         id: crypto.randomUUID(),
-        company: { connect: { id: companyId } },
+        companyId,
         entityType: 'Account',
         entityId: accountId,
         action: event.type,
-        fieldName: event.field,
-        oldValue: event.oldValue as any,
-        newValue: event.newValue as any,
-        performedBy: event.changedBy,
-        performedAt: event.changedAt,
-      } as any,
+        userId: event.changedBy,
+        timestamp: event.changedAt,
+        meta: {
+          field: event.field,
+          oldValue: event.oldValue,
+          newValue: event.newValue,
+        } as unknown as Prisma.InputJsonValue,
+      },
     });
   }
 

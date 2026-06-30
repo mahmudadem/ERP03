@@ -49,7 +49,7 @@ export class PrismaModuleRepository implements IModuleRepository {
     }
     await this.prisma.company.update({
       where: { id: companyId },
-      data: { modules: modules as any },
+      data: { modules: modules },
     });
   }
 
@@ -62,7 +62,7 @@ export class PrismaModuleRepository implements IModuleRepository {
     const modules = ((company.modules as string[]) || []).filter((m) => m !== moduleName);
     await this.prisma.company.update({
       where: { id: companyId },
-      data: { modules: modules as any },
+      data: { modules: modules },
     });
   }
 }

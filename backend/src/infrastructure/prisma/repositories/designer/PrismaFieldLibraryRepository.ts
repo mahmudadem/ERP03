@@ -9,7 +9,7 @@
  *   scope = 'company' → fieldLibraryEntry rows with companyId = <id>
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { createHash } from 'crypto';
 import {
   IFieldLibraryRepository,
@@ -73,7 +73,7 @@ export class PrismaFieldLibraryRepository implements IFieldLibraryRepository {
 
   async listSystemEntries(): Promise<FieldLibraryEntry[]> {
     try {
-      const rows = await (this.prisma as any).fieldLibraryEntry.findMany({
+      const rows = await (this.prisma).fieldLibraryEntry.findMany({
         where: { scope: 'system', companyId: null },
       });
       return rows.map((r: any) => this.fromRow(r, 'system'));
@@ -84,7 +84,7 @@ export class PrismaFieldLibraryRepository implements IFieldLibraryRepository {
 
   async listCompanyEntries(companyId: string): Promise<FieldLibraryEntry[]> {
     try {
-      const rows = await (this.prisma as any).fieldLibraryEntry.findMany({
+      const rows = await (this.prisma).fieldLibraryEntry.findMany({
         where: { scope: 'company', companyId },
       });
       return rows.map((r: any) => this.fromRow(r, 'company'));
@@ -122,7 +122,7 @@ export class PrismaFieldLibraryRepository implements IFieldLibraryRepository {
 
   async getSystemEntry(id: string): Promise<FieldLibraryEntry | null> {
     try {
-      const row = await (this.prisma as any).fieldLibraryEntry.findFirst({
+      const row = await (this.prisma).fieldLibraryEntry.findFirst({
         where: { id, scope: 'system', companyId: null },
       });
       if (!row) return null;
@@ -147,7 +147,7 @@ export class PrismaFieldLibraryRepository implements IFieldLibraryRepository {
 
   async hardDeleteSystemEntry(id: string): Promise<void> {
     try {
-      await (this.prisma as any).fieldLibraryEntry.deleteMany({
+      await (this.prisma).fieldLibraryEntry.deleteMany({
         where: { id, scope: 'system', companyId: null },
       });
     } catch (err) {
@@ -161,7 +161,7 @@ export class PrismaFieldLibraryRepository implements IFieldLibraryRepository {
     }
     try {
       const newHash = this.contentHash(entry);
-      const existing = await (this.prisma as any).fieldLibraryEntry.findFirst({
+      const existing = await (this.prisma).fieldLibraryEntry.findFirst({
         where: { id: entry.id, scope: 'system', companyId: null },
       });
 
@@ -204,13 +204,13 @@ export class PrismaFieldLibraryRepository implements IFieldLibraryRepository {
       };
 
       if (existing) {
-        const updated = await (this.prisma as any).fieldLibraryEntry.update({
+        const updated = await this.prisma.fieldLibraryEntry.update({
           where: { id: entry.id },
-          data: { ...payload, createdAt: existing.createdAt },
+          data: { ...payload, createdAt: existing.createdAt } as Prisma.FieldLibraryEntryUncheckedUpdateInput,
         });
         return this.fromRow(updated, 'system');
       } else {
-        const created = await (this.prisma as any).fieldLibraryEntry.create({ data: payload });
+        const created = await this.prisma.fieldLibraryEntry.create({ data: payload as unknown as Prisma.FieldLibraryEntryUncheckedCreateInput });
         return this.fromRow(created, 'system');
       }
     } catch (err) {

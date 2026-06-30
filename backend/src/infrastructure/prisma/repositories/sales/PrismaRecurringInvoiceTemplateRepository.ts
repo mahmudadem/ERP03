@@ -41,7 +41,7 @@ export class PrismaRecurringInvoiceTemplateRepository
 
   async create(template: RecurringInvoiceTemplate, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).recurringInvoiceTemplate.create({
+    await (client).recurringInvoiceTemplate.create({
       data: {
         id: template.id,
         companyId: template.companyId,
@@ -51,7 +51,7 @@ export class PrismaRecurringInvoiceTemplateRepository
         customerName: template.customerName,
         currency: template.currency,
         exchangeRate: template.exchangeRate,
-        lines: template.lines.map((l: any) => ({ ...l })) as any,
+        lines: template.lines.map((l: any) => ({ ...l })),
         notes: template.notes ?? null,
         paymentTermsDays: template.paymentTermsDays,
         frequency: template.frequency,
@@ -73,7 +73,7 @@ export class PrismaRecurringInvoiceTemplateRepository
 
   async update(template: RecurringInvoiceTemplate, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).recurringInvoiceTemplate.update({
+    await (client).recurringInvoiceTemplate.update({
       where: { id: template.id },
       data: {
         name: template.name,
@@ -82,7 +82,7 @@ export class PrismaRecurringInvoiceTemplateRepository
         customerName: template.customerName,
         currency: template.currency,
         exchangeRate: template.exchangeRate,
-        lines: template.lines.map((l: any) => ({ ...l })) as any,
+        lines: template.lines.map((l: any) => ({ ...l })),
         notes: template.notes ?? null,
         paymentTermsDays: template.paymentTermsDays,
         frequency: template.frequency,
@@ -101,7 +101,7 @@ export class PrismaRecurringInvoiceTemplateRepository
   }
 
   async findById(companyId: string, id: string): Promise<RecurringInvoiceTemplate | null> {
-    const row = await (this.prisma as any).recurringInvoiceTemplate.findFirst({
+    const row = await (this.prisma).recurringInvoiceTemplate.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -116,7 +116,7 @@ export class PrismaRecurringInvoiceTemplateRepository
     if (opts?.status) where.status = opts.status;
     if (opts?.customerId) where.customerId = opts.customerId;
 
-    const rows = await (this.prisma as any).recurringInvoiceTemplate.findMany({
+    const rows = await (this.prisma).recurringInvoiceTemplate.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       skip: opts?.offset,
@@ -126,7 +126,7 @@ export class PrismaRecurringInvoiceTemplateRepository
   }
 
   async listDue(companyId: string, asOfDate: string): Promise<RecurringInvoiceTemplate[]> {
-    const rows = await (this.prisma as any).recurringInvoiceTemplate.findMany({
+    const rows = await (this.prisma).recurringInvoiceTemplate.findMany({
       where: {
         companyId,
         status: 'ACTIVE',
@@ -137,7 +137,7 @@ export class PrismaRecurringInvoiceTemplateRepository
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).recurringInvoiceTemplate.deleteMany({
+    await (this.prisma).recurringInvoiceTemplate.deleteMany({
       where: { id, companyId },
     });
   }

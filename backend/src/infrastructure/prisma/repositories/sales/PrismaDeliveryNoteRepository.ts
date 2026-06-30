@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IDeliveryNoteRepository, DeliveryNoteListOptions } from '../../../../repository/interfaces/sales/IDeliveryNoteRepository';
 import { DNStatus, DeliveryNote } from '../../../../domain/sales/entities/DeliveryNote';
 
@@ -6,7 +6,7 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(dn: DeliveryNote, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.deliveryNote.create({
       data: {
         id: dn.id,
@@ -16,14 +16,13 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
         customerId: dn.customerId,
         customerName: dn.customerName,
         deliveryDate: new Date(dn.deliveryDate),
-        currency: (dn as any).currency || 'USD',
-        exchangeRate: (dn as any).exchangeRate || 1.0,
+        currency: (dn).currency || 'USD',
+        exchangeRate: (dn).exchangeRate || 1.0,
         status: dn.status,
         notes: dn.notes || null,
         createdBy: dn.createdBy,
         warehouseId: dn.warehouseId,
-        cogsVoucherId: dn.cogsVoucherId || null,
-        company: { connect: { id: dn.companyId } },
+        cogsVoucherId: dn.cogsVoucherId || null,
         lines: {
           create: dn.lines.map((line) => ({
             id: line.lineId,
@@ -33,7 +32,7 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
             itemName: line.itemName,
             deliveredQty: line.deliveredQty,
             uom: line.uom,
-            warehouseId: (dn as any).warehouseId || null,
+            warehouseId: (dn).warehouseId || null,
             unitCostBase: line.unitCostBase,
             lineCostBase: line.lineCostBase,
             moveCurrency: line.moveCurrency,
@@ -43,12 +42,12 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
             notes: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(dn: DeliveryNote, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.deliveryNote.update({
       where: { id: dn.id, companyId: dn.companyId },
       data: {
@@ -81,7 +80,7 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
             notes: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 

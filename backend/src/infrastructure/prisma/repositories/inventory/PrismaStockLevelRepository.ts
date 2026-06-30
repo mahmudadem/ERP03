@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IStockLevelRepository, StockLevelListOptions } from '../../../../repository/interfaces/inventory/IStockLevelRepository';
 import { StockLevel } from '../../../../domain/inventory/entities/StockLevel';
 
@@ -122,7 +122,7 @@ export class PrismaStockLevelRepository implements IStockLevelRepository {
     itemId: string,
     warehouseId: string
   ): Promise<StockLevel | null> {
-    const tx = transaction as any;
+    const tx = transaction as Prisma.TransactionClient;
     const record = await tx.stockLevel.findUnique({
       where: {
         companyId_itemId_warehouseId: { companyId, itemId, warehouseId },
@@ -137,13 +137,13 @@ export class PrismaStockLevelRepository implements IStockLevelRepository {
     companyId: string,
     itemId: string
   ): Promise<StockLevel[]> {
-    const tx = transaction as any;
+    const tx = transaction as Prisma.TransactionClient;
     const records = await tx.stockLevel.findMany({ where: { companyId, itemId } });
     return records.map((r: any) => this.toDomain(r));
   }
 
   async upsertLevelInTransaction(transaction: unknown, level: StockLevel): Promise<void> {
-    await this.persistLevel(transaction as any, level);
+    await this.persistLevel(transaction, level);
   }
 
   private toDomain(record: any): StockLevel {

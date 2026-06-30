@@ -29,7 +29,7 @@ export class PrismaCreditOverrideRepository implements ICreditOverrideRepository
 
   async create(override: CreditOverride, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).creditOverride.create({
+    await (client).creditOverride.create({
       data: {
         id: override.id,
         companyId: override.companyId,
@@ -50,7 +50,7 @@ export class PrismaCreditOverrideRepository implements ICreditOverrideRepository
   }
 
   async getById(companyId: string, id: string): Promise<CreditOverride | null> {
-    const row = await (this.prisma as any).creditOverride.findFirst({
+    const row = await (this.prisma).creditOverride.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -62,7 +62,7 @@ export class PrismaCreditOverrideRepository implements ICreditOverrideRepository
     if (opts?.customerId) where.customerId = opts.customerId;
     if (opts?.sourceId) where.sourceId = opts.sourceId;
 
-    const rows = await (this.prisma as any).creditOverride.findMany({
+    const rows = await (this.prisma).creditOverride.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       skip: opts?.offset,

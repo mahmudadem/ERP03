@@ -83,7 +83,7 @@ export class PrismaBundleRegistryRepository implements IBundleRegistryRepository
         select: { pricing: true },
       });
       updateData.pricing = {
-        ...((existingBundle?.pricing as any) || {}),
+        ...(((existingBundle?.pricing as Record<string, unknown>)) || {}),
         businessDomains: bundle.businessDomains,
       };
     }
@@ -180,7 +180,7 @@ export class PrismaBundleRegistryRepository implements IBundleRegistryRepository
   }
 
   private toDomain(record: any) {
-    const pricing = record.pricing as any;
+    const pricing = record.pricing;
     return {
       id: record.id,
       code: record.code,

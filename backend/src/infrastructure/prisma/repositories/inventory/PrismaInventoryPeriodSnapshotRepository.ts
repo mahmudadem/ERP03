@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IInventoryPeriodSnapshotRepository, InventoryPeriodSnapshotListOptions } from '../../../../repository/interfaces/inventory/IInventoryPeriodSnapshotRepository';
 import { InventoryPeriodSnapshot } from '../../../../domain/inventory/entities/InventoryPeriodSnapshot';
 
@@ -23,25 +23,20 @@ export class PrismaInventoryPeriodSnapshotRepository implements IInventoryPeriod
         id: snapshot.id,
         companyId: snapshot.companyId,
         period: snapshot.periodKey,
-        itemId: '_aggregate_',
-        warehouseId: '_aggregate_',
-        openingQty: 0,
-        closingQty: 0,
-        totalIn: 0,
-        totalOut: 0,
-        avgCostBase: 0,
+        periodEndDate: new Date(snapshot.periodEndDate),
         capturedAt: snapshot.createdAt,
-        snapshotData: snapshotData,
+        snapshotData: snapshotData as unknown as Prisma.InputJsonValue,
         totalValueBase: snapshot.totalValueBase,
         totalItems: snapshot.totalItems,
-      } as any,
+      },
       update: {
         period: snapshot.periodKey,
+        periodEndDate: new Date(snapshot.periodEndDate),
         capturedAt: snapshot.createdAt,
-        snapshotData: snapshotData,
+        snapshotData: snapshotData as unknown as Prisma.InputJsonValue,
         totalValueBase: snapshot.totalValueBase,
         totalItems: snapshot.totalItems,
-      } as any,
+      },
     });
   }
 
@@ -86,17 +81,17 @@ export class PrismaInventoryPeriodSnapshotRepository implements IInventoryPeriod
   }
 
   private toDomain(record: any): InventoryPeriodSnapshot {
-    const snapshotData = (record as any).snapshotData ?? [];
+    const snapshotData = (record).snapshotData ?? [];
     const periodKey = record.period;
-    const periodEndDate = (record as any).periodEndDate ?? (periodKey ? `${periodKey}-28` : '');
+    const periodEndDate = (record).periodEndDate ?? (periodKey ? `${periodKey}-28` : '');
     return new InventoryPeriodSnapshot({
       id: record.id,
       companyId: record.companyId,
       periodKey: periodKey,
       periodEndDate: periodEndDate,
       snapshotData: Array.isArray(snapshotData) ? snapshotData : [],
-      totalValueBase: (record as any).totalValueBase ?? 0,
-      totalItems: (record as any).totalItems ?? 0,
+      totalValueBase: (record).totalValueBase ?? 0,
+      totalItems: (record).totalItems ?? 0,
       createdAt: record.capturedAt,
     });
   }

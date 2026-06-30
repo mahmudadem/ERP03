@@ -24,7 +24,7 @@ export class PrismaCompanyModuleSettingsRepository implements ICompanyModuleSett
         id: settings.id,
         companyId: settings.companyId,
         moduleId: settings.moduleId,
-        settings: settings.settings as any,
+        settings: settings.settings,
       },
     });
   }
@@ -32,7 +32,7 @@ export class PrismaCompanyModuleSettingsRepository implements ICompanyModuleSett
   async update(companyId: string, moduleId: string, settings: any): Promise<void> {
     await this.prisma.companyModuleSettings.update({
       where: { companyId_moduleId: { companyId, moduleId } },
-      data: { settings: settings as any },
+      data: { settings: settings },
     });
   }
 
@@ -41,7 +41,7 @@ export class PrismaCompanyModuleSettingsRepository implements ICompanyModuleSett
       where: { companyId_moduleId: { companyId, moduleId } },
     });
     if (!data) return null;
-    return data.settings as any;
+    return data.settings as unknown as CompanyModuleSettings;
   }
 
   async saveSettings(companyId: string, moduleId: string, settings: CompanyModuleSettings, userId: string): Promise<void> {
@@ -50,10 +50,10 @@ export class PrismaCompanyModuleSettingsRepository implements ICompanyModuleSett
       create: {
         companyId,
         moduleId,
-        settings: settings as any,
+        settings: settings,
       },
       update: {
-        settings: settings as any,
+        settings: settings,
       },
     });
   }
@@ -69,7 +69,7 @@ export class PrismaCompanyModuleSettingsRepository implements ICompanyModuleSett
       modules.push(moduleId);
       await this.prisma.company.update({
         where: { id: companyId },
-        data: { modules: modules as any },
+        data: { modules: modules },
       });
     }
   }

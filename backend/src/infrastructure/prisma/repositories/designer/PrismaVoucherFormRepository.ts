@@ -1,5 +1,5 @@
 import { PrismaClient } from '@prisma/client';
-import { IVoucherFormRepository, VoucherFormDefinition } from '../../../../repository/interfaces/designer/IVoucherFormRepository';
+import { IVoucherFormRepository, VoucherFormDefinition, FormField, TableColumn } from '../../../../repository/interfaces/designer/IVoucherFormRepository';
 
 export class PrismaVoucherFormRepository implements IVoucherFormRepository {
   constructor(private prisma: PrismaClient) {}
@@ -13,7 +13,7 @@ export class PrismaVoucherFormRepository implements IVoucherFormRepository {
         formDefinitionId: form.id,
         createdAt: form.createdAt,
         updatedAt: form.updatedAt,
-      } as any,
+      },
     });
     return this.toDomain(record, form);
   }
@@ -107,12 +107,12 @@ export class PrismaVoucherFormRepository implements IVoucherFormRepository {
       isSystemGenerated: true,
       isLocked: true,
       enabled: true,
-      headerFields: (voucherType.headerFields as any[]) || [],
-      tableColumns: (voucherType.tableColumns as any[]) || [],
+      headerFields: (voucherType.headerFields as unknown as FormField[]) || [],
+      tableColumns: (voucherType.tableColumns as unknown as TableColumn[]) || [],
       layout,
       uiModeOverrides: voucherType.uiModeOverrides,
-      rules: (voucherType.rules as any[]) || [],
-      actions: (voucherType.actions as any[]) || [],
+      rules: (voucherType.rules as unknown[]) || [],
+      actions: (voucherType.actions as unknown[]) || [],
       isMultiLine: voucherType.isMultiLine,
       tableStyle: 'web',
       defaultCurrency: voucherType.defaultCurrency || '',

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ISalesReturnRepository, SalesReturnListOptions } from '../../../../repository/interfaces/sales/ISalesReturnRepository';
 import { SRStatus, SalesReturn } from '../../../../domain/sales/entities/SalesReturn';
 
@@ -6,7 +6,7 @@ export class PrismaSalesReturnRepository implements ISalesReturnRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(sr: SalesReturn, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesReturn.create({
       data: {
         id: sr.id,
@@ -32,8 +32,7 @@ export class PrismaSalesReturnRepository implements ISalesReturnRepository {
         returnContext: sr.returnContext,
         reason: sr.reason,
         revenueVoucherId: sr.revenueVoucherId || null,
-        cogsVoucherId: sr.cogsVoucherId || null,
-        company: { connect: { id: sr.companyId } },
+        cogsVoucherId: sr.cogsVoucherId || null,
         lines: {
           create: sr.lines.map((line) => ({
             id: line.lineId,
@@ -64,12 +63,12 @@ export class PrismaSalesReturnRepository implements ISalesReturnRepository {
             stockMovementId: line.stockMovementId || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(sr: SalesReturn, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesReturn.update({
       where: { id: sr.id, companyId: sr.companyId },
       data: {
@@ -125,7 +124,7 @@ export class PrismaSalesReturnRepository implements ISalesReturnRepository {
             stockMovementId: line.stockMovementId || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -200,7 +199,7 @@ export class PrismaSalesReturnRepository implements ISalesReturnRepository {
       salesOrderId: record.salesOrderId || undefined,
       customerId: record.customerId,
       customerName: record.customerName,
-      returnContext: (record.returnContext || 'AFTER_INVOICE') as any,
+      returnContext: (record.returnContext || 'AFTER_INVOICE'),
       returnDate: record.returnDate instanceof Date ? record.returnDate.toISOString().split('T')[0] : String(record.returnDate).split('T')[0],
       warehouseId: record.warehouseId || '',
       currency: record.currency,

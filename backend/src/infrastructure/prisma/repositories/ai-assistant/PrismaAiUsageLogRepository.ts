@@ -29,7 +29,7 @@ export class PrismaAiUsageLogRepository implements IAiUsageLogRepository {
         createdAt: log.createdAt,
       },
     });
-    return AiUsageLog.fromJSON(record as any);
+    return AiUsageLog.fromJSON(record);
   }
 
   async getByCompany(companyId: string, limit: number = 50, offset: number = 0): Promise<AiUsageLog[]> {
@@ -39,7 +39,7 @@ export class PrismaAiUsageLogRepository implements IAiUsageLogRepository {
       skip: offset,
       take: limit,
     });
-    return records.map(r => AiUsageLog.fromJSON(r as any));
+    return records.map(r => AiUsageLog.fromJSON(r));
   }
 
   async countTodayByCompany(companyId: string): Promise<number> {
@@ -73,6 +73,6 @@ export class PrismaAiUsageLogRepository implements IAiUsageLogRepository {
       orderBy: { createdAt: 'desc' },
       take: limit,
     });
-    return records.map(r => AiUsageLog.fromJSON(r as any));
+    return records.map(r => AiUsageLog.fromJSON(r));
   }
 }

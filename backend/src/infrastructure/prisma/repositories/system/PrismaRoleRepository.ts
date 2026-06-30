@@ -22,8 +22,8 @@ export class PrismaRoleRepository implements IRoleRepository {
         id: role.id,
         name: role.name,
         companyId,
-        permissions: role.permissions as any,
-        moduleBundles: (role.moduleBundles || []) as any,
+        permissions: role.permissions,
+        moduleBundles: (role.moduleBundles || []),
       },
     });
   }
@@ -31,8 +31,8 @@ export class PrismaRoleRepository implements IRoleRepository {
   async updateRole(roleId: string, data: Partial<Role>): Promise<void> {
     const updateData: any = {};
     if (data.name !== undefined) updateData.name = data.name;
-    if (data.permissions !== undefined) updateData.permissions = data.permissions as any;
-    if (data.moduleBundles !== undefined) updateData.moduleBundles = data.moduleBundles as any;
+    if (data.permissions !== undefined) updateData.permissions = data.permissions;
+    if (data.moduleBundles !== undefined) updateData.moduleBundles = data.moduleBundles;
     await this.prisma.role.update({
       where: { id: roleId },
       data: updateData,

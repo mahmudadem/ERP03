@@ -39,6 +39,8 @@ export interface DeliveryNoteProps {
   customerName: string;
   deliveryDate: string;
   warehouseId: string;
+  currency: string;
+  exchangeRate: number;
   lines: DeliveryNoteLine[];
   status?: DNStatus;
   notes?: string;
@@ -68,6 +70,8 @@ export class DeliveryNote {
   customerName: string;
   deliveryDate: string;
   warehouseId: string;
+  currency: string;
+  exchangeRate: number;
   lines: DeliveryNoteLine[];
   status: DNStatus;
   notes?: string;
@@ -85,6 +89,10 @@ export class DeliveryNote {
     if (!props.customerId?.trim()) throw new Error('DeliveryNote customerId is required');
     if (!props.deliveryDate?.trim()) throw new Error('DeliveryNote deliveryDate is required');
     if (!props.warehouseId?.trim()) throw new Error('DeliveryNote warehouseId is required');
+    if (!props.currency?.trim()) throw new Error('DeliveryNote currency is required');
+    if (props.exchangeRate <= 0 || Number.isNaN(props.exchangeRate)) {
+      throw new Error('DeliveryNote exchangeRate must be greater than 0');
+    }
     if (!props.createdBy?.trim()) throw new Error('DeliveryNote createdBy is required');
     if (!Array.isArray(props.lines) || props.lines.length === 0) {
       throw new Error('DeliveryNote must contain at least one line');
@@ -98,6 +106,8 @@ export class DeliveryNote {
     this.customerName = props.customerName || '';
     this.deliveryDate = props.deliveryDate;
     this.warehouseId = props.warehouseId.trim();
+    this.currency = props.currency.toUpperCase().trim();
+    this.exchangeRate = props.exchangeRate;
     this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
 
     const status = props.status || 'DRAFT';
@@ -156,11 +166,13 @@ export class DeliveryNote {
       customerName: this.customerName,
       deliveryDate: this.deliveryDate,
       warehouseId: this.warehouseId,
+      currency: this.currency,
+      exchangeRate: this.exchangeRate,
       lines: this.lines.map((line) => ({ ...line })),
       status: this.status,
       notes: this.notes,
       promisedDate: this.promisedDate,
-      cogsVoucherId: this.cogsVoucherId ?? null,
+      cogsVoucherId: this.cogsVoucherId,
       createdBy: this.createdBy,
       createdAt: this.createdAt,
       updatedAt: this.updatedAt,
@@ -178,6 +190,8 @@ export class DeliveryNote {
       customerName: data.customerName,
       deliveryDate: data.deliveryDate,
       warehouseId: data.warehouseId,
+      currency: data.currency,
+      exchangeRate: data.exchangeRate ?? 1,
       lines: data.lines || [],
       status: data.status || 'DRAFT',
       notes: data.notes,

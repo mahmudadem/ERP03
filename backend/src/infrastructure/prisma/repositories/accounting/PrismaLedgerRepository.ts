@@ -82,7 +82,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     }));
 
     await tx.ledgerEntry.createMany({
-      data: entries as any,
+      data: entries,
     });
   }
 
@@ -184,7 +184,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
       where.date = { ...(where.date || {}), lte: new Date(filters.toDate) };
     }
     if (filters.voucherType) {
-      where.voucher = { type: filters.voucherType } as any;
+      where.voucher = { type: filters.voucherType };
     }
     if (filters.costCenterId) {
       where.costCenterId = filters.costCenterId;
@@ -265,8 +265,9 @@ export class PrismaLedgerRepository implements ILedgerRepository {
       totalDebit += debit;
       totalCredit += credit;
 
-      const baseDebit = (r as any).baseAmount && debit > 0 ? (r as any).baseAmount : 0;
-      const baseCredit = (r as any).baseAmount && credit > 0 ? (r as any).baseAmount : 0;
+      const entryRate = r.exchangeRate ?? 1;
+      const baseDebit = debit > 0 ? debit * entryRate : 0;
+      const baseCredit = credit > 0 ? credit * entryRate : 0;
       runningBaseBalance += baseDebit - baseCredit;
       totalBaseDebit += baseDebit;
       totalBaseCredit += baseCredit;
@@ -350,7 +351,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
       data: {
         reconciliationId,
         bankStatementLineId,
-      } as any,
+      },
     });
   }
 
@@ -385,8 +386,8 @@ export class PrismaLedgerRepository implements ILedgerRepository {
         });
       }
       const row = balanceMap.get(key)!;
-      const amount = (entry as any).amount ?? 0;
-      const baseAmount = (entry as any).baseAmount ?? 0;
+      const amount = entry.debit > 0 ? entry.debit : entry.credit;
+      const baseAmount = amount * (entry.exchangeRate ?? 1);
 
       if (entry.debit > 0) {
         row.foreignBalance += amount;

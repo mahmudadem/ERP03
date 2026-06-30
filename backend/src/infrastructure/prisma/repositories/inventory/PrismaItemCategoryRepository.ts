@@ -14,18 +14,18 @@ export class PrismaItemCategoryRepository implements IItemCategoryRepository {
         name: category.name,
         parentId: category.parentId || null,
         description: null,
-        ...(category as any).sortOrder !== undefined && { sortOrder: (category as any).sortOrder },
-        ...(category as any).defaultRevenueAccountId !== undefined && { defaultRevenueAccountId: (category as any).defaultRevenueAccountId },
-        ...(category as any).defaultCogsAccountId !== undefined && { defaultCogsAccountId: (category as any).defaultCogsAccountId },
-        ...(category as any).defaultInventoryAssetAccountId !== undefined && { defaultInventoryAssetAccountId: (category as any).defaultInventoryAssetAccountId },
-      } as any,
+        ...(category).sortOrder !== undefined && { sortOrder: (category).sortOrder },
+        ...(category).defaultRevenueAccountId !== undefined && { defaultRevenueAccountId: (category).defaultRevenueAccountId },
+        ...(category).defaultCogsAccountId !== undefined && { defaultCogsAccountId: (category).defaultCogsAccountId },
+        ...(category).defaultInventoryAssetAccountId !== undefined && { defaultInventoryAssetAccountId: (category).defaultInventoryAssetAccountId },
+      },
     });
   }
 
   async updateCategory(id: string, data: Partial<ItemCategory>): Promise<void> {
     await this.prisma.itemCategory.update({
       where: { id },
-      data: data as any,
+      data: data,
     });
   }
 
@@ -82,11 +82,11 @@ export class PrismaItemCategoryRepository implements IItemCategoryRepository {
       companyId: record.companyId,
       name: record.name,
       parentId: record.parentId ?? undefined,
-      sortOrder: (record as any).sortOrder ?? 0,
-      active: (record as any).active ?? true,
-      defaultRevenueAccountId: (record as any).defaultRevenueAccountId ?? undefined,
-      defaultCogsAccountId: (record as any).defaultCogsAccountId ?? undefined,
-      defaultInventoryAssetAccountId: (record as any).defaultInventoryAssetAccountId ?? undefined,
+      sortOrder: (record).sortOrder ?? 0,
+      active: (record).active ?? true,
+      defaultRevenueAccountId: (record).defaultRevenueAccountId ?? undefined,
+      defaultCogsAccountId: (record).defaultCogsAccountId ?? undefined,
+      defaultInventoryAssetAccountId: (record).defaultInventoryAssetAccountId ?? undefined,
     });
   }
 }

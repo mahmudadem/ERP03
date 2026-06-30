@@ -124,6 +124,7 @@ export interface PurchaseInvoiceProps {
   persona: string;
   source?: DocumentSource | string;
   purchaseOrderId?: string;
+  goodsReceiptId?: string;
   vendorId: string;
   vendorName: string;
   invoiceDate: string;
@@ -193,6 +194,7 @@ export class PurchaseInvoice {
   readonly persona: string;
   readonly source: DocumentSource;
   purchaseOrderId?: string;
+  goodsReceiptId?: string;
   vendorId: string;
   vendorName: string;
   invoiceDate: string;
@@ -245,6 +247,7 @@ export class PurchaseInvoice {
     this.persona = props.persona?.trim() || 'direct';
     this.source = normalizeDocumentSource(props.source);
     this.purchaseOrderId = props.purchaseOrderId;
+    this.goodsReceiptId = props.goodsReceiptId;
     this.vendorId = props.vendorId.trim();
     this.vendorName = props.vendorName || '';
     this.invoiceDate = props.invoiceDate;
@@ -416,6 +419,7 @@ export class PurchaseInvoice {
       persona: this.persona,
       source: this.source,
       purchaseOrderId: this.purchaseOrderId,
+      goodsReceiptId: this.goodsReceiptId,
       vendorId: this.vendorId,
       vendorName: this.vendorName,
       invoiceDate: this.invoiceDate,
@@ -457,6 +461,7 @@ export class PurchaseInvoice {
       persona: data.persona || 'direct',
       source: data.source || data.documentSource || 'default_form',
       purchaseOrderId: data.purchaseOrderId,
+      goodsReceiptId: data.goodsReceiptId,
       vendorId: data.vendorId,
       vendorName: data.vendorName,
       invoiceDate: data.invoiceDate,

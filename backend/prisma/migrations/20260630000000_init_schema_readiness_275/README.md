@@ -1,0 +1,23 @@
+-- Migration: init_schema_readiness_275
+-- Purpose: Capture the full schema state after the SQL-readiness remediation
+-- (Epic 275 — schema↔repository reconciliation). Includes the addition of
+-- columns that the domain entities require but the schema was missing:
+--   * GoodsReceipt/DeliveryNote: warehouseId, voucherId/cogsVoucherId
+--   * GoodsReceiptLine/DeliveryNoteLine: lineNo, unitCostDoc, moveCurrency,
+--     fxRateMovToBase, fxRateCCYToBase, stockMovementId
+--   * Budget: lines (Json), status, version, createdBy, updatedBy
+--   * CompanyGroup: members (Json), reportingCurrency, createdBy, companyId nullable
+--   * UomConversion: itemId (FK to Item), active, unique constraint update
+--   * InventoryPeriodSnapshot: reshape to one-row-per-period with snapshotData
+--   * AuditLog: use existing meta (Json) for field-level diff
+--   * LedgerEntry: reconciliationId, bankStatementLineId
+--   * Voucher: reversalOfVoucherId with self-relation
+--   * Item: uomConversions back-relation for the new UomConversion.itemId FK
+--   * PurchaseReturn: purchaseInvoiceId, goodsReceiptId, purchaseOrderId,
+--     returnContext, warehouseId, reason, voucherId
+--   * SalesReturn: salesInvoiceId, deliveryNoteId, salesOrderId, returnContext,
+--     reason, revenueVoucherId, cogsVoucherId
+--
+-- This migration is the schema *as of* the SQL-readiness fix; it was applied
+-- via `prisma db push --accept-data-loss` to bring the local DB in sync.
+-- Production deployment should run `prisma migrate deploy`.

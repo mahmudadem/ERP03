@@ -32,7 +32,7 @@ export class PrismaPermissionRepository implements IPermissionRepository {
   async assignPermissions(roleId: string, permissions: string[]): Promise<void> {
     await this.prisma.role.update({
       where: { id: roleId },
-      data: { permissions: permissions as any },
+      data: { permissions: permissions },
     });
   }
 }

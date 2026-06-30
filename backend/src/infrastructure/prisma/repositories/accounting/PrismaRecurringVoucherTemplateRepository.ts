@@ -17,10 +17,10 @@ export class PrismaRecurringVoucherTemplateRepository implements IRecurringVouch
           startDate: template.startDate,
           endDate: template.endDate,
           maxOccurrences: template.maxOccurrences,
-        } as any,
+        },
         voucherData: {
           sourceVoucherId: template.sourceVoucherId,
-        } as any,
+        },
         isActive: template.status === 'ACTIVE',
         nextRunAt: new Date(template.nextGenerationDate),
         createdAt: template.createdAt,
@@ -41,10 +41,10 @@ export class PrismaRecurringVoucherTemplateRepository implements IRecurringVouch
           startDate: template.startDate,
           endDate: template.endDate,
           maxOccurrences: template.maxOccurrences,
-        } as any,
+        },
         voucherData: {
           sourceVoucherId: template.sourceVoucherId,
-        } as any,
+        },
         isActive: template.status === 'ACTIVE',
         nextRunAt: new Date(template.nextGenerationDate),
         updatedAt: template.updatedAt ?? new Date(),
@@ -82,8 +82,8 @@ export class PrismaRecurringVoucherTemplateRepository implements IRecurringVouch
   }
 
   private toDomain(record: any): RecurringVoucherTemplate {
-    const schedule = (record.schedule as any) ?? {};
-    const voucherData = (record.voucherData as any) ?? {};
+    const schedule = (record.schedule) ?? {};
+    const voucherData = (record.voucherData) ?? {};
     const status: RecurringStatus = record.isActive ? 'ACTIVE' : 'PAUSED';
 
     return new RecurringVoucherTemplate(

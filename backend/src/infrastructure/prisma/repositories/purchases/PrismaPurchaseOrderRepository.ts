@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPurchaseOrderRepository, PurchaseOrderListOptions } from '../../../../repository/interfaces/purchases/IPurchaseOrderRepository';
 import { POStatus, PurchaseOrder } from '../../../../domain/purchases/entities/PurchaseOrder';
 
@@ -6,7 +6,7 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(po: PurchaseOrder, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.purchaseOrder.create({
       data: {
         id: po.id,
@@ -29,8 +29,7 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
         grandTotalDoc: po.grandTotalDoc,
         createdBy: po.createdBy,
         confirmedAt: po.confirmedAt || null,
-        closedAt: po.closedAt || null,
-        company: { connect: { id: po.companyId } },
+        closedAt: po.closedAt || null,
         lines: {
           create: po.lines.map((line) => ({
             id: line.lineId,
@@ -58,12 +57,12 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
             description: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(po: PurchaseOrder, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.purchaseOrder.update({
       where: { id: po.id, companyId: po.companyId },
       data: {
@@ -113,7 +112,7 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
             description: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -174,7 +173,7 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
       itemId: line.itemId,
       itemCode: line.itemCode,
       itemName: line.itemName,
-      itemType: line.itemType as any,
+      itemType: line.itemType,
       trackInventory: line.trackInventory,
       orderedQty: line.orderedQty,
       uomId: line.uomId || undefined,

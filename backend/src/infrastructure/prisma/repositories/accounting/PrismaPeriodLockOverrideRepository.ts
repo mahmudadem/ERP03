@@ -27,7 +27,7 @@ export class PrismaPeriodLockOverrideRepository implements IPeriodLockOverrideRe
 
   async create(override: PeriodLockOverride, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).periodLockOverride.create({
+    await (client).periodLockOverride.create({
       data: {
         id: override.id,
         companyId: override.companyId,
@@ -49,7 +49,7 @@ export class PrismaPeriodLockOverrideRepository implements IPeriodLockOverrideRe
     companyId: string,
     opts?: PeriodLockOverrideListOptions
   ): Promise<PeriodLockOverride[]> {
-    const rows = await (this.prisma as any).periodLockOverride.findMany({
+    const rows = await (this.prisma).periodLockOverride.findMany({
       where: { companyId },
       orderBy: { createdAt: 'desc' },
       take: opts?.limit,
@@ -58,7 +58,7 @@ export class PrismaPeriodLockOverrideRepository implements IPeriodLockOverrideRe
   }
 
   async findBySource(companyId: string, sourceId: string): Promise<PeriodLockOverride | null> {
-    const row = await (this.prisma as any).periodLockOverride.findFirst({
+    const row = await (this.prisma).periodLockOverride.findFirst({
       where: { companyId, sourceId },
     });
     if (!row) return null;

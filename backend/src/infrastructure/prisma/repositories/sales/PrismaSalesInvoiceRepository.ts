@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ISalesInvoiceRepository, SalesInvoiceListOptions } from '../../../../repository/interfaces/sales/ISalesInvoiceRepository';
 import { PaymentStatus, SIStatus, SalesInvoice } from '../../../../domain/sales/entities/SalesInvoice';
 
@@ -6,7 +6,7 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(si: SalesInvoice, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesInvoice.create({
       data: {
         id: si.id,
@@ -28,7 +28,7 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
         paidAmountBase: si.paidAmountBase,
         outstandingAmountBase: si.outstandingAmountBase,
         voucherType: si.voucherType || null,
-        voucherTypeId: (si as any).formType || null,
+        voucherTypeId: (si).formType || null,
         voucherId: si.voucherId || null,
         cogsVoucherId: si.cogsVoucherId || null,
         subtotalBase: si.subtotalBase,
@@ -72,12 +72,12 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
             description: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(si: SalesInvoice, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesInvoice.update({
       where: { id: si.id, companyId: si.companyId },
       data: {
@@ -96,7 +96,7 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
         paidAmountBase: si.paidAmountBase,
         outstandingAmountBase: si.outstandingAmountBase,
         voucherType: si.voucherType || null,
-        voucherTypeId: (si as any).formType || null,
+        voucherTypeId: (si).formType || null,
         voucherId: si.voucherId || null,
         cogsVoucherId: si.cogsVoucherId || null,
         subtotalBase: si.subtotalBase,
@@ -139,7 +139,7 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
             description: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 

@@ -6,7 +6,7 @@ export class PrismaSellingPolicyRepository implements ISellingPolicyRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async getPolicy(companyId: string): Promise<SellingPolicy | null> {
-    const row = await (this.prisma as any).sellingPolicy.findUnique({
+    const row = await (this.prisma).sellingPolicy.findUnique({
       where: { companyId },
     });
     if (!row) return null;
@@ -24,7 +24,7 @@ export class PrismaSellingPolicyRepository implements ISellingPolicyRepository {
     policy.updatedAt = new Date();
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
     const payload = policy.toJSON();
-    await (client as any).sellingPolicy.upsert({
+    await (client).sellingPolicy.upsert({
       where: { companyId: policy.companyId },
       create: {
         companyId: policy.companyId,

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPurchaseInvoiceRepository, PurchaseInvoiceListOptions } from '../../../../repository/interfaces/purchases/IPurchaseInvoiceRepository';
 import { PaymentStatus, PIStatus, PurchaseInvoice } from '../../../../domain/purchases/entities/PurchaseInvoice';
 
@@ -6,7 +6,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
   constructor(private prisma: PrismaClient) {}
 
   async create(invoice: PurchaseInvoice, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.purchaseInvoice.create({
       data: {
         id: invoice.id,
@@ -16,7 +16,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         invoiceNumber: invoice.invoiceNumber,
         supplierInvoiceNumber: invoice.vendorInvoiceNumber || null,
         purchaseOrderId: invoice.purchaseOrderId || null,
-        goodsReceiptId: (invoice as any).goodsReceiptId || null,
+        goodsReceiptId: (invoice).goodsReceiptId || null,
         vendorId: invoice.vendorId,
         vendorName: invoice.vendorName,
         invoiceDate: new Date(invoice.invoiceDate),
@@ -29,7 +29,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         paidAmountBase: invoice.paidAmountBase,
         outstandingAmountBase: invoice.outstandingAmountBase,
         voucherType: invoice.voucherType || null,
-        voucherTypeId: (invoice as any).formType || null,
+        voucherTypeId: (invoice).formType || null,
         voucherId: invoice.voucherId || null,
         subtotalBase: invoice.subtotalBase,
         taxTotalBase: invoice.taxTotalBase,
@@ -38,7 +38,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         taxTotalDoc: invoice.taxTotalDoc,
         grandTotalDoc: invoice.grandTotalDoc,
         notes: invoice.notes || null,
-        attachments: invoice.attachments as any,
+        attachments: invoice.attachments as unknown as Prisma.InputJsonValue,
         createdBy: invoice.createdBy,
         postedAt: invoice.postedAt || null,
         company: { connect: { id: invoice.companyId } },
@@ -69,19 +69,19 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             stockMovementId: line.stockMovementId || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(invoice: PurchaseInvoice, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.purchaseInvoice.update({
       where: { id: invoice.id, companyId: invoice.companyId },
       data: {
         invoiceNumber: invoice.invoiceNumber,
         supplierInvoiceNumber: invoice.vendorInvoiceNumber || null,
         purchaseOrderId: invoice.purchaseOrderId || null,
-        goodsReceiptId: (invoice as any).goodsReceiptId || null,
+        goodsReceiptId: (invoice).goodsReceiptId || null,
         vendorId: invoice.vendorId,
         vendorName: invoice.vendorName,
         invoiceDate: new Date(invoice.invoiceDate),
@@ -94,7 +94,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         paidAmountBase: invoice.paidAmountBase,
         outstandingAmountBase: invoice.outstandingAmountBase,
         voucherType: invoice.voucherType || null,
-        voucherTypeId: (invoice as any).formType || null,
+        voucherTypeId: (invoice).formType || null,
         voucherId: invoice.voucherId || null,
         subtotalBase: invoice.subtotalBase,
         taxTotalBase: invoice.taxTotalBase,
@@ -103,7 +103,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
         taxTotalDoc: invoice.taxTotalDoc,
         grandTotalDoc: invoice.grandTotalDoc,
         notes: invoice.notes || null,
-        attachments: invoice.attachments as any,
+        attachments: invoice.attachments as unknown as Prisma.InputJsonValue,
         postedAt: invoice.postedAt || null,
         lines: {
           deleteMany: {},
@@ -133,7 +133,7 @@ export class PrismaPurchaseInvoiceRepository implements IPurchaseInvoiceReposito
             stockMovementId: line.stockMovementId || null,
           })),
         },
-      } as any,
+      },
     });
   }
 

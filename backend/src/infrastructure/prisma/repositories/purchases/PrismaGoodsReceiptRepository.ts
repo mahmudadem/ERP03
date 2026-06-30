@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IGoodsReceiptRepository, GoodsReceiptListOptions } from '../../../../repository/interfaces/purchases/IGoodsReceiptRepository';
 import { GRNStatus, GoodsReceipt } from '../../../../domain/purchases/entities/GoodsReceipt';
 
@@ -6,7 +6,7 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(grn: GoodsReceipt, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.goodsReceipt.create({
       data: {
         id: grn.id,
@@ -16,14 +16,13 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
         vendorId: grn.vendorId,
         vendorName: grn.vendorName,
         receiptDate: new Date(grn.receiptDate),
-        currency: (grn as any).currency || 'USD',
-        exchangeRate: (grn as any).exchangeRate || 1.0,
+        currency: (grn).currency || 'USD',
+        exchangeRate: (grn).exchangeRate || 1.0,
         status: grn.status,
         notes: grn.notes || null,
         createdBy: grn.createdBy,
         warehouseId: grn.warehouseId,
         voucherId: grn.voucherId || null,
-        company: { connect: { id: grn.companyId } },
         lines: {
           create: grn.lines.map((line) => ({
             id: line.lineId,
@@ -35,6 +34,7 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
             uom: line.uom,
             unitCostDoc: line.unitCostDoc,
             unitCostBase: line.unitCostBase,
+            totalCostBase: line.unitCostBase * line.receivedQty,
             moveCurrency: line.moveCurrency,
             fxRateMovToBase: line.fxRateMovToBase,
             fxRateCCYToBase: line.fxRateCCYToBase,
@@ -43,12 +43,12 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
             warehouseId: grn.warehouseId,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(grn: GoodsReceipt, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.goodsReceipt.update({
       where: { id: grn.id, companyId: grn.companyId },
       data: {
@@ -73,6 +73,7 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
             uom: line.uom,
             unitCostDoc: line.unitCostDoc,
             unitCostBase: line.unitCostBase,
+            totalCostBase: line.unitCostBase * line.receivedQty,
             moveCurrency: line.moveCurrency,
             fxRateMovToBase: line.fxRateMovToBase,
             fxRateCCYToBase: line.fxRateCCYToBase,
@@ -81,7 +82,7 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
             warehouseId: grn.warehouseId,
           })),
         },
-      } as any,
+      },
     });
   }
 

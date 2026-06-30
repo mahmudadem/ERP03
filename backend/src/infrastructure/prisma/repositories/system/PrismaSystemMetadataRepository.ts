@@ -53,7 +53,7 @@ export class PrismaSystemMetadataRepository implements ISystemMetadataRepository
       }),
     ]);
 
-    const manifests = Array.isArray(metadataRecord?.value) ? metadataRecord.value as any[] : [];
+    const manifests = Array.isArray(metadataRecord?.value) ? (metadataRecord.value as unknown as Array<Record<string, unknown>>) : [];
     const manifestById = new Map(
       manifests
         .filter((manifest) => manifest && typeof manifest.id === 'string')
@@ -64,7 +64,7 @@ export class PrismaSystemMetadataRepository implements ISystemMetadataRepository
       .filter((template) => !!template.code)
       .map((template) => {
         const id = template.code as string;
-        const manifest = manifestById.get(id) ?? {};
+        const manifest: Record<string, unknown> = manifestById.get(id) ?? {};
         const rawAccounts = Array.isArray(template.accounts) ? template.accounts : [];
         const accounts = rawAccounts.map((account: any) => {
           const normalizedClassification = normalizeClassification(account.classification || account.type || 'ASSET');

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IItemRepository, ItemListOptions } from '../../../../repository/interfaces/inventory/IItemRepository';
 import { Item } from '../../../../domain/inventory/entities/Item';
 
@@ -15,7 +15,7 @@ export class PrismaItemRepository implements IItemRepository {
         description: item.description || null,
         barcode: item.barcode || null,
         barcodes: item.barcodes || [],
-        uomBarcodes: (item.uomBarcodes as any) ?? [],
+        uomBarcodes: (item.uomBarcodes ?? []) as unknown as Prisma.InputJsonValue,
         uomBarcodeValues: (item.uomBarcodes ?? []).flatMap((entry) => entry.barcodes),
         type: item.type,
         categoryId: item.categoryId || null,
@@ -40,12 +40,12 @@ export class PrismaItemRepository implements IItemRepository {
         reorderPoint: item.reorderPoint ?? null,
         salePrice: item.salePrice ?? null,
         purchasePrice: item.purchasePrice ?? null,
-        costingStats: (item.costingStats as any) || null,
+        costingStats: item.costingStats ? (item.costingStats as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
         imageUrl: item.imageUrl || null,
-        metadata: (item.metadata as any) || null,
+        metadata: item.metadata ? (item.metadata as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
         active: item.active,
         createdBy: item.createdBy,
-      } as any,
+      },
     });
   }
 
@@ -55,18 +55,18 @@ export class PrismaItemRepository implements IItemRepository {
       : data;
     await this.prisma.item.update({
       where: { id },
-      data: payload as any,
+      data: payload as unknown as Prisma.ItemUncheckedUpdateInput,
     });
   }
 
   async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
-    const tx = transaction as any;
+    const tx = transaction as Prisma.TransactionClient;
     const payload = data.uomBarcodes
       ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
       : data;
     await tx.item.update({
       where: { id },
-      data: payload as any,
+      data: payload as unknown as Prisma.ItemUncheckedUpdateInput,
     });
   }
 
@@ -155,13 +155,13 @@ export class PrismaItemRepository implements IItemRepository {
     const where: any = {
       companyId,
       OR: [
-        { code: { contains: query, mode: 'insensitive' as any } },
-        { name: { contains: query, mode: 'insensitive' as any } },
-        { description: { contains: query, mode: 'insensitive' as any } },
-        { barcode: { contains: query, mode: 'insensitive' as any } },
+        { code: { contains: query, mode: 'insensitive' } },
+        { name: { contains: query, mode: 'insensitive' } },
+        { description: { contains: query, mode: 'insensitive' } },
+        { barcode: { contains: query, mode: 'insensitive' } },
         { barcodes: { has: query } },
         { uomBarcodeValues: { has: query } },
-        { brand: { contains: query, mode: 'insensitive' as any } },
+        { brand: { contains: query, mode: 'insensitive' } },
       ],
     };
     if (opts?.active !== undefined) {

@@ -344,29 +344,32 @@ model Account {
 }
 
 model Voucher {
-  id               String   @id @default(uuid())
-  companyId        String
-  type             String
-  voucherNo        String?
-  date             DateTime
-  currency         String
-  baseCurrency     String
-  exchangeRate     Float    @default(1.0)
-  status           String
-  totalDebit       Float    @default(0)
-  totalCredit      Float    @default(0)
-  createdBy        String
-  approvedBy       String?
-  lockedBy         String?
-  reference        String?
-  description      String?
-  postingPeriodNo  Int?
-  metadata         Json?    @default("{}")
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
+  id                 String   @id @default(uuid())
+  companyId          String
+  type               String
+  voucherNo          String?
+  date               DateTime
+  currency           String
+  baseCurrency       String
+  exchangeRate       Float    @default(1.0)
+  status             String
+  totalDebit         Float    @default(0)
+  totalCredit        Float    @default(0)
+  createdBy          String
+  approvedBy         String?
+  lockedBy           String?
+  reference          String?
+  description        String?
+  postingPeriodNo    Int?
+  reversalOfVoucherId String?
+  metadata           Json?    @default("{}")
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
 
   company Company       @relation(fields: [companyId], references: [id], onDelete: Cascade)
   fiscalYear FiscalYear? @relation(fields: [fiscalYearId], references: [id])
+  reversalOf Voucher? @relation("VoucherReversal", fields: [reversalOfVoucherId], references: [id])
+  reversals  Voucher[] @relation("VoucherReversal")
   lines   VoucherLine[]
   fiscalYearId String?
 
@@ -375,6 +378,7 @@ model Voucher {
   @@index([companyId, type])
   @@index([companyId, voucherNo])
   @@index([fiscalYearId])
+  @@index([reversalOfVoucherId])
   @@map("vouchers")
 }
 
@@ -403,21 +407,23 @@ model VoucherLine {
 }
 
 model LedgerEntry {
-  id           String   @id @default(uuid())
-  companyId    String
-  accountId    String
-  voucherId    String?
-  date         DateTime
-  description  String?
-  debit        Float    @default(0)
-  credit       Float    @default(0)
-  balance      Float    @default(0)
-  currency     String
-  baseCurrency String
-  exchangeRate Float    @default(1.0)
-  fiscalYearId String?
-  postingSeq   Int      @default(0)
-  createdAt    DateTime @default(now())
+  id                  String   @id @default(uuid())
+  companyId           String
+  accountId           String
+  voucherId           String?
+  date                DateTime
+  description         String?
+  debit               Float    @default(0)
+  credit              Float    @default(0)
+  balance             Float    @default(0)
+  currency            String
+  baseCurrency        String
+  exchangeRate        Float    @default(1.0)
+  fiscalYearId        String?
+  postingSeq          Int      @default(0)
+  reconciliationId    String?
+  bankStatementLineId String?
+  createdAt           DateTime @default(now())
 
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   account  Account  @relation(fields: [accountId], references: [id])
@@ -427,6 +433,8 @@ model LedgerEntry {
   @@index([companyId, fiscalYearId])
   @@index([companyId, date])
   @@index([voucherId])
+  @@index([reconciliationId])
+  @@index([bankStatementLineId])
   @@map("ledger_entries")
 }
 
@@ -477,12 +485,13 @@ model Budget {
   id           String   @id @default(uuid())
   companyId    String
   fiscalYearId String
-  accountId    String
-  amount       Float
-  period       String
+  name         String
+  lines        Json     @default("[]")
+  status       String   @default("DRAFT")
   version      Int      @default(1)
-  name         String?
   description  String?
+  createdBy    String?
+  updatedBy    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -490,8 +499,7 @@ model Budget {
   fiscalYear FiscalYear @relation(fields: [fiscalYearId], references: [id])
 
   @@index([companyId, fiscalYearId])
-  @@index([companyId, accountId])
-  @@index([companyId, period])
+  @@index([companyId, status])
   @@map("budgets")
 }
 
@@ -576,17 +584,20 @@ model VoucherSequence {
 }
 
 model CompanyGroup {
-  id          String   @id @default(uuid())
-  name        String
-  description String?
-  parentId    String?
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                String   @id @default(uuid())
+  name              String
+  description       String?
+  parentId          String?
+  companyId         String?
+  reportingCurrency String   @default("USD")
+  members           Json     @default("[]")
+  createdBy         String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   parent   CompanyGroup? @relation("CompanyGroupHierarchy", fields: [parentId], references: [id])
   children CompanyGroup[] @relation("CompanyGroupHierarchy")
-  company  Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
-  companyId String
+  company  Company? @relation(fields: [companyId], references: [id], onDelete: SetNull)
 
   @@index([parentId])
   @@index([companyId])
@@ -656,6 +667,7 @@ model Item {
   stockTransferLines StockTransferLine[]
   openingStockLines OpeningStockLine[]
   inventoryRevaluationLines InventoryRevaluationLine[]
+  uomConversions UomConversion[]
 
   @@unique([companyId, code])
   @@index([companyId])
@@ -719,18 +731,22 @@ model Uom {
 model UomConversion {
   id          String   @id @default(uuid())
   companyId   String
+  itemId      String?
   fromUomId   String
   toUomId     String
   factor      Float
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  item    Item?   @relation(fields: [itemId], references: [id], onDelete: Cascade)
   fromUom Uom     @relation("UomConversionFrom", fields: [fromUomId], references: [id])
   toUom   Uom     @relation("UomConversionTo", fields: [toUomId], references: [id])
 
-  @@unique([companyId, fromUomId, toUomId])
+  @@unique([companyId, itemId, fromUomId, toUomId])
   @@index([companyId])
+  @@index([itemId])
   @@map("uom_conversions")
 }
 
@@ -961,22 +977,19 @@ model OpeningStockLine {
 }
 
 model InventoryPeriodSnapshot {
-  id           String   @id @default(uuid())
-  companyId    String
-  period       String
-  itemId       String
-  warehouseId  String
-  openingQty   Float    @default(0)
-  closingQty   Float    @default(0)
-  totalIn      Float    @default(0)
-  totalOut     Float    @default(0)
-  avgCostBase  Float    @default(0)
-  capturedAt   DateTime @default(now())
+  id             String   @id @default(uuid())
+  companyId      String
+  period         String
+  periodEndDate  DateTime
+  snapshotData   Json     @default("[]")
+  totalValueBase Float    @default(0)
+  totalItems     Int      @default(0)
+  capturedAt     DateTime @default(now())
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
+  @@unique([companyId, period])
   @@index([companyId, period])
-  @@index([companyId, itemId])
   @@map("inventory_period_snapshots")
 }
 
@@ -1124,6 +1137,8 @@ model GoodsReceipt {
   receiptDate    DateTime
   currency       String
   exchangeRate   Float    @default(1.0)
+  warehouseId    String?
+  voucherId      String?
   status         String   @default("DRAFT")
   notes          String?
   createdBy      String
@@ -1150,8 +1165,13 @@ model GoodsReceiptLine {
   itemName        String
   receivedQty     Float
   uom             String
+  unitCostDoc     Float    @default(0)
   unitCostBase    Float
   totalCostBase   Float
+  moveCurrency    String   @default("USD")
+  fxRateMovToBase Float    @default(1.0)
+  fxRateCCYToBase Float    @default(1.0)
+  stockMovementId String?
   warehouseId     String?
   notes           String?
 
@@ -1242,25 +1262,32 @@ model PurchaseInvoiceLine {
 }
 
 model PurchaseReturn {
-  id             String   @id @default(uuid())
-  companyId      String
-  documentNo     String
-  vendorId       String
-  vendorName     String
-  returnDate     DateTime
-  currency       String
-  exchangeRate   Float    @default(1.0)
-  status         String   @default("DRAFT")
-  notes          String?
-  subtotalBase   Float    @default(0)
-  taxTotalBase   Float    @default(0)
-  grandTotalBase Float    @default(0)
-  subtotalDoc    Float    @default(0)
-  taxTotalDoc    Float    @default(0)
-  grandTotalDoc  Float    @default(0)
-  createdBy      String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id                String   @id @default(uuid())
+  companyId         String
+  documentNo        String
+  vendorId          String
+  vendorName        String
+  returnDate        DateTime
+  currency          String
+  exchangeRate      Float    @default(1.0)
+  status            String   @default("DRAFT")
+  notes             String?
+  subtotalBase      Float    @default(0)
+  taxTotalBase      Float    @default(0)
+  grandTotalBase    Float    @default(0)
+  subtotalDoc       Float    @default(0)
+  taxTotalDoc       Float    @default(0)
+  grandTotalDoc     Float    @default(0)
+  purchaseInvoiceId String?
+  goodsReceiptId    String?
+  purchaseOrderId   String?
+  returnContext     String   @default("DIRECT")
+  warehouseId       String?
+  reason            String?
+  voucherId         String?
+  createdBy         String
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
 
   company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lines   PurchaseReturnLine[]
@@ -1269,6 +1296,8 @@ model PurchaseReturn {
   @@index([companyId])
   @@index([companyId, vendorId])
   @@index([companyId, status])
+  @@index([companyId, purchaseInvoiceId])
+  @@index([companyId, goodsReceiptId])
   @@map("purchase_returns")
 }
 
@@ -1397,6 +1426,8 @@ model DeliveryNote {
   exchangeRate   Float    @default(1.0)
   status         String   @default("DRAFT")
   notes          String?
+  warehouseId    String?
+  cogsVoucherId  String?
   createdBy      String
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -1415,12 +1446,19 @@ model DeliveryNote {
 model DeliveryNoteLine {
   id              String   @id @default(uuid())
   deliveryId      String
+  lineNo          Int      @default(1)
   soLineId        String?
   itemId          String
   itemCode        String
   itemName        String
   deliveredQty    Float
   uom             String
+  unitCostBase    Float    @default(0)
+  lineCostBase    Float    @default(0)
+  moveCurrency    String   @default("USD")
+  fxRateMovToBase Float    @default(1.0)
+  fxRateCCYToBase Float    @default(1.0)
+  stockMovementId String?
   warehouseId     String?
   notes           String?
 
@@ -1514,25 +1552,32 @@ model SalesInvoiceLine {
 }
 
 model SalesReturn {
-  id             String   @id @default(uuid())
-  companyId      String
-  documentNo     String
-  customerId     String
-  customerName   String
-  returnDate     DateTime
-  currency       String
-  exchangeRate   Float    @default(1.0)
-  status         String   @default("DRAFT")
-  notes          String?
-  subtotalBase   Float    @default(0)
-  taxTotalBase   Float    @default(0)
-  grandTotalBase Float    @default(0)
-  subtotalDoc    Float    @default(0)
-  taxTotalDoc    Float    @default(0)
-  grandTotalDoc  Float    @default(0)
-  createdBy      String
-  createdAt      DateTime @default(now())
-  updatedAt      DateTime @updatedAt
+  id               String   @id @default(uuid())
+  companyId        String
+  documentNo       String
+  customerId       String
+  customerName     String
+  returnDate       DateTime
+  currency         String
+  exchangeRate     Float    @default(1.0)
+  status           String   @default("DRAFT")
+  notes            String?
+  subtotalBase     Float    @default(0)
+  taxTotalBase     Float    @default(0)
+  grandTotalBase   Float    @default(0)
+  subtotalDoc      Float    @default(0)
+  taxTotalDoc      Float    @default(0)
+  grandTotalDoc    Float    @default(0)
+  salesInvoiceId   String?
+  deliveryNoteId   String?
+  salesOrderId     String?
+  returnContext    String   @default("DIRECT")
+  reason           String?
+  revenueVoucherId String?
+  cogsVoucherId    String?
+  createdBy        String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   company Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lines   SalesReturnLine[]
@@ -1541,6 +1586,7 @@ model SalesReturn {
   @@index([companyId])
   @@index([companyId, customerId])
   @@index([companyId, status])
+  @@index([companyId, salesInvoiceId])
   @@map("sales_returns")
 }
 

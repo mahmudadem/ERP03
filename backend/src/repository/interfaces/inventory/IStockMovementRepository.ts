@@ -1,4 +1,3 @@
-
 import { StockMovement, ReferenceType, MovementType, StockDirection } from '../../../domain/inventory/entities/StockMovement';
 
 /**

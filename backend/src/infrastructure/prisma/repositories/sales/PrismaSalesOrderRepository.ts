@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ISalesOrderRepository, SalesOrderListOptions } from '../../../../repository/interfaces/sales/ISalesOrderRepository';
 import { SOStatus, SalesOrder } from '../../../../domain/sales/entities/SalesOrder';
 
@@ -6,7 +6,7 @@ export class PrismaSalesOrderRepository implements ISalesOrderRepository {
   constructor(private prisma: PrismaClient) {}
 
   async create(so: SalesOrder, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesOrder.create({
       data: {
         id: so.id,
@@ -29,8 +29,7 @@ export class PrismaSalesOrderRepository implements ISalesOrderRepository {
         grandTotalDoc: so.grandTotalDoc,
         createdBy: so.createdBy,
         confirmedAt: so.confirmedAt || null,
-        closedAt: so.closedAt || null,
-        company: { connect: { id: so.companyId } },
+        closedAt: so.closedAt || null,
         lines: {
           create: so.lines.map((line) => ({
             id: line.lineId,
@@ -58,12 +57,12 @@ export class PrismaSalesOrderRepository implements ISalesOrderRepository {
             description: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(so: SalesOrder, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesOrder.update({
       where: { id: so.id, companyId: so.companyId },
       data: {
@@ -113,7 +112,7 @@ export class PrismaSalesOrderRepository implements ISalesOrderRepository {
             description: line.description || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -175,7 +174,7 @@ export class PrismaSalesOrderRepository implements ISalesOrderRepository {
       itemId: line.itemId,
       itemCode: line.itemCode,
       itemName: line.itemName,
-      itemType: line.itemType as any,
+      itemType: line.itemType,
       trackInventory: line.trackInventory,
       orderedQty: line.orderedQty,
       uomId: line.uomId || undefined,

@@ -37,7 +37,7 @@ export class PrismaCompanyWizardTemplateRepository implements ICompanyWizardTemp
       id: record.id,
       name: record.name,
       models: record.models,
-      steps: record.steps as any,
+      steps: record.steps,
       isDefault: record.isDefault,
     };
   }

@@ -23,10 +23,10 @@ export class PrismaPosPolicyRepository implements IPosPolicyRepository {
       where: { companyId: policy.companyId },
       create: {
         companyId: policy.companyId,
-        policy: policy.toJSON() as any,
+        policy: policy.toJSON(),
       },
       update: {
-        policy: policy.toJSON() as any,
+        policy: policy.toJSON(),
         updatedAt: new Date(),
       },
     });

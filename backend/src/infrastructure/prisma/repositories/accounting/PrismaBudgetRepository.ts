@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IBudgetRepository } from '../../../../repository/interfaces/accounting/IBudgetRepository';
 import { Budget, BudgetStatus, BudgetLine } from '../../../../domain/accounting/entities/Budget';
 
@@ -13,12 +13,12 @@ export class PrismaBudgetRepository implements IBudgetRepository {
         fiscalYearId: budget.fiscalYearId,
         name: budget.name,
         version: budget.version,
-        lines: budget.lines as any,
+        lines: budget.lines as unknown as Prisma.InputJsonValue,
         status: budget.status,
         createdBy: budget.createdBy,
         createdAt: budget.createdAt,
         updatedAt: budget.updatedAt ?? new Date(),
-      } as any,
+      },
     });
     return this.toDomain(record);
   }
@@ -29,11 +29,11 @@ export class PrismaBudgetRepository implements IBudgetRepository {
       data: {
         name: budget.name,
         version: budget.version,
-        lines: budget.lines as any,
+        lines: budget.lines as unknown as Prisma.InputJsonValue,
         status: budget.status,
         updatedBy: budget.updatedBy,
         updatedAt: budget.updatedAt ?? new Date(),
-      } as any,
+      },
     });
     return this.toDomain(record);
   }
@@ -60,12 +60,12 @@ export class PrismaBudgetRepository implements IBudgetRepository {
   async setStatus(companyId: string, id: string, status: BudgetStatus): Promise<void> {
     await this.prisma.budget.update({
       where: { id, companyId },
-      data: { status } as any,
+      data: { status },
     });
   }
 
   private toDomain(record: any): Budget {
-    const lines: BudgetLine[] = (record.lines as any[]) ?? [];
+    const lines: BudgetLine[] = (record.lines as unknown as BudgetLine[]) ?? [];
     return new Budget(
       record.id,
       record.companyId,

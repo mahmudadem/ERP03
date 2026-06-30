@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPurchaseReturnRepository, PurchaseReturnListOptions } from '../../../../repository/interfaces/purchases/IPurchaseReturnRepository';
 import { PRStatus, PurchaseReturn } from '../../../../domain/purchases/entities/PurchaseReturn';
 
@@ -6,7 +6,7 @@ export class PrismaPurchaseReturnRepository implements IPurchaseReturnRepository
   constructor(private prisma: PrismaClient) {}
 
   async create(purchaseReturn: PurchaseReturn, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.purchaseReturn.create({
       data: {
         id: purchaseReturn.id,
@@ -32,8 +32,7 @@ export class PrismaPurchaseReturnRepository implements IPurchaseReturnRepository
         returnContext: purchaseReturn.returnContext,
         warehouseId: purchaseReturn.warehouseId,
         reason: purchaseReturn.reason,
-        voucherId: purchaseReturn.voucherId || null,
-        company: { connect: { id: purchaseReturn.companyId } },
+        voucherId: purchaseReturn.voucherId || null,
         lines: {
           create: purchaseReturn.lines.map((line) => ({
             id: line.lineId,
@@ -62,12 +61,12 @@ export class PrismaPurchaseReturnRepository implements IPurchaseReturnRepository
             stockMovementId: line.stockMovementId || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async update(purchaseReturn: PurchaseReturn, _transaction?: unknown): Promise<void> {
-    const tx = (_transaction as any) || this.prisma;
+    const tx = (_transaction as Prisma.TransactionClient) || this.prisma;
     await tx.purchaseReturn.update({
       where: { id: purchaseReturn.id, companyId: purchaseReturn.companyId },
       data: {
@@ -120,7 +119,7 @@ export class PrismaPurchaseReturnRepository implements IPurchaseReturnRepository
             stockMovementId: line.stockMovementId || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -184,7 +183,7 @@ export class PrismaPurchaseReturnRepository implements IPurchaseReturnRepository
       purchaseOrderId: record.purchaseOrderId || undefined,
       vendorId: record.vendorId,
       vendorName: record.vendorName,
-      returnContext: (record.returnContext || 'DIRECT') as any,
+      returnContext: (record.returnContext || 'DIRECT'),
       returnDate: record.returnDate instanceof Date ? record.returnDate.toISOString().split('T')[0] : String(record.returnDate).split('T')[0],
       warehouseId: record.warehouseId || '',
       currency: record.currency,

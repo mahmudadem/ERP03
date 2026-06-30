@@ -27,7 +27,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
 
   async create(list: PurchasePriceList, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).purchasePriceList.create({
+    await (client).purchasePriceList.create({
       data: {
         id: list.id,
         companyId: list.companyId,
@@ -37,7 +37,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
         validFrom: list.validFrom ?? null,
         validTo: list.validTo ?? null,
         isDefault: list.isDefault,
-        lines: list.lines as any,
+        lines: list.lines as unknown as Prisma.InputJsonValue,
         createdBy: list.createdBy,
         createdAt: list.createdAt,
         updatedAt: list.updatedAt,
@@ -47,7 +47,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
 
   async update(list: PurchasePriceList, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).purchasePriceList.update({
+    await (client).purchasePriceList.update({
       where: { id: list.id },
       data: {
         name: list.name,
@@ -56,14 +56,14 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
         validFrom: list.validFrom ?? null,
         validTo: list.validTo ?? null,
         isDefault: list.isDefault,
-        lines: list.lines as any,
+        lines: list.lines as unknown as Prisma.InputJsonValue,
         updatedAt: list.updatedAt,
       },
     });
   }
 
   async getById(companyId: string, id: string): Promise<PurchasePriceList | null> {
-    const row = await (this.prisma as any).purchasePriceList.findFirst({
+    const row = await (this.prisma).purchasePriceList.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -71,7 +71,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
   }
 
   async getByName(companyId: string, name: string): Promise<PurchasePriceList | null> {
-    const row = await (this.prisma as any).purchasePriceList.findFirst({
+    const row = await (this.prisma).purchasePriceList.findFirst({
       where: { companyId, name },
     });
     if (!row) return null;
@@ -87,7 +87,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
       where.status = 'ACTIVE';
     }
 
-    const rows = await (this.prisma as any).purchasePriceList.findMany({
+    const rows = await (this.prisma).purchasePriceList.findMany({
       where,
       orderBy: { name: 'asc' },
       skip: opts?.offset,
@@ -97,7 +97,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
   }
 
   async getDefaultForCurrency(companyId: string, currency: string): Promise<PurchasePriceList | null> {
-    const row = await (this.prisma as any).purchasePriceList.findFirst({
+    const row = await (this.prisma).purchasePriceList.findFirst({
       where: { companyId, currency, isDefault: true },
     });
     if (!row) return null;
@@ -105,7 +105,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).purchasePriceList.deleteMany({
+    await (this.prisma).purchasePriceList.deleteMany({
       where: { id, companyId },
     });
   }

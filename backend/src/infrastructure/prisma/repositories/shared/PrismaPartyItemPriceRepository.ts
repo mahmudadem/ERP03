@@ -45,7 +45,7 @@ export class PrismaPartyItemPriceRepository implements IPartyItemPriceRepository
   }
 
   async get(companyId: string, partyId: string, itemId: string): Promise<PartyItemPrice | null> {
-    const record = await (this.prisma as any).partyItemPrice.findUnique({
+    const record = await (this.prisma).partyItemPrice.findUnique({
       where: this.where(companyId, partyId, itemId),
     });
     return record ? this.toDomain(record) : null;
@@ -53,7 +53,7 @@ export class PrismaPartyItemPriceRepository implements IPartyItemPriceRepository
 
   async getMany(companyId: string, partyId: string, itemIds: string[]): Promise<PartyItemPrice[]> {
     if (itemIds.length === 0) return [];
-    const records = await (this.prisma as any).partyItemPrice.findMany({
+    const records = await (this.prisma).partyItemPrice.findMany({
       where: {
         companyId,
         partyId,

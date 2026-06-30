@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IUomConversionRepository, UomConversionListOptions } from '../../../../repository/interfaces/inventory/IUomConversionRepository';
 import { UomConversion } from '../../../../domain/inventory/entities/UomConversion';
 
@@ -15,16 +15,22 @@ export class PrismaUomConversionRepository implements IUomConversionRepository {
         factor: conversion.factor,
         createdAt: new Date(),
         updatedAt: new Date(),
-        ...(conversion as any).itemId !== undefined && { itemId: (conversion as any).itemId },
-        ...(conversion as any).active !== undefined && { active: (conversion as any).active },
-      } as any,
+        ...(conversion).itemId !== undefined && { itemId: (conversion).itemId },
+        ...(conversion).active !== undefined && { active: (conversion).active },
+      },
     });
   }
 
   async updateConversion(id: string, data: Partial<UomConversion>): Promise<void> {
+    const patch: Prisma.UomConversionUncheckedUpdateInput = {};
+    if (data.factor !== undefined) patch.factor = data.factor;
+    if (data.active !== undefined) patch.active = data.active;
+    if (data.itemId !== undefined) patch.itemId = data.itemId;
+    if (data.fromUomId !== undefined) patch.fromUomId = data.fromUomId;
+    if (data.toUomId !== undefined) patch.toUomId = data.toUomId;
     await this.prisma.uomConversion.update({
       where: { id },
-      data: data as any,
+      data: patch,
     });
   }
 
@@ -74,13 +80,13 @@ export class PrismaUomConversionRepository implements IUomConversionRepository {
     return new UomConversion({
       id: record.id,
       companyId: record.companyId,
-      itemId: (record as any).itemId ?? record.fromUomId,
+      itemId: (record).itemId ?? record.fromUomId,
       fromUomId: record.fromUomId,
-      fromUom: (record as any).fromUom ?? record.fromUomId,
+      fromUom: (record).fromUom ?? record.fromUomId,
       toUomId: record.toUomId,
-      toUom: (record as any).toUom ?? record.toUomId,
+      toUom: (record).toUom ?? record.toUomId,
       factor: record.factor,
-      active: (record as any).active ?? true,
+      active: (record).active ?? true,
     });
   }
 }

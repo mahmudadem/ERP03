@@ -117,7 +117,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         postingLockPolicy: voucher.postingLockPolicy || null,
         sourcePayload: voucher.sourcePayload || null,
         formData: voucher.formData || null
-      } as any,
+      },
       lines: linesInput
     };
   }
@@ -145,7 +145,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         postingLockPolicy: voucher.postingLockPolicy || null,
         sourcePayload: voucher.sourcePayload || null,
         formData: voucher.formData || null
-      } as any,
+      },
       lines: {
         deleteMany: {},
         create: voucher.lines.map((line, index) => ({
@@ -247,7 +247,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
       ];
     }
     if (filters?.formId) {
-      where.metadata = { path: ['formId'], equals: filters.formId } as any;
+      where.metadata = { path: ['formId'], equals: filters.formId };
     }
 
     const data = await this.prisma.voucher.findMany({
@@ -267,7 +267,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         companyId,
         OR: [
           { reversalOfVoucherId: originalVoucherId },
-          { metadata: { path: ['reversalOfVoucherId'], equals: originalVoucherId } } as any
+          { metadata: { path: ['reversalOfVoucherId'], equals: originalVoucherId } }
         ]
       },
       include: { lines: { orderBy: { lineNo: 'asc' } } }
@@ -283,7 +283,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         companyId,
         status: VoucherStatus.PENDING,
         metadata: { path: ['pendingFinancialApproval'], equals: true }
-      } as any,
+      },
       include: { lines: { orderBy: { lineNo: 'asc' } } },
       orderBy: { createdAt: 'asc' },
       take: limit || 50
@@ -298,7 +298,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
         companyId,
         status: VoucherStatus.PENDING,
         metadata: { path: ['pendingCustodyConfirmations'], array_contains: custodianUserId }
-      } as any,
+      },
       include: { lines: { orderBy: { lineNo: 'asc' } } },
       orderBy: { createdAt: 'asc' },
       take: limit || 50
@@ -347,7 +347,7 @@ export class PrismaVoucherRepository implements IVoucherRepository {
       where: {
         companyId,
         metadata: { path: ['formId'], equals: formId }
-      } as any
+      }
     });
   }
 

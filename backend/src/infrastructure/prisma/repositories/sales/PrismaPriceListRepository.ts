@@ -27,7 +27,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
 
   async create(list: PriceList, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).priceList.create({
+    await (client).priceList.create({
       data: {
         id: list.id,
         companyId: list.companyId,
@@ -37,7 +37,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
         validFrom: list.validFrom ?? null,
         validTo: list.validTo ?? null,
         isDefault: list.isDefault,
-        lines: list.lines as any,
+        lines: list.lines as unknown as Prisma.InputJsonValue,
         createdBy: list.createdBy,
         createdAt: list.createdAt,
         updatedAt: list.updatedAt,
@@ -47,7 +47,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
 
   async update(list: PriceList, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).priceList.update({
+    await (client).priceList.update({
       where: { id: list.id },
       data: {
         name: list.name,
@@ -56,14 +56,14 @@ export class PrismaPriceListRepository implements IPriceListRepository {
         validFrom: list.validFrom ?? null,
         validTo: list.validTo ?? null,
         isDefault: list.isDefault,
-        lines: list.lines as any,
+        lines: list.lines as unknown as Prisma.InputJsonValue,
         updatedAt: list.updatedAt,
       },
     });
   }
 
   async getById(companyId: string, id: string): Promise<PriceList | null> {
-    const row = await (this.prisma as any).priceList.findFirst({
+    const row = await (this.prisma).priceList.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -71,7 +71,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
   }
 
   async getByName(companyId: string, name: string): Promise<PriceList | null> {
-    const row = await (this.prisma as any).priceList.findFirst({
+    const row = await (this.prisma).priceList.findFirst({
       where: { companyId, name },
     });
     if (!row) return null;
@@ -87,7 +87,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
       where.status = 'ACTIVE';
     }
 
-    const rows = await (this.prisma as any).priceList.findMany({
+    const rows = await (this.prisma).priceList.findMany({
       where,
       orderBy: { name: 'asc' },
       skip: opts?.offset,
@@ -97,7 +97,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
   }
 
   async getDefaultForCurrency(companyId: string, currency: string): Promise<PriceList | null> {
-    const row = await (this.prisma as any).priceList.findFirst({
+    const row = await (this.prisma).priceList.findFirst({
       where: { companyId, currency, isDefault: true },
     });
     if (!row) return null;
@@ -105,7 +105,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).priceList.deleteMany({
+    await (this.prisma).priceList.deleteMany({
       where: { id, companyId },
     });
   }

@@ -65,7 +65,7 @@ export class PrismaCompanySettingsRepository implements ICompanySettingsReposito
       updateData.fiscalYearEnd = month;
     }
     if (settings.exchangeGainLossAccountId !== undefined) updateData.exchangeGainLossAccountId = settings.exchangeGainLossAccountId;
-    if (settings.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = settings.disabledNotificationCategories as any;
+    if (settings.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = settings.disabledNotificationCategories;
 
     await this.prisma.companySettings.upsert({
       where: { companyId },

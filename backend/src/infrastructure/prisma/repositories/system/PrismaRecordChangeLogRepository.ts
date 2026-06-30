@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { RecordChangeLog } from '../../../../domain/system/entities/RecordChangeLog';
+import { RecordChangeLog, FieldChange } from '../../../../domain/system/entities/RecordChangeLog';
 import {
   IRecordChangeLogRepository,
   RecordChangeLogListFilters,
@@ -16,7 +16,7 @@ export class PrismaRecordChangeLogRepository implements IRecordChangeLogReposito
       entityId: row.entityId,
       entityNumber: row.entityNumber ?? undefined,
       action: row.action as RecordChangeLog['action'],
-      changes: (row.changes as any[]) ?? [],
+      changes: (row.changes as unknown as FieldChange[]) ?? [],
       userId: row.userId,
       userEmail: row.userEmail ?? undefined,
       timestamp: row.timestamp,
@@ -25,7 +25,7 @@ export class PrismaRecordChangeLogRepository implements IRecordChangeLogReposito
   }
 
   async create(entry: RecordChangeLog, _transaction?: unknown): Promise<void> {
-    await (this.prisma as any).recordChangeLog.create({
+    await (this.prisma).recordChangeLog.create({
       data: {
         id: entry.id,
         companyId: entry.companyId,
@@ -33,11 +33,11 @@ export class PrismaRecordChangeLogRepository implements IRecordChangeLogReposito
         entityId: entry.entityId,
         entityNumber: entry.entityNumber ?? null,
         action: entry.action,
-        changes: entry.changes as any,
+        changes: entry.changes as unknown as Prisma.InputJsonValue,
         userId: entry.userId,
         userEmail: entry.userEmail ?? null,
         timestamp: entry.timestamp,
-        metadata: entry.metadata as any ?? undefined,
+        metadata: (entry.metadata ?? undefined) as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -47,7 +47,7 @@ export class PrismaRecordChangeLogRepository implements IRecordChangeLogReposito
     entityType: string,
     entityId: string
   ): Promise<RecordChangeLog[]> {
-    const rows = await (this.prisma as any).recordChangeLog.findMany({
+    const rows = await (this.prisma).recordChangeLog.findMany({
       where: { companyId, entityType, entityId },
       orderBy: { timestamp: 'desc' },
     });
@@ -64,7 +64,7 @@ export class PrismaRecordChangeLogRepository implements IRecordChangeLogReposito
       if (filters.dateTo) where.timestamp.lte = new Date(filters.dateTo);
     }
 
-    const rows = await (this.prisma as any).recordChangeLog.findMany({
+    const rows = await (this.prisma).recordChangeLog.findMany({
       where,
       orderBy: { timestamp: 'desc' },
       take: filters.limit,

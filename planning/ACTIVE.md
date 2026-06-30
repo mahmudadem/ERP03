@@ -6,6 +6,15 @@
 
 ---
 
+## Current task
+
+- Purchases translation audit, page by page.
+- Done this pass: `PurchaseOrderDetailPage.tsx` and `PurchaseInvoiceDetailPage.tsx` now keep their print/error/toast/selector fallback text in i18n, including the print-popup block message.
+- Verification: frontend `typecheck` and production `build` both passed.
+- Next: continue with the remaining Purchases detail screens, starting with `GoodsReceiptDetailPage.tsx` and `PurchaseReturnDetailPage.tsx`, then any list/settings pages still leaking English.
+
+---
+
 ## ⚠️ Worktree map (read first)
 
 Two worktrees, one repo. **Do not mix their roles.**
@@ -49,9 +58,21 @@ tidy-up only, not an architecture change.
 
 ---
 
-## 🔶 SQL-readiness — Epic 275 (audit re-verified 2026-06-29)
+## 🔶 SQL-readiness — Epic 275 (remediation DONE 2026-06-30)
 
-**Backend SQL layer = VERIFIED working on real Postgres (this session):**
+> ✅ **FIXED & INDEPENDENTLY VERIFIED 2026-06-30.** All 520 write-masking `as any` casts were removed
+> from the repo layer and the 96 resulting schema↔repository type errors (41 files, every module)
+> driven to **0**. Verified this session: `npx tsc --noEmit` (whole backend) = **0 errors**;
+> `grep "as any"` in `src/infrastructure/prisma/repositories` = **0** (write- AND read-side casts gone);
+> `npm run build` clean; **25/25** integration checks + smoke (2 companies, all invariants) PASS on real
+> Postgres (5432 `erp_db`). DB already in sync with schema (`prisma db push` = no changes).
+> 107 files changed (93 repo files + schema/domain/migration/docs). Architecture doc:
+> `docs/architecture/sql-repository-layer.md`. Per-item resolution log:
+> `planning/done/275-sql-remediation-report.md`. Schema/migration:
+> `backend/prisma/migrations/20260630000000_init_schema_readiness_275/`.
+> ⚠️ Still UNVERIFIED beyond this: full running-app UI round-trips per module, and cloud deploy.
+
+**Backend SQL layer = partially verified (narrow path) on real Postgres (2026-06-29 session):**
 - `scripts/sql-integration-275e.ts` → **25/25 checks PASS** (Accounting, Inventory, Sales, Purchases, RBAC, Core, POS).
 - `npm run smoke:companies` (forced SQL) → **PASS** — 2 companies created end-to-end (48-acct COA, 16 voucher types/forms, FY, balanced journal, ledger balanced).
 
@@ -84,6 +105,6 @@ Local DB the app uses: **port 5432**, `postgres:root`, db `erp_db` (per `.env`/`
 - **Stale/invalid `user.activeCompanyId` breaks ALL `/tenant` calls (400 "Company Context Required")** — found 2026-06-30 while debugging a silent inventory-wizard failure. `authMiddleware` resolves company context as `headerCompanyId || storedActiveCompanyId`, but when the stored active company points to a deleted company, requests 400 instead of falling back / honoring the `x-company-id` header. Robustness bug (auth should clear or ignore an invalid stored active company). Manifested via leftover test-probe data (a user's active company pointed at a deleted company; also `CreateCompanyUseCase` sets active company but company-delete doesn't reset it). Once the pointer was valid, inventory init + all tenant reads returned 200. **Fix candidates:** in `authMiddleware`, validate the stored active company exists (else null it) and let `x-company-id` take real precedence; on company delete, null out referencing users' `activeCompanyId`.
 - **Super Admin overview stats return all zeros in SQL mode** (`totalUsers/totalCompanies/...` = 0 though Postgres has 3 users) — the overview aggregation isn't wired for Postgres. Minor reporting gap; the page loads fine.
 - Deleting a company that has transactions fails on `voucher_lines→accounts` RESTRICT (documented; cleanup-ordering follow-up). One stale `SMOKE-*` company left in local QA db because of this.
-- **Still UNVERIFIED:** cloud deploy (275f: Supabase + Railway/Vercel). **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`.
+- **Still UNVERIFIED:** cloud deploy (275f: Supabase + Railway/Vercel). **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`. Migration is captured and ready for `prisma migrate deploy`.
 
 > Browser-E2E note: `sa@test.com`'s password in the local Auth emulator was set to `password123` (the repo's `testLogin.ts` convention) during this test.

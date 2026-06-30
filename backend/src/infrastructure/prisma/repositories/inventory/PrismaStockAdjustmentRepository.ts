@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IStockAdjustmentRepository, StockAdjustmentListOptions } from '../../../../repository/interfaces/inventory/IStockAdjustmentRepository';
 import { StockAdjustment, StockAdjustmentStatus } from '../../../../domain/inventory/entities/StockAdjustment';
 
@@ -6,7 +6,7 @@ export class PrismaStockAdjustmentRepository implements IStockAdjustmentReposito
   constructor(private prisma: PrismaClient) {}
 
   async createAdjustment(adjustment: StockAdjustment, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     await prisma.stockAdjustment.create({
       data: {
         id: adjustment.id,
@@ -28,12 +28,12 @@ export class PrismaStockAdjustmentRepository implements IStockAdjustmentReposito
             notes: line.unitCostCCY?.toString() || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
   async updateAdjustment(companyId: string, id: string, data: Partial<StockAdjustment>, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     const existing = await prisma.stockAdjustment.findUnique({
       where: { id, companyId },
       include: { lines: true },
@@ -90,7 +90,7 @@ export class PrismaStockAdjustmentRepository implements IStockAdjustmentReposito
 
   async getByStatus(companyId: string, status: StockAdjustmentStatus, opts?: StockAdjustmentListOptions): Promise<StockAdjustment[]> {
     const records = await this.prisma.stockAdjustment.findMany({
-      where: { companyId, status: status as any },
+      where: { companyId, status: status },
       include: { lines: true },
       orderBy: { createdAt: 'asc' },
       take: opts?.limit,
@@ -106,7 +106,7 @@ export class PrismaStockAdjustmentRepository implements IStockAdjustmentReposito
   }
 
   private toDomain(record: any): StockAdjustment {
-    const warehouseId = record.lines?.[0]?.warehouseId || (record as any).warehouseId || '';
+    const warehouseId = record.lines?.[0]?.warehouseId || (record).warehouseId || '';
     const lines = (record.lines || []).map((line: any) => ({
       itemId: line.itemId,
       currentQty: line.qtyBefore,
@@ -125,11 +125,11 @@ export class PrismaStockAdjustmentRepository implements IStockAdjustmentReposito
       notes: record.notes,
       lines,
       status: record.status,
-      voucherId: (record as any).voucherId,
-      adjustmentValueBase: (record as any).adjustmentValueBase ?? 0,
+      voucherId: (record).voucherId,
+      adjustmentValueBase: (record).adjustmentValueBase ?? 0,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
-      postedAt: (record as any).postedAt,
+      postedAt: (record).postedAt,
     });
   }
 }

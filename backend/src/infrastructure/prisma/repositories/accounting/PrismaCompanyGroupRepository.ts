@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyGroupRepository } from '../../../../repository/interfaces/accounting/ICompanyGroupRepository';
 import { CompanyGroup, CompanyGroupMember } from '../../../../domain/accounting/entities/CompanyGroup';
 
@@ -10,12 +10,12 @@ export class PrismaCompanyGroupRepository implements ICompanyGroupRepository {
       data: {
         id: group.id,
         name: group.name,
-        members: group.members as any,
+        members: group.members as unknown as Prisma.InputJsonValue,
         reportingCurrency: group.reportingCurrency,
         createdBy: group.createdBy,
         createdAt: group.createdAt,
         updatedAt: new Date(),
-      } as any,
+      },
     });
     return this.toDomain(record);
   }
@@ -25,10 +25,10 @@ export class PrismaCompanyGroupRepository implements ICompanyGroupRepository {
       where: { id: group.id },
       data: {
         name: group.name,
-        members: group.members as any,
+        members: group.members as unknown as Prisma.InputJsonValue,
         reportingCurrency: group.reportingCurrency,
         updatedAt: new Date(),
-      } as any,
+      },
     });
     return this.toDomain(record);
   }
@@ -53,7 +53,7 @@ export class PrismaCompanyGroupRepository implements ICompanyGroupRepository {
   }
 
   private toDomain(record: any): CompanyGroup {
-    const members: CompanyGroupMember[] = (record.members as any[]) ?? [];
+    const members: CompanyGroupMember[] = (record.members as unknown as CompanyGroupMember[]) ?? [];
     return new CompanyGroup(
       record.id,
       record.name,

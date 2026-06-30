@@ -26,7 +26,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
 
   async create(salesperson: Salesperson, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).salesperson.create({
+    await (client).salesperson.create({
       data: {
         id: salesperson.id,
         companyId: salesperson.companyId,
@@ -45,7 +45,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
 
   async update(salesperson: Salesperson, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).salesperson.update({
+    await (client).salesperson.update({
       where: { id: salesperson.id },
       data: {
         code: salesperson.code,
@@ -60,7 +60,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
   }
 
   async getById(companyId: string, id: string): Promise<Salesperson | null> {
-    const row = await (this.prisma as any).salesperson.findFirst({
+    const row = await (this.prisma).salesperson.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -68,7 +68,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
   }
 
   async getByCode(companyId: string, code: string): Promise<Salesperson | null> {
-    const row = await (this.prisma as any).salesperson.findFirst({
+    const row = await (this.prisma).salesperson.findFirst({
       where: { companyId, code },
     });
     if (!row) return null;
@@ -83,7 +83,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
       where.status = 'ACTIVE';
     }
 
-    const rows = await (this.prisma as any).salesperson.findMany({
+    const rows = await (this.prisma).salesperson.findMany({
       where,
       orderBy: { name: 'asc' },
       skip: opts?.offset,
@@ -93,7 +93,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).salesperson.deleteMany({
+    await (this.prisma).salesperson.deleteMany({
       where: { id, companyId },
     });
   }

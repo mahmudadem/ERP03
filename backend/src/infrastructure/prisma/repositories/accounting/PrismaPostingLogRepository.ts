@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@prisma/client';
-import { PostingLog } from '../../../../domain/accounting/entities/PostingLog';
+import { PostingLog, LineDecision } from '../../../../domain/accounting/entities/PostingLog';
 import { IPostingLogRepository } from '../../../../repository/interfaces/accounting/IPostingLogRepository';
 
 export class PrismaPostingLogRepository implements IPostingLogRepository {
@@ -15,7 +15,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
       sourceDocNumber: row.sourceDocNumber ?? undefined,
       strategy: row.strategy,
       voucherIds: row.voucherIds ?? [],
-      decisions: (row.decisions as any[]) ?? [],
+      decisions: (row.decisions as unknown as LineDecision[]) ?? [],
       warnings: row.warnings ?? [],
       idempotencyKey: row.idempotencyKey ?? undefined,
       postedAt: row.postedAt,
@@ -25,7 +25,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
 
   async create(log: PostingLog, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).postingLog.create({
+    await (client).postingLog.create({
       data: {
         id: log.id,
         companyId: log.companyId,
@@ -35,7 +35,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
         sourceDocNumber: log.sourceDocNumber ?? null,
         strategy: log.strategy,
         voucherIds: log.voucherIds,
-        decisions: log.decisions as any,
+        decisions: log.decisions as unknown as Prisma.InputJsonValue,
         warnings: log.warnings,
         idempotencyKey: log.idempotencyKey ?? null,
         postedAt: log.postedAt,
@@ -45,7 +45,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
   }
 
   async getById(companyId: string, id: string): Promise<PostingLog | null> {
-    const row = await (this.prisma as any).postingLog.findFirst({
+    const row = await (this.prisma).postingLog.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -53,7 +53,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
   }
 
   async findBySourceId(companyId: string, sourceId: string): Promise<PostingLog[]> {
-    const rows = await (this.prisma as any).postingLog.findMany({
+    const rows = await (this.prisma).postingLog.findMany({
       where: { companyId, sourceId },
     });
     return rows.map((r: any) => this.toDomain(r));
@@ -67,7 +67,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
     if (filter.sourceModule) where.sourceModule = filter.sourceModule;
     if (filter.sourceType) where.sourceType = filter.sourceType;
 
-    const rows = await (this.prisma as any).postingLog.findMany({
+    const rows = await (this.prisma).postingLog.findMany({
       where,
       take: filter.limit,
     });

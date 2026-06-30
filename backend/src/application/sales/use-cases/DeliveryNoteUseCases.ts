@@ -174,6 +174,8 @@ export class CreateDeliveryNoteUseCase {
       customerName,
       deliveryDate: input.deliveryDate,
       warehouseId: input.warehouseId,
+      currency: so?.currency ?? 'USD',
+      exchangeRate: so?.exchangeRate ?? 1,
       lines,
       status: 'DRAFT',
       notes: input.notes,

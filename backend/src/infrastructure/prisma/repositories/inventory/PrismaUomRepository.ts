@@ -17,19 +17,19 @@ export class PrismaUomRepository implements IUomRepository {
         conversionFactor: 1.0,
         createdAt: uom.createdAt,
         updatedAt: uom.updatedAt,
-        ...(uom as any).dimension !== undefined && { dimension: (uom as any).dimension },
-        ...(uom as any).decimalPlaces !== undefined && { decimalPlaces: (uom as any).decimalPlaces },
-        ...(uom as any).active !== undefined && { active: (uom as any).active },
-        ...(uom as any).isSystem !== undefined && { isSystem: (uom as any).isSystem },
-        ...(uom as any).createdBy !== undefined && { createdBy: (uom as any).createdBy },
-      } as any,
+        ...(uom).dimension !== undefined && { dimension: (uom).dimension },
+        ...(uom).decimalPlaces !== undefined && { decimalPlaces: (uom).decimalPlaces },
+        ...(uom).active !== undefined && { active: (uom).active },
+        ...(uom).isSystem !== undefined && { isSystem: (uom).isSystem },
+        ...(uom).createdBy !== undefined && { createdBy: (uom).createdBy },
+      },
     });
   }
 
   async updateUom(id: string, data: Partial<Uom>): Promise<void> {
     await this.prisma.uom.update({
       where: { id },
-      data: data as any,
+      data: data,
     });
   }
 
@@ -70,11 +70,11 @@ export class PrismaUomRepository implements IUomRepository {
       code: record.code,
       name: record.name,
       translations: record.translations ?? {},
-      dimension: (record as any).dimension ?? 'OTHER',
-      decimalPlaces: (record as any).decimalPlaces ?? 0,
-      active: (record as any).active ?? true,
-      isSystem: (record as any).isSystem ?? false,
-      createdBy: (record as any).createdBy ?? 'SYSTEM',
+      dimension: (record).dimension ?? 'OTHER',
+      decimalPlaces: (record).decimalPlaces ?? 0,
+      active: (record).active ?? true,
+      isSystem: (record).isSystem ?? false,
+      createdBy: (record).createdBy ?? 'SYSTEM',
       createdAt: record.createdAt,
       updatedAt: record.updatedAt,
     });
