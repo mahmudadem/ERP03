@@ -65,7 +65,7 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278w Sales/Purchases Analytics report translation:** complete; committed.
 - **278x Localized default voucher/form names:** complete; committed.
 - **278y AP Parent Account selector filter fix:** complete; committed.
-- **Next:** Deploy frontend to Vercel.
+- **278z Onboarding landing RTL and translations:** complete; deployed to Vercel.\n- **Next:** TBD.
 
 ---
 
