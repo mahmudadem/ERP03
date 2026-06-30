@@ -4726,6 +4726,31 @@
       "clear": "Clear"
     }
   },
+  "defaultVoucherNames": {
+    "journalEntry": "Journal Entry",
+    "payment": "Payment Voucher",
+    "receipt": "Receipt Voucher",
+    "openingBalance": "Opening Balance",
+    "fxRevaluation": "FX Revaluation",
+    "deliveryNote": "Delivery Note",
+    "salesReturn": "Sales Return",
+    "salesInvoice": "Sales Invoice",
+    "salesInvoiceDirect": "Sales Invoice (Direct)",
+    "salesInvoiceLinked": "Sales Invoice (Linked)",
+    "salesInvoiceService": "Sales Invoice (Service)",
+    "purchaseOrder": "Purchase Order",
+    "purchaseInvoice": "Purchase Invoice",
+    "purchaseInvoiceDirect": "Purchase Invoice (Direct)",
+    "purchaseInvoiceLinked": "Purchase Invoice (Linked)",
+    "purchaseInvoiceService": "Purchase Invoice (Service)",
+    "goodsReceipt": "Goods Receipt",
+    "purchaseReturn": "Purchase Return",
+    "nativeVouchers": "Native Vouchers",
+    "nativeSalesInvoice": "Native Sales Invoice",
+    "nativeSalesOrder": "Native Sales Order",
+    "nativePurchaseInvoice": "Native Purchase Invoice",
+    "nativePurchaseOrder": "Native Purchase Order"
+  },
   "formsManagement": {
     "title": "Forms Management — {{module}}",
     "loading": "Loading {{module}} forms management...",

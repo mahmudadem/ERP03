@@ -11,11 +11,13 @@
  */
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { loadCompanyForms } from '../modules/accounting/voucher-wizard/services/voucherWizardService';
 import { VoucherFormConfig } from '../modules/accounting/voucher-wizard/types';
 import { voucherFormApi } from '../api/voucherFormApi';
 import { COMPANY_MODULES_REFRESH_EVENT } from '../utils/companyModulesEvents';
+import { resolveVoucherDisplayName } from '../utils/voucherDisplayName';
 
 export interface SidebarFormEntry {
   id: string;
@@ -37,6 +39,7 @@ export interface SidebarFormEntry {
 }
 
 export function useVoucherTypes() {
+  const { t, i18n } = useTranslation('common');
   const { companyId, moduleBundles, loading: accessLoading, permissionsLoaded } = useCompanyAccess();
   const hasAccountingModule = (moduleBundles || [])
     .map((moduleId) => String(moduleId || '').trim().toLowerCase())
@@ -69,7 +72,7 @@ export function useVoucherTypes() {
               .filter(f => f.enabled !== false)
               .map(form => ({
                 id: form.id,
-                name: form.name,
+                name: resolveVoucherDisplayName(t, form),
                 code: form.code,
                 prefix: form.prefix || form.code?.slice(0, 3).toUpperCase() || 'V',
                 module: ((form as any).module || 'ACCOUNTING').toUpperCase(),
@@ -95,7 +98,7 @@ export function useVoucherTypes() {
               .map(form => ({
                 id: form.id,
                 code: form.code,
-                name: form.name,
+                name: resolveVoucherDisplayName(t, form),
                 prefix: form.prefix || form.code?.slice(0, 3).toUpperCase() || 'V',
                 module: ((form as any).module || 'ACCOUNTING').toUpperCase(),
                 enabled: form.enabled,
@@ -127,10 +130,14 @@ export function useVoucherTypes() {
 
         // Only show enabled vouchers in sidebar
         const enabledVouchers = vouchers.filter((v: VoucherFormConfig) => v.enabled !== false);
-        setVoucherTypes(enabledVouchers);
+        const localizedVouchers = enabledVouchers.map((voucher: any) => ({
+          ...voucher,
+          name: resolveVoucherDisplayName(t, voucher),
+        }));
+        setVoucherTypes(localizedVouchers);
 
         // Build sidebar entries from legacy too
-        setAllModuleForms(enabledVouchers.map((v: any) => ({
+        setAllModuleForms(localizedVouchers.map((v: any) => ({
           id: v.id,
           name: v.name,
           code: v.code || v.id,
@@ -156,7 +163,7 @@ export function useVoucherTypes() {
 
     setLoading(canLoadForms);
     loadVouchers();
-  }, [canLoadForms, refreshTick]);
+  }, [canLoadForms, refreshTick, i18n.resolvedLanguage, t]);
 
   // Re-fetch voucher forms whenever a module finishes initialization. The Sales
   // / Purchase / Accounting wizards emit this event so the sidebar picks up the

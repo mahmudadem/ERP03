@@ -4701,6 +4701,31 @@
       "clear": "Temizle"
     }
   },
+  "defaultVoucherNames": {
+    "journalEntry": "Yevmiye Fişi",
+    "payment": "Ödeme Fişi",
+    "receipt": "Tahsilat Fişi",
+    "openingBalance": "Açılış Bakiyeleri",
+    "fxRevaluation": "Döviz Değerleme",
+    "deliveryNote": "Sevk İrsaliyesi",
+    "salesReturn": "Satış İadesi",
+    "salesInvoice": "Satış Faturası",
+    "salesInvoiceDirect": "Doğrudan Satış Faturası",
+    "salesInvoiceLinked": "Bağlantılı Satış Faturası",
+    "salesInvoiceService": "Hizmet Satış Faturası",
+    "purchaseOrder": "Satınalma Siparişi",
+    "purchaseInvoice": "Alış Faturası",
+    "purchaseInvoiceDirect": "Doğrudan Alış Faturası",
+    "purchaseInvoiceLinked": "Bağlantılı Alış Faturası",
+    "purchaseInvoiceService": "Hizmet Alış Faturası",
+    "goodsReceipt": "Mal Kabul",
+    "purchaseReturn": "Alış İadesi",
+    "nativeVouchers": "Yerleşik Muhasebe Fişleri",
+    "nativeSalesInvoice": "Yerleşik Satış Faturası",
+    "nativeSalesOrder": "Yerleşik Satış Siparişi",
+    "nativePurchaseInvoice": "Yerleşik Alış Faturası",
+    "nativePurchaseOrder": "Yerleşik Satınalma Siparişi"
+  },
   "formsManagement": {
     "title": "Form Yönetimi — {{module}}",
     "loading": "{{module}} form yönetimi yükleniyor...",

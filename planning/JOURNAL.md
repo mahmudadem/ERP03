@@ -2,6 +2,30 @@
 
 > Append new entries at the top. One entry per work session.
 
+# 2026-06-30 — Telegram QA fix 278x localized default voucher/form names
+
+- Goal: show initialized default voucher/form names in the user's EN/AR/TR
+  interface language without changing accounting identity or overwriting custom
+  tenant names.
+- Added one stable-code display resolver and complete translations for all 16
+  seeded voucher templates plus built-in native form labels.
+- Wired the resolver into initialization catalogs, Forms Management, dynamic
+  sidebar entries, voucher/form hooks, document pages, and journal filters.
+- Added a frontend build guard that fails when a seeded voucher code lacks an
+  English, Arabic, or Turkish display name.
+- Accounting/data impact: none. Posting, numbering, document lookup, and
+  persistence continue to use stable codes; no tenant data migration occurred.
+- Worktree correction: the first pass was mistakenly made in `ERP03`; the
+  scoped patch was moved to `ERP03-unified` and the SQL worktree was restored
+  without touching its pre-existing `_sqlServer.ts`.
+- Verification: EN/AR/TR locale JSON passed; 16/16 template coverage, Arabic
+  resolution, and custom-name preservation checks passed; frontend typecheck
+  and production build passed; 31/31 focused backend template/System Core
+  tests passed. `graphify update .` was unavailable in this shell.
+- Actual time: ~2.1 hours. Not committed, pushed, or deployed.
+- Next: owner approval to commit 278x, then continue the remaining translation
+  audit.
+
 # 2026-06-30 — Production QA 278w Sales/Purchases Analytics report translation
 
 - **Goal:** Continue the Telegram all-report translation audit with the Sales Analytics and Purchases Analytics reports.

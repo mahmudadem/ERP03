@@ -4905,6 +4905,31 @@
       "clear": "مسح"
     }
   },
+  "defaultVoucherNames": {
+    "journalEntry": "قيد يومية",
+    "payment": "سند صرف",
+    "receipt": "سند قبض",
+    "openingBalance": "الأرصدة الافتتاحية",
+    "fxRevaluation": "إعادة تقييم العملات الأجنبية",
+    "deliveryNote": "إشعار تسليم",
+    "salesReturn": "مردود مبيعات",
+    "salesInvoice": "فاتورة مبيعات",
+    "salesInvoiceDirect": "فاتورة مبيعات مباشرة",
+    "salesInvoiceLinked": "فاتورة مبيعات مرتبطة",
+    "salesInvoiceService": "فاتورة مبيعات خدمية",
+    "purchaseOrder": "أمر شراء",
+    "purchaseInvoice": "فاتورة مشتريات",
+    "purchaseInvoiceDirect": "فاتورة مشتريات مباشرة",
+    "purchaseInvoiceLinked": "فاتورة مشتريات مرتبطة",
+    "purchaseInvoiceService": "فاتورة مشتريات خدمية",
+    "goodsReceipt": "إشعار استلام بضائع",
+    "purchaseReturn": "مردود مشتريات",
+    "nativeVouchers": "السندات المحاسبية المدمجة",
+    "nativeSalesInvoice": "فاتورة المبيعات المدمجة",
+    "nativeSalesOrder": "طلب المبيعات المدمج",
+    "nativePurchaseInvoice": "فاتورة المشتريات المدمجة",
+    "nativePurchaseOrder": "أمر الشراء المدمج"
+  },
   "formsManagement": {
     "title": "إدارة النماذج — {{module}}",
     "loading": "جارٍ تحميل إدارة نماذج {{module}}...",

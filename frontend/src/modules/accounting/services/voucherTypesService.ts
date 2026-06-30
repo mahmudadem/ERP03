@@ -1,5 +1,5 @@
 /**
- * Load system voucher types from Firestore
+ * Load system voucher types from Firestore.
  *
  * Data model note: each document in system_metadata/voucher_types/items is a
  * voucher *template* that conflates two concepts:
@@ -12,6 +12,8 @@
  * init wizards can present types (with their form variants as metadata)
  * instead of forms-pretending-to-be-types.
  */
+import i18n from '../../../i18n/config';
+import { resolveVoucherDisplayName } from '../../../utils/voucherDisplayName';
 import { db } from '../../../config/firebase';
 import { collection, getDocs } from 'firebase/firestore';
 
@@ -40,8 +42,12 @@ export interface SystemVoucherTypeGroup {
   isRecommended: boolean;
 }
 
-const normalizeModule = (module?: string) =>
-  String(module || '').trim().toUpperCase();
+const normalizeModule = (module?: string) => {
+  const normalized = String(module || '').trim().toUpperCase();
+  if (normalized === 'PURCHASES') return 'PURCHASE';
+  if (normalized === 'SALES_MODULE') return 'SALES';
+  return normalized;
+};
 
 const inferVoucherModule = (data: Record<string, any>, id: string): string => {
   const explicitModule = normalizeModule(data.module);
@@ -72,17 +78,23 @@ export async function loadSystemVoucherTypes(moduleFilter?: string): Promise<Sys
     const vouchersRef = collection(db, 'system_metadata', 'voucher_types', 'items');
     const snapshot = await getDocs(vouchersRef);
     const normalizedModuleFilter = moduleFilter ? normalizeModule(moduleFilter) : null;
-    
     let vouchers: SystemVoucherType[] = [];
-    
+
     snapshot.forEach(doc => {
       const data = doc.data();
       const module = inferVoucherModule(data, doc.id);
+      const code = data.code || doc.id.toUpperCase();
 
       vouchers.push({
         id: doc.id,
-        name: data.name || doc.id,
-        code: data.code || doc.id.toUpperCase(),
+        name: resolveVoucherDisplayName(i18n.t.bind(i18n), {
+          name: data.name || doc.id,
+          code,
+          formType: data.formType,
+          voucherType: data.voucherType,
+          isSystemGenerated: true,
+        }),
+        code,
         prefix: data.prefix || '',
         module,
         voucherType: data.voucherType || data.code || doc.id,

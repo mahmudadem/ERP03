@@ -14,6 +14,18 @@ The field list in the form wizard comes from the platform **Field Library** mana
 
 Super-admins also use the Field Library when maintaining the system voucher templates. The library defines the official field identity and selector type, while each voucher template decides where that field belongs and whether it is required for that document type.
 
+### Names follow your interface language
+
+ERP03's shipped voucher and form names follow the language selected in your
+profile. For example, `Payment Voucher` appears as `سند صرف` in Arabic and
+`Ödeme Fişi` in Turkish. The same applies in initialization wizards, Forms
+Management, the sidebar, document windows, and voucher filters.
+
+Only system-provided defaults are translated automatically. Names that your
+company created or customized remain exactly as entered. To customize a locked
+default form, clone it first and rename the editable copy; changing the interface
+language will not overwrite that custom name.
+
 ---
 
 ## Sections of the page

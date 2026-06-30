@@ -1,17 +1,20 @@
 
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { VoucherTypeDefinition } from '../designer-engine/types/VoucherTypeDefinition';
 import { designerApi } from '../api/designerApi';
 import { voucherFormApi } from '../api/voucherFormApi';
+import { resolveVoucherDisplayName } from '../utils/voucherDisplayName';
 
 import { getVoucherFormById } from '../modules/accounting/voucher-wizard/services/voucherWizardService';
 
 /**
  * Map a VoucherFormResponse (from backend voucher-forms API) to a VoucherTypeDefinition
  */
-function mapFormToDefinition(form: any): any {
+function mapFormToDefinition(form: any, t: ReturnType<typeof useTranslation>['t']): any {
   return {
     ...form,
+    name: resolveVoucherDisplayName(t, form),
     code: form.code || form.id,
     module: 'accounting',
     headerFields: form.headerFields || [],
@@ -22,6 +25,7 @@ function mapFormToDefinition(form: any): any {
 }
 
 export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: string) => {
+  const { t, i18n } = useTranslation('common');
   const [definition, setDefinition] = useState<VoucherTypeDefinition | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -34,7 +38,10 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
       try {
         // 1. Try fetching from Backend Designer API (for Base Types / Fixed Strategies)
         const def = await designerApi.getVoucherTypeByCode(voucherTypeCode);
-        setDefinition(def);
+        setDefinition({
+          ...def,
+          name: resolveVoucherDisplayName(t, def),
+        });
         setError(null);
         return;
       } catch (err: any) {
@@ -46,7 +53,7 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
         // First try by ID (if voucherTypeCode looks like an ID/UUID)
         const form = await voucherFormApi.getById(voucherTypeCode);
         if (form) {
-          setDefinition(mapFormToDefinition(form));
+          setDefinition(mapFormToDefinition(form, t));
           setError(null);
           return;
         }
@@ -61,7 +68,7 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
           (f: any) => f.code === voucherTypeCode || f.typeId === voucherTypeCode || f.formType === voucherTypeCode || f.baseType === voucherTypeCode
         );
         if (match) {
-          setDefinition(mapFormToDefinition(match));
+          setDefinition(mapFormToDefinition(match, t));
           setError(null);
           return;
         }
@@ -76,6 +83,7 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
           if (formConfig) {
             const mappedDefinition: any = {
                ...formConfig,
+               name: resolveVoucherDisplayName(t, formConfig),
                code: formConfig.id,
                module: 'accounting',
                headerFields: formConfig.headerFields || [], 
@@ -97,7 +105,7 @@ export const useVoucherTypeDefinition = (voucherTypeCode: string, companyId?: st
     };
 
     fetchDef().finally(() => setLoading(false));
-  }, [voucherTypeCode, companyId]);
+  }, [voucherTypeCode, companyId, i18n.resolvedLanguage, t]);
 
   return { definition, loading, error };
 };

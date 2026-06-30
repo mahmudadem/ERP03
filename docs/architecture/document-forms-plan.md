@@ -6,6 +6,31 @@
 
 ---
 
+## Localized Default Voucher/Form Names (2026-06-30)
+
+ERP03 keeps persisted voucher and form names unchanged and resolves only shipped
+default display names at the frontend boundary:
+
+- `frontend/src/utils/voucherDisplayName.ts` maps the stable voucher/form `code`
+  to an i18n key.
+- `frontend/src/locales/{en,ar,tr}/common.json` owns the translated default names.
+- A form is localized only when it is system-generated, a locked default, or
+  still carries a known shipped name. Explicitly custom forms retain their
+  tenant-authored names in every UI language.
+- Accounting identity and posting continue to use stable codes such as
+  `journal_entry` and `sales_invoice_direct`; translated labels never select a
+  posting strategy or repository record.
+
+This intentionally avoids a data migration and avoids writing translated display
+text back into tenant records. The shared resolver is consumed by dynamic
+sidebar entries, voucher/form hooks, Forms Management, dynamic document pages,
+journal filters, and module initialization catalogs.
+
+The build guard `frontend/scripts/check-voucher-locales.mjs` compares the 16
+system templates in `seedSystemVoucherTypes.ts` against the resolver and requires
+complete EN/AR/TR coverage. Adding a new default template without translations
+now fails `npm run build`.
+
 ## Current Implementation Note — Field Library Phase C2 (2026-05-30)
 
 Phase C2 moves the super-admin voucher template editor onto the Field Library authoring path:

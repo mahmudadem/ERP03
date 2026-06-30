@@ -81,7 +81,7 @@ const PurchaseSettingsPage: React.FC = () => {
   const [invSettings, setInvSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { validAccounts, getAccountById } = useAccounts();
+  const { accounts: allAccounts, validAccounts, getAccountById } = useAccounts();
   const [newRule, setNewRule] = useState<Partial<PurchaseGovernanceRuleDTO>>({
     scope: 'company',
     action: 'allow',
@@ -210,6 +210,15 @@ const PurchaseSettingsPage: React.FC = () => {
         return classification === 'EXPENSE';
       }),
     [validAccounts]
+  );
+
+  const headerLiabilityAccounts = useMemo(
+    () =>
+      allAccounts.filter((account) => {
+        const classification = String(account.classification || account.type || '').toUpperCase();
+        return classification === 'LIABILITY' && account.accountRole === 'HEADER';
+      }),
+    [allAccounts]
   );
 
   const handleSave = async () => {
@@ -526,8 +535,10 @@ const PurchaseSettingsPage: React.FC = () => {
                       value={settings.apParentAccountId || ''}
                       onChange={(account: any) => updateSetting('apParentAccountId', account?.id || undefined)}
                       placeholder={t('settings.apParent.placeholder', 'Select AP parent account')}
+                      accounts={headerLiabilityAccounts}
+                      allowHeaders={true}
                       allowedClassifications={['LIABILITY']}
-                      contextLabel={t('settings.apParent.context', 'Liability')}
+                      contextLabel={t('settings.apParent.context', 'Liability Header')}
                       enforceClassification
                     />
                     <p className="mt-1.5 text-xs italic text-gray-500">
