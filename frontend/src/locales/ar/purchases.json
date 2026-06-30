@@ -190,9 +190,10 @@
     "postInvoice": "ترحيل الفاتورة",
     "posting": "جاري الترحيل...",
     "print": "Print",
-    "printFailed": "Failed to print purchase invoice.",
-    "printStarted": "Print preview opened.",
-    "printing": "Printing...",
+    "printFailed": "فشل طباعة فاتورة الشراء.",
+    "printPopupBlocked": "تم حظر نافذة الطباعة المنبثقة.",
+    "printStarted": "تم فتح معاينة الطباعة.",
+    "printing": "جاري الطباعة...",
     "rail": {
       "account": "حساب",
       "directBill": "فاتورة مباشرة",

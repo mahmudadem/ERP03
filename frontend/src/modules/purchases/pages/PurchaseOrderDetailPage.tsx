@@ -453,9 +453,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
     if (form.linePriceSource === 'LAST_PARTY_PRICE') return;
     setForm((prev) => ({ ...prev, linePriceSource: 'LAST_PARTY_PRICE' }));
     void refreshLinePrices('LAST_PARTY_PRICE');
-    toast.success(
-      t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
-    );
+    toast.success(t('pricing.override.toastOverrideCleared'));
   };
   const handleLinePriceSourceOverride = (rowIndex: number | undefined, source: LinePriceSource | null) => {
     if (rowIndex == null) return;
@@ -467,22 +465,16 @@ const PurchaseOrderDetailPage: React.FC = () => {
         }),
       );
     } else {
-      toast.success(
-        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
-      );
+      toast.success(t('pricing.override.toastOverrideCleared'));
     }
   };
   const handleLinePriceLocked = (rowIndex: number | undefined, locked: boolean) => {
     if (rowIndex == null) return;
     setLine(rowIndex, { priceLocked: locked, priceSourceOverride: null });
     if (locked) {
-      toast.success(
-        t('pricing.override.toastLineLocked', 'Line locked — price will not be auto-resolved'),
-      );
+      toast.success(t('pricing.override.toastLineLocked'));
     } else {
-      toast.success(
-        t('pricing.override.toastOverrideCleared', 'Override cleared — using document source'),
-      );
+      toast.success(t('pricing.override.toastOverrideCleared'));
     }
   };
 
@@ -848,8 +840,8 @@ const PurchaseOrderDetailPage: React.FC = () => {
       railSections={railSections}
       railTitle={t('poDetail.sideRailTitle')}
       newAction={{
-        label: t('poDetail.newPurchaseOrder', 'New Purchase Order'),
-        title: t('poDetail.newPurchaseOrder', 'New Purchase Order'),
+        label: t('poDetail.newPurchaseOrder'),
+        title: t('poDetail.newPurchaseOrder'),
         hasUnsavedChanges: hasUnsavedDocumentChanges,
         onNew: openNewOrderForm,
       }}
@@ -1083,8 +1075,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
                     onChange={(e) => onChange({ unitPriceDoc: Number(e.target.value) || 0 })}
                     onFocus={(event) => { try { event.currentTarget.select(); } catch { /* noop */ } }}
                     className="h-9 min-w-0 flex-1 bg-transparent px-2 text-right text-xs text-slate-900 outline-none focus:bg-blue-50/40 dark:text-slate-100 dark:focus:bg-blue-950/20 font-mono"
-                    placeholder=""
-                  />
+              />
                   {line.priceLocked ? (
                     <LinePriceOverrideBadge variant="lineLocked" source={null} compact />
                   ) : line.priceSourceOverride ? (
@@ -1096,7 +1087,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'discountType',
-            label: t('poDetail.discountTypeColumn', 'Discount Type'),
+            label: t('poDetail.discountTypeColumn'),
             kind: 'custom',
             width: '64px',
             render: (line, index) => (
@@ -1111,7 +1102,7 @@ const PurchaseOrderDetailPage: React.FC = () => {
           },
           {
             id: 'discountValue',
-            label: t('poDetail.discountColumn', 'Discount'),
+            label: t('poDetail.discountColumn'),
             kind: 'number',
             width: '70px',
             accessor: (line) => line.discountValue || 0,

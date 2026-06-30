@@ -220,7 +220,11 @@ const renderPrintValue = (value: unknown): string => {
   return String(value ?? '');
 };
 
-const openPrintLayoutWindow = (payload: Record<string, any>, template: PurchaseInvoicePrintTemplateDTO) => {
+const openPrintLayoutWindow = (
+  payload: Record<string, any>,
+  template: PurchaseInvoicePrintTemplateDTO,
+  popupBlockedMessage: string,
+) => {
   const layout = template.layout;
   const paper = layout.paper;
   const unit = paper.unit || 'mm';
@@ -276,7 +280,7 @@ const openPrintLayoutWindow = (payload: Record<string, any>, template: PurchaseI
   }).join('\n');
 
   const printWindow = window.open('', '_blank');
-  if (!printWindow) throw new Error('Print popup was blocked.');
+  if (!printWindow) throw new Error(popupBlockedMessage);
   printWindow.document.write(`<!doctype html>
     <html>
       <head>
@@ -1426,7 +1430,7 @@ const PurchaseInvoiceDetailPage: React.FC = () => {
       setError(null);
       const result = await purchasesApi.printPI(invoice.id);
       const payload = unwrap<PurchaseInvoicePrintResultDTO>(result);
-      openPrintLayoutWindow(payload.payload, payload.printTemplate);
+      openPrintLayoutWindow(payload.payload, payload.printTemplate, t('invoiceDetail.printPopupBlocked'));
       errorHandler.showSuccess(t('invoiceDetail.printStarted', 'Print preview opened.'));
     } catch (err: any) {
       const message =
