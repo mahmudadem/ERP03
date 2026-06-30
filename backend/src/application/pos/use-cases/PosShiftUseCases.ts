@@ -75,20 +75,25 @@ export class OpenPosShiftUseCase {
       updatedAt: now,
     });
 
-    const openingMovement = new PosCashMovement({
-      id: `cm_${randomUUID()}`,
-      companyId: input.companyId,
-      shiftId: shift.id,
-      registerId: input.registerId,
-      type: 'OPENING_FLOAT',
-      amount: round2(input.openingFloat),
-      createdBy: input.actor.userId,
-      createdAt: now,
-    });
+    const openingFloat = round2(input.openingFloat);
+    const openingMovement = openingFloat > 0
+      ? new PosCashMovement({
+          id: `cm_${randomUUID()}`,
+          companyId: input.companyId,
+          shiftId: shift.id,
+          registerId: input.registerId,
+          type: 'OPENING_FLOAT',
+          amount: openingFloat,
+          createdBy: input.actor.userId,
+          createdAt: now,
+        })
+      : null;
 
     await this.transactionManager.runTransaction(async (tx) => {
       await this.shiftRepo.create(shift, tx);
-      await this.cashMovementRepo.create(openingMovement, tx);
+      if (openingMovement) {
+        await this.cashMovementRepo.create(openingMovement, tx);
+      }
     });
 
     return shift;

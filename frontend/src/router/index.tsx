@@ -13,6 +13,7 @@ import { RequireAuth } from '../components/auth/RequireAuth';
 import { RequireOnboarding } from '../components/auth/RequireOnboarding';
 import { ProtectedRoute } from '../components/auth/ProtectedRoute';
 import { SuperAdminRedirect } from '../components/auth/SuperAdminRedirect';
+import { RouteErrorBoundary } from '../components/routing/RouteErrorBoundary';
 
 // Module Guards
 import { ModuleConfigurationGuard } from '../components/guards';
@@ -42,20 +43,24 @@ const routes = [
   {
     path: '/auth',
     element: <LandingPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   // Legacy login route - redirect to new landing
   {
     path: '/login',
     element: <Navigate to="/auth?mode=login" replace />,
+    errorElement: <RouteErrorBoundary />,
   },
   // Super Admin Login - separate gateway
   {
     path: '/admin/login',
     element: <AdminLoginPage />,
+    errorElement: <RouteErrorBoundary />,
   },
   // Onboarding: Plan selection (requires auth, skip onboarding check)
   {
     path: '/onboarding/plan',
+    errorElement: <RouteErrorBoundary />,
     element: (
       <RequireAuth>
         <PlanSelectionPage />
@@ -65,6 +70,7 @@ const routes = [
   // Company selector (requires auth only - no plan check to avoid redirect loop after plan selection)
   {
     path: '/company-selector',
+    errorElement: <RouteErrorBoundary />,
     element: (
       <RequireAuth>
         <Suspense fallback={<PageLoader />}>
@@ -76,6 +82,7 @@ const routes = [
   // New Company Wizard (standalone, no app shell)
   {
     path: '/company-wizard',
+    errorElement: <RouteErrorBoundary />,
     element: (
       <RequireAuth>
         <Suspense fallback={<PageLoader />}>
@@ -87,6 +94,7 @@ const routes = [
   // Mock ChatGPT-style AI Chat (standalone, no app shell)
   {
     path: '/chat-mock',
+    errorElement: <RouteErrorBoundary />,
     element: (
       <Suspense fallback={<PageLoader />}>
         <ChatGptMockPage />
@@ -96,6 +104,7 @@ const routes = [
   // Super Admin Routes - Completely separate from regular user flow
   {
     path: '/super-admin',
+    errorElement: <RouteErrorBoundary />,
     element: (
       <RequireAuth>
         <SuperAdminShell />
@@ -127,6 +136,7 @@ const routes = [
   // Main app routes (requires auth + plan)
   {
     path: '/',
+    errorElement: <RouteErrorBoundary />,
     element: (
       <RequireOnboarding>
         <SuperAdminRedirect>
