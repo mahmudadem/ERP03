@@ -594,23 +594,28 @@
   },
   "settings": {
     "apGeneration": {
-      "backfillButton": "Backfill vendor AP sub-accounts",
-      "confirmAction": "Run Backfill",
-      "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
-      "confirmTitle": "Backfill Vendor AP Sub-accounts",
-      "description": "Configure how vendor-specific AP sub-accounts are generated during vendor creation.",
-      "title": "AP Sub-account Generation"
+      "backfillButton": "إنشاء حسابات الموردين الفرعية",
+      "confirmAction": "تشغيل الإنشاء",
+      "confirmMessage": "سيتم فحص الموردين النشطين وإنشاء حسابات ذمم دائنة فرعية مخصصة للأطراف التي لا تملك حسابًا تحت حساب الذمم الدائنة الأب.",
+      "confirmTitle": "إنشاء حسابات الذمم الدائنة الفرعية للموردين",
+      "description": "اضبط طريقة إنشاء حسابات الذمم الدائنة الفرعية الخاصة بكل مورد عند إنشاء المورد.",
+      "title": "إنشاء حسابات ذمم الموردين الفرعية"
     },
     "apParent": {
-      "context": "Liability",
-      "help": "Parent account under which per-vendor AP sub-accounts are generated.",
-      "label": "AP Parent Account",
-      "placeholder": "Select AP parent account"
+      "context": "التزامات",
+      "help": "الحساب الأب الذي تُنشأ تحته حسابات الذمم الدائنة الفرعية لكل مورد.",
+      "label": "حساب الذمم الدائنة الأب",
+      "placeholder": "اختر حساب الذمم الدائنة الأب"
     },
     "partyAccountFormat": {
-      "custom": "Custom…",
-      "help": "Tokens: {parent}, {partyCode}, {seq3}. Example: {parent}-{partyCode}.",
-      "label": "AP Sub-account Code Format"
+      "custom": "مخصص…",
+      "help": "الرموز: {parent}، {partyCode}، {seq3}. مثال: {parent}-{partyCode}.",
+      "label": "صيغة رمز حساب الذمم الدائنة الفرعي",
+      "presets": {
+        "parentPartyDash": "الأب-المورد  (20101-V001)",
+        "parentPartyDot": "الأب.المورد  (20101.V001)",
+        "parentSequence": "الأب-تسلسل  (20101-001)"
+      }
     }
   },
   "vendorGroups": {
@@ -661,13 +666,33 @@
       "allVendors": "كل الموردين",
       "generateReport": "إنشاء التقرير",
       "asOf": "حتى ",
+      "asOfDateValue": "حتى {{date}}",
       "vendor": " مورد",
+      "vendorCount": "{{count}} مورد",
+      "vendorCount_other": "{{count}} موردين",
       "totalAP": " · إجمالي الذمم الدائنة: ",
       "loadingAging": "جارٍ تحميل الأعمار...",
       "noOutstandingPayablesAsOf": "لا توجد ذمم دائنة مستحقة حتى ",
+      "noOutstandingPayablesAsOfDate": "لا توجد ذمم دائنة مستحقة حتى {{date}}",
       "totals": "الإجماليات",
       "aPAging": "أعمار الذمم الدائنة",
-      "accountsPayableByAgingBucket": "الذمم الدائنة حسب فترات التأخر"
+      "accountsPayableByAgingBucket": "الذمم الدائنة حسب فترات التأخر",
+      "vendorHeader": "المورد",
+      "current": "حالي",
+      "days1_30": "1–30 يوم",
+      "days31_60": "31–60 يوم",
+      "days61_90": "61–90 يوم",
+      "days90Plus": "أكثر من 90 يوم",
+      "total": "الإجمالي",
+      "invoiceNumber": "رقم الفاتورة",
+      "vendorInvoiceNumber": "رقم فاتورة المورد",
+      "invoiceDate": "تاريخ الفاتورة",
+      "dueDate": "تاريخ الاستحقاق",
+      "daysOverdue": "أيام التأخر",
+      "bucket": "الفترة",
+      "outstanding": "المتبقي",
+      "debitNotesJVAdjustments": "إشعارات مدينة / تسويات قيود يومية",
+      "unallocatedBalance": "رصيد غير مخصص"
     },
     "GoodsReceiptDetailPage": {
       "goodsReceipt": "استلام البضائع",
@@ -782,7 +807,10 @@
       "toDate": "إلى تاريخ",
       "generateReport": "إنشاء التقرير",
       "row": " صف",
+      "rowCount": "{{count}} صف",
+      "rowCount_other": "{{count}} صفوف",
       "loadingReport": "جارٍ تحميل التقرير...",
+      "failedToLoadReport": "فشل تحميل التقرير",
       "purchasesByVendor": "المشتريات حسب المورد",
       "noDataForThisPeriod": "لا توجد بيانات لهذه الفترة.",
       "totals": "الإجماليات",
@@ -790,7 +818,16 @@
       "noDataForThisPeriod2": "لا توجد بيانات لهذه الفترة.",
       "totals2": "الإجماليات",
       "purchasesAnalytics": "تحليلات المشتريات",
-      "purchaseSpendByVendorOrItem": "إنفاق الشراء حسب المورد أو الصنف"
+      "purchaseSpendByVendorOrItem": "إنفاق الشراء حسب المورد أو الصنف",
+      "vendor": "المورد",
+      "invoices": "الفواتير",
+      "cost": "التكلفة",
+      "tax": "الضريبة",
+      "gross": "الإجمالي",
+      "code": "الكود",
+      "item": "الصنف",
+      "lines": "السطور",
+      "qtyPurchased": "الكمية المشتراة"
     },
     "PurchaseSettingsPage": {
       "workflowMode": "وضع سير العمل",
@@ -900,7 +937,36 @@
       "notIncludedInBalance": ") · غير مدرجة في الرصيد",
       "noData": "لا توجد بيانات.",
       "vendorStatement": "كشف حساب المورد",
-      "postedAPStatementAndLedgerForAVendor": "كشف ذمم دائنة ودفتر أستاذ مرحّل لمورد"
+      "postedAPStatementAndLedgerForAVendor": "كشف ذمم دائنة ودفتر أستاذ مرحّل لمورد",
+      "date": "التاريخ",
+      "type": "النوع",
+      "reference": "المرجع",
+      "debit": "مدين",
+      "credit": "دائن",
+      "balanceOwed": "الرصيد المستحق",
+      "actions": "الإجراءات",
+      "lineTypeBill": "فاتورة",
+      "lineTypePayment": "دفعة",
+      "lineTypeDebitNote": "مذكرة خصم",
+      "lineTypeRefund": "استرداد",
+      "lineTypeAdjustment": "تسوية",
+      "billNumber": "رقم الفاتورة",
+      "vendorRef": "مرجع المورد",
+      "billDate": "تاريخ الفاتورة",
+      "dueDate": "تاريخ الاستحقاق",
+      "billTotal": "إجمالي الفاتورة",
+      "outstanding": "المتبقي",
+      "purchaseOrder": "أمر الشراء",
+      "expected": "المتوقع",
+      "status": "الحالة",
+      "total": "الإجمالي",
+      "open": "المفتوح",
+      "failedToLoadReport": "فشل تحميل التقرير",
+      "statement": "الكشف",
+      "fullLedger": "دفتر الأستاذ الكامل",
+      "dateRange": "{{fromDate}} إلى {{toDate}}",
+      "vendorActivity": "حركة المورد",
+      "fullLedgerForVendor": "دفتر الأستاذ الكامل - {{vendorName}}"
     },
     "PurchaseFinancialIntegrationWizard": {
       "purchaseFinancialIntegration": "التكامل المالي للمشتريات",

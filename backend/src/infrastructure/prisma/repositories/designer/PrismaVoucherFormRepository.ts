@@ -21,9 +21,10 @@ export class PrismaVoucherFormRepository implements IVoucherFormRepository {
   async getById(companyId: string, formId: string): Promise<VoucherFormDefinition | null> {
     const record = await this.prisma.voucherForm.findFirst({
       where: { id: formId, companyId },
+      include: { voucherType: true },
     });
     if (!record) return null;
-    const fullForm = await this.getStoredDefinition(formId);
+    const fullForm = this.getStoredDefinition(record);
     if (!fullForm) return null;
     return this.toDomain(record, fullForm);
   }
@@ -31,25 +32,25 @@ export class PrismaVoucherFormRepository implements IVoucherFormRepository {
   async getByTypeId(companyId: string, typeId: string): Promise<VoucherFormDefinition[]> {
     const records = await this.prisma.voucherForm.findMany({
       where: { companyId, voucherTypeId: typeId },
+      include: { voucherType: true },
       orderBy: { createdAt: 'asc' },
     });
-    return records.map((r) => {
-      const fullForm = this.getStoredDefinition(r.id);
-      return fullForm.then((f) => this.toDomain(r, f!));
-    }).reduce(async (acc, p) => {
-      const results = await acc;
-      results.push(await p);
-      return results;
-    }, Promise.resolve([] as VoucherFormDefinition[]));
+    return records
+      .map((record) => {
+        const fullForm = this.getStoredDefinition(record);
+        return fullForm ? this.toDomain(record, fullForm) : null;
+      })
+      .filter((form): form is VoucherFormDefinition => !!form);
   }
 
   async getDefaultForType(companyId: string, typeId: string): Promise<VoucherFormDefinition | null> {
     const record = await this.prisma.voucherForm.findFirst({
       where: { companyId, voucherTypeId: typeId },
+      include: { voucherType: true },
       orderBy: { createdAt: 'asc' },
     });
     if (!record) return null;
-    const fullForm = await this.getStoredDefinition(record.id);
+    const fullForm = this.getStoredDefinition(record);
     if (!fullForm) return null;
     return this.toDomain(record, fullForm);
   }
@@ -57,11 +58,12 @@ export class PrismaVoucherFormRepository implements IVoucherFormRepository {
   async getAllByCompany(companyId: string): Promise<VoucherFormDefinition[]> {
     const records = await this.prisma.voucherForm.findMany({
       where: { companyId },
+      include: { voucherType: true },
       orderBy: { createdAt: 'asc' },
     });
     const results: VoucherFormDefinition[] = [];
     for (const r of records) {
-      const fullForm = await this.getStoredDefinition(r.id);
+      const fullForm = this.getStoredDefinition(r);
       if (fullForm) {
         results.push(this.toDomain(r, fullForm));
       }
@@ -84,25 +86,41 @@ export class PrismaVoucherFormRepository implements IVoucherFormRepository {
     });
   }
 
-  private async getStoredDefinition(formId: string): Promise<VoucherFormDefinition | null> {
-    const stored = await this.prisma.voucherForm.findUnique({
-      where: { id: formId },
-    });
-    if (!stored) return null;
+  private getStoredDefinition(stored: any): VoucherFormDefinition | null {
+    if (!stored?.voucherType) return null;
+    const voucherType = stored.voucherType;
+    const layout = (voucherType.layout as Record<string, any>) || {};
+    const meta = (layout._meta as Record<string, any>) || {};
+    const code = String(voucherType.code || stored.id || '').trim();
+    const baseType = code.toLowerCase();
+
     return {
       id: stored.id,
       companyId: stored.companyId,
       typeId: stored.voucherTypeId,
-      module: undefined,
-      name: '',
-      code: '',
-      isDefault: false,
-      isSystemGenerated: false,
-      isLocked: false,
+      module: voucherType.module,
+      name: voucherType.name,
+      code,
+      description: `Default form for ${voucherType.name}`,
+      prefix: code.slice(0, 3).toUpperCase() || 'V',
+      isDefault: true,
+      isSystemGenerated: true,
+      isLocked: true,
       enabled: true,
-      headerFields: [],
-      tableColumns: [],
-      layout: {},
+      headerFields: (voucherType.headerFields as any[]) || [],
+      tableColumns: (voucherType.tableColumns as any[]) || [],
+      layout,
+      uiModeOverrides: voucherType.uiModeOverrides,
+      rules: (voucherType.rules as any[]) || [],
+      actions: (voucherType.actions as any[]) || [],
+      isMultiLine: voucherType.isMultiLine,
+      tableStyle: 'web',
+      defaultCurrency: voucherType.defaultCurrency || '',
+      formType: code || stored.id,
+      voucherType: typeof meta.voucherType === 'string' ? meta.voucherType : code || stored.id,
+      persona: typeof meta.persona === 'string' ? meta.persona : undefined,
+      baseType: baseType || stored.id,
+      sidebarGroup: typeof meta.sidebarGroup === 'string' ? meta.sidebarGroup : undefined,
       createdAt: stored.createdAt,
       updatedAt: stored.updatedAt,
     };

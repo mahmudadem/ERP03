@@ -15,14 +15,21 @@ import { AiAssistantModule } from './ai-assistant/AiAssistantModule';
 
 export function registerAllModules(): void {
     const registry = ModuleRegistry.getInstance();
+    const registerOnce = (module: AccountingModule | InventoryModule | PurchaseModule | SalesModule | PosModule | AiAssistantModule) => {
+        if (registry.isModuleRegistered(module.metadata.id)) {
+            return;
+        }
+        registry.register(module);
+    };
 
-    // Register modules
-    registry.register(new AccountingModule());
-    registry.register(new InventoryModule());
-    registry.register(new PurchaseModule());
-    registry.register(new SalesModule());
-    registry.register(new PosModule());
-    registry.register(new AiAssistantModule());
+    // Register modules (idempotent: registerOnce skips already-registered modules,
+    // so the boot-retry loop can safely re-run this after a transient DB outage).
+    registerOnce(new AccountingModule());
+    registerOnce(new InventoryModule());
+    registerOnce(new PurchaseModule());
+    registerOnce(new SalesModule());
+    registerOnce(new PosModule());
+    registerOnce(new AiAssistantModule());
 
     console.log(`Registered ${registry.getAllModules().length} modules`);
 }

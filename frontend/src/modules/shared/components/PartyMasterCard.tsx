@@ -74,6 +74,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [activeTab, setActiveTab] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [forceNew, setForceNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroupDTO[]>([]);
@@ -96,8 +97,14 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     paymentTermsDays: 0
   });
 
-  const isNew = !partyId || partyId === 'new';
+  const isNew = (!partyId || partyId === 'new') || forceNew;
   const canEdit = hasPermission(role === 'CUSTOMER' ? 'sales.customers.manage' : 'purchases.suppliers.manage');
+
+  useEffect(() => {
+    if (partyId && partyId !== 'new') {
+      setForceNew(false);
+    }
+  }, [partyId]);
 
   useEffect(() => {
     loadCurrencies();
@@ -281,15 +288,31 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     }
   };
 
+  const handleNewParty = () => {
+    setForm({
+      code: '',
+      legalName: '',
+      displayName: '',
+      taxId: '',
+      roles: [role],
+      active: true,
+      paymentTermsDays: 0
+    });
+    setAccountStrategy('');
+    setSubAccountParentId('');
+    setForceNew(true);
+    setError(null);
+  };
+
   if (loading) return <div className="p-20 text-center opacity-50 font-mono text-xs italic tracking-widest">Hydrating Master Table...</div>;
 
   return (
     <MasterCardLayout
-      title={form.displayName || (role === 'VENDOR' ? 'Supplier' : 'Customer')}
-      subtitle={isNew ? `Registering New Part - ${role}` : `${role} Master Record`}
+      title={form.displayName || (role === 'VENDOR' ? t('parties.form.supplierTitle', 'Supplier') : t('parties.form.customerTitle', 'Customer'))}
+      subtitle={isNew ? (role === 'CUSTOMER' ? t('parties.form.registeringNewCustomer', 'Registering New Customer') : t('parties.form.registeringNewVendor', 'Registering New Vendor')) : (role === 'CUSTOMER' ? t('parties.form.customerMasterRecord', 'Customer Master Record') : t('parties.form.vendorMasterRecord', 'Vendor Master Record'))}
       identifier={form.code}
       icon={role === 'VENDOR' ? Building2 : User}
-      tabs={PARTY_TABS}
+      tabs={PARTY_TABS.map(tab => ({ ...tab, label: t(`parties.tabs.${tab.id.toLowerCase()}`, tab.label) }))}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       isWindow={isWindow}
@@ -297,47 +320,48 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       saving={saving}
       canEdit={canEdit}
       onSave={handleSave}
+      onNew={handleNewParty}
       onClose={onClose}
       updatedAt={form.updatedAt}
       error={error}
-      saveNewLabel={role === 'VENDOR' ? 'Save New Vendor' : 'Save New Customer'}
-      updateLabel={role === 'VENDOR' ? 'Update Vendor' : 'Update Customer'}
+      saveNewLabel={role === 'VENDOR' ? t('parties.form.saveNewVendor', 'Save New Vendor') : t('parties.form.saveNewCustomer', 'Save New Customer')}
+      updateLabel={role === 'VENDOR' ? t('parties.form.updateVendor', 'Update Vendor') : t('parties.form.updateCustomer', 'Update Customer')}
     >
       {activeTab === 'GENERAL' && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          <FormSection title="Legal Identity">
+          <FormSection title={t('parties.form.legalIdentity', 'Legal Identity')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label={`${role} Code`} required>
+              <Field label={role === 'CUSTOMER' ? t('parties.form.customerCodeLabel', 'Customer Code') : t('parties.form.vendorCodeLabel', 'Vendor Code')} required>
                 <div className="relative flex items-center gap-1 group">
                    <input 
                       disabled={!isNew}
-                      className="form-control font-bold pr-10" 
+                      className="form-control font-bold ltr:pr-10 rtl:pl-10" 
                       value={form.code} 
                       onChange={e => setForm(p => ({ ...p, code: e.target.value.toUpperCase() }))} 
-                      placeholder={role === 'CUSTOMER' ? 'e.g. CUST-0001' : 'e.g. SUP-0001'}
+                      placeholder={role === 'CUSTOMER' ? t('parties.form.codePlaceholderCust', 'e.g. CUST-0001') : t('parties.form.codePlaceholderVend', 'e.g. SUP-0001')}
                    />
                    {isNew && (
                       <button 
                         type="button"
                         onClick={handleAutoGenerateCode}
-                        className="absolute right-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
-                        title="Generate Next Code"
+                        className="absolute ltr:right-2 rtl:left-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
+                        title={t('parties.form.generateCode', 'Generate Next Code')}
                       >
                          <Sparkles size={14} />
                       </button>
                    )}
                 </div>
               </Field>
-              <Field label="Tax / VAT Registration ID">
+              <Field label={t('parties.form.taxId', 'Tax / VAT Registration ID')}>
                 <input className="form-control" value={form.taxId || ''} onChange={e => setForm(p => ({ ...p, taxId: e.target.value }))} />
               </Field>
               <div className="col-span-2">
-                <Field label="Legal Entity Name (As per registration docs)" required>
+                <Field label={t('parties.form.legalName', 'Legal Entity Name (As per registration docs)')} required>
                   <input className="form-control" value={form.legalName} onChange={e => setForm(p => ({ ...p, legalName: e.target.value }))} />
                 </Field>
               </div>
               <div className="col-span-2">
-                <Field label="Trading / Display Name" required>
+                <Field label={t('parties.form.displayName', 'Trading / Display Name')} required>
                   <input className="form-control font-medium text-blue-600 dark:text-blue-400" value={form.displayName} onChange={e => setForm(p => ({ ...p, displayName: e.target.value }))} />
                 </Field>
               </div>
@@ -348,22 +372,22 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
 
       {activeTab === 'CONTACT' && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          <FormSection title="Engagement Details">
+          <FormSection title={t('parties.form.engagementDetails', 'Engagement Details')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Contact Person">
+              <Field label={t('parties.form.contactPerson', 'Contact Person')}>
                 <input className="form-control" value={form.contactPerson || ''} onChange={e => setForm(p => ({ ...p, contactPerson: e.target.value }))} />
               </Field>
-              <Field label="Record Status">
+              <Field label={t('parties.form.recordStatus', 'Record Status')}>
                  <select className="form-control font-bold" value={String(form.active)} onChange={e => setForm(p => ({ ...p, active: e.target.value === 'true' }))}>
-                    <option value="true">ACTIVE</option>
-                    <option value="false">SUSPENDED</option>
+                    <option value="true">{t('parties.form.statusActive', 'ACTIVE')}</option>
+                    <option value="false">{t('parties.form.statusSuspended', 'SUSPENDED')}</option>
                  </select>
               </Field>
             </div>
           </FormSection>
-          <FormSection title="Communication Channels">
+          <FormSection title={t('parties.form.communicationChannels', 'Communication Channels')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label="Phone/Mobile Number">
+              <Field label={t('parties.form.phoneNumber', 'Phone/Mobile Number')}>
                 <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0">
                        <Phone size={16} />
@@ -371,7 +395,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                     <input className="form-control" value={form.phone || ''} onChange={e => setForm(p => ({ ...p, phone: e.target.value }))} />
                 </div>
               </Field>
-              <Field label="Electronic Mail">
+              <Field label={t('parties.form.email', 'Electronic Mail')}>
                  <div className="flex items-center gap-2">
                     <div className="w-9 h-9 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0">
                        <Mail size={16} />
@@ -380,7 +404,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                  </div>
               </Field>
               <div className="col-span-2">
-                <Field label="Primary Address / HQ Location">
+                <Field label={t('parties.form.address', 'Primary Address / HQ Location')}>
                   <div className="flex items-start gap-2">
                     <div className="w-9 h-9 rounded-lg bg-slate-100/50 dark:bg-slate-800/50 flex items-center justify-center text-slate-400 border border-slate-200 dark:border-slate-700 flex-shrink-0 mt-0.5">
                        <MapPin size={16} />
@@ -396,9 +420,9 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
 
       {activeTab === 'COMMERCIAL' && (
         <div className="space-y-6 animate-in fade-in duration-300">
-           <FormSection title="Agreed Terms">
+           <FormSection title={t('parties.form.agreedTerms', 'Agreed Terms')}>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <Field label="Payment Terms (Days Credit)">
+                <Field label={t('parties.form.paymentTerms', 'Payment Terms (Days Credit)')}>
                    <div className="flex items-center gap-2">
                       <div className="w-9 h-9 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 border border-blue-100 dark:border-blue-800/50 flex-shrink-0">
                          <Clock size={16} />
@@ -406,13 +430,13 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                       <input type="number" className="form-control font-mono" value={form.paymentTermsDays || 0} onChange={e => setForm(p => ({ ...p, paymentTermsDays: parseInt(e.target.value) }))} />
                    </div>
                 </Field>
-                <Field label="Standard Currency">
+                <Field label={t('parties.form.currency', 'Standard Currency')}>
                    <div className="flex items-center gap-2">
                       <div className="w-9 h-9 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 flex items-center justify-center text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-800/50 flex-shrink-0">
                          <Coins size={16} />
                       </div>
                       <select className="form-control font-bold text-emerald-700 dark:text-emerald-400" value={form.defaultCurrency || ''} onChange={e => setForm(p => ({ ...p, defaultCurrency: e.target.value }))}>
-                        <option value="">(Currency Selection)</option>
+                        <option value="">{t('parties.form.currencySelection', '(Currency Selection)')}</option>
                         {currencies.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                    </div>
@@ -421,34 +445,34 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
            </FormSection>
 
            {role === 'CUSTOMER' && (
-             <FormSection title="Customer Segmentation & Credit">
+             <FormSection title={t('parties.form.customerSegmentation', 'Customer Segmentation & Credit')}>
                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <Field label="Customer Group">
+                 <Field label={t('parties.form.customerGroup', 'Customer Group')}>
                    <select className="form-control" value={form.customerGroupId || ''} onChange={e => setForm(p => ({ ...p, customerGroupId: e.target.value || undefined }))}>
-                     <option value="">(No Group)</option>
+                     <option value="">{t('parties.form.noGroup', '(No Group)')}</option>
                      {customerGroups.map(g => <option key={g.id} value={g.id}>{g.name}</option>)}
                    </select>
                  </Field>
-                 <Field label="Default Price List">
+                 <Field label={t('parties.form.defaultPriceList', 'Default Price List')}>
                    <select className="form-control" value={form.defaultPriceListId || ''} onChange={e => setForm(p => ({ ...p, defaultPriceListId: e.target.value || undefined }))}>
-                     <option value="">(No Price List)</option>
+                     <option value="">{t('parties.form.noPriceList', '(No Price List)')}</option>
                      {priceLists.map(pl => <option key={pl.id} value={pl.id}>{pl.name} ({pl.currency})</option>)}
                    </select>
                  </Field>
-                 <Field label="Credit Limit">
+                 <Field label={t('parties.form.creditLimit', 'Credit Limit')}>
                    <input type="number" min={0} step={0.01} className="form-control font-mono" value={form.creditLimit ?? ''} onChange={e => setForm(p => ({ ...p, creditLimit: e.target.value === '' ? undefined : parseFloat(e.target.value) }))} />
                  </Field>
-                 <Field label="Credit Hold Policy">
+                 <Field label={t('parties.form.creditHoldPolicy', 'Credit Hold Policy')}>
                    <select className="form-control" value={form.creditHoldPolicy || 'NONE'} onChange={e => setForm(p => ({ ...p, creditHoldPolicy: e.target.value as 'NONE' | 'WARN' | 'BLOCK' }))}>
-                     <option value="NONE">NONE</option>
-                     <option value="WARN">WARN</option>
-                     <option value="BLOCK">BLOCK</option>
+                     <option value="NONE">{t('parties.form.policyNone', 'NONE')}</option>
+                     <option value="WARN">{t('parties.form.policyWarn', 'WARN')}</option>
+                     <option value="BLOCK">{t('parties.form.policyBlock', 'BLOCK')}</option>
                    </select>
                  </Field>
-                 <Field label="Tax Exempt">
+                 <Field label={t('parties.form.taxExempt', 'Tax Exempt')}>
                    <div className="flex items-center gap-2 pt-1">
                      <input type="checkbox" className="h-4 w-4 rounded border-slate-300" checked={!!form.taxExempt} onChange={e => setForm(p => ({ ...p, taxExempt: e.target.checked }))} />
-                     <span className="form-control border-0 p-0 bg-transparent text-xs text-slate-500">Customer is tax exempt</span>
+                     <span className="form-control border-0 p-0 bg-transparent text-xs text-slate-500">{t('parties.form.taxExemptHelp', 'Customer is tax exempt')}</span>
                    </div>
                  </Field>
                  <div className="sm:col-span-2">

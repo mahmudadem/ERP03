@@ -4,7 +4,7 @@ import { ApiError } from '../../errors/ApiError';
 import { GetUserPreferencesUseCase, UpsertUserPreferencesUseCase } from '../../../application/core/use-cases/UserPreferencesUseCases';
 
 const mapDto = (prefs: any) => ({
-  language: prefs?.language || 'en',
+  language: prefs?.language || 'ar',
   uiMode: prefs?.uiMode || 'windows',
   theme: prefs?.theme || 'light',
   sidebarMode: prefs?.sidebarMode || 'classic',

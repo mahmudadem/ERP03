@@ -269,6 +269,18 @@ Inventory document workflows now follow the same list-to-form shell used by Sale
 
 Opening Stock places the **Create Accounting Effect** toggle and warning in the scaffold `control` section. When accounting effect is enabled, the document pre-fills its offset account from `InventorySettings.defaultOpeningBalanceAccountId`, while still allowing a per-document override. The backend remains authoritative: the selected account must be an active POSTING EQUITY account.
 
+### Legacy direct opening-stock movements
+
+Production may contain older `OPENING_STOCK` stock movements that were created before the document-backed
+Opening Stock workflow became the canonical path. Those records are valid stock-movement audit rows, but they do
+not have matching Opening Stock Document headers.
+
+The Opening Stock list page now performs a read-only reconciliation check: when the document list is empty but
+legacy `OPENING_STOCK` movements exist, the page shows an amber warning that links users to Stock Movements.
+It intentionally does **not** generate synthetic Opening Stock Documents from those movements. Backfilling document
+headers from historical movement rows would create false document history and could mislead inventory and financial
+audits. Any correction remains an explicit inventory document or adjustment.
+
 ## Accounting Integration
 
 Inventory documents **do** post to the GL when the Accounting module is enabled. The integration points:
@@ -508,3 +520,43 @@ The shared `CreateUom` / `UpdateUom` endpoints and `ManageUomConversionsUseCase`
 | Algorithms | `docs/modules/inventory/ALGORITHMS.md` |
 | Schemas | `docs/modules/inventory/SCHEMAS.md` |
 | Opening stock rules | `docs/modules/inventory/OPENING_STOCK_DOCUMENTS.md` |
+# Item UOM barcodes and localized UOM names
+
+Catalog Core keeps optional item-level `barcode` and `barcodes` fields and also
+stores `uomBarcodes` as item-owned assignments:
+
+```ts
+{ uomId?: string; uom: string; barcodes: string[] }
+```
+
+`uomBarcodeValues` is a persistence-only flattened search field. Firestore uses
+it with `array-contains`; PostgreSQL stores both the structured JSON assignments
+and the flattened string array. Create/update validation checks every general
+and UOM barcode through the company-scoped item repository, so one scanned value
+cannot resolve to multiple items or units in a tenant.
+
+POS search returns the matched UOM assignment. Commercial Core resolves the POS
+price using that UOM id, and the terminal keeps cart lines distinct by
+`itemId + uom`.
+
+UOM codes remain stable identifiers. `Uom.translations` is an extensible
+language-code map; the initial UI edits `en`, `ar`, and `tr`. Display resolution
+uses the full active locale, then its base language, then the default UOM name.
+
+Conversion factors become immutable after any posted stock movement references
+the conversion. Direct update/delete and the former smart-correction endpoint
+all reject used conversions. This prevents retrospective quantity, valuation,
+COGS, and GL drift.
+
+## Shared item page route mapping
+
+`ItemsListPage` and `ItemMasterCard` are reused by Inventory, Sales, Purchases,
+and POS. Browser navigation uses `/purchases/items`, but the Purchase module is
+mounted at the singular API prefix `/tenant/purchase`. The shared components
+must therefore keep the Purchases navigation path separate from its API path:
+
+- Browser route: `/purchases/items`
+- API route: `/tenant/purchase/items`
+
+Sales, Inventory, and POS browser/API prefixes already match. Do not derive the
+Purchases API URL directly from `window.location.pathname`.

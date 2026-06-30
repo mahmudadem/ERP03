@@ -27,6 +27,12 @@ export class FirestoreUomConversionRepository implements IUomConversionRepositor
     return ref;
   }
 
+  private applyInMemoryPaging<T>(items: T[], opts?: UomConversionListOptions): T[] {
+    const start = opts?.offset || 0;
+    const end = opts?.limit ? start + opts.limit : undefined;
+    return items.slice(start, end);
+  }
+
   async createConversion(conversion: UomConversion): Promise<void> {
     await this.collection(conversion.companyId).doc(conversion.id).set(UomConversionMapper.toPersistence(conversion));
   }
@@ -50,27 +56,34 @@ export class FirestoreUomConversionRepository implements IUomConversionRepositor
     itemId: string,
     opts?: UomConversionListOptions
   ): Promise<UomConversion[]> {
-    let query: Query = this.collection(companyId).where('itemId', '==', itemId).orderBy('fromUom', 'asc');
+    let query: Query = this.collection(companyId).where('itemId', '==', itemId);
 
     if (opts?.active !== undefined) {
       query = query.where('active', '==', opts.active);
     }
 
-    query = this.applyPaging(query, opts);
     const snap = await query.get();
-    return snap.docs.map((doc) => UomConversionMapper.toDomain(doc.data()));
+    const conversions = snap.docs
+      .map((doc) => UomConversionMapper.toDomain(doc.data()))
+      .sort((a, b) => a.fromUom.localeCompare(b.fromUom));
+    return this.applyInMemoryPaging(conversions, opts);
   }
 
   async getCompanyConversions(companyId: string, opts?: UomConversionListOptions): Promise<UomConversion[]> {
-    let query: Query = this.collection(companyId).orderBy('itemId', 'asc').orderBy('fromUom', 'asc');
+    let query: Query = this.collection(companyId);
 
     if (opts?.active !== undefined) {
       query = query.where('active', '==', opts.active);
     }
 
-    query = this.applyPaging(query, opts);
     const snap = await query.get();
-    return snap.docs.map((doc) => UomConversionMapper.toDomain(doc.data()));
+    const conversions = snap.docs
+      .map((doc) => UomConversionMapper.toDomain(doc.data()))
+      .sort((a, b) => {
+        const itemComparison = a.itemId.localeCompare(b.itemId);
+        return itemComparison !== 0 ? itemComparison : a.fromUom.localeCompare(b.fromUom);
+      });
+    return this.applyInMemoryPaging(conversions, opts);
   }
 
   async deleteConversion(id: string): Promise<void> {

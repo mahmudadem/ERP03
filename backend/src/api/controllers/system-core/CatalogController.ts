@@ -7,7 +7,7 @@ import { validateCreateItemInput, validateUpdateItemInput } from '../../validato
 
 export class CatalogController {
   private static getCompanyId(req: Request): string {
-    const companyId = (req as any).company?.id;
+    const companyId = (req as any).tenantContext?.companyId || (req as any).user?.companyId;
     if (!companyId) throw new Error('Company context missing');
     return companyId;
   }
@@ -46,6 +46,11 @@ export class CatalogController {
         type: (req as any).query.type,
         categoryId: (req as any).query.categoryId,
         active: (req as any).query.active === undefined ? undefined : (req as any).query.active === 'true',
+        trackInventory: (req as any).query.trackInventory === undefined
+          ? undefined
+          : String((req as any).query.trackInventory) === 'true',
+        limit: (req as any).query.limit ? Number((req as any).query.limit) : undefined,
+        offset: (req as any).query.offset ? Number((req as any).query.offset) : undefined,
       });
 
       (res as any).json({
@@ -80,7 +85,8 @@ export class CatalogController {
 
   static async getItem(req: Request, res: Response, next: NextFunction) {
     try {
-      const item = await diContainer.catalogCore.getItem((req as any).params.id);
+      const companyId = CatalogController.getCompanyId(req);
+      const item = await diContainer.catalogCore.getItem(companyId, (req as any).params.id);
       (res as any).json({
         success: true,
         data: item ? InventoryDTOMapper.toItemDTO(item) : null,
@@ -93,7 +99,8 @@ export class CatalogController {
   static async updateItem(req: Request, res: Response, next: NextFunction) {
     try {
       validateUpdateItemInput((req as any).body);
-      const item = await diContainer.catalogCore.updateItem((req as any).params.id, (req as any).body);
+      const companyId = CatalogController.getCompanyId(req);
+      const item = await diContainer.catalogCore.updateItem(companyId, (req as any).params.id, (req as any).body);
       (res as any).json({
         success: true,
         data: InventoryDTOMapper.toItemDTO(item),
@@ -105,7 +112,8 @@ export class CatalogController {
 
   static async deleteItem(req: Request, res: Response, next: NextFunction) {
     try {
-      await diContainer.catalogCore.deleteItem((req as any).params.id);
+      const companyId = CatalogController.getCompanyId(req);
+      await diContainer.catalogCore.deleteItem(companyId, (req as any).params.id);
       (res as any).json({ success: true });
     } catch (error) {
       next(error);

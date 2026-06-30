@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useParams, useNavigate, useLocation } from 'react-router-dom'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { useAuth } from '../../../context/AuthContext'; import { loadModuleDocumentForms, DocumentFormConfig, AvailableField } from '../forms-designer'; import { Card } from '../../../components/ui/Card'; import { Button } from '../../../components/ui/Button'; import { salesApi } from '../../../api/salesApi'; import { purchasesApi } from '../../../api/purchasesApi'; import { accountingApi } from '../../../api/accountingApi'; import { voucherFormApi } from '../../../api/voucherFormApi'; import { Plus, RefreshCw, ArrowLeft, FileText, AlertCircle } from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { errorHandler } from '../../../services/errorHandler';
@@ -6,6 +7,7 @@ import { errorHandler } from '../../../services/errorHandler';
 import { GenericVoucherRenderer } from '../../accounting/components/shared/GenericVoucherRenderer';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { useWindowManager } from '../../../context/WindowManagerContext';
+import { resolveVoucherDisplayName } from '../../../utils/voucherDisplayName';
 
 interface DynamicDocumentRow {
   id: string;
@@ -47,6 +49,7 @@ const normalizeModuleCode = (value: any): string => {
 };
 
 export const DynamicDocumentPage: React.FC = () => {
+  const { t, i18n } = useTranslation('common');
   const { formCode, id } = useParams<{ formCode: string; id?: string }>();
   const { pathname } = useLocation();
   const navigate = useNavigate();
@@ -135,10 +138,18 @@ export const DynamicDocumentPage: React.FC = () => {
       const apiForms = await voucherFormApi.list();
       const normalizedApiForms = (Array.isArray(apiForms) ? apiForms : [])
         .filter((form: any) => normalizeModuleCode(form.module || 'ACCOUNTING') === normalizedModule)
-        .map((form: any) => ({ ...form } as DocumentFormConfig));
+        .map((form: any) => ({
+          ...form,
+          name: resolveVoucherDisplayName(t, form),
+        } as DocumentFormConfig));
 
       const merged = new Map<string, DocumentFormConfig>();
-      for (const form of directForms) merged.set(form.id, form);
+      for (const form of directForms) {
+        merged.set(form.id, {
+          ...form,
+          name: resolveVoucherDisplayName(t, form as any),
+        });
+      }
       for (const form of normalizedApiForms) merged.set(form.id, form);
       return Array.from(merged.values());
     } catch (apiErr) {
@@ -377,7 +388,7 @@ if (linkedForm) return recordPersona === 'linked' || recordFormType === 'sales_i
     }
 
     init();
-  }, [companyId, formCode, normalizedModule]);
+  }, [companyId, formCode, normalizedModule, i18n.resolvedLanguage]);
 
   useEffect(() => {
     if (!formConfig) return;

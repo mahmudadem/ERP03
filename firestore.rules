@@ -22,14 +22,14 @@ service cloud.firestore {
     }
 
     function isSuperAdmin() {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('globalRole', '') == 'SUPER_ADMIN';
+      return isSignedIn() ? (
+        exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('globalRole', '') == 'SUPER_ADMIN'
+      ) : false;
     }
 
     function isMemberOf(cid) {
-      return isSignedIn()
-        && exists(/databases/$(database)/documents/company_users/$(cid + '_' + request.auth.uid));
+      return isSignedIn() ? exists(/databases/$(database)/documents/company_users/$(cid + '_' + request.auth.uid)) : false;
     }
 
     // ---- system_metadata ----

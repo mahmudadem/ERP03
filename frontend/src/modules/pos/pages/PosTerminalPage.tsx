@@ -250,20 +250,42 @@ const PosTerminalPage: React.FC<Props> = () => {
       if (ctx.state === 'suspended') void ctx.resume();
 
       const now = ctx.currentTime;
+      if (source === 'barcode') {
+        const playTone = (startOffset: number, frequency: number) => {
+          const primary = ctx.createOscillator();
+          const primaryGain = ctx.createGain();
+          const start = now + startOffset;
+          const stop = start + 0.07;
+
+          primary.type = 'square';
+          primary.frequency.setValueAtTime(frequency, start);
+
+          primaryGain.gain.setValueAtTime(0.0001, start);
+          primaryGain.gain.exponentialRampToValueAtTime(0.18, start + 0.003);
+          primaryGain.gain.exponentialRampToValueAtTime(0.0001, stop);
+
+          primary.connect(primaryGain);
+          primaryGain.connect(ctx.destination);
+          primary.start(start);
+          primary.stop(stop);
+        };
+
+        playTone(0, 2700);
+        playTone(0.095, 2700);
+        return;
+      }
+
       const oscillator = ctx.createOscillator();
       const gain = ctx.createGain();
-      oscillator.type = source === 'barcode' ? 'square' : 'sine';
-      oscillator.frequency.setValueAtTime(source === 'barcode' ? 1120 : 760, now);
-      if (source === 'barcode') {
-        oscillator.frequency.setValueAtTime(880, now + 0.055);
-      }
+      oscillator.type = 'sine';
+      oscillator.frequency.setValueAtTime(760, now);
       gain.gain.setValueAtTime(0.0001, now);
-      gain.gain.exponentialRampToValueAtTime(source === 'barcode' ? 0.055 : 0.035, now + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + (source === 'barcode' ? 0.11 : 0.08));
+      gain.gain.exponentialRampToValueAtTime(0.035, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
       oscillator.connect(gain);
       gain.connect(ctx.destination);
       oscillator.start(now);
-      oscillator.stop(now + (source === 'barcode' ? 0.12 : 0.09));
+      oscillator.stop(now + 0.09);
     } catch {
       // Audio feedback is best-effort; the cart update remains authoritative.
     }
@@ -394,7 +416,8 @@ const PosTerminalPage: React.FC<Props> = () => {
       return false;
     }
     setCart((prev) => {
-      const existing = prev.find((l) => l.itemId === item.id && l.status !== 'VOIDED');
+      const selectedUom = item.uom || item.unitOfMeasure || item.baseUom || '';
+      const existing = prev.find((l) => l.itemId === item.id && l.uom === selectedUom && l.status !== 'VOIDED');
       if (existing) {
         return prev.map((l) =>
           l.lineId === existing.lineId
@@ -409,7 +432,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           itemId: item.id,
           itemCode: item.code || '',
           itemName: item.name || '',
-          uom: item.uom || item.unitOfMeasure || '',
+          uom: selectedUom,
           qty: 1,
           unitPrice,
           originalUnitPrice: unitPrice,
@@ -456,7 +479,11 @@ const PosTerminalPage: React.FC<Props> = () => {
       const normalized = code.toLowerCase();
       const exactMatches = items.filter((item) =>
         String(item.barcode || '').toLowerCase() === normalized ||
-        String(item.code || '').toLowerCase() === normalized
+        String(item.code || '').toLowerCase() === normalized ||
+        (item.barcodes || []).some((barcode: string) => barcode.toLowerCase() === normalized) ||
+        (item.uomBarcodes || []).some((entry: any) =>
+          (entry.barcodes || []).some((barcode: string) => barcode.toLowerCase() === normalized)
+        )
       );
       const matches = exactMatches.length > 0 ? exactMatches : items.length === 1 ? items : [];
 
@@ -2011,7 +2038,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
         }
         tone="info"
-        onConfirm={onCompleteSale}
+        onConfirm={() => onCompleteSale(false)}
         onCancel={() => setShowPayDialog(false)}
         confirmLabel={completing
           ? t('common.processing', { defaultValue: 'Processing…' })

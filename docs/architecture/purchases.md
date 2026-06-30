@@ -6,6 +6,22 @@
 
 ---
 
+## Firestore posted-invoice query index
+
+The Purchase dashboard and Purchases analytics request posted invoices through
+`FirestorePurchaseInvoiceRepository.list(companyId, { status: 'POSTED' })`.
+That repository combines `status == ...` with `orderBy('invoiceDate', 'desc')`.
+
+Firestore production therefore requires the root manifest index:
+
+`purchase_invoices: status ASC, invoiceDate DESC`
+
+`FirestoreIndexContracts.test.ts` protects this deployment dependency. The
+equivalent Sales index does not cover Purchases because Firestore indexes are
+collection-group specific.
+
+---
+
 ## Per-vendor AP sub-accounts (Piece A — 2026-05-27)
 
 Purchases mirrors the Sales per-party model for vendor payables:

@@ -7,11 +7,14 @@
 
 import { IUserRepository } from '../../../repository/interfaces/core/IUserRepository';
 import { IPlanRegistryRepository } from '../../../repository/interfaces/super-admin/IPlanRegistryRepository';
+import { User } from '../../../domain/core/entities/User';
 import { ApiError } from '../../../api/errors/ApiError';
 
 export interface SelectPlanInput {
   userId: string;
   planId: string;
+  email?: string;
+  name?: string;
 }
 
 export interface SelectPlanResult {
@@ -38,9 +41,25 @@ export class SelectPlanUseCase {
     }
 
     // Validate user exists
-    const user = await this.userRepository.getUserById(input.userId);
+    let user = await this.userRepository.getUserById(input.userId);
     if (!user) {
-      throw ApiError.notFound('User not found');
+      if (!input.email) {
+        throw ApiError.notFound('User not found');
+      }
+
+      const existingByEmail = await this.userRepository.findByEmail(input.email);
+      if (existingByEmail && existingByEmail.id !== input.userId) {
+        throw ApiError.conflict('Authenticated user does not match existing account', 'USER_IDENTITY_MISMATCH');
+      }
+
+      user = new User(
+        input.userId,
+        input.email.trim().toLowerCase(),
+        input.name?.trim() || input.email,
+        'USER',
+        new Date()
+      );
+      await this.userRepository.createUser(user);
     }
 
     // Update user's plan

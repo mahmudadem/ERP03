@@ -103,9 +103,16 @@ export class CompleteCompanyCreationUseCase {
       session.data.address || undefined
     );
 
+    // The creation flow below is NOT a single DB transaction (it spans several
+    // repositories). To keep it atomic from the user's point of view, every
+    // critical step runs inside one try/catch: if anything fails partway, we
+    // delete the company we just created — FK cascade (onDelete: Cascade) removes
+    // its settings, currencies, roles, modules, etc. — and surface a clean error.
+    // Without this, a mid-flow failure left an orphan company in the DB that the
+    // user could neither use nor recreate (see taxId-unique bug history).
     try {
       await this.companyRepo.save(company);
-      
+
       // Initialize settings (Global Tier 1)
       await this.companySettingsRepo.updateSettings(company.id, {
         timezone: session.data.timezone || 'UTC',
@@ -115,7 +122,7 @@ export class CompleteCompanyCreationUseCase {
         uiMode: 'windows'
       });
 
-      // SEED SHARED SETTINGS: Currencies (Shared Tier 2)
+      // SEED SHARED SETTINGS: Currencies (Shared Tier 2) — non-fatal
       try {
         const globalCurrencies = await this.systemMetadataRepo.getMetadata('currencies');
         if (globalCurrencies && Array.isArray(globalCurrencies)) {
@@ -126,45 +133,57 @@ export class CompleteCompanyCreationUseCase {
       } catch (seedErr) {
         console.error('Failed to seed company currencies', seedErr);
       }
+
+      await this.rbacCompanyUserRepo.assignRole({
+        userId: session.userId,
+        companyId: company.id,
+        roleId: 'OWNER',
+        isOwner: true,
+        createdAt: now
+      });
+
+      // 4. Activate Modules with Dependency Tracing — non-fatal (best-effort)
+      for (const moduleCode of requestedModules) {
+        try {
+          await this.moduleActivationService.activateModule(company.id, moduleCode, session.userId);
+        } catch (modErr) {
+          console.error(`Failed to activate module ${moduleCode}`, modErr);
+        }
+      }
+
+      // 5. Update Role Module Bundles
+      if (companyModules.length > 0) {
+        const ownerRole = await this.rbacCompanyRoleRepo.getById(company.id, 'OWNER');
+        const adminRole = await this.rbacCompanyRoleRepo.getById(company.id, 'ADMIN');
+        if (ownerRole) {
+          await this.rbacCompanyRoleRepo.update(company.id, ownerRole.id, {
+            moduleBundles: Array.from(new Set([...(ownerRole.moduleBundles || []), ...companyModules])),
+            resolvedPermissions: ownerRole.resolvedPermissions,
+          });
+        }
+        if (adminRole) {
+          await this.rbacCompanyRoleRepo.update(company.id, adminRole.id, {
+            moduleBundles: Array.from(new Set([...(adminRole.moduleBundles || []), ...companyModules])),
+            resolvedPermissions: adminRole.resolvedPermissions,
+          });
+        }
+        // Resolve permissions for both roles
+        await this.rolePermissionResolver.resolveRoleById(company.id, 'OWNER');
+        await this.rolePermissionResolver.resolveRoleById(company.id, 'ADMIN');
+      }
     } catch (err: any) {
+      // Compensating rollback: remove the partially-created company so the user
+      // gets a clean slate and can retry. Cleanup failures are logged but must
+      // not mask the original error.
+      try {
+        await this.companyRepo.delete(company.id);
+        console.warn(`[CompleteCompanyCreationUseCase] Rolled back partial company ${company.id} after failure`);
+      } catch (cleanupErr) {
+        console.error(`[CompleteCompanyCreationUseCase] Failed to roll back partial company ${company.id}`, cleanupErr);
+      }
       throw new Error(`Failed to create company: ${err?.message || err}`);
     }
-    await this.rbacCompanyUserRepo.assignRole({
-      userId: session.userId,
-      companyId: company.id,
-      roleId: 'OWNER',
-      isOwner: true,
-      createdAt: now
-    });
-    // 4. Activate Modules with Dependency Tracing
-    for (const moduleCode of requestedModules) {
-      try {
-        await this.moduleActivationService.activateModule(company.id, moduleCode, session.userId);
-      } catch (modErr) {
-        console.error(`Failed to activate module ${moduleCode}`, modErr);
-      }
-    }
 
-    // 5. Update Role Module Bundles
-    if (companyModules.length > 0) {
-      const ownerRole = await this.rbacCompanyRoleRepo.getById(company.id, 'OWNER');
-      const adminRole = await this.rbacCompanyRoleRepo.getById(company.id, 'ADMIN');
-      if (ownerRole) {
-        await this.rbacCompanyRoleRepo.update(company.id, ownerRole.id, {
-          moduleBundles: Array.from(new Set([...(ownerRole.moduleBundles || []), ...companyModules])),
-          resolvedPermissions: ownerRole.resolvedPermissions,
-        });
-      }
-      if (adminRole) {
-        await this.rbacCompanyRoleRepo.update(company.id, adminRole.id, {
-          moduleBundles: Array.from(new Set([...(adminRole.moduleBundles || []), ...companyModules])),
-          resolvedPermissions: adminRole.resolvedPermissions,
-        });
-      }
-      // Resolve permissions for both roles
-      await this.rolePermissionResolver.resolveRoleById(company.id, 'OWNER');
-      await this.rolePermissionResolver.resolveRoleById(company.id, 'ADMIN');
-    }
     await this.userRepo.updateActiveCompany(session.userId, company.id);
     await this.sessionRepo.delete(session.id);
 

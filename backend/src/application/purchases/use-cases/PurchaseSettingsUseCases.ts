@@ -98,6 +98,7 @@ export interface InitializePurchasesInput {
   piNumberNextSeq?: number;
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
+  exchangeGainLossAccountId?: string;
   governanceRules?: GovernanceRule[];
   /**
    * IDs of system Purchase voucher templates the user picked in the wizard.
@@ -135,6 +136,7 @@ export interface UpdatePurchasesSettingsInput {
   piNumberNextSeq?: number;
   prNumberPrefix?: string;
   prNumberNextSeq?: number;
+  exchangeGainLossAccountId?: string;
   governanceRules?: GovernanceRule[];
   defaultPurchaseInvoicePersona?: 'direct' | 'linked' | 'service';
 }
@@ -181,6 +183,12 @@ export class InitializePurchasesUseCase {
       const grniAccount = await this.accountRepo.getById(input.companyId, input.defaultGRNIAccountId);
       if (!grniAccount) {
         throw new Error(`Default GRNI account not found: ${input.defaultGRNIAccountId}`);
+      }
+    }
+    if (input.exchangeGainLossAccountId) {
+      const fxAccount = await this.accountRepo.getById(input.companyId, input.exchangeGainLossAccountId);
+      if (!fxAccount) {
+        throw new Error(`Exchange Gain/Loss account not found: ${input.exchangeGainLossAccountId}`);
       }
     }
 
@@ -247,6 +255,7 @@ export class InitializePurchasesUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? 1,
       prNumberPrefix: input.prNumberPrefix || 'PR',
       prNumberNextSeq: input.prNumberNextSeq ?? 1,
+      exchangeGainLossAccountId: input.exchangeGainLossAccountId,
       governanceRules,
     });
 
@@ -363,6 +372,7 @@ export class UpdatePurchaseSettingsUseCase {
     const nextAPParentAccountId = input.apParentAccountId ?? existing.apParentAccountId;
     const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
     const nextGRNIAccountId = input.defaultGRNIAccountId ?? existing.defaultGRNIAccountId;
+    const nextExchangeGainLossAccountId = input.exchangeGainLossAccountId ?? existing.exchangeGainLossAccountId;
     if (accountingMode === 'PERPETUAL' && !nextGRNIAccountId) {
       throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
     }
@@ -376,6 +386,12 @@ export class UpdatePurchaseSettingsUseCase {
       const grniAccount = await this.accountRepo.getById(input.companyId, nextGRNIAccountId);
       if (!grniAccount) {
         throw new Error(`Default GRNI account not found: ${nextGRNIAccountId}`);
+      }
+    }
+    if (nextExchangeGainLossAccountId) {
+      const fxAccount = await this.accountRepo.getById(input.companyId, nextExchangeGainLossAccountId);
+      if (!fxAccount) {
+        throw new Error(`Exchange Gain/Loss account not found: ${nextExchangeGainLossAccountId}`);
       }
     }
     if (nextAPParentAccountId) {
@@ -422,6 +438,7 @@ export class UpdatePurchaseSettingsUseCase {
       piNumberNextSeq: input.piNumberNextSeq ?? existing.piNumberNextSeq,
       prNumberPrefix: input.prNumberPrefix ?? existing.prNumberPrefix,
       prNumberNextSeq: input.prNumberNextSeq ?? existing.prNumberNextSeq,
+      exchangeGainLossAccountId: nextExchangeGainLossAccountId,
       governanceRules: nextGovernanceRules,
       defaultPurchaseInvoicePersona: input.defaultPurchaseInvoicePersona ?? existing.defaultPurchaseInvoicePersona,
     });

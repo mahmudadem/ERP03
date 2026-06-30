@@ -8,7 +8,7 @@
 
 import { PrismaClient } from '@prisma/client';
 import { IAccountRepository, CashFlowCategory, PlSubgroup, EquitySubgroup } from '../../../../repository/interfaces/accounting/IAccountRepository';
-import { Account, AccountClassification, AccountRole, AccountStatus, BalanceNature, BalanceEnforcement, CurrencyPolicy } from '../../../../domain/accounting/models/Account';
+import { Account, AccountClassification, AccountRole, AccountStatus, BalanceNature, BalanceEnforcement, CurrencyPolicy, normalizeClassification } from '../../../../domain/accounting/models/Account';
 
 export class PrismaAccountRepository implements IAccountRepository {
   constructor(private prisma: PrismaClient) {}
@@ -26,7 +26,12 @@ export class PrismaAccountRepository implements IAccountRepository {
       name: record.name,
       description: record.description ?? null,
       accountRole: record.accountRole as AccountRole,
-      classification: record.classification as AccountClassification,
+      // Normalize on read: legacy COA seeding stored mixed-case values ('asset' vs
+      // 'ASSET'), and consumers compare case-sensitively (=== 'ASSET') in the AR-parent
+      // check and several reports. Present a single canonical UPPERCASE form everywhere.
+      classification: (record.classification
+        ? normalizeClassification(record.classification)
+        : record.classification) as AccountClassification,
       balanceNature: record.balanceNature as BalanceNature,
       balanceEnforcement: record.balanceEnforcement as BalanceEnforcement,
       parentId: record.parentId ?? null,
@@ -100,7 +105,7 @@ export class PrismaAccountRepository implements IAccountRepository {
   async create(companyId: string, data: any): Promise<Account> {
     const systemCode = await this.generateNextSystemCode(companyId);
     const userCode = data.userCode || data.code || '';
-    const classification = (data.classification || data.type || 'ASSET') as AccountClassification;
+    const classification = normalizeClassification(data.classification || data.type || 'ASSET');
     const balanceNature = data.balanceNature || this.getDefaultBalanceNature(classification);
     const accountRole = data.accountRole || 'POSTING';
     const balanceEnforcement = data.balanceEnforcement || 'WARN_ABNORMAL';
@@ -175,7 +180,7 @@ export class PrismaAccountRepository implements IAccountRepository {
       updateData.accountRole = data.accountRole;
     }
     if (data.classification !== undefined || data.type !== undefined) {
-      updateData.classification = data.classification || data.type;
+      updateData.classification = normalizeClassification(data.classification || data.type);
     }
     if (data.balanceNature !== undefined) {
       updateData.balanceNature = data.balanceNature;

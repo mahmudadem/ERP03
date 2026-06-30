@@ -17,7 +17,8 @@ export class PrismaPurchaseSettingsRepository implements IPurchaseSettingsReposi
     await this.prisma.purchaseSettings.upsert({
       where: { companyId: settings.companyId },
       create: {
-        companyId: settings.companyId,
+        // companyId is set via the `company` relation connect — Prisma rejects the
+        // scalar FK and the relation together on create.
         settings: settings.toJSON() as any,
         company: { connect: { id: settings.companyId } },
       } as any,

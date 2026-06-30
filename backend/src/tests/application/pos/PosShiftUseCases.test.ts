@@ -7,6 +7,7 @@ import { PosShift } from '../../../domain/pos/entities/PosShift';
 import { PosRegister } from '../../../domain/pos/entities/PosRegister';
 import { PosSettings } from '../../../domain/pos/entities/PosSettings';
 import { PosCashMovement } from '../../../domain/pos/entities/PosCashMovement';
+import { ValidationError } from '../../../errors/AppError';
 
 const makeRegister = (overrides: Partial<any> = {}): PosRegister =>
   PosRegister.fromJSON({
@@ -377,9 +378,21 @@ describe('PosShiftUseCases', () => {
       const tx = { runTransaction: async (fn: any) => fn({}) };
       const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
-      await expect(
-        useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 90, actor: { userId: 'cashier_1' } })
-      ).rejects.toThrow(/Cash Short account/);
+      const rejection = useCase.execute({
+        companyId: 'cmp_test',
+        shiftId: 'shift_1',
+        countedCash: 90,
+        actor: { userId: 'cashier_1' },
+      });
+      await expect(rejection).rejects.toBeInstanceOf(ValidationError);
+      await expect(rejection).rejects.toMatchObject({
+        message: expect.stringMatching(/Cash Short account/),
+        field: 'cashShortAccountId',
+        context: {
+          settingsPath: '/pos/settings',
+          varianceType: 'SHORT',
+        },
+      });
       expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
       expect(shiftRepo.update).not.toHaveBeenCalled();
     });

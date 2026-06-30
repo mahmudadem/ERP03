@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { posApi } from '../../../api/posApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { sortReportRowsByDateTimeDesc } from '../../../components/reports/reportSorting';
 import { PosDateRangeInitiator, PosDateRangeParams } from './PosDateRangeInitiator';
 
 interface ReprintAuditRow {
@@ -30,7 +31,7 @@ const PosReprintAuditReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
       posApi.getReprintAuditReport({ dateFrom: params.dateFrom, dateTo: params.dateTo, limit: 500 })
         .then((data) => {
           if (!cancelled) {
-            const nextRows = (data || []) as ReprintAuditRow[];
+            const nextRows = sortReportRowsByDateTimeDesc((data || []) as ReprintAuditRow[], ['reprintedAt', 'createdAt']);
             setRows(nextRows);
             setTotalItems?.(nextRows.length);
           }

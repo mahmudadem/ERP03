@@ -36,7 +36,7 @@ interface Input {
   starterTemplateId?: 'simple-trading-company';
   accountingMode?: SimpleTradingCompanyMode;
   // NOTE-01: optional onboarding-wizard overrides for the starter policy.
-  coaTemplate?: 'periodic_trading' | 'standard';
+  coaTemplate?: 'periodic_trading' | 'periodic_trading_ar' | 'standard' | 'standard_ar';
   costingBasis?: 'GLOBAL' | 'WAREHOUSE';
   defaultWarehouseCode?: string;
   defaultWarehouseName?: string;

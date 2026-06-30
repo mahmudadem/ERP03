@@ -58,6 +58,12 @@ export const ErrorModal: React.FC = () => {
   };
 
   const message = errorHandler.translateError(error);
+  const technicalReference = [
+    error.context?.method,
+    error.context?.apiPath,
+    error.context?.httpStatus ? `HTTP ${error.context.httpStatus}` : undefined,
+    error.code,
+  ].filter(Boolean).join(' · ');
 
   return (
     <div className="fixed inset-0 z-[1000001] flex items-center justify-center bg-black bg-opacity-50">
@@ -79,6 +85,14 @@ export const ErrorModal: React.FC = () => {
         {/* Body */}
         <div className="p-6">
           <p className="text-gray-700 dark:text-[var(--color-text-secondary)] whitespace-pre-wrap">{message}</p>
+          {technicalReference && (
+            <div className="mt-4 rounded-md border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600 dark:border-[var(--color-border)] dark:bg-[var(--color-bg-tertiary)] dark:text-[var(--color-text-secondary)]">
+              <div className="font-semibold uppercase tracking-wide text-[10px] text-gray-500 dark:text-[var(--color-text-muted)]">
+                {t('errorModal.technicalReference', 'Technical reference')}
+              </div>
+              <div className="mt-1 font-mono break-all">{technicalReference}</div>
+            </div>
+          )}
           
           {/* Show error code for debugging */}
           {process.env.NODE_ENV === 'development' && (

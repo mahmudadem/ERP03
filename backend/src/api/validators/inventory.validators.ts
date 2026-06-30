@@ -219,6 +219,18 @@ export const validateUpdateCategoryInput = (body: any) => {
   if (body.name !== undefined) ensureRequiredString(body.name, 'name');
 };
 
+const validateUomTranslations = (translations: any) => {
+  if (translations === undefined) return;
+  if (!translations || typeof translations !== 'object' || Array.isArray(translations)) {
+    throw ApiError.badRequest('translations must be an object keyed by language code');
+  }
+  for (const [language, value] of Object.entries(translations)) {
+    if (!/^[a-z]{2,8}(-[a-z0-9]{2,8})?$/i.test(language) || typeof value !== 'string') {
+      throw ApiError.badRequest('translations must contain string values keyed by valid language codes');
+    }
+  }
+};
+
 export const validateCreateUomInput = (body: any) => {
   ensureRequiredString(body.code, 'code');
   ensureRequiredString(body.name, 'name');
@@ -229,6 +241,7 @@ export const validateCreateUomInput = (body: any) => {
     }
   }
   if (body.active !== undefined) ensureBoolean(body.active, 'active');
+  validateUomTranslations(body.translations);
 };
 
 export const validateUpdateUomInput = (body: any) => {
@@ -241,6 +254,7 @@ export const validateUpdateUomInput = (body: any) => {
     }
   }
   if (body.active !== undefined) ensureBoolean(body.active, 'active');
+  validateUomTranslations(body.translations);
 };
 
 export const validateCreateWarehouseInput = (body: any) => {

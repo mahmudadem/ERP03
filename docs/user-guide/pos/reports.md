@@ -2,6 +2,16 @@
 
 Ten POS report pages + one link live under **POS → Reports** in the sidebar. UI report pages use the shared ReportContainer (two-stage `initiator → report content`, Excel/PDF/print, columns toggle).
 
+Reports that show dated rows open with the newest date/time first. This applies
+to Daily Summary, Receipt History, Cancelled Receipts, Cash Over/Short, Override
+Audit, and Reprint Audit. Grouped summaries such as Payment Methods, Cashier
+Sales, and Top Selling Items keep their own grouping or ranking order.
+
+Date filters default to the last 30 days: **Date from** is the older date and
+**Date to** is today. In Arabic/RTL sessions the fields still appear in that
+same business order so the range is not visually reversed. The date picker's
+quick-select menu is translated.
+
 ## Z Report (by shift)
 
 **Use:** finalized close summary for a single shift.
@@ -14,7 +24,7 @@ This is the report to run on every shift close, to spot cashier over/short trend
 
 **Use:** receipts and returns per day.
 **Input:** date range (defaults to last 30 days).
-**Output:** per-day row with receipt count, return count, gross, returns, net.
+**Output:** per-day row with receipt count, return count, gross, returns, net. Newest day appears first.
 
 ## Payment Methods
 
@@ -32,19 +42,19 @@ This is the report to run on every shift close, to spot cashier over/short trend
 
 **Use:** variance history across all CLOSED shifts.
 **Input:** date range.
-**Output:** one row per closed or reconciled shift with expected cash, counted cash, over/short, and the voucher id (if any was posted).
+**Output:** one row per closed or reconciled shift with expected cash, counted cash, over/short, and the voucher id (if any was posted). Newest close time appears first.
 
 ## Receipt History
 
 **Use:** every POS receipt in the period with the linked Sales Invoice number.
 **Input:** date range.
-**Output:** receipt / SI / register / customer / total / date.
+**Output:** receipt / SI / register / customer / total / date. Newest receipt time appears first.
 
 ## Cancelled Receipts
 
 **Use:** posted POS receipts that were marked voided after reversal.
 **Input:** date range.
-**Output:** receipt, status, register, cashier, original total, and date.
+**Output:** receipt, status, register, cashier, original total, and date. Newest cancellation/receipt time appears first.
 
 This report does not create the cancellation. It only lists receipts already marked `VOIDED`. In ERP03 POS, posted receipt cancellation must first create the linked POS return/reversal, then mark the receipt voided.
 
@@ -60,7 +70,7 @@ Voided receipt lines are excluded. This is a gross selling report and does not s
 
 **Use:** manager review of POS exceptions.
 **Input:** date range, optional register.
-**Output:** one row per voided line, manual discount, price override, or tax override. Rows show the receipt, register, shift, cashier, item, discount/override details, void reason, and manager override id when supplied.
+**Output:** one row per voided line, manual discount, price override, or tax override. Rows show the receipt, register, shift, cashier, item, discount/override details, void reason, and manager override id when supplied. Newest event time appears first.
 
 Open **POS → Reports → Override Audit** to review these rows.
 
@@ -68,7 +78,7 @@ Open **POS → Reports → Override Audit** to review these rows.
 
 **Use:** manager review of duplicate receipt copies.
 **Input:** date range.
-**Output:** receipt number, reprint time, cashier user, cashier email, and manager override id when supplied.
+**Output:** receipt number, reprint time, cashier user, cashier email, and manager override id when supplied. Newest reprint time appears first.
 
 Open **POS → Reports → Reprint Audit** to review receipt reprint events. If cashier role policy requires approval for reprints, the backend blocks the reprint until a manager override id is supplied.
 

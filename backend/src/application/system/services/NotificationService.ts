@@ -29,12 +29,39 @@ export interface NotifyOptions {
  * Uses repository for persistence and realtime dispatcher for push delivery.
  */
 export class NotificationService {
+  private static readonly REALTIME_PUSH_TIMEOUT_MS = 2000;
+
   constructor(
     private readonly notificationRepository: INotificationRepository,
     private readonly realtimeDispatcher: IRealtimeDispatcher,
     private readonly userPreferencesRepository?: IUserPreferencesRepository,
     private readonly companySettingsRepository?: ICompanySettingsRepository
   ) {}
+
+  private async pushRealtimeBestEffort(
+    companyId: string,
+    recipientUserIds: string[],
+    notification: Notification
+  ): Promise<void> {
+    const push = this.realtimeDispatcher
+      .pushToMany(companyId, recipientUserIds, notification)
+      .catch((error) => {
+        console.warn('[NotificationService] Realtime notification push failed:', error);
+      });
+
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<void>((resolve) => {
+      timeoutId = setTimeout(() => {
+        console.warn('[NotificationService] Realtime notification push timed out; notification was still persisted.');
+        resolve();
+      }, NotificationService.REALTIME_PUSH_TIMEOUT_MS);
+    });
+
+    await Promise.race([push, timeout]);
+    if (timeoutId) {
+      clearTimeout(timeoutId);
+    }
+  }
 
   /**
    * Create and dispatch a notification to multiple users
@@ -110,12 +137,10 @@ export class NotificationService {
     // 1. Persist to Firestore
     await this.notificationRepository.create(notification);
 
-    // 2. Push via Realtime DB for instant delivery
-    await this.realtimeDispatcher.pushToMany(
-      options.companyId,
-      finalRecipients,
-      notification
-    );
+    // 2. Push via Realtime DB for instant delivery. This is best-effort:
+    // persisted notifications are the source of truth, and broken realtime
+    // delivery must not block financial/accounting user actions.
+    await this.pushRealtimeBestEffort(options.companyId, finalRecipients, notification);
 
     return notification;
   }

@@ -9,6 +9,7 @@ const item = {
   trackInventory: true,
   baseUom: 'EA',
   salesUomId: 'uom_ea',
+  uomBarcodes: [],
   defaultSalesTaxCodeId: 'tax_1',
   salePrice: 10,
 };
@@ -46,5 +47,23 @@ describe('SearchPosProductsUseCase commercial pricing', () => {
     const result = await useCase.execute({ companyId: 'cmp_1', query: 'SKU' });
 
     expect(result.items[0].salePrice).toBe(10);
+  });
+
+  it('resolves a scanned UOM barcode using that UOM and its price', async () => {
+    const itemRepo = {
+      searchItems: jest.fn().mockResolvedValue([{
+        ...item,
+        uomBarcodes: [{ uomId: 'uom_box', uom: 'BOX', barcodes: ['BOX-123'] }],
+      }]),
+    };
+    const commercialCore = { resolvePrice: jest.fn().mockResolvedValue(96) };
+    const useCase = new SearchPosProductsUseCase(itemRepo as any, commercialCore as any);
+
+    const result = await useCase.execute({ companyId: 'cmp_1', query: 'BOX-123' });
+
+    expect(commercialCore.resolvePrice).toHaveBeenCalledWith({
+      companyId: 'cmp_1', itemId: 'item_1', channel: 'pos', uomId: 'uom_box',
+    });
+    expect(result.items[0]).toMatchObject({ uomId: 'uom_box', uom: 'BOX', salePrice: 96 });
   });
 });

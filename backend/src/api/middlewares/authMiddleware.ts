@@ -41,6 +41,7 @@ export const authMiddleware = async (req: Request, res: Response, next: NextFunc
     const uid = decodedToken.uid;
     
     const userEntity = await diContainer.userRepository.getUserById(uid);
+    console.log(`[authMiddleware] uid=${uid}, userEntity found=${!!userEntity}, isAdmin=${userEntity?.isAdmin()}`);
     // Check for explicit company context header
     const headerCompanyId = req.headers['x-company-id'] as string;
     

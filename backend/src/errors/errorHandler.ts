@@ -80,6 +80,21 @@ export function errorHandler(
     return res.status(statusCode).json(response);
   }
 
+  if (typeof maybeApiError.statusCode === 'number') {
+    const statusCode = maybeApiError.statusCode;
+    const response: ApiErrorResponse = {
+      success: false,
+      error: {
+        code: resolveStatusCodeErrorCode(statusCode, maybeApiError.code),
+        message: err.message,
+        severity: statusCode >= 500 ? ErrorSeverity.CRITICAL : ErrorSeverity.ERROR,
+        timestamp: new Date().toISOString(),
+      },
+    };
+
+    return res.status(statusCode).json(response);
+  }
+
   // Credit limit (Sales guard) → 422 with the uniform contract.
   if (err instanceof CreditLimitExceededError) {
     return res.status(422).json({
@@ -162,6 +177,23 @@ export function errorHandler(
   };
 
   res.status(500).json(response);
+}
+
+function resolveStatusCodeErrorCode(statusCode: number, code?: string): ErrorCode {
+  if (code && Object.values(ErrorCode).includes(code as ErrorCode)) {
+    return code as ErrorCode;
+  }
+
+  switch (statusCode) {
+    case 400:
+      return ErrorCode.VAL_INVALID_FORMAT;
+    case 404:
+      return ErrorCode.ACC_ACCOUNT_NOT_FOUND;
+    case 409:
+      return ErrorCode.VAL_DUPLICATE_ENTRY;
+    default:
+      return statusCode >= 500 ? ErrorCode.INFRA_UNKNOWN_ERROR : ErrorCode.VAL_INVALID_FORMAT;
+  }
 }
 
 /**

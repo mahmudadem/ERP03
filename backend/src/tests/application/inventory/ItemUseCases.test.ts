@@ -1,4 +1,9 @@
-import { CreateItemUseCase, UpdateItemUseCase } from '../../../application/system-core/catalog/use-cases/ItemUseCases';
+import {
+  CreateItemUseCase,
+  DeleteItemUseCase,
+  GetItemUseCase,
+  UpdateItemUseCase,
+} from '../../../application/system-core/catalog/use-cases/ItemUseCases';
 import { IItemRepository } from '../../../repository/interfaces/inventory';
 import { Item } from '../../../domain/inventory/entities/Item';
 import { BusinessError } from '../../../errors/AppError';
@@ -17,6 +22,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
       getItem: jest.fn(),
       hasMovements: jest.fn(),
       updateItem: jest.fn(),
+      setItemActive: jest.fn(),
     } as any;
     createUseCase = new CreateItemUseCase(mockItemRepo);
     updateUseCase = new UpdateItemUseCase(mockItemRepo);
@@ -80,6 +86,29 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Barcode already in use: 123', { field: 'barcodes', value: '123' })
       );
     });
+
+    it('rejects a UOM barcode duplicated by a general barcode', async () => {
+      const input: any = {
+        companyId: 'c1', code: 'ITM1', name: 'Item 1', type: 'PRODUCT',
+        baseUom: 'PCS', costCurrency: 'USD', trackInventory: true, createdBy: 'user1',
+        barcode: 'BOX-1',
+        uomBarcodes: [{ uom: 'BOX', barcodes: ['BOX-1'] }],
+      };
+
+      await expect(createUseCase.execute(input)).rejects.toThrow('Duplicate barcode in payload: BOX-1');
+    });
+
+    it('checks company uniqueness for every UOM barcode', async () => {
+      mockItemRepo.getItemByBarcode.mockResolvedValue({ id: 'other' } as Item);
+      const input: any = {
+        companyId: 'c1', code: 'ITM1', name: 'Item 1', type: 'PRODUCT',
+        baseUom: 'PCS', costCurrency: 'USD', trackInventory: true, createdBy: 'user1',
+        uomBarcodes: [{ uom: 'BOX', barcodes: ['BOX-1'] }],
+      };
+
+      await expect(createUseCase.execute(input)).rejects.toThrow('Barcode already in use: BOX-1');
+      expect(mockItemRepo.getItemByBarcode).toHaveBeenCalledWith('c1', 'BOX-1');
+    });
   });
 
   describe('UpdateItemUseCase', () => {
@@ -90,7 +119,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcodes: ['999', '999'],
       };
 
-      await expect(updateUseCase.execute('item1', input)).rejects.toThrow(
+      await expect(updateUseCase.execute('c1', 'item1', input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Duplicate barcode in payload: 999', { field: 'barcodes', value: '999' })
       );
     });
@@ -103,7 +132,7 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcode: '999',
       };
 
-      await expect(updateUseCase.execute('item1', input)).rejects.toThrow(
+      await expect(updateUseCase.execute('c1', 'item1', input)).rejects.toThrow(
         new BusinessError(ErrorCode.VAL_DUPLICATE_ENTRY, 'Barcode already in use: 999', { field: 'barcodes', value: '999' })
       );
     });
@@ -118,9 +147,35 @@ describe('ItemUseCases Barcode Uniqueness', () => {
         barcode: '999',
       };
 
-      await updateUseCase.execute('item1', input);
+      await updateUseCase.execute('c1', 'item1', input);
       // If it doesn't throw, test passes
       expect(mockItemRepo.getItemByBarcode).toHaveBeenCalledWith('c1', '999');
+    });
+
+    it('should reject an item owned by another company', async () => {
+      mockItemRepo.getItem.mockResolvedValue({ id: 'item1', companyId: 'c2', type: 'PRODUCT' } as Item);
+
+      await expect(updateUseCase.execute('c1', 'item1', { name: 'Changed' })).rejects.toThrow(
+        'Item not found: item1'
+      );
+      expect(mockItemRepo.updateItem).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('tenant isolation', () => {
+    it('should hide an item owned by another company', async () => {
+      mockItemRepo.getItem.mockResolvedValue({ id: 'item1', companyId: 'c2' } as Item);
+      const getUseCase = new GetItemUseCase(mockItemRepo);
+
+      await expect(getUseCase.execute('c1', 'item1')).resolves.toBeNull();
+    });
+
+    it('should not deactivate an item owned by another company', async () => {
+      mockItemRepo.getItem.mockResolvedValue({ id: 'item1', companyId: 'c2' } as Item);
+      const deleteUseCase = new DeleteItemUseCase(mockItemRepo);
+
+      await expect(deleteUseCase.execute('c1', 'item1')).rejects.toThrow('Item not found: item1');
+      expect(mockItemRepo.setItemActive).not.toHaveBeenCalled();
     });
   });
 });

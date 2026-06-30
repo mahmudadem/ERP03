@@ -22,6 +22,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
 | **Inventory Valuation** | Value current or as-of stock using Average or Last Purchase policy. |
 | **Stock Levels** | See what's on hand, what's reserved, and the running average cost. |
 | **Stock Movements** | The full append-only ledger of every movement. |
+| **Unsettled Costs** | Review stock-out movements still waiting for cost settlement. |
 | **Alerts** | Items below minimum stock level. |
 | **Dashboard** | KPIs: total value, item count, low/negative stock, recent activity. |
 
@@ -42,7 +43,7 @@ It's tightly wired into **Sales** (delivering decrements stock) and **Purchases*
    - *(Optional)* GL accounts for inventory asset, revenue, and COGS — defaults come from category or company settings
    - UOM conversions such as `BOX → PCS`. Each From/To pair can appear only once per item; if the pair already exists,
      update its factor row instead of adding another row.
-6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset.
+6. **Opening Stock:** `Inventory → Opening Stock Documents → New Document`. Enter your starting stock per item per warehouse. This is a one-time event. Once posted, it can't be edited (use an Adjustment instead). If you enable the accounting effect, the offset account is prefilled from Inventory Settings and can be overridden per document. It must be an Opening Balance Equity / retained-earnings style account. Do not use Inventory, COGS, revenue, AP, or AR as the offset. If the Opening Stock list is empty but warns about legacy opening-stock movements, review **Stock Movements** first so you do not enter the same opening stock twice.
 
 ### Maintaining item UOM conversions
 
@@ -95,6 +96,8 @@ If negative stock is allowed, the report still shows the financial exposure. Exa
 shows value `-2400`. If there is no known cost basis, the report marks the line as **Unvalued negative stock** instead
 of showing a clean zero.
 
+The Stock Levels report title, filters, view selector, table columns, warnings, and summary chips follow your selected language.
+
 ### Tracking history — Item Movement
 
 `Inventory → Reports → Item Movement`. Select an item to see the full append-only ledger for that item. Filter by
@@ -104,6 +107,9 @@ Use this when an auditor asks "show me every transaction that touched item X in 
 
 The report shows running quantity and running value. If the source document has a supported detail page, the source
 reference is clickable. If not, the reference remains plain text.
+
+The Item Movement report title, filters, direction/source/movement options, table columns, source labels, loading state,
+and empty state follow your selected language.
 
 ### Maintaining item UOM conversions
 
@@ -123,7 +129,15 @@ Use it when you need:
 - an as-of-date stock value
 - a quick comparison between **Average** and **Last Purchase** pricing
 
+The report title, filters, table columns, loading state, empty state, and summary chips follow your selected language.
+
 For periodic companies, this report is also the source for the Balance Sheet inventory figure and the Trading / Profit & Loss cost-of-sales calculation.
+
+### Reconciling stock to the GL — Inventory GL Reconciliation
+
+Open `Inventory → Reports → Inventory GL Reconciliation`.
+
+Use this report to compare inventory sub-ledger value with the General Ledger inventory asset balances as of a selected date. The report title, explanation, status banner, summary values, table columns, status badges, loading state, and empty state follow your selected language.
 
 ---
 

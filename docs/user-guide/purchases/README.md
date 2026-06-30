@@ -4,6 +4,15 @@ The Purchases module is the mirror image of Sales: it handles everything from "w
 
 It is wired into **Accounting** (bills become journal entries) and **Inventory** (receipts increment stock). The wiring is automatic — just use Purchases and the rest follows.
 
+## Dashboard and analytics
+
+The Purchases dashboard summarizes posted purchase invoices and recent purchase
+activity. Purchases analytics uses the same posted-invoice source.
+
+After the production Firestore index update, posted invoices appear in these
+views without a system-error dialog. The update does not recreate, repost, or
+change any purchase invoice.
+
 Key guides:
 
 - [Vendor AP Sub-accounts](D:/DEV2026/ERP03/docs/user-guide/purchases/vendor-ap-subaccounts.md)
@@ -12,6 +21,8 @@ Key guides:
 - [Purchase Invoice Native Form](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-native-form.md)
 - [Purchase Invoice Attachments](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-invoice-attachments.md)
 - [Purchase Price Lists](D:/DEV2026/ERP03/docs/user-guide/purchases/purchase-price-lists.md)
+
+Purchases reports follow the selected interface language. The AP Aging report localizes its filters, summary, aging buckets, empty state, and expanded invoice-detail rows, while keeping the same posted-payables aging logic. The Vendor Statement also localizes its ledger, open-bills, and open-commitments table labels while keeping the same posted-AP ledger source.
 
 ---
 

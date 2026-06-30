@@ -1,4 +1,4 @@
-import { InventoryItemDTO, UomConversionDTO } from '../../../api/inventoryApi';
+import { InventoryItemDTO, InventoryUomDTO, UomConversionDTO } from '../../../api/inventoryApi';
 
 export interface ManagedUomOption {
   uomId?: string;
@@ -10,7 +10,9 @@ const normalizeCode = (value?: string | null): string => (value || '').trim().to
 
 export const buildItemUomOptions = (
   item?: InventoryItemDTO | null,
-  conversions: UomConversionDTO[] = []
+  conversions: UomConversionDTO[] = [],
+  uoms: InventoryUomDTO[] = [],
+  language = 'en'
 ): ManagedUomOption[] => {
   if (!item) return [];
 
@@ -41,7 +43,12 @@ export const buildItemUomOptions = (
     if (seen.has(key)) return false;
     seen.add(key);
     candidate.code = code;
-    candidate.label = code;
+    const master = uoms.find((uom) => uom.id === candidate.uomId || normalizeCode(uom.code) === code);
+    const languageKey = language.toLowerCase().split('-')[0];
+    candidate.label = master?.translations?.[language.toLowerCase()]
+      || master?.translations?.[languageKey]
+      || master?.name
+      || code;
     return true;
   });
 };

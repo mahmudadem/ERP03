@@ -10,6 +10,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { ItemSelector, WarehouseSelector } from '../../../components/shared/selectors';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from 'react-i18next';
 
 type ViewMode = 'byItem' | 'byWarehouse';
 
@@ -30,24 +31,19 @@ interface ItemRollup {
   warehouses: StockLevelDTO[];
 }
 
-const fmt = (value: number | null | undefined) =>
+const fmt = (value: number | null | undefined, unvaluedLabel: string) =>
   value === null || value === undefined
-    ? 'Unvalued'
+    ? unvaluedLabel
     : value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 const fmtQty = (value: number) =>
   value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 
-const costLabel = (basis?: StockLevelDTO['costBasis']) => {
-  if (basis === 'AVG') return 'Average';
-  if (basis === 'LAST_KNOWN') return 'Last known';
-  return 'Missing';
-};
-
 const Initiator: React.FC<{
   onSubmit: (params: StockLevelParams) => void;
   initialParams?: StockLevelParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('common');
   const [itemId, setItemId] = useState(initialParams?.itemId || '');
   const [warehouseId, setWarehouseId] = useState(initialParams?.warehouseId || '');
   const [viewMode, setViewMode] = useState<ViewMode>(initialParams?.viewMode || 'byItem');
@@ -70,31 +66,31 @@ const Initiator: React.FC<{
     >
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
         <div className="md:col-span-6 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Item</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('inventory.stockLevels.filters.item', { defaultValue: 'Item' })}</label>
           <ItemSelector
             value={itemId}
             trackInventoryOnly
             onChange={(item) => setItemId(item?.id || '')}
-            placeholder="All tracked items"
+            placeholder={t('inventory.stockLevels.filters.allTrackedItems', { defaultValue: 'All tracked items' })}
           />
         </div>
         <div className="md:col-span-6 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Warehouse</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('inventory.stockLevels.filters.warehouse', { defaultValue: 'Warehouse' })}</label>
           <WarehouseSelector
             value={warehouseId}
             onChange={(warehouse) => setWarehouseId(warehouse?.id || '')}
-            placeholder="All warehouses"
+            placeholder={t('inventory.stockLevels.filters.allWarehouses', { defaultValue: 'All warehouses' })}
           />
         </div>
         <div className="md:col-span-4 space-y-2">
-          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">View</label>
+          <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">{t('inventory.stockLevels.filters.view', { defaultValue: 'View' })}</label>
           <select
             value={viewMode}
             onChange={(event) => setViewMode(event.target.value as ViewMode)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50"
           >
-            <option value="byItem">By item</option>
-            <option value="byWarehouse">By warehouse</option>
+            <option value="byItem">{t('inventory.stockLevels.viewMode.byItem', { defaultValue: 'By item' })}</option>
+            <option value="byWarehouse">{t('inventory.stockLevels.viewMode.byWarehouse', { defaultValue: 'By warehouse' })}</option>
           </select>
         </div>
         <label className="md:col-span-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-semibold text-slate-700">
@@ -104,7 +100,7 @@ const Initiator: React.FC<{
             onChange={(event) => setIncludeZero(event.target.checked)}
             className="h-4 w-4 rounded border-slate-300"
           />
-          Include zero quantity
+          {t('inventory.stockLevels.filters.includeZero', { defaultValue: 'Include zero quantity' })}
         </label>
         <label className="md:col-span-4 flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50/50 px-4 py-3 text-sm font-semibold text-slate-700">
           <input
@@ -113,14 +109,14 @@ const Initiator: React.FC<{
             onChange={(event) => setIncludeNegative(event.target.checked)}
             className="h-4 w-4 rounded border-slate-300"
           />
-          Include negative stock
+          {t('inventory.stockLevels.filters.includeNegative', { defaultValue: 'Include negative stock' })}
         </label>
       </div>
 
       <div className="flex justify-end pt-4 border-t border-slate-100">
         <Button type="submit" className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl">
           <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
+            {t('common.generate', { defaultValue: 'Generate Report' })}
             <ChevronRight className="w-4 h-4" />
           </span>
         </Button>
@@ -141,6 +137,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, pagination, setTotalItems, density }) => {
+  const { t } = useTranslation('common');
   const [levels, setLevels] = useState<StockLevelDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -171,7 +168,7 @@ const ReportContent: React.FC<{
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.message || 'Failed to load stock levels');
+        setError(err?.message || t('inventory.stockLevels.loadFailed', { defaultValue: 'Failed to load stock levels' }));
       })
       .finally(() => {
         if (!cancelled) setLoading(false);
@@ -237,28 +234,41 @@ const ReportContent: React.FC<{
   const negativeCount = levels.filter((level) => level.qtyOnHand < 0).length;
   const unvaluedCount = levels.filter((level) => level.unvaluedNegativeStock).length;
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
+  const unvaluedLabel = t('inventory.stockLevels.unvalued', { defaultValue: 'Unvalued' });
+  const costLabel = (basis?: StockLevelDTO['costBasis']) => {
+    if (basis === 'AVG') return t('inventory.stockLevels.costBasis.average', { defaultValue: 'Average' });
+    if (basis === 'LAST_KNOWN') return t('inventory.stockLevels.costBasis.lastKnown', { defaultValue: 'Last known' });
+    return t('inventory.stockLevels.costBasis.missing', { defaultValue: 'Missing' });
+  };
+  const warningLabel = (isUnvaluedNegative: boolean, qtyOnHand: number) => {
+    if (isUnvaluedNegative) return t('inventory.stockLevels.status.unvaluedNegative', { defaultValue: 'Negative stock has no cost basis' });
+    if (qtyOnHand < 0) return t('inventory.stockLevels.status.negativeValued', { defaultValue: 'Negative valued stock' });
+    return t('inventory.stockLevels.status.valued', { defaultValue: 'Valued' });
+  };
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="text-xs font-semibold text-slate-700 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
-            {params.viewMode === 'byItem' ? 'By item' : 'By warehouse'}
+            {params.viewMode === 'byItem'
+              ? t('inventory.stockLevels.viewMode.byItem', { defaultValue: 'By item' })
+              : t('inventory.stockLevels.viewMode.byWarehouse', { defaultValue: 'By warehouse' })}
           </span>
           {negativeCount > 0 && (
             <span className="text-xs font-semibold text-red-700 border border-red-200 bg-red-50 rounded-full px-2 py-1">
-              Negative lines: {negativeCount}
+              {t('inventory.stockLevels.chips.negativeLines', { count: negativeCount, defaultValue: 'Negative lines: {{count}}' })}
             </span>
           )}
           {unvaluedCount > 0 && (
             <span className="inline-flex items-center gap-1 text-xs font-semibold text-amber-800 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
               <TriangleAlert className="h-3 w-3" />
-              Unvalued negatives: {unvaluedCount}
+              {t('inventory.stockLevels.chips.unvaluedNegatives', { count: unvaluedCount, defaultValue: 'Unvalued negatives: {{count}}' })}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            Lines: <span className="font-black text-slate-700">{levels.length}</span> ·
-            Value: <span className="font-black text-emerald-700">{fmt(totalValue)}</span>
+            {t('inventory.stockLevels.summary.lines', { defaultValue: 'Lines' })}: <span className="font-black text-slate-700">{levels.length}</span> ·
+            {t('inventory.stockLevels.summary.value', { defaultValue: 'Value' })}: <span className="font-black text-emerald-700">{fmt(totalValue, unvaluedLabel)}</span>
           </span>
         </div>
       </div>
@@ -269,13 +279,13 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading stock levels...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('inventory.stockLevels.loading', { defaultValue: 'Loading stock levels...' })}</p>
             </div>
           </div>
         ) : rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 shadow-sm text-center">
             <Layers className="w-10 h-10 text-slate-300 mx-auto mb-3" />
-            <p className="text-sm font-bold text-slate-600">No stock levels match the filters.</p>
+            <p className="text-sm font-bold text-slate-600">{t('inventory.stockLevels.empty', { defaultValue: 'No stock levels match the filters.' })}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
@@ -283,12 +293,12 @@ const ReportContent: React.FC<{
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className={`${cellPad} text-left`}>Item</th>
-                    <th className={`${cellPad} text-right`}>Warehouses</th>
-                    <th className={`${cellPad} text-right`}>Total Qty</th>
-                    <th className={`${cellPad} text-right`}>Blended Cost</th>
-                    <th className={`${cellPad} text-right`}>Total Value</th>
-                    <th className={`${cellPad} text-left`}>Status</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.stockLevels.columns.item', { defaultValue: 'Item' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.warehouses', { defaultValue: 'Warehouses' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.totalQty', { defaultValue: 'Total Qty' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.blendedCost', { defaultValue: 'Blended Cost' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.totalValue', { defaultValue: 'Total Value' })}</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.stockLevels.columns.status', { defaultValue: 'Status' })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -299,9 +309,9 @@ const ReportContent: React.FC<{
                         <td className={cellPad}>{item ? `${item.code} - ${item.name}` : row.itemId}</td>
                         <td className={`${cellPad} text-right tabular-nums`}>{row.warehouses.length}</td>
                         <td className={`${cellPad} text-right tabular-nums font-semibold`}>{fmtQty(row.totalQty)}</td>
-                        <td className={`${cellPad} text-right tabular-nums`}>{fmt(row.blendedUnitCost)}</td>
-                        <td className={`${cellPad} text-right tabular-nums font-bold ${row.totalValue !== null && row.totalValue < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{fmt(row.totalValue)}</td>
-                        <td className={cellPad}>{row.unvaluedNegativeStock ? 'Negative stock has no cost basis' : row.totalQty < 0 ? 'Negative valued stock' : 'Valued'}</td>
+                        <td className={`${cellPad} text-right tabular-nums`}>{fmt(row.blendedUnitCost, unvaluedLabel)}</td>
+                        <td className={`${cellPad} text-right tabular-nums font-bold ${row.totalValue !== null && row.totalValue < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{fmt(row.totalValue, unvaluedLabel)}</td>
+                        <td className={cellPad}>{warningLabel(row.unvaluedNegativeStock, row.totalQty)}</td>
                       </tr>
                     );
                   })}
@@ -311,13 +321,13 @@ const ReportContent: React.FC<{
               <table className="min-w-full text-sm">
                 <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                   <tr>
-                    <th className={`${cellPad} text-left`}>Item</th>
-                    <th className={`${cellPad} text-left`}>Warehouse</th>
-                    <th className={`${cellPad} text-right`}>Qty</th>
-                    <th className={`${cellPad} text-right`}>Report Cost</th>
-                    <th className={`${cellPad} text-left`}>Basis</th>
-                    <th className={`${cellPad} text-right`}>Report Value</th>
-                    <th className={`${cellPad} text-left`}>Warning</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.stockLevels.columns.item', { defaultValue: 'Item' })}</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.stockLevels.columns.warehouse', { defaultValue: 'Warehouse' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.qty', { defaultValue: 'Qty' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.reportCost', { defaultValue: 'Report Cost' })}</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.stockLevels.columns.basis', { defaultValue: 'Basis' })}</th>
+                    <th className={`${cellPad} text-right`}>{t('inventory.stockLevels.columns.reportValue', { defaultValue: 'Report Value' })}</th>
+                    <th className={`${cellPad} text-left`}>{t('inventory.stockLevels.columns.warning', { defaultValue: 'Warning' })}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -329,10 +339,10 @@ const ReportContent: React.FC<{
                         <td className={cellPad}>{item ? `${item.code} - ${item.name}` : level.itemId}</td>
                         <td className={cellPad}>{warehouse ? `${warehouse.code} - ${warehouse.name}` : level.warehouseId}</td>
                         <td className={`${cellPad} text-right tabular-nums font-semibold`}>{fmtQty(level.qtyOnHand)}</td>
-                        <td className={`${cellPad} text-right tabular-nums`}>{fmt(level.reportUnitCostBase)}</td>
+                        <td className={`${cellPad} text-right tabular-nums`}>{fmt(level.reportUnitCostBase, unvaluedLabel)}</td>
                         <td className={cellPad}>{costLabel(level.costBasis)}</td>
-                        <td className={`${cellPad} text-right tabular-nums font-bold ${(level.reportValueBase ?? 0) < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{fmt(level.reportValueBase)}</td>
-                        <td className={cellPad}>{level.unvaluedNegativeStock ? 'Negative stock has no cost basis' : level.qtyOnHand < 0 ? 'Negative valued stock' : ''}</td>
+                        <td className={`${cellPad} text-right tabular-nums font-bold ${(level.reportValueBase ?? 0) < 0 ? 'text-red-700' : 'text-emerald-700'}`}>{fmt(level.reportValueBase, unvaluedLabel)}</td>
+                        <td className={cellPad}>{level.unvaluedNegativeStock || level.qtyOnHand < 0 ? warningLabel(Boolean(level.unvaluedNegativeStock), level.qtyOnHand) : ''}</td>
                       </tr>
                     );
                   })}
@@ -346,14 +356,17 @@ const ReportContent: React.FC<{
   );
 };
 
-const StockLevelsPage: React.FC = () => (
-  <ReportContainer<StockLevelParams>
-    title="Stock Levels"
-    subtitle="On-hand quantity and valuation by item or warehouse"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: true, defaultPageSize: 50 }}
-  />
-);
+const StockLevelsPage: React.FC = () => {
+  const { t } = useTranslation('common');
+  return (
+    <ReportContainer<StockLevelParams>
+      title={t('inventory.stockLevels.title', { defaultValue: 'Stock Levels' })}
+      subtitle={t('inventory.stockLevels.subtitle', { defaultValue: 'On-hand quantity and valuation by item or warehouse' })}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: true, defaultPageSize: 50 }}
+    />
+  );
+};
 
 export default StockLevelsPage;

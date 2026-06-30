@@ -67,7 +67,9 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
       // Create a new sequence starting at 1
       const newSequence = await this.prisma.voucherSequence.create({
         data: {
-          id: `${prefix}-${year || 'ALL'}`,
+          // Scope id to the company: '<prefix>-<year>' repeats across companies and
+          // VoucherSequence.id is a global PK. Logical identity is (companyId, voucherType, fiscalYearId).
+          id: `${companyId}-${prefix}-${year || 'ALL'}`,
           companyId,
           voucherType: prefix,
           prefix,

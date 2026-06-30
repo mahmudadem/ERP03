@@ -78,6 +78,11 @@ export const AuthProvider = ({ children, authProvider }: AuthProviderProps) => {
   const logout = useCallback(async () => {
     await provider.logout();
     setUser(null);
+    localStorage.removeItem('activeCompanyId');
+    localStorage.removeItem('resolvedPermissions');
+    localStorage.removeItem('isOwner');
+    localStorage.removeItem('isSuperAdmin');
+    localStorage.removeItem('activeModules');
   }, [provider]);
 
   const getToken = useCallback(async (forceRefresh?: boolean) => {

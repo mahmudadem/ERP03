@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { CalendarDays } from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyCurrencies } from '../../../hooks/useCompanyCurrencies';
+import { resolveVoucherDisplayName } from '../../../utils/voucherDisplayName';
 
 /* ── Types ────────────────────────────────────────────── */
 
@@ -75,6 +76,7 @@ const JournalInitiator: React.FC<{
   initialParams?: JournalParams | null;
 }> = ({ onSubmit, initialParams }) => {
   const { t } = useTranslation('accounting');
+  const { t: tCommon, i18n } = useTranslation('common');
   const today = new Date().toISOString().split('T')[0];
 
   const [fromDate, setFromDate] = useState(initialParams?.fromDate || today);
@@ -91,10 +93,15 @@ const JournalInitiator: React.FC<{
       try {
         const { voucherFormApi } = await import('../../../api/voucherFormApi');
         const allForms = await voucherFormApi.list();
-        setForms((allForms || []).filter((f: any) => f.enabled !== false).map((f: any) => ({ id: f.id, name: f.name })));
+        setForms((allForms || [])
+          .filter((f: any) => f.enabled !== false)
+          .map((f: any) => ({
+            id: f.id,
+            name: resolveVoucherDisplayName(tCommon, f),
+          })));
       } catch { /* silent */ }
     })();
-  }, []);
+  }, [i18n.resolvedLanguage, tCommon]);
 
   const selectClass = 'w-full border border-slate-300 rounded px-3 py-2 text-sm bg-white text-slate-900 focus:border-slate-900 focus:ring-1 focus:ring-slate-900';
 

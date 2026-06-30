@@ -31,6 +31,26 @@ This is non-negotiable because `ReportContainer` provides:
 - **Pagination bar** — page navigation + page-size selector.
 - **i18n** — built in.
 
+## Rule 3 — default row order for date/time reports
+
+Reports that list dated transaction, audit, movement, receipt, shift, or document
+rows should open in reverse chronological order: newest date/time first.
+
+Use `sortReportRowsByDateTimeDesc()` from
+`frontend/src/components/reports/reportSorting.ts` when a report receives rows
+from an endpoint that does not already guarantee this order. Pass the most
+specific timestamp keys first, for example:
+
+```ts
+sortReportRowsByDateTimeDesc(rows, ['createdAt', 'date']);
+sortReportRowsByDateTimeDesc(rows, ['closedAt', 'createdAt', 'date']);
+```
+
+Do **not** force this order onto financial statements or grouped summaries whose
+meaning depends on another order. Examples: Balance Sheet grouping, Trial
+Balance account order, aging buckets, top-selling item rank, and payment-method
+summary rows. Those reports should keep their semantic order.
+
 ## How to add a new report
 
 1. Build the page using `<ReportContainer>`. Pattern:
@@ -64,7 +84,9 @@ This is non-negotiable because `ReportContainer` provides:
 3. Add the same path to `frontend/src/config/moduleMenuMap.ts` under the
    module's `Reports` parent.
 
-4. Run `npm run check:reports` from `frontend/` to verify.
+4. If the report has dated row-level output, apply the date/time default order.
+
+5. Run `npm run check:reports` from `frontend/` to verify.
 
 ## Temporary allowlist
 

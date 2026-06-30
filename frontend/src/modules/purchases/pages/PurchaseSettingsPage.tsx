@@ -24,10 +24,10 @@ import {
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const PARTY_ACCOUNT_CODE_FORMAT_FALLBACK = '{parent}-{partyCode}';
-const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; label: string }> = [
-  { template: '{parent}-{partyCode}', label: 'Parent-Party  (20101-V001)' },
-  { template: '{parent}.{partyCode}', label: 'Parent.Party  (20101.V001)' },
-  { template: '{parent}-{seq3}', label: 'Parent-Sequence  (20101-001)' },
+const PARTY_ACCOUNT_CODE_PRESETS: Array<{ template: string; labelKey: string; labelDefault: string }> = [
+  { template: '{parent}-{partyCode}', labelKey: 'settings.partyAccountFormat.presets.parentPartyDash', labelDefault: 'Parent-Party  (20101-V001)' },
+  { template: '{parent}.{partyCode}', labelKey: 'settings.partyAccountFormat.presets.parentPartyDot', labelDefault: 'Parent.Party  (20101.V001)' },
+  { template: '{parent}-{seq3}', labelKey: 'settings.partyAccountFormat.presets.parentSequence', labelDefault: 'Parent-Sequence  (20101-001)' },
 ];
 const DIRECT_PURCHASE_INVOICE_COMPANY_RULE_ID = 'purchase-direct-invoicing-company-policy';
 
@@ -81,7 +81,7 @@ const PurchaseSettingsPage: React.FC = () => {
   const [invSettings, setInvSettings] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const { validAccounts, getAccountById } = useAccounts();
+  const { accounts: allAccounts, validAccounts, getAccountById } = useAccounts();
   const [newRule, setNewRule] = useState<Partial<PurchaseGovernanceRuleDTO>>({
     scope: 'company',
     action: 'allow',
@@ -210,6 +210,15 @@ const PurchaseSettingsPage: React.FC = () => {
         return classification === 'EXPENSE';
       }),
     [validAccounts]
+  );
+
+  const headerLiabilityAccounts = useMemo(
+    () =>
+      allAccounts.filter((account) => {
+        const classification = String(account.classification || account.type || '').toUpperCase();
+        return classification === 'LIABILITY' && account.accountRole === 'HEADER';
+      }),
+    [allAccounts]
   );
 
   const handleSave = async () => {
@@ -526,8 +535,10 @@ const PurchaseSettingsPage: React.FC = () => {
                       value={settings.apParentAccountId || ''}
                       onChange={(account: any) => updateSetting('apParentAccountId', account?.id || undefined)}
                       placeholder={t('settings.apParent.placeholder', 'Select AP parent account')}
+                      accounts={headerLiabilityAccounts}
+                      allowHeaders={true}
                       allowedClassifications={['LIABILITY']}
-                      contextLabel={t('settings.apParent.context', 'Liability')}
+                      contextLabel={t('settings.apParent.context', 'Liability Header')}
                       enforceClassification
                     />
                     <p className="mt-1.5 text-xs italic text-gray-500">
@@ -556,7 +567,7 @@ const PurchaseSettingsPage: React.FC = () => {
                             }}
                           >
                             {PARTY_ACCOUNT_CODE_PRESETS.map((p) => (
-                              <option key={p.template} value={p.template}>{p.label}</option>
+                              <option key={p.template} value={p.template}>{t(p.labelKey, p.labelDefault)}</option>
                             ))}
                             <option value="CUSTOM">{t('settings.partyAccountFormat.custom', 'Custom…')}</option>
                           </select>

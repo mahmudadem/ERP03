@@ -52,6 +52,14 @@ const lineTone = (type: VendorStatementLineDTO['type']) => {
   return 'bg-slate-100 text-slate-600';
 };
 
+const lineTypeLabelKeys: Record<VendorStatementLineDTO['type'], string> = {
+  BILL: 'auto.VendorStatementPage.lineTypeBill',
+  PAYMENT: 'auto.VendorStatementPage.lineTypePayment',
+  DEBIT_NOTE: 'auto.VendorStatementPage.lineTypeDebitNote',
+  REFUND: 'auto.VendorStatementPage.lineTypeRefund',
+  ADJUSTMENT: 'auto.VendorStatementPage.lineTypeAdjustment',
+};
+
 const VendorLedgerTable: React.FC<{
   title: string;
   openingBalance: number;
@@ -62,6 +70,15 @@ const VendorLedgerTable: React.FC<{
   onOpenVoucher: (line: VendorStatementLineDTO) => void;
 }> = ({ title, openingBalance, closingBalance, lines, cellPad, onOpenSource, onOpenVoucher }) => {
   const { t } = useTranslation(['purchases', 'common']);
+  const ledgerHeaders = [
+    t('auto.VendorStatementPage.date', 'Date'),
+    t('auto.VendorStatementPage.type', 'Type'),
+    t('auto.VendorStatementPage.reference', 'Reference'),
+    t('auto.VendorStatementPage.debit', 'Debit'),
+    t('auto.VendorStatementPage.credit', 'Credit'),
+    t('auto.VendorStatementPage.balanceOwed', 'Balance Owed'),
+    t('auto.VendorStatementPage.actions', 'Actions'),
+  ];
 
   return (
   <div className="overflow-auto rounded-xl border bg-white shadow-sm">
@@ -71,7 +88,7 @@ const VendorLedgerTable: React.FC<{
     <table className="min-w-full text-sm">
       <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-widest text-slate-500">
         <tr>
-          {['Date', 'Type', 'Reference', 'Debit', 'Credit', 'Balance Owed', 'Actions'].map((h, i) => (
+          {ledgerHeaders.map((h, i) => (
             <th key={h} className={clsx(cellPad, i < 3 || i === 6 ? 'text-left' : 'text-right')}>{h}</th>
           ))}
         </tr>
@@ -94,7 +111,7 @@ const VendorLedgerTable: React.FC<{
                 <td className={`${cellPad} text-xs text-slate-600`}>{line.date}</td>
                 <td className={`${cellPad} text-xs`}>
                   <span className={clsx('rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-widest', lineTone(line.type))}>
-                    {line.type}
+                    {t(lineTypeLabelKeys[line.type], line.type)}
                   </span>
                 </td>
                 <td className={`${cellPad} text-xs`}>
@@ -254,6 +271,22 @@ const ReportContent: React.FC<{
   const [statement, setStatement] = useState<VendorStatementDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const openBillsHeaders = [
+    t('auto.VendorStatementPage.billNumber', 'Bill #'),
+    t('auto.VendorStatementPage.vendorRef', 'Vendor Ref'),
+    t('auto.VendorStatementPage.billDate', 'Bill Date'),
+    t('auto.VendorStatementPage.dueDate', 'Due Date'),
+    t('auto.VendorStatementPage.billTotal', 'Bill Total'),
+    t('auto.VendorStatementPage.outstanding', 'Outstanding'),
+  ];
+  const commitmentHeaders = [
+    t('auto.VendorStatementPage.purchaseOrder', 'Purchase Order'),
+    t('auto.VendorStatementPage.date', 'Date'),
+    t('auto.VendorStatementPage.expected', 'Expected'),
+    t('auto.VendorStatementPage.status', 'Status'),
+    t('auto.VendorStatementPage.total', 'Total'),
+    t('auto.VendorStatementPage.open', 'Open'),
+  ];
 
   const openSource = (line: VendorStatementLineDTO) => {
     const path = sourcePath(line);
@@ -279,12 +312,12 @@ const ReportContent: React.FC<{
     })
       .then((data) => { if (!cancelled) setStatement(data); })
       .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.error?.message || err?.message || 'Failed to load report');
+        if (!cancelled) setError(err?.response?.data?.error?.message || err?.message || t('auto.VendorStatementPage.failedToLoadReport', 'Failed to load report'));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [params.vendorId, params.fromDate, params.toDate, params.includeOpenCommitments]);
+  }, [params.vendorId, params.fromDate, params.toDate, params.includeOpenCommitments, t]);
 
   useEffect(() => {
     setTotalItems?.(statement?.lines.length ?? 0);
@@ -298,14 +331,16 @@ const ReportContent: React.FC<{
       <div className="shrink-0 border-b border-slate-200 bg-white px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 rounded-md border border-indigo-200 bg-indigo-50 px-3 py-1.5 text-xs font-semibold text-slate-800">
-            {params.mode === 'STATEMENT' ? 'Statement' : 'Full Ledger'}
+            {params.mode === 'STATEMENT'
+              ? t('auto.VendorStatementPage.statement', 'Statement')
+              : t('auto.VendorStatementPage.fullLedger', 'Full Ledger')}
           </span>
           <span className="inline-flex items-center gap-2 rounded-md border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-semibold text-slate-800">
             {vendorName}
           </span>
           <span className="inline-flex items-center gap-2 rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-slate-800">
             <CalendarDays className="h-3 w-3 text-blue-600" />
-            {params.fromDate}{t("auto.VendorStatementPage.to", "to")}{params.toDate}
+            {t('auto.VendorStatementPage.dateRange', '{{fromDate}} to {{toDate}}', { fromDate: params.fromDate, toDate: params.toDate })}
           </span>
           {statement && (
             <span className="ml-auto text-xs font-bold text-slate-500">{t("auto.VendorStatementPage.billed", "Billed:")}<span className="font-black text-blue-700">{fmt(statement.totalBilled)}</span>{t("auto.VendorStatementPage.paid", "· Paid:")}<span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span>{t("auto.VendorStatementPage.debitNotes", "· Debit notes:")}<span className="font-black text-amber-700">{fmt(statement.totalDebited)}</span>{t("auto.VendorStatementPage.closingOwed", "· Closing owed:")}<span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
@@ -322,7 +357,9 @@ const ReportContent: React.FC<{
           {!loading && statement && (
             <>
               <VendorLedgerTable
-                title={params.mode === 'STATEMENT' ? 'Vendor Activity' : `Full Ledger - ${vendorName}`}
+                title={params.mode === 'STATEMENT'
+                  ? t('auto.VendorStatementPage.vendorActivity', 'Vendor Activity')
+                  : t('auto.VendorStatementPage.fullLedgerForVendor', 'Full Ledger - {{vendorName}}', { vendorName })}
                 openingBalance={statement.openingBalance}
                 closingBalance={statement.closingBalance}
                 lines={statement.lines}
@@ -340,7 +377,7 @@ const ReportContent: React.FC<{
                   <table className="min-w-full text-sm">
                     <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-widest text-slate-500">
                       <tr>
-                        {['Bill #', 'Vendor Ref', 'Bill Date', 'Due Date', 'Bill Total', 'Outstanding'].map((h, i) => (
+                        {openBillsHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, i < 4 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -369,7 +406,7 @@ const ReportContent: React.FC<{
                   <table className="min-w-full text-sm">
                     <thead className="border-b border-slate-200 bg-slate-50/80 text-[10px] font-black uppercase tracking-widest text-slate-500">
                       <tr>
-                        {['Purchase Order', 'Date', 'Expected', 'Status', 'Total', 'Open'].map((h, i) => (
+                        {commitmentHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, i < 4 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>

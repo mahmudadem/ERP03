@@ -1,5 +1,18 @@
 {
   "appName": "ERP03",
+  "datePicker": {
+    "quickSelect": "Hızlı Seçim",
+    "today": "Bugün",
+    "now": "Şimdi",
+    "thisMonthFirst": "Bu Ayın İlk Günü",
+    "fyBeginning": "Mali Yıl Başlangıcı",
+    "fyClose": "Mali Yıl Kapanışı",
+    "yearEnd": "YIL SONU",
+    "periodOpening": "Dönem Açılışı",
+    "periodClose": "Dönem Kapanışı",
+    "start": "BAŞLANGIÇ",
+    "end": "BİTİŞ"
+  },
   "salesGrossProfit": {
     "titleByDocument": "Gross Profit by Document",
     "titleByItem": "Gross Profit by Item",
@@ -87,6 +100,12 @@
           "desc": "Uyarı ve alarm türündeki sistem bildirimleri."
         }
       }
+    },
+    "dropdown": {
+      "yourProfile": "Profiliniz",
+      "appearance": "Görünüm",
+      "switchCompany": "Şirket Değiştir",
+      "signOut": "Çıkış Yap"
     }
   },
   "sidebar": {
@@ -1652,12 +1671,12 @@
     "landing": {
       "authFailed": "Kimlik dogrulama basarisiz",
       "nav": {
-        "features": "Ozellikler",
-        "solutions": "Cozumler",
-        "pricing": "Fiyatlandirma",
+        "features": "Özellikler",
+        "solutions": "Çözümler",
+        "pricing": "Fiyatlandırma",
         "enterprise": "Kurumsal",
-        "login": "Giris yap",
-        "getStarted": "Basla"
+        "login": "Giriş yap",
+        "getStarted": "Başla"
       },
       "badge": "Yeni ERP Sistemi v3.0",
       "hero": {
@@ -2482,6 +2501,11 @@
     "SAVE": "Başarıyla kaydedildi"
   },
   "inventory": {
+    "uom": {
+      "fields": {
+        "localizedName": "Yerelleştirilmiş ad"
+      }
+    },
     "settings": {
       "accountingMode": {
         "label": "Muhasebe Modu",
@@ -2537,6 +2561,249 @@
         "created": "Kalem oluşturuldu",
         "createFailed": "Kalem oluşturulamadı",
         "loadFailed": "Stok kalemleri yüklenemedi"
+      }
+    },
+    "glReconciliation": {
+      "title": "Stok ↔ Genel Muhasebe Mutabakatı",
+      "subtitle": "Stok alt defter değeri ile Genel Muhasebe stok bakiyeleri",
+      "help": "Stok alt defterini (Σ miktar × ortalama maliyet, her kalemin Stok Varlık hesabına göre gruplanmış) bu hesapların Genel Muhasebe bakiyesiyle karşılaştırır. Her fark maliyet/posting sapmasıdır.",
+      "loadFailed": "Mutabakat yüklenemedi",
+      "reconciling": "Mutabakat yapılıyor…",
+      "empty": "Stok değeri veya Genel Muhasebe bakiyesi olan stok varlık hesabı yok.",
+      "filters": {
+        "asOfDate": "Tarih İtibarıyla"
+      },
+      "status": {
+        "ties": "Stok Genel Muhasebe ile uyumlu",
+        "driftDetected": "Stok ile Genel Muhasebe arasında sapma tespit edildi",
+        "matched": "Eşleşti",
+        "drift": "Sapma"
+      },
+      "summary": {
+        "asOf": "İtibarıyla",
+        "stockValue": "Stok değeri",
+        "glBalance": "GM bakiyesi",
+        "difference": "Fark",
+        "unmappedStockValue": "Eşlenmemiş stok değeri"
+      },
+      "columns": {
+        "account": "Hesap",
+        "name": "Ad",
+        "stockValueBase": "Stok Değeri (Ana)",
+        "glBalanceBase": "GM Bakiyesi (Ana)",
+        "difference": "Fark",
+        "status": "Durum"
+      }
+    },
+    "itemMovement": {
+      "title": "Kalem Hareketi",
+      "subtitle": "Kümülatif miktar ve değerle tarihsel hareket defteri",
+      "loadFailed": "Kalem hareketi raporu yüklenemedi",
+      "loading": "Kalem hareketi yükleniyor...",
+      "empty": "Filtrelerle eşleşen kalem hareketi yok.",
+      "filters": {
+        "item": "Kalem",
+        "selectTrackedItem": "İzlenen kalem seç",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "from": "Başlangıç",
+        "to": "Bitiş",
+        "direction": "Yön",
+        "movementType": "Hareket Türü",
+        "sourceType": "Kaynak Türü"
+      },
+      "direction": {
+        "all": "Tümü",
+        "in": "Giriş",
+        "out": "Çıkış"
+      },
+      "movementType": {
+        "OPENING_STOCK": "Açılış",
+        "PURCHASE_RECEIPT": "Satın alma kabulü",
+        "SALES_DELIVERY": "Satış teslimi",
+        "ADJUSTMENT_IN": "Düzeltme girişi",
+        "ADJUSTMENT_OUT": "Düzeltme çıkışı",
+        "TRANSFER_IN": "Transfer girişi",
+        "TRANSFER_OUT": "Transfer çıkışı",
+        "RETURN_IN": "İade girişi",
+        "RETURN_OUT": "İade çıkışı"
+      },
+      "sourceType": {
+        "PURCHASE_INVOICE": "Satın Alma Faturası",
+        "GOODS_RECEIPT": "Mal Kabul",
+        "PURCHASE_RETURN": "Satın Alma İadesi",
+        "SALES_INVOICE": "Satış Faturası",
+        "DELIVERY_NOTE": "Teslimat Notu",
+        "SALES_RETURN": "Satış İadesi",
+        "STOCK_ADJUSTMENT": "Stok Düzeltmesi",
+        "STOCK_TRANSFER": "Stok Transferi",
+        "OPENING": "Açılış",
+        "POS_DIRECT_SALE": "POS Satışı",
+        "POS_RETURN": "POS İadesi"
+      },
+      "chips": {
+        "item": "Kalem",
+        "warehouseShort": "Depo"
+      },
+      "summary": {
+        "movements": "Hareketler"
+      },
+      "columns": {
+        "date": "Tarih",
+        "warehouse": "Depo",
+        "movement": "Hareket",
+        "source": "Kaynak",
+        "qtyIn": "Giriş Miktarı",
+        "qtyOut": "Çıkış Miktarı",
+        "runningQty": "Kümülatif Miktar",
+        "unitCost": "Birim Maliyet",
+        "movementValue": "Hareket Değeri",
+        "runningValue": "Kümülatif Değer",
+        "createdBy": "Oluşturan",
+        "notes": "Notlar"
+      }
+    },
+    "stockLevels": {
+      "title": "Stok Seviyeleri",
+      "subtitle": "Kalem veya depoya göre eldeki miktar ve değerleme",
+      "loadFailed": "Stok seviyeleri yüklenemedi",
+      "loading": "Stok seviyeleri yükleniyor...",
+      "empty": "Filtrelerle eşleşen stok seviyesi yok.",
+      "unvalued": "Değerlenmemiş",
+      "filters": {
+        "item": "Kalem",
+        "allTrackedItems": "Tüm izlenen kalemler",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "view": "Görünüm",
+        "includeZero": "Sıfır miktarları dahil et",
+        "includeNegative": "Negatif stoku dahil et"
+      },
+      "viewMode": {
+        "byItem": "Kaleme göre",
+        "byWarehouse": "Depoya göre"
+      },
+      "chips": {
+        "negativeLines": "Negatif satırlar: {{count}}",
+        "unvaluedNegatives": "Değerlenmemiş negatifler: {{count}}"
+      },
+      "summary": {
+        "lines": "Satırlar",
+        "value": "Değer"
+      },
+      "columns": {
+        "item": "Kalem",
+        "warehouses": "Depolar",
+        "totalQty": "Toplam Miktar",
+        "blendedCost": "Karma Maliyet",
+        "totalValue": "Toplam Değer",
+        "status": "Durum",
+        "warehouse": "Depo",
+        "qty": "Miktar",
+        "reportCost": "Rapor Maliyeti",
+        "basis": "Esas",
+        "reportValue": "Rapor Değeri",
+        "warning": "Uyarı"
+      },
+      "costBasis": {
+        "average": "Ortalama",
+        "lastKnown": "Son bilinen",
+        "missing": "Eksik"
+      },
+      "status": {
+        "unvaluedNegative": "Negatif stok için maliyet esası yok",
+        "negativeValued": "Değerlenmiş negatif stok",
+        "valued": "Değerlenmiş"
+      }
+    },
+    "valuation": {
+      "title": "Stok Değerlemesi",
+      "subtitle": "Kalem, depo ve fiyatlandırma politikasına göre stok değeri",
+      "loadFailed": "Stok değerlemesi yüklenemedi",
+      "loading": "Stok değerlemesi yükleniyor...",
+      "empty": "Değerlendirilecek stok satırı yok",
+      "grandTotalServer": "Genel Toplam (sunucu)",
+      "filters": {
+        "mode": "Mod",
+        "asOfDate": "Tarih İtibarıyla",
+        "pricingPolicy": "Fiyatlandırma Politikası",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "item": "Kalem",
+        "allItems": "Tüm kalemler"
+      },
+      "mode": {
+        "current": "Güncel (canlı)",
+        "asOf": "Belirli tarih itibarıyla"
+      },
+      "pricingPolicy": {
+        "average": "Ortalama Maliyet",
+        "lastPurchase": "Son Satın Alma Maliyeti",
+        "averageShort": "Ortalama",
+        "lastPurchaseShort": "Son Satın Alma"
+      },
+      "chips": {
+        "asOf": "{{date}} itibarıyla",
+        "policy": "Politika",
+        "basedOnSnapshot": "{{snapshot}} anlık görüntüsüne göre",
+        "warehouseShort": "Depo",
+        "item": "Kalem"
+      },
+      "summary": {
+        "totalLinesFullSet": "Toplam satır (tam küme)",
+        "totalValueBase": "Toplam değer (ana para)"
+      },
+      "columns": {
+        "itemCode": "Kalem Kodu",
+        "itemName": "Kalem Adı",
+        "warehouse": "Depo",
+        "qtyOnHand": "Eldeki Miktar",
+        "policyCostBase": "Politika Maliyeti (Ana)",
+        "avgCostBase": "Ort. Maliyet (Ana)",
+        "valueBase": "Değer (Ana)"
+      }
+    },
+    "unsettledCosts": {
+      "title": "Yerleşmemiş Maliyetler",
+      "subtitle": "Maliyet yerleşimi bekleyen stok çıkış hareketleri",
+      "loadFailed": "Rapor yüklenemedi",
+      "empty": "Filtrelerinize uyan yerleşmemiş hareket yok.",
+      "totals": "Toplamlar",
+      "filters": {
+        "fromDate": "Başlangıç Tarihi",
+        "toDate": "Bitiş Tarihi",
+        "item": "Kalem",
+        "allItems": "Tüm kalemler",
+        "warehouse": "Depo",
+        "allWarehouses": "Tüm depolar",
+        "costBasis": "Maliyet Esası"
+      },
+      "costBasis": {
+        "all": "Tümü",
+        "avg": "Hareketli Ortalama",
+        "lastKnown": "Son Bilinen",
+        "missing": "Eksik (maliyet yok)"
+      },
+      "chips": {
+        "item": "Kalem",
+        "warehouseShort": "Depo",
+        "basis": "Esas"
+      },
+      "summary": {
+        "rows": "{{count}} satır",
+        "rows_other": "{{count}} satır",
+        "unsettledQty": "Yerleşmemiş miktar",
+        "costBasisBase": "Maliyet esası (baz)"
+      },
+      "columns": {
+        "date": "Tarih",
+        "item": "Kalem",
+        "warehouse": "Depo",
+        "movementType": "Hareket Türü",
+        "qty": "Miktar",
+        "unsettledQty": "Yerleşmemiş Miktar",
+        "costBasis": "Maliyet Esası",
+        "totalCostBase": "Toplam Maliyet (Baz)"
       }
     },
     "transfers": {
@@ -2720,7 +2987,174 @@
       "createInvoice": "Satış Faturası",
       "createOrder": "Satış Siparişi",
       "createReturn": "Satış İadesi",
-      "settings": "Ayarlar"
+      "settings": "Ayarlar",
+      "title": "Satış Genel Bakış Modülü",
+      "moduleDashboard": "Modül Paneli",
+      "subtitle": "Faturaları takip edin, alacakları izleyin ve satış siparişi akışlarını yapılandırın.",
+      "salesSettings": "Satış Ayarları",
+      "kpis": {
+        "totalRevenue": "Toplam Gelir",
+        "realizedCashSettlements": "Gerçekleşen nakit tahsilatlar",
+        "outstandingAr": "Açık Alacaklar",
+        "dueCollectionLedgerStatus": "Vadesi gelen tahsilat durumu",
+        "overdueInvoices": "Gecikmiş Faturalar",
+        "activeItems": "Aktif kalemler",
+        "requiringImmediateCreditClaims": "Acil kredi takibi gerekiyor",
+        "pendingApproval": "Onay Bekleyen",
+        "invoicesPending": "Bekleyen faturalar",
+        "awaitingBankTransfers": "Banka transferleri bekleniyor"
+      },
+      "recentSalesOrders": "Son Satış Siparişleri (SO)",
+      "fulfillmentQueue": "Karşılama Kuyruğu",
+      "noRecentOrders": "Son sipariş yok.",
+      "recentSalesInvoices": "Son Satış Faturaları (INV)",
+      "postingsRegister": "Kayıt Defteri",
+      "noRecentInvoices": "Son fatura yok.",
+      "topClientAccounts": "En İyi Müşteri Hesapları",
+      "noClientData": "Müşteri verisi yok.",
+      "balance": "Bakiye",
+      "quickNavigation": "Hızlı Gezinme",
+      "recentActivity": "Son Aktivite",
+      "refreshActivity": "Aktiviteyi yenile",
+      "noActivityYet": "Henüz aktivite yok.",
+      "columns": {
+        "soNumber": "SO No",
+        "invoiceId": "Fatura No",
+        "date": "Tarih",
+        "customerClient": "Müşteri",
+        "debtorCustomer": "Borçlu Müşteri",
+        "currency": "Para Birimi",
+        "rawTotal": "Brüt Toplam",
+        "createdBy": "Oluşturan",
+        "createdAt": "Oluşturulma",
+        "approvedAt": "Onaylanma",
+        "status": "Durum"
+      },
+      "quickLinks": {
+        "invoices": "Faturalar",
+        "orders": "Siparişler",
+        "deliveryNotes": "Teslimat Notları",
+        "quotations": "Teklifler",
+        "returns": "İadeler"
+      }
+    },
+    "arAging": {
+      "title": "AR Yaşlandırma",
+      "subtitle": "Yaşlandırma aralığına göre alacak hesapları",
+      "asOfDate": "Tarih İtibarıyla",
+      "customerOptional": "Müşteri (isteğe bağlı)",
+      "allCustomers": "Tüm müşteriler",
+      "generateReport": "Rapor Oluştur",
+      "invoiceNumber": "Fatura No",
+      "invoiceDate": "Fatura Tarihi",
+      "dueDate": "Vade Tarihi",
+      "daysOverdue": "Geciken Gün",
+      "bucket": "Aralık",
+      "outstanding": "Ödenmemiş",
+      "creditNotesJVAdjustments": "Alacak dekontları / yevmiye düzeltmeleri",
+      "unallocatedBalance": "Dağıtılmamış bakiye",
+      "failedToLoadReport": "Rapor yüklenemedi",
+      "asOfDateValue": "{{date}} itibarıyla",
+      "customerCount": "{{count}} müşteri",
+      "customerCount_other": "{{count}} müşteri",
+      "totalAR": "Toplam AR:",
+      "loadingAging": "Yaşlandırma yükleniyor...",
+      "noOutstandingReceivablesAsOfDate": "{{date}} itibarıyla açık alacak yok",
+      "customerHeader": "Müşteri",
+      "current": "Cari",
+      "days1_30": "1–30 Gün",
+      "days31_60": "31–60 Gün",
+      "days61_90": "61–90 Gün",
+      "days90Plus": "90+ Gün",
+      "total": "Toplam",
+      "totals": "Toplamlar"
+    },
+    "customerStatement": {
+      "title": "Müşteri Ekstresi",
+      "subtitle": "Müşteri için dönem ekstresi veya tam defter",
+      "date": "Tarih",
+      "type": "Tür",
+      "reference": "Referans",
+      "debit": "Borç",
+      "credit": "Alacak",
+      "balance": "Bakiye",
+      "actions": "İşlemler",
+      "openingBalance": "Açılış Bakiyesi",
+      "closingBalance": "Kapanış Bakiyesi",
+      "noTransactionsInPeriod": "Bu dönemde işlem yok.",
+      "source": "Kaynak",
+      "voucher": "Fiş",
+      "openSourceDocument": "Kaynak belgeyi aç",
+      "openAccountingVoucher": "Muhasebe fişini aç",
+      "lineTypeInvoice": "Fatura",
+      "lineTypePayment": "Ödeme",
+      "lineTypeCreditNote": "Alacak Dekontu",
+      "lineTypeRefund": "İade",
+      "lineTypeAdjustment": "Düzeltme",
+      "view": "Görünüm",
+      "statementPeriodSummary": "Ekstre (dönem özeti)",
+      "fullLedgerAllEvents": "Tam Defter (tüm hareketler)",
+      "customer": "Müşteri",
+      "selectCustomer": "Müşteri seçin...",
+      "fromDate": "Başlangıç Tarihi",
+      "toDate": "Bitiş Tarihi",
+      "includeOpenCommitments": "Açık taahhütleri dahil et",
+      "openCommitmentsHelp": "Açık satış siparişlerini ticari takip için ayrı gösterir. Bu tutarlar ekstre bakiyesini etkilemez.",
+      "generateReport": "Rapor Oluştur",
+      "failedToLoadReport": "Rapor yüklenemedi",
+      "invoiceNumber": "Fatura No",
+      "invoiceDate": "Fatura Tarihi",
+      "dueDate": "Vade Tarihi",
+      "invoiceTotal": "Fatura Toplamı",
+      "outstanding": "Ödenmemiş",
+      "salesOrder": "Satış Siparişi",
+      "expected": "Beklenen",
+      "status": "Durum",
+      "total": "Toplam",
+      "open": "Açık",
+      "statement": "Ekstre",
+      "fullLedger": "Tam Defter",
+      "dateRange": "{{fromDate}} → {{toDate}}",
+      "invoiced": "Faturalandı:",
+      "paid": "Ödendi:",
+      "credits": "Alacaklar:",
+      "closing": "Kapanış:",
+      "loadingReport": "Rapor yükleniyor...",
+      "transactions": "Hareketler",
+      "fullLedgerForCustomer": "Tam Defter — {{customerName}}",
+      "openInvoicesCount": "Açık Faturalar ({{count}})",
+      "openCommitmentsCount": "Açık Taahhütler ({{count}}) · Bakiyeye dahil değil",
+      "noData": "Veri yok."
+    },
+    "analytics": {
+      "title": "Satış Analizi",
+      "subtitle": "Müşteri, kalem veya satış temsilcisine göre satış performansı",
+      "groupBy": "Grupla",
+      "byCustomer": "Müşteriye Göre",
+      "byItem": "Kaleme Göre",
+      "bySalesperson": "Satış Temsilcisine Göre",
+      "fromDate": "Başlangıç Tarihi",
+      "toDate": "Bitiş Tarihi",
+      "generateReport": "Rapor Oluştur",
+      "failedToLoadReport": "Rapor yüklenemedi",
+      "rowCount": "{{count}} satır",
+      "rowCount_other": "{{count}} satır",
+      "loadingReport": "Rapor yükleniyor...",
+      "salesByCustomer": "Müşteriye Göre Satış",
+      "salesByItem": "Kaleme Göre Satış",
+      "salesBySalesperson": "Satış Temsilcisine Göre Satış",
+      "noDataForThisPeriod": "Bu dönem için veri yok.",
+      "customer": "Müşteri",
+      "invoices": "Faturalar",
+      "revenue": "Gelir",
+      "tax": "Vergi",
+      "gross": "Brüt",
+      "code": "Kod",
+      "item": "Kalem",
+      "lines": "Satırlar",
+      "qtySold": "Satılan Miktar",
+      "salesperson": "Satış Temsilcisi",
+      "totals": "Toplamlar"
     },
     "quoteDetail": {
       "pageTitle": "Teklif",
@@ -4223,7 +4657,21 @@
       "critical": "Kritik Hata"
     },
     "ok": "Tamam",
-    "close": "Kapat"
+    "close": "Kapat",
+    "technicalReference": "Teknik referans",
+    "genericServerMessage": "{{operation}} sunucuda başarısız oldu (HTTP {{status}}). Lütfen yeniden deneyin. Tekrarlanırsa bu hata referansını desteğe gönderin.",
+    "operations": {
+      "accountingSourceApprovals": "Muhasebe kaynak belge onayları",
+      "financialApprovals": "Finansal onaylar",
+      "custodyConfirmations": "Muhafaza onayları",
+      "accountStatement": "Hesap ekstresi",
+      "apiRequest": "Sunucu isteği"
+    }
+  },
+  "openingStockDocuments": {
+    "legacyOpeningMovementsTitle": "{{count}} eski açılış stok hareketi bulundu",
+    "legacyOpeningMovementsBody": "Bu hareketler eski doğrudan açılış stoku akışıyla kaydedildiği için Açılış Stok Belgesi başlığına sahip değildir. Çift stok oluşmasını önlemek için yeni açılış belgesi oluşturmadan önce Stok Hareketlerini inceleyin.",
+    "reviewStockMovements": "Stok Hareketlerini incele"
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "{{itemLabel}} ürünü {{warehouseLabel}} deposundan çıkışı yapılamıyor — stokta yalnızca {{current}} var ancak {{requested}} istendi (kalan {{resulting}} olurdu). Negatif stok kapalı. Önce stok girişi yapın veya Envanter Ayarları’ndan negatif stoğu etkinleştirin."
@@ -4258,6 +4706,31 @@
       "selectedCount": "{{total}} kayıttan {{selected}} seçildi",
       "clear": "Temizle"
     }
+  },
+  "defaultVoucherNames": {
+    "journalEntry": "Yevmiye Fişi",
+    "payment": "Ödeme Fişi",
+    "receipt": "Tahsilat Fişi",
+    "openingBalance": "Açılış Bakiyeleri",
+    "fxRevaluation": "Döviz Değerleme",
+    "deliveryNote": "Sevk İrsaliyesi",
+    "salesReturn": "Satış İadesi",
+    "salesInvoice": "Satış Faturası",
+    "salesInvoiceDirect": "Doğrudan Satış Faturası",
+    "salesInvoiceLinked": "Bağlantılı Satış Faturası",
+    "salesInvoiceService": "Hizmet Satış Faturası",
+    "purchaseOrder": "Satınalma Siparişi",
+    "purchaseInvoice": "Alış Faturası",
+    "purchaseInvoiceDirect": "Doğrudan Alış Faturası",
+    "purchaseInvoiceLinked": "Bağlantılı Alış Faturası",
+    "purchaseInvoiceService": "Hizmet Alış Faturası",
+    "goodsReceipt": "Mal Kabul",
+    "purchaseReturn": "Alış İadesi",
+    "nativeVouchers": "Yerleşik Muhasebe Fişleri",
+    "nativeSalesInvoice": "Yerleşik Satış Faturası",
+    "nativeSalesOrder": "Yerleşik Satış Siparişi",
+    "nativePurchaseInvoice": "Yerleşik Alış Faturası",
+    "nativePurchaseOrder": "Yerleşik Satınalma Siparişi"
   },
   "formsManagement": {
     "title": "Form Yönetimi — {{module}}",
@@ -4610,6 +5083,174 @@
       "saveFailed": "Görünüm tercihleri kaydedilemedi."
     }
   },
+  "Barcodes by Unit of Measure": "Ölçü birimine göre barkodlar",
+  "Save the item and configure its units before assigning unit barcodes.": "Birim barkodlarını atamadan önce ürünü kaydedin ve birimlerini yapılandırın.",
+  "Comma-separated barcodes": "Virgülle ayrılmış barkodlar",
   "saveChanges": "Değişiklikleri Kaydet",
-  "loading": "Yükleniyor..."
+  "loading": "Yükleniyor...",
+  "Primary Barcode": "Ana Barkod",
+  "Secondary Barcodes": "İkincil Barkodlar",
+  "Add secondary barcode...": "İkincil barkod ekle...",
+  "Press Enter to add": "Eklemek için Enter'a basın",
+  "Auto-sequence Item Code": "Otomatik Sıralı Ürün Kodu",
+  "landing": {
+    "modules": {
+      "availableNow": "Şimdi Kullanılabilir",
+      "comingSoon": "Yakında",
+      "accounting": {
+        "title": "Muhasebe ve Finans",
+        "desc": "Tam defteri kebir yönetimi, maliyet merkezleri ve dönem kapanışı."
+      },
+      "sales": {
+        "title": "Satış Yönetimi",
+        "desc": "Faturalama, teklifler ve müşteri alacakları takibi."
+      },
+      "purchases": {
+        "title": "Satınalma Yönetimi",
+        "desc": "Satınalma siparişleri, tedarikçi faturaları ve tedarikçi yönetimi."
+      },
+      "inventory": {
+        "title": "Stok Yönetimi",
+        "desc": "Stok hareketleri, depolar ve fiziksel sayımlar."
+      },
+      "pos": {
+        "title": "Satış Noktası (POS)",
+        "desc": "Stok ve muhasebe ile entegre hızlı perakende arayüzü."
+      },
+      "users": {
+        "title": "Kullanıcılar ve İzinler",
+        "desc": "Gelişmiş rol tabanlı erişim kontrol sistemi."
+      },
+      "reports": {
+        "title": "Raporlar ve Formlar",
+        "desc": "Özel yazdırma formu tasarımcısı ile kapsamlı raporlama."
+      },
+      "crm": {
+        "title": "CRM",
+        "desc": "Adayları, fırsatları ve satış boru hattını takip edin."
+      },
+      "hr": {
+        "title": "İK ve Bordro",
+        "desc": "Personel yönetimi, bordro ve devam takibi."
+      },
+      "messaging": {
+        "title": "İç Mesajlaşma",
+        "desc": "E-imzalar, arşivleme ve belge onay iş akışları."
+      },
+      "manufacturing": {
+        "title": "Üretim",
+        "desc": "Malzeme listesi ve iş istasyonu takibi."
+      },
+      "projects": {
+        "title": "Projeler ve Görevler",
+        "desc": "Görevleri, zaman çizelgelerini ve proje bütçelerini takip edin."
+      },
+      "ai": {
+        "title": "Yapay Zeka Asistanı",
+        "desc": "Akıllı asistan ve otomatik kurallar."
+      }
+    },
+    "allInOne": {
+      "title": "Hepsi tek bir yerde",
+      "desc": "Veri silolarını ve çift veri girişini ortadan kaldırmak için sorunsuz entegre edilmiştir."
+    },
+    "authFailed": "Kimlik doğrulama başarısız",
+    "nav": {
+      "features": "Özellikler",
+      "solutions": "Çözümler",
+      "pricing": "Fiyatlandırma",
+      "enterprise": "Kurumsal",
+      "login": "Giriş yap",
+      "getStarted": "Başla"
+    },
+    "badge": "Yeni ERP Sistemi v3.0",
+    "hero": {
+      "titlePrefix": "İhtiyacınız olan her şey",
+      "titleHighlight": "yönetmek",
+      "titleSuffix": "için burada.",
+      "subtitle": "Modern işletmeler için geliştirilmiş hepsi bir arada platform. Muhasebe, operasyon ve İK araçları entegre.",
+      "freeTrial": "Ücretsiz Deneme",
+      "noCard": "Kredi kartı gerekmez"
+    },
+    "authTabs": {
+      "createAccount": "HESAP OLUŞTUR",
+      "login": "GİRİŞ YAP"
+    },
+    "login": {
+      "title": "ERP03'e Giriş Yap",
+      "subtitle": "Hesabınıza erişin.",
+      "email": "İş E-posta Adresi",
+      "emailPlaceholder": "ornek@sirket.com",
+      "password": "Şifre",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Giriş Yap",
+      "submitting": "Giriş yapılıyor...",
+      "forgotPassword": "Şifremi unuttum"
+    },
+    "signup": {
+      "title": "ERP03'e Katılın",
+      "subtitle": "Yolculuğunuza bugün başlayın.",
+      "firstName": "İlk Ad",
+      "firstNamePlaceholder": "İlk Ad",
+      "lastName": "Soyad",
+      "lastNamePlaceholder": "Soyad",
+      "email": "İş E-posta Adresi",
+      "emailPlaceholder": "ornek@sirket.com",
+      "password": "Şifre",
+      "passwordPlaceholder": "••••••••",
+      "submit": "Hesap Oluştur",
+      "submitting": "Oluşturuluyor...",
+      "legalPrefix": "Devam ederek, şunları kabul etmiş olursunuz",
+      "terms": "Kullanım Şartları",
+      "privacy": "Gizlilik Politikası",
+      "adminBadge": "Sistem Yöneticisi | Yönetim Portalı"
+    },
+    "mockups": {
+      "revenue": "Gelir",
+      "expenses": "Giderler",
+      "recentInvoices": "Son Faturalar",
+      "newInvoice": "Yeni Fatura",
+      "paid": "Ödendi",
+      "aiPrompt": "İkinci çeyrek net karını ilk çeyrekle karşılaştır.",
+      "aiResponse": "İkinci çeyrek net karı $42,400 oldu, ilk çeyreğe göre %15 artış gösterdi.",
+      "aiPlaceholder": "Yapay zeka asistanına sorun...",
+      "stockAlerts": "Stok Uyarıları",
+      "qty": "Miktar",
+      "low": "Düşük",
+      "action": "İşlem"
+    },
+    "auth": {
+      "joinTitle": "ERP03e Katilin",
+      "welcomeTitle": "Tekrar hos geldiniz",
+      "joinSubtitle": "Bugun bizimle baslayin.",
+      "welcomeSubtitle": "Devam etmek icin bilgilerinizi girin."
+    },
+    "form": {
+      "firstName": "Ad",
+      "firstPlaceholder": "Ad",
+      "lastName": "Soyad",
+      "lastPlaceholder": "Soyad",
+      "email": "E-posta Adresi",
+      "emailPlaceholder": "email@sirket.com",
+      "password": "Sifre",
+      "submitCreate": "Hesap Olustur",
+      "submitSignIn": "Giris Yap"
+    },
+    "admin": {
+      "prefix": "Sistem Yöneticisi?",
+      "portal": "Portal Erisimi"
+    },
+    "legal": {
+      "prefix": "Devam ederek su kosullari kabul edersiniz:",
+      "terms": "Kosullar",
+      "privacy": "Gizlilik"
+    },
+    "errors": {
+      "invalidCredential": "Geçersiz e-posta veya şifre.",
+      "wrongPassword": "Yanlış şifre.",
+      "emailInUse": "Bu e-posta zaten kayıtlı.",
+      "weakPassword": "Şifre çok zayıf.",
+      "networkError": "Ağ hatası. Bağlantınızı kontrol edin."
+    }
+  }
 }

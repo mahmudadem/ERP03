@@ -62,6 +62,8 @@ import {
 } from '../../../api/voucherFormApi';
 import { AccountSelectorSimple, WarehouseSelector } from '../../../components/shared/selectors';
 import { useTranslation } from 'react-i18next';
+import { resolveVoucherDisplayName } from '../../../utils/voucherDisplayName';
+import type { VoucherDisplayNameSource } from '../../../utils/voucherDisplayName';
 
 interface VoucherDesignerPageProps {
   module: VoucherTypeModule;
@@ -115,66 +117,30 @@ const variantLabel = (item: { persona?: string | null; name?: string }): string 
   return match ? match[1] : null;
 };
 
-const FORM_NAME_KEY_BY_NAME: Record<string, string> = {
-  'Journal Entry': 'formsManagement.typeNames.journalEntry',
-  'Opening Balance': 'formsManagement.typeNames.openingBalance',
-  'Payment Voucher': 'formsManagement.typeNames.paymentVoucher',
-  'Receipt Voucher': 'formsManagement.typeNames.receiptVoucher',
-  'FX Revaluation': 'formsManagement.typeNames.fxRevaluation',
-  'Sales Invoice': 'formsManagement.typeNames.salesInvoice',
-  'Sales Invoice (Direct)': 'formsManagement.formNames.salesInvoiceDirect',
-  'Purchase Invoice': 'formsManagement.typeNames.purchaseInvoice',
-  'Native Vouchers': 'formsManagement.formNames.nativeVouchers',
-  'Native Sales Invoice': 'formsManagement.formNames.nativeSalesInvoice',
-  'Native Sales Order': 'formsManagement.formNames.nativeSalesOrder',
-  'Native Purchase Invoice': 'formsManagement.formNames.nativePurchaseInvoice',
-  'Native Purchase Order': 'formsManagement.formNames.nativePurchaseOrder',
-  'Goods Receipt': 'formsManagement.formNames.goodsReceipt',
-  'Purchase Invoice (Service)': 'formsManagement.formNames.purchaseInvoiceService',
-  'Purchase Invoice (Direct)': 'formsManagement.formNames.purchaseInvoiceDirect',
-  'Purchase Invoice (Linked)': 'formsManagement.formNames.purchaseInvoiceLinked',
-  'Purchase Return': 'formsManagement.formNames.purchaseReturn',
-  'Purchase Order': 'formsManagement.formNames.purchaseOrder',
-};
-
-const TYPE_NAME_KEY_BY_TYPE_KEY: Record<string, string> = {
-  journal_entry: 'formsManagement.typeNames.journalEntry',
-  opening_balance: 'formsManagement.typeNames.openingBalance',
-  payment: 'formsManagement.typeNames.paymentVoucher',
-  payment_voucher: 'formsManagement.typeNames.paymentVoucher',
-  receipt: 'formsManagement.typeNames.receiptVoucher',
-  receipt_voucher: 'formsManagement.typeNames.receiptVoucher',
-  fx_revaluation: 'formsManagement.typeNames.fxRevaluation',
-  sales_invoice: 'formsManagement.typeNames.salesInvoice',
-  sales_order: 'formsManagement.typeNames.salesOrder',
-  sales_return: 'formsManagement.typeNames.salesReturn',
-  purchase_invoice: 'formsManagement.typeNames.purchaseInvoice',
-  purchase_order: 'formsManagement.typeNames.purchaseOrder',
-  purchase_return: 'formsManagement.typeNames.purchaseReturn',
-  goods_receipt: 'formsManagement.typeNames.goodsReceipt',
-};
-
-const translateKnownFormName = (t: any, name: string): string => {
+const translateKnownFormName = (t: any, source: VoucherDisplayNameSource): string => {
+  const name = String(source.name || '');
   const copySuffix = name.match(/\s+-\s+Copy$/i);
   const customSuffix = name.match(/\s+\(Custom\)$/i);
   const baseName = name
     .replace(/\s+-\s+Copy$/i, '')
     .replace(/\s+\(Custom\)$/i, '')
     .trim();
-  const key = FORM_NAME_KEY_BY_NAME[baseName];
-  const translatedBase = key ? t(key, { defaultValue: baseName }) : name;
-  if (key && copySuffix) return t('formsManagement.copyName', { defaultValue: '{{name}} - Copy', name: translatedBase });
-  if (key && customSuffix) return t('formsManagement.customName', { defaultValue: '{{name}} (Custom)', name: translatedBase });
+  const translatedBase = resolveVoucherDisplayName(t, { ...source, name: baseName });
+  const translated = translatedBase !== baseName;
+  if (translated && copySuffix) return t('formsManagement.copyName', { defaultValue: '{{name}} - Copy', name: translatedBase });
+  if (translated && customSuffix) return t('formsManagement.customName', { defaultValue: '{{name}} (Custom)', name: translatedBase });
   return translatedBase;
 };
 
-const formDisplayName = (t: any, name: string): string =>
-  translateKnownFormName(t, name);
+const formDisplayName = (t: any, form: VoucherDisplayNameSource): string =>
+  translateKnownFormName(t, form);
 
 const typeDisplayName = (t: any, node: TypeNode): string => {
-  const key = TYPE_NAME_KEY_BY_TYPE_KEY[node.typeKey] || FORM_NAME_KEY_BY_NAME[node.name];
-  if (!key) return formDisplayName(t, node.name);
-  return t(key, { defaultValue: node.name });
+  return resolveVoucherDisplayName(t, {
+    name: node.name,
+    code: node.typeKey,
+    isSystemGenerated: true,
+  });
 };
 
 const BUILT_IN_FORMS_BY_MODULE: Record<VoucherTypeModule, BuiltInNativeForm[]> = {
@@ -1485,7 +1451,7 @@ const FormRow: React.FC<FormRowProps> = ({
     <div className="px-4 py-2.5 flex items-center gap-3 hover:bg-gray-50/50 border-b border-gray-50 last:border-b-0">
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="text-sm font-medium text-gray-900 truncate">{formDisplayName(t, form.name)}</span>
+          <span className="text-sm font-medium text-gray-900 truncate">{formDisplayName(t, form)}</span>
           {persona && (
             <span className="inline-flex items-center px-1.5 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-medium rounded uppercase tracking-wide">
               {t(`formsManagement.persona.${persona.toLowerCase()}`, persona)}
@@ -1719,7 +1685,7 @@ const FormSettingsModal: React.FC<FormSettingsModalProps> = ({ form, record, onC
         <header className="flex shrink-0 items-center justify-between border-b border-slate-200 px-5 py-4">
           <div>
             <h2 className="text-lg font-bold text-slate-900">{t('formsManagement.formSettings', 'Form settings')}</h2>
-            <p className="text-xs text-slate-500">{formDisplayName(t, form.name)}</p>
+            <p className="text-xs text-slate-500">{formDisplayName(t, form)}</p>
           </div>
           <button
             type="button"

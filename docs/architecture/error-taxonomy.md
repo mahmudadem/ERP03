@@ -117,3 +117,21 @@ The 3 genuine leak sites (the over-payment guard was already 4xx from Task 242):
 ## 8. Frontend impact
 
 The frontend `errorHandler.ts` / `errorInterceptor.ts` already unwraps the structured envelope. The fix is transparent to the UI: a user clicking **Post** on a `CANCELLED` sales invoice now sees a localized toast reading "Sales invoice cannot be posted from status CANCELLED…" instead of "Request failed with status code 500". No frontend code change is required.
+
+## 9. Frontend fallback for genuine 500 errors
+
+Production QA task 278h added a client-side fallback for genuine infrastructure failures that still arrive as `INFRA_999` or generic Axios messages. This does **not** reclassify the backend error and does **not** hide a real server crash. It only makes the user-facing modal name the failed operation and show a safe technical reference.
+
+Relevant files:
+
+- `frontend/src/api/errorInterceptor.ts` enriches structured API errors with `httpStatus`, `apiPath`, and `method`.
+- `frontend/src/services/errorHandler.ts` maps known accounting API paths to localized operation names and replaces generic messages such as "An unexpected error occurred" with "`<operation>` failed on the server (HTTP 500)...".
+- `frontend/src/components/ErrorModal.tsx` shows a safe technical reference containing method, path, HTTP status, and code.
+- `frontend/src/locales/{en,ar,tr}/common.json` owns the user-facing strings.
+
+Rules for future work:
+
+1. Backend business-rule and accounting-control failures must still be fixed at the source with structured 4xx errors and domain codes.
+2. The frontend fallback is only for true infrastructure failures or unknown crashes.
+3. Do not expose stack traces, secrets, request bodies, tenant ids, or raw server internals in the modal.
+4. When adding a high-value page that can fail with a generic 500, add its API path to `getOperationLabel()` so support can identify the broken operation from a screenshot.

@@ -21,10 +21,11 @@
     "seed:business-domains": "ts-node --transpile-only src/seeder/seedBusinessDomains.ts",
     "seed:vouchers": "ts-node --transpile-only src/scripts/seedDefaultVoucherTypes.ts",
     "reset:accounting": "ts-node --transpile-only src/seeder/resetAccountingModule.ts",
-    "seed:sql": "ts-node --transpile-only prisma/seeds/runSqlSeed.ts"
+    "seed:sql": "ts-node --transpile-only prisma/seeds/runSqlSeed.ts",
+    "smoke:companies": "ts-node --transpile-only src/scripts/smokeTwoCompanies.ts"
   },
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "dependencies": {
     "@prisma/client": "^5.7.0",
@@ -41,7 +42,6 @@
     "@types/express": "^4.17.17",
     "@types/jest": "^30.0.0",
     "@types/uuid": "^10.0.0",
-    "firebase-tools": "^14.27.0",
     "jest": "^30.2.0",
     "prisma": "^5.7.0",
     "ts-jest": "^29.4.6",

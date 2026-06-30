@@ -26,7 +26,7 @@ const MODULE_CONFIG: Record<string, { isRequired: boolean; autoInit?: boolean }>
 // even before the module is fully initialized.
 const MODULE_INIT_ROUTES: Record<string, string[]> = {
   accounting: ['/accounting/setup'],
-  inventory: ['/inventory'],
+  inventory: ['/inventory/setup'],
   purchase: ['/purchases'],
   sales: ['/sales', '/sales/settings'],
   'ai-assistant': ['/ai-assistant/setup'],

@@ -15,6 +15,16 @@ interface RetryableConfig extends AxiosRequestConfig {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
+const getRequestPath = (url?: string): string | undefined => {
+  if (!url) return undefined;
+  try {
+    const parsed = new URL(url, window.location.origin);
+    return parsed.pathname;
+  } catch {
+    return url.split('?')[0];
+  }
+};
+
 /**
  * Setup error handling interceptor for API client
  * Must be called after client is created
@@ -67,6 +77,7 @@ export function setupErrorInterceptor() {
           errorMessage.toLowerCase().includes('invalid authentication token') ||
           errorMessage.toLowerCase().includes('unauthorized') ||
           errorMessage.toLowerCase().includes('authentication') ||
+          errorMessage.toLowerCase().includes('authorization header') ||
           (error.response?.status === 401 && errorMessage === ''); // Empty message on 401 usually means token validation failed
 
         if (isAuthTokenFailure) {
@@ -95,10 +106,20 @@ export function setupErrorInterceptor() {
         error.config?.headers?.['x-silent-error'] === 'true';
 
       if (errorResponse && !errorResponse.success && errorResponse.error) {
+        const enrichedError = {
+          ...errorResponse.error,
+          context: {
+            ...(errorResponse.error as any).context,
+            httpStatus: error.response?.status,
+            apiPath: getRequestPath(error.config?.url),
+            method: error.config?.method?.toUpperCase(),
+          },
+        };
+
         // Skip auto-toast for POLICY / known-handled error codes — the page's
         // own catch block handles these with a context-specific UX (modals,
         // banners, etc.). Showing a global toast on top creates duplicates.
-        const err = errorResponse.error as any;
+        const err = enrichedError as any;
         const isPagePolicyHandled =
           err?.category === 'POLICY' ||
           err?.code === 'PERIOD_LOCKED' ||
@@ -107,7 +128,7 @@ export function setupErrorInterceptor() {
           err?.code === 'UNSETTLED_COST_BLOCKED' ||
           err?.code === 'GOVERNANCE_RULE_VIOLATION';
         if (!isSilent && !isPagePolicyHandled) {
-          errorHandler.showError(errorResponse.error);
+          errorHandler.showError(enrichedError);
         }
       } else {
         // Handle non-structured errors (network errors, etc.)

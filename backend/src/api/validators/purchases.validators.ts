@@ -248,6 +248,7 @@ export const validateInitializePurchasesInput = (body: any) => {
   ensureOptionalString(body.grnNumberPrefix, 'grnNumberPrefix');
   ensureOptionalString(body.piNumberPrefix, 'piNumberPrefix');
   ensureOptionalString(body.prNumberPrefix, 'prNumberPrefix');
+  ensureOptionalString(body.exchangeGainLossAccountId, 'exchangeGainLossAccountId');
 
   ensureOptionalNumber(body.poNumberNextSeq, 'poNumberNextSeq');
   ensureOptionalNumber(body.grnNumberNextSeq, 'grnNumberNextSeq');
@@ -285,6 +286,7 @@ export const validateUpdatePurchaseSettingsInput = (body: any) => {
   if (body.grnNumberPrefix !== undefined) ensureOptionalString(body.grnNumberPrefix, 'grnNumberPrefix');
   if (body.piNumberPrefix !== undefined) ensureOptionalString(body.piNumberPrefix, 'piNumberPrefix');
   if (body.prNumberPrefix !== undefined) ensureOptionalString(body.prNumberPrefix, 'prNumberPrefix');
+  if (body.exchangeGainLossAccountId !== undefined) ensureOptionalString(body.exchangeGainLossAccountId, 'exchangeGainLossAccountId');
   if (body.poNumberNextSeq !== undefined) ensurePositiveNumber(body.poNumberNextSeq, 'poNumberNextSeq');
   if (body.grnNumberNextSeq !== undefined) ensurePositiveNumber(body.grnNumberNextSeq, 'grnNumberNextSeq');
   if (body.piNumberNextSeq !== undefined) ensurePositiveNumber(body.piNumberNextSeq, 'piNumberNextSeq');

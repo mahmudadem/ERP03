@@ -4,6 +4,7 @@ import { formatCompanyDate, parseCompanyDate, getCompanyToday } from '../../../.
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Clock, Calendar, Hash, ArrowRight } from 'lucide-react';
 import { createPortal } from 'react-dom';
 import { accountingApi, FiscalYearDTO } from '../../../../api/accountingApi';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   value: string; // ISO format (YYYY-MM-DD)
@@ -35,6 +36,7 @@ const getSharedFiscalYears = async () => {
  * Includes a custom popover calendar for selecting dates format agnostically.
  */
 export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', inputClassName, disabled = false, placeholder }) => {
+  const { t } = useTranslation('common');
   const { settings } = useCompanySettings();
   const containerRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -335,7 +337,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
               onClick={() => selectDate(todayY, todayM, todayD)} 
               className="text-xs font-semibold text-primary-600 hover:text-primary-700 dark:text-primary-400 hover:underline"
             >
-              Today
+              {t('datePicker.today', { defaultValue: 'Today' })}
             </button>
         </div>
       </div>
@@ -382,7 +384,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             onClick={(e) => e.stopPropagation()}
           >
             <div className="px-3 py-1.5 text-[10px] font-black text-[var(--color-text-muted)] uppercase tracking-widest border-b border-[var(--color-border)] mb-1 bg-[var(--color-bg-secondary)]/50">
-              Quick Select
+              {t('datePicker.quickSelect', { defaultValue: 'Quick Select' })}
             </div>
             
             <button
@@ -391,9 +393,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Clock className="w-3.5 h-3.5 text-primary-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">Today</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t('datePicker.today', { defaultValue: 'Today' })}</span>
               </div>
-              <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover/item:opacity-100 transition-opacity">Now</span>
+              <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover/item:opacity-100 transition-opacity">{t('datePicker.now', { defaultValue: 'Now' })}</span>
             </button>
 
             <button
@@ -402,7 +404,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Calendar className="w-3.5 h-3.5 text-blue-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">This Month First</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t('datePicker.thisMonthFirst', { defaultValue: 'This Month First' })}</span>
               </div>
               <span className="text-[10px] text-[var(--color-text-muted)] opacity-0 group-hover/item:opacity-100 transition-opacity">01</span>
             </button>
@@ -415,7 +417,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Hash className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">FY Beginning</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t('datePicker.fyBeginning', { defaultValue: 'FY Beginning' })}</span>
               </div>
               <ArrowRight className="w-3.5 h-3.5 text-indigo-300 opacity-0 group-hover/item:opacity-100 -translate-x-2 group-hover/item:translate-x-0 transition-all" />
             </button>
@@ -426,9 +428,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <Hash className="w-3.5 h-3.5 text-indigo-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">FY Close</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t('datePicker.fyClose', { defaultValue: 'FY Close' })}</span>
               </div>
-              <span className="px-1 text-[8px] bg-indigo-100 text-indigo-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">YEAR END</span>
+              <span className="px-1 text-[8px] bg-indigo-100 text-indigo-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">{t('datePicker.yearEnd', { defaultValue: 'YEAR END' })}</span>
             </button>
 
             <button
@@ -437,9 +439,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <CalendarIcon className="w-3.5 h-3.5 text-emerald-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">Period Opening</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t('datePicker.periodOpening', { defaultValue: 'Period Opening' })}</span>
               </div>
-              <span className="px-1 text-[8px] bg-emerald-100 text-emerald-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">START</span>
+              <span className="px-1 text-[8px] bg-emerald-100 text-emerald-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">{t('datePicker.start', { defaultValue: 'START' })}</span>
             </button>
 
             <button
@@ -448,9 +450,9 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
             >
               <div className="flex items-center gap-2.5">
                 <CalendarIcon className="w-3.5 h-3.5 text-amber-500" />
-                <span className="font-semibold text-[var(--color-text-primary)]">Period Close</span>
+                <span className="font-semibold text-[var(--color-text-primary)]">{t('datePicker.periodClose', { defaultValue: 'Period Close' })}</span>
               </div>
-              <span className="px-1 text-[8px] bg-amber-100 text-amber-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">END</span>
+              <span className="px-1 text-[8px] bg-amber-100 text-amber-700 rounded font-black opacity-0 group-hover/item:opacity-100 transition-opacity">{t('datePicker.end', { defaultValue: 'END' })}</span>
             </button>
           </div>
         </>

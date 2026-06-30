@@ -14,6 +14,9 @@ export class PrismaItemRepository implements IItemRepository {
         name: item.name,
         description: item.description || null,
         barcode: item.barcode || null,
+        barcodes: item.barcodes || [],
+        uomBarcodes: item.uomBarcodes as any,
+        uomBarcodeValues: item.uomBarcodes.flatMap((entry) => entry.barcodes),
         type: item.type,
         categoryId: item.categoryId || null,
         brand: item.brand || null,
@@ -47,17 +50,23 @@ export class PrismaItemRepository implements IItemRepository {
   }
 
   async updateItem(id: string, data: Partial<Item>): Promise<void> {
+    const payload = data.uomBarcodes
+      ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
+      : data;
     await this.prisma.item.update({
       where: { id },
-      data: data as any,
+      data: payload as any,
     });
   }
 
   async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
     const tx = transaction as any;
+    const payload = data.uomBarcodes
+      ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
+      : data;
     await tx.item.update({
       where: { id },
-      data: data as any,
+      data: payload as any,
     });
   }
 
@@ -114,6 +123,7 @@ export class PrismaItemRepository implements IItemRepository {
         OR: [
           { barcode },
           { barcodes: { has: barcode } },
+          { uomBarcodeValues: { has: barcode } },
         ],
       },
     });
@@ -150,6 +160,7 @@ export class PrismaItemRepository implements IItemRepository {
         { description: { contains: query, mode: 'insensitive' as any } },
         { barcode: { contains: query, mode: 'insensitive' as any } },
         { barcodes: { has: query } },
+        { uomBarcodeValues: { has: query } },
         { brand: { contains: query, mode: 'insensitive' as any } },
       ],
     };
@@ -196,6 +207,7 @@ export class PrismaItemRepository implements IItemRepository {
       description: record.description,
       barcode: record.barcode,
       barcodes: record.barcodes,
+      uomBarcodes: record.uomBarcodes || [],
       type: record.type,
       categoryId: record.categoryId,
       brand: record.brand,

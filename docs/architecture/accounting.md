@@ -6,6 +6,24 @@
 
 ---
 
+## Firestore account-statement query indexes
+
+Account, customer, and vendor statements ultimately read the tenant-scoped ledger at
+`companies/{companyId}/accounting/Data/ledger`. The Firestore implementation filters by
+`accountId`, optionally filters by `isPosted`, and applies a date range ordered by `date`.
+
+Production therefore requires both composite indexes declared in the root
+`firestore.indexes.json`:
+
+- `ledger: accountId ASC, isPosted ASC, date ASC`
+- `ledger: accountId ASC, date ASC`
+
+`backend/src/tests/architecture/FirestoreIndexContracts.test.ts` protects this deployment
+contract. Removing either index breaks statement queries in Firestore even though the
+TypeScript build and in-memory tests can remain green.
+
+---
+
 ## Purpose
 
 The Accounting module is the financial system of record. Every transaction in ERP03 that affects money — whether it originates in Sales, Purchases, Inventory, or as a direct manual voucher — ultimately produces ledger entries posted via this module.

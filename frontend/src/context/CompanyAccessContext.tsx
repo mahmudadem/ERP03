@@ -145,6 +145,18 @@ export function CompanyAccessProvider({ children }: { children: ReactNode }) {
   const loadActiveCompany = useCallback(async () => {
     if (authLoading) return;
     if (!user) {
+      setCompanyIdState('');
+      setCompany(null);
+      setPermissions([]);
+      setResolvedPermissions([]);
+      setIsOwner(false);
+      setIsSuperAdminState(false);
+      setModuleBundles([]);
+      localStorage.removeItem('activeCompanyId');
+      localStorage.removeItem('resolvedPermissions');
+      localStorage.removeItem('isOwner');
+      localStorage.removeItem('isSuperAdmin');
+      localStorage.removeItem('activeModules');
       setLoading(false);
       setPermissionsLoaded(true);
       return;

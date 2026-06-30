@@ -11,13 +11,14 @@ const DIMENSIONS: UomDimension[] = ['COUNT', 'WEIGHT', 'VOLUME', 'LENGTH', 'AREA
 const createDraft = (): Partial<InventoryUomDTO> => ({
   code: '',
   name: '',
+  translations: { en: '', ar: '', tr: '' },
   dimension: 'COUNT',
   decimalPlaces: 0,
   active: true,
 });
 
 const UomsPage: React.FC = () => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const [uoms, setUoms] = useState<InventoryUomDTO[]>([]);
   const [draft, setDraft] = useState<Partial<InventoryUomDTO>>(createDraft());
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -68,6 +69,9 @@ const UomsPage: React.FC = () => {
       const payload = {
         code: trimmedCode,
         name: trimmedName,
+        translations: Object.fromEntries(
+          Object.entries(draft.translations || {}).filter(([, value]) => value?.trim())
+        ),
         dimension: draft.dimension,
         decimalPlaces: Number(draft.decimalPlaces ?? 0),
         active: draft.active ?? true,
@@ -96,6 +100,7 @@ const UomsPage: React.FC = () => {
     setDraft({
       code: uom.code,
       name: uom.name,
+      translations: { en: '', ar: '', tr: '', ...(uom.translations || {}) },
       dimension: uom.dimension,
       decimalPlaces: uom.decimalPlaces,
       active: uom.active,
@@ -153,6 +158,23 @@ const UomsPage: React.FC = () => {
               required
               autoComplete="off"
             />
+          </div>
+          <div className="grid gap-2 md:col-span-4 md:grid-cols-3">
+            {(['en', 'ar', 'tr'] as const).map((language) => (
+              <label key={language} className="text-xs font-semibold text-slate-600">
+                {t('inventory.uom.fields.localizedName', 'Localized name')} ({language.toUpperCase()})
+                <input
+                  className="mt-1 w-full rounded border border-slate-300 px-3 py-2 text-sm"
+                  dir={language === 'ar' ? 'rtl' : 'ltr'}
+                  value={draft.translations?.[language] || ''}
+                  onChange={(event) => setDraft((current) => ({
+                    ...current,
+                    translations: { ...(current.translations || {}), [language]: event.target.value },
+                  }))}
+                  placeholder={language === 'en' ? 'Piece' : language === 'ar' ? 'قطعة' : 'Adet'}
+                />
+              </label>
+            ))}
           </div>
           <div className="space-y-1">
             <label htmlFor="uom-name" className="block text-xs font-semibold text-slate-600">
@@ -267,7 +289,11 @@ const UomsPage: React.FC = () => {
             sorted.map((uom) => (
               <div key={uom.id} className={`grid grid-cols-12 items-center border-b border-slate-100 py-2 text-sm ${editingId === uom.id ? 'bg-amber-50/40' : ''}`}>
                 <div className="col-span-2 font-mono font-semibold">{uom.code}</div>
-                <div className="col-span-3">{uom.name}</div>
+                <div className="col-span-3">
+                  {uom.translations?.[i18n.resolvedLanguage || i18n.language]
+                    || uom.translations?.[(i18n.resolvedLanguage || i18n.language).split('-')[0]]
+                    || uom.name}
+                </div>
                 <div className="col-span-2">{uom.dimension}</div>
                 <div className="col-span-2">{uom.decimalPlaces}</div>
                 <div className="col-span-2">

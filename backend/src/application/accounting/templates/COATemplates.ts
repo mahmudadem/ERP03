@@ -78,6 +78,13 @@ export const StandardCOA = [
     parentCode: "103",
     isProtected: false,
   },
+  {
+    code: "10303",
+    name: "Inventory Transfer Clearing",
+    type: "asset",
+    parentCode: "103",
+    isProtected: false,
+  },
   // Accounts Receivable
   {
     code: "104",
@@ -211,6 +218,22 @@ export const StandardCOA = [
     isProtected: false,
     equitySubgroup: "RETAINED_EARNINGS",
   },
+  {
+    code: "303",
+    name: "Opening Balance Equity",
+    type: "equity",
+    parentCode: "3",
+    isProtected: false,
+    equitySubgroup: "RESERVES",
+  },
+  {
+    code: "304",
+    name: "Inventory Revaluation Reserve",
+    type: "equity",
+    parentCode: "3",
+    isProtected: false,
+    equitySubgroup: "RESERVES",
+  },
 
   // ========== REVENUE ==========
   {
@@ -271,6 +294,14 @@ export const StandardCOA = [
     isProtected: false,
     plSubgroup: "SALES",
   },
+  {
+    code: "406",
+    name: "Inventory Adjustment Gain",
+    type: "revenue",
+    parentCode: "4",
+    isProtected: false,
+    plSubgroup: "OTHER_REVENUE",
+  },
 
   // ========== EXPENSES ==========
   {
@@ -313,6 +344,22 @@ export const StandardCOA = [
     isProtected: false,
     plSubgroup: "COST_OF_SALES",
   },
+  {
+    code: "50103",
+    name: "Purchase Returns",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
+    plSubgroup: "COST_OF_SALES",
+  },
+  {
+    code: "50104",
+    name: "Purchase Discounts Received",
+    type: "expense",
+    parentCode: "501",
+    isProtected: false,
+    plSubgroup: "COST_OF_SALES",
+  },
   // Operating Expenses
   {
     code: "502",
@@ -333,6 +380,22 @@ export const StandardCOA = [
   {
     code: "50202",
     name: "Sales & Marketing",
+    type: "expense",
+    parentCode: "502",
+    isProtected: false,
+    plSubgroup: "OPERATING_EXPENSES",
+  },
+  {
+    code: "50203",
+    name: "Inventory Adjustment Loss",
+    type: "expense",
+    parentCode: "502",
+    isProtected: false,
+    plSubgroup: "OPERATING_EXPENSES",
+  },
+  {
+    code: "50204",
+    name: "Inventory Revaluation Expense",
     type: "expense",
     parentCode: "502",
     isProtected: false,
@@ -767,3 +830,100 @@ export const ComprehensiveCOA = [
   { code: "60703", name: "Foreign Exchange Losses", type: "expense", parentCode: "607", isProtected: false, plSubgroup: "OTHER_EXPENSES" },
   { code: "60704", name: "Loss on Asset Disposal", type: "expense", parentCode: "607", isProtected: false, plSubgroup: "OTHER_EXPENSES" },
 ];
+
+const STANDARD_ARABIC_NAMES: Record<string, string> = {
+  "1": "الأصول",
+  "101": "الصندوق والعهدة النقدية",
+  "10101": "الصندوق - المكتب الرئيسي",
+  "10102": "الصندوق - فرع التجزئة",
+  "102": "الحسابات البنكية",
+  "10201": "البنك - الحساب التشغيلي",
+  "10202": "البنك - مدفوعات الاعتمادات",
+  "103": "المخزون",
+  "10301": "البضاعة الجاهزة",
+  "10302": "مخزون بالطريق",
+  "104": "الذمم المدينة",
+  "10401": "ذمم العملاء",
+  "2": "الالتزامات",
+  "201": "الذمم الدائنة",
+  "20100": "الذمم الدائنة - عام",
+  "20101": "الموردون المحليون",
+  "20102": "الموردون الخارجيون",
+  "209": "بضاعة مستلمة غير مفوترة",
+  "202": "الضرائب والرسوم",
+  "20201": "ضريبة القيمة المضافة المستحقة",
+  "20202": "رسوم الاستيراد",
+  "3": "حقوق الملكية",
+  "301": "رأس مال المالك",
+  "30101": "رأس المال المدفوع",
+  "30102": "مسحوبات المالك",
+  "302": "الأرباح المحتجزة",
+  "30201": "الأرباح المتراكمة",
+  "4": "الإيرادات",
+  "400": "إيرادات المبيعات",
+  "401": "مبيعات الجملة",
+  "40101": "مبيعات الجملة المحلية",
+  "40102": "مبيعات التصدير",
+  "402": "مبيعات التجزئة",
+  "40201": "مبيعات المتجر الرئيسي",
+  "5": "المصروفات",
+  "501": "تكلفة البضاعة المباعة",
+  "50100": "تكلفة البضاعة المباعة - عام",
+  "50101": "المشتريات",
+  "50102": "مصاريف شحن وارد",
+  "502": "المصروفات التشغيلية",
+  "50201": "الإيجار والمرافق",
+  "50202": "المبيعات والتسويق",
+};
+
+const PERIODIC_TRADING_ARABIC_NAMES: Record<string, string> = {
+  "1": "الأصول",
+  "101": "الصندوق والعهدة النقدية",
+  "10101": "الصندوق - المكتب الرئيسي",
+  "102": "الحسابات البنكية",
+  "10201": "البنك - الحساب التشغيلي",
+  "103": "مخزون البضاعة",
+  "10301": "مخزون البضاعة - افتتاحي",
+  "10302": "مخزون البضاعة - ختامي",
+  "10303": "حساب وسيط تحويلات المخزون",
+  "104": "الذمم المدينة",
+  "10401": "ذمم العملاء",
+  "2": "الالتزامات",
+  "201": "الذمم الدائنة",
+  "20100": "الذمم الدائنة - عام",
+  "202": "الضرائب والرسوم",
+  "20201": "ضريبة القيمة المضافة المستحقة",
+  "209": "بضاعة مستلمة غير مفوترة",
+  "3": "حقوق الملكية",
+  "301": "رأس مال المالك",
+  "30101": "رأس المال المدفوع",
+  "302": "الأرباح المحتجزة",
+  "30201": "الأرباح المتراكمة",
+  "303": "حقوق ملكية الأرصدة الافتتاحية",
+  "304": "احتياطي إعادة تقييم المخزون",
+  "4": "الإيرادات",
+  "400": "المبيعات",
+  "401": "مردودات المبيعات",
+  "402": "خصومات المبيعات",
+  "403": "حساب المتاجرة",
+  "406": "أرباح تسوية المخزون",
+  "5": "المصروفات",
+  "501": "تكلفة المبيعات",
+  "50101": "المشتريات",
+  "50102": "مصاريف شحن وارد",
+  "50103": "مردودات المشتريات",
+  "50104": "خصومات مشتريات مكتسبة",
+  "502": "المصروفات التشغيلية",
+  "50202": "خصومات المبيعات",
+  "50203": "خسائر تسوية المخزون",
+  "50204": "مصروف إعادة تقييم المخزون",
+};
+
+const localizeCoaNames = <T extends Array<Record<string, any>>>(accounts: T, names: Record<string, string>): T =>
+  accounts.map((account) => ({
+    ...account,
+    name: names[String(account.code)] || account.name,
+  })) as unknown as T;
+
+export const ArabicStandardCOA = localizeCoaNames(StandardCOA, STANDARD_ARABIC_NAMES);
+export const ArabicPeriodicTradingCOA = localizeCoaNames(PeriodicTradingCOA, PERIODIC_TRADING_ARABIC_NAMES);

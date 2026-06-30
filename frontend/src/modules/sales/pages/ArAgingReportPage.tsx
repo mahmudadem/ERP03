@@ -11,6 +11,7 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 interface ArAgingParams {
   asOfDate: string;
@@ -29,6 +30,7 @@ const Initiator: React.FC<{
   onSubmit: (p: ArAgingParams) => void;
   initialParams?: ArAgingParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('common');
   const [asOfDate, setAsOfDate]         = useState(initialParams?.asOfDate || today());
   const [customerId, setCustomerId]     = useState(initialParams?.customerId || '');
   const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
@@ -49,7 +51,7 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            As Of Date
+            {t('sales.arAging.asOfDate', 'As Of Date')}
           </label>
           <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
         </div>
@@ -57,7 +59,7 @@ const Initiator: React.FC<{
         <div className="md:col-span-8 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Customer (optional)
+            {t('sales.arAging.customerOptional', 'Customer (optional)')}
           </label>
           <PartySelector
             value={customerId}
@@ -71,7 +73,7 @@ const Initiator: React.FC<{
               setCustomerId(party.id);
               setCustomerLabel(party.displayName || party.legalName || party.id);
             }}
-            placeholder="All customers"
+            placeholder={t('sales.arAging.allCustomers', 'All customers')}
           />
         </div>
       </div>
@@ -82,7 +84,7 @@ const Initiator: React.FC<{
           className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
         >
           <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
+            {t('sales.arAging.generateReport', 'Generate Report')}
             <ChevronRight className="w-4 h-4" />
           </span>
         </Button>
@@ -94,7 +96,16 @@ const Initiator: React.FC<{
 // ─── Expandable customer row ────────────────────────────────────────────────
 
 const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = ({ row, cellPad }) => {
+  const { t } = useTranslation('common');
   const [open, setOpen] = useState(false);
+  const invoiceHeaders = [
+    t('sales.arAging.invoiceNumber', 'Invoice #'),
+    t('sales.arAging.invoiceDate', 'Invoice Date'),
+    t('sales.arAging.dueDate', 'Due Date'),
+    t('sales.arAging.daysOverdue', 'Days Overdue'),
+    t('sales.arAging.bucket', 'Bucket'),
+    t('sales.arAging.outstanding', 'Outstanding'),
+  ];
   return (
     <>
       <tr
@@ -120,8 +131,8 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200">
-                  {['Invoice #', 'Invoice Date', 'Due Date', 'Days Overdue', 'Bucket', 'Outstanding'].map(h => (
-                    <th key={h} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', h === 'Outstanding' ? 'text-right' : 'text-left')}>{h}</th>
+                  {invoiceHeaders.map((h, i) => (
+                    <th key={h} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', i === 5 ? 'text-right' : 'text-left')}>{h}</th>
                   ))}
                 </tr>
               </thead>
@@ -139,7 +150,9 @@ const CustomerRow: React.FC<{ row: ArAgingCustomerRowDTO; cellPad: string }> = (
                 {row.unallocated != null && Math.abs(row.unallocated) > 0.005 && (
                   <tr className="border-t border-dashed border-slate-300">
                     <td colSpan={5} className="py-1.5 pr-3 text-[11px] italic text-slate-500">
-                      {row.unallocated < 0 ? 'Credit notes / JV adjustments' : 'Unallocated balance'}
+                      {row.unallocated < 0
+                        ? t('sales.arAging.creditNotesJVAdjustments', 'Credit notes / JV adjustments')
+                        : t('sales.arAging.unallocatedBalance', 'Unallocated balance')}
                     </td>
                     <td className={clsx('py-1.5 pr-3 text-[11px] tabular-nums text-right font-medium italic', row.unallocated < 0 ? 'text-green-600' : 'text-amber-600')}>
                       {fmt(row.unallocated)}
@@ -162,6 +175,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+  const { t } = useTranslation('common');
   const [report, setReport] = useState<ArAgingReportDTO | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -172,16 +186,26 @@ const ReportContent: React.FC<{
     setError(null);
     salesReportingApi.getArAging({ asOfDate: params.asOfDate, customerId: params.customerId })
       .then((data) => { if (!cancelled) setReport(data); })
-      .catch((err) => { if (!cancelled) setError(err?.message || 'Failed to load report'); })
+      .catch((err) => { if (!cancelled) setError(err?.message || t('sales.arAging.failedToLoadReport', 'Failed to load report')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
-  }, [params.asOfDate, params.customerId]);
+  }, [params.asOfDate, params.customerId, t]);
 
   useEffect(() => {
     setTotalItems?.(report?.rows.length ?? 0);
   }, [report?.rows.length, setTotalItems]);
 
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
+  const customerCount = report?.rows.length ?? 0;
+  const agingHeaders = [
+    t('sales.arAging.customerHeader', 'Customer'),
+    t('sales.arAging.current', 'Current'),
+    t('sales.arAging.days1_30', '1–30 Days'),
+    t('sales.arAging.days31_60', '31–60 Days'),
+    t('sales.arAging.days61_90', '61–90 Days'),
+    t('sales.arAging.days90Plus', '90+ Days'),
+    t('sales.arAging.total', 'Total'),
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -189,7 +213,7 @@ const ReportContent: React.FC<{
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
             <CalendarDays className="w-3 h-3 text-blue-600" />
-            As of {report?.asOfDate ?? params.asOfDate}
+            {t('sales.arAging.asOfDateValue', 'As of {{date}}', { date: report?.asOfDate ?? params.asOfDate })}
           </span>
           {params.customerLabel && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
@@ -197,8 +221,8 @@ const ReportContent: React.FC<{
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            {report?.rows.length ?? 0} customer{(report?.rows.length ?? 0) === 1 ? '' : 's'} ·
-            Total AR: <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
+            {t('sales.arAging.customerCount', '{{count}} customer', { count: customerCount })} ·
+            {t('sales.arAging.totalAR', 'Total AR:')} <span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
           </span>
         </div>
       </div>
@@ -212,19 +236,19 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading aging...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('sales.arAging.loadingAging', 'Loading aging...')}</p>
             </div>
           </div>
         ) : !report || report.rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 text-center">
-            <p className="text-sm font-bold text-slate-600">No outstanding receivables as of {report?.asOfDate ?? params.asOfDate}</p>
+            <p className="text-sm font-bold text-slate-600">{t('sales.arAging.noOutstandingReceivablesAsOfDate', 'No outstanding receivables as of {{date}}', { date: report?.asOfDate ?? params.asOfDate })}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                 <tr>
-                  {['Customer', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
+                  {agingHeaders.map((h, i) => (
                     <th key={h} className={clsx(cellPad, i === 0 ? 'text-left' : 'text-right')}>{h}</th>
                   ))}
                 </tr>
@@ -236,7 +260,7 @@ const ReportContent: React.FC<{
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900">
-                  <td className={cellPad}>Totals</td>
+                  <td className={cellPad}>{t('sales.arAging.totals', 'Totals')}</td>
                   <td className={`${cellPad} text-right tabular-nums`}>{fmt(report.totals.current)}</td>
                   <td className={`${cellPad} text-right tabular-nums text-amber-700`}>{fmt(report.totals.days1_30)}</td>
                   <td className={`${cellPad} text-right tabular-nums text-orange-700`}>{fmt(report.totals.days31_60)}</td>
@@ -255,14 +279,18 @@ const ReportContent: React.FC<{
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-const ArAgingReportPage: React.FC = () => (
-  <ReportContainer<ArAgingParams>
-    title="AR Aging"
-    subtitle="Accounts receivable by aging bucket"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: false }}
-  />
-);
+const ArAgingReportPage: React.FC = () => {
+  const { t } = useTranslation('common');
+
+  return (
+    <ReportContainer<ArAgingParams>
+      title={t('sales.arAging.title', 'AR Aging')}
+      subtitle={t('sales.arAging.subtitle', 'Accounts receivable by aging bucket')}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: false }}
+    />
+  );
+};
 
 export default ArAgingReportPage;

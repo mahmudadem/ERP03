@@ -32,20 +32,20 @@ export const PosDateRangeInitiator: React.FC<{
       onSubmit={(e) => { e.preventDefault(); onSubmit({ dateFrom: from, dateTo: to }); }}
       className="space-y-6"
     >
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end">
-        <div className="md:col-span-4 space-y-2">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-5 items-end" dir="ltr">
+        <div className="md:col-span-4 space-y-2" dir="auto">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
             {t('pos:report.dateFrom', { defaultValue: 'Date from' })}
           </label>
           <DatePicker value={from} onChange={setFrom} className="w-full" />
         </div>
-        <div className="md:col-span-4 space-y-2">
+        <div className="md:col-span-4 space-y-2" dir="auto">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500">
             {t('pos:report.dateTo', { defaultValue: 'Date to' })}
           </label>
           <DatePicker value={to} onChange={setTo} className="w-full" />
         </div>
-        <div className="md:col-span-4 flex justify-end">
+        <div className="md:col-span-4 flex justify-end" dir="auto">
           <Button type="submit" className="bg-slate-900 hover:bg-black text-white px-8 py-2.5 rounded-xl">
             <span className="flex items-center gap-2 text-xs font-bold uppercase tracking-widest">
               {t('common.generate', { defaultValue: 'Generate' })} <ChevronRight className="w-4 h-4" />

@@ -21,7 +21,9 @@ const COA_TEMPLATE_MANIFESTS = [
   { id: 'simplified',       name: 'Simplified',                    complexity: 'low',     accountCount: null }, // count filled at runtime
   { id: 'services',         name: 'Professional Services',         complexity: 'low',     accountCount: null },
   { id: 'periodic_trading', name: 'Trading Company - Periodic',    complexity: 'medium',  accountCount: null },
+  { id: 'periodic_trading_ar', name: 'شركة تجارية - دوري',         complexity: 'medium',  accountCount: null },
   { id: 'standard',         name: 'Standard (Recommended)',        complexity: 'medium',  accountCount: null },
+  { id: 'standard_ar',      name: 'قياسي (موصى به)',               complexity: 'medium',  accountCount: null },
   { id: 'manufacturing',    name: 'Manufacturing',                 complexity: 'medium',  accountCount: null },
   { id: 'retail',           name: 'Retail & E-Commerce',           complexity: 'medium',  accountCount: null },
   { id: 'full',             name: 'Comprehensive',                 complexity: 'high',    accountCount: null },

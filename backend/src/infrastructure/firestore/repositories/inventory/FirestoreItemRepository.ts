@@ -55,7 +55,10 @@ export class FirestoreItemRepository implements IItemRepository {
   async updateItem(id: string, data: Partial<Item>): Promise<void> {
     const ref = await this.resolveRefById(id);
     if (!ref) return;
-    await ref.update(stripUndefinedDeep(data) as any);
+    const payload = data.uomBarcodes
+      ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
+      : data;
+    await ref.update(stripUndefinedDeep(payload) as any);
   }
 
   async updateItemInTransaction(companyId: string, id: string, data: Partial<Item>, transaction: unknown): Promise<void> {
@@ -65,7 +68,10 @@ export class FirestoreItemRepository implements IItemRepository {
       return;
     }
 
-    txn.set(this.collection(companyId).doc(id), stripUndefinedDeep(data) as any, { merge: true });
+    const payload = data.uomBarcodes
+      ? { ...data, uomBarcodeValues: data.uomBarcodes.flatMap((entry) => entry.barcodes) }
+      : data;
+    txn.set(this.collection(companyId).doc(id), stripUndefinedDeep(payload) as any, { merge: true });
   }
 
   async setItemActive(id: string, active: boolean): Promise<void> {
@@ -85,16 +91,34 @@ export class FirestoreItemRepository implements IItemRepository {
   async getCompanyItems(companyId: string, opts?: ItemListOptions): Promise<Item[]> {
     let query: Query = this.collection(companyId);
 
-    if (opts?.type) query = query.where('type', '==', opts.type);
-    if (opts?.categoryId) query = query.where('categoryId', '==', opts.categoryId);
-    if (opts?.active !== undefined) query = query.where('active', '==', opts.active);
-    if (opts?.trackInventory !== undefined) query = query.where('trackInventory', '==', opts.trackInventory);
-
-    query = query.orderBy('code', 'asc');
-    query = this.applyListOptions(query, opts);
+    if (opts?.type) {
+      query = query.where('type', '==', opts.type);
+    } else if (opts?.categoryId) {
+      query = query.where('categoryId', '==', opts.categoryId);
+    } else if (opts?.active !== undefined) {
+      query = query.where('active', '==', opts.active);
+    } else if (opts?.trackInventory !== undefined) {
+      query = query.where('trackInventory', '==', opts.trackInventory);
+    }
 
     const snap = await query.get();
-    return snap.docs.map((doc) => ItemMapper.toDomain(doc.data()));
+    const all = snap.docs.map((doc) => ItemMapper.toDomain(doc.data()));
+    const filtered = all.filter((item) => {
+      if (opts?.type && item.type !== opts.type) return false;
+      if (opts?.categoryId && item.categoryId !== opts.categoryId) return false;
+      if (opts?.active !== undefined && item.active !== opts.active) return false;
+      if (opts?.trackInventory !== undefined && item.trackInventory !== opts.trackInventory) return false;
+      return true;
+    });
+
+    filtered.sort((a, b) => a.code.localeCompare(b.code));
+
+    const offset = Math.max(0, opts?.offset ?? 0);
+    const limit = opts?.limit;
+    if (typeof limit === 'number') {
+      return filtered.slice(offset, offset + limit);
+    }
+    return filtered.slice(offset);
   }
 
   async getItemByCode(companyId: string, code: string): Promise<Item | null> {
@@ -111,6 +135,10 @@ export class FirestoreItemRepository implements IItemRepository {
     const snap2 = await this.collection(companyId).where('barcodes', 'array-contains', barcode).limit(1).get();
     if (!snap2.empty) {
       return ItemMapper.toDomain(snap2.docs[0].data());
+    }
+    const snap3 = await this.collection(companyId).where('uomBarcodeValues', 'array-contains', barcode).limit(1).get();
+    if (!snap3.empty) {
+      return ItemMapper.toDomain(snap3.docs[0].data());
     }
     return null;
   }
@@ -142,7 +170,8 @@ export class FirestoreItemRepository implements IItemRepository {
       item.code.toLowerCase().includes(normalized) ||
       item.name.toLowerCase().includes(normalized) ||
       (item.barcode || '').toLowerCase().includes(normalized) ||
-      (item.barcodes || []).some((b) => b.toLowerCase().includes(normalized))
+      (item.barcodes || []).some((b) => b.toLowerCase().includes(normalized)) ||
+      item.uomBarcodes.some((entry) => entry.barcodes.some((b) => b.toLowerCase().includes(normalized)))
     );
 
     return matches.slice(0, opts?.limit ?? 50);

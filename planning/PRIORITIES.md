@@ -100,10 +100,13 @@ Notes:
 
 ## 🔒 Task Lock (prevent collisions between agents)
 
+| Codex | Task 277 — Item UOM barcodes and multilingual UOM names | 2026-06-29 | ✅ Done locally on `codex/items-uom-barcodes` |
+
 If you are starting work on a priority item, record it here so other agents don't duplicate:
 
 | Agent | Task | Started | Status |
 |-------|------|---------|--------|
+| Codex | Production QA fixes — Telegram export, sequential commits | 2026-06-29 | 🔄 278a–278w committed; 278x verified locally, commit/deploy pending |
 | Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 | Codex | Phase F - Vendor Groups | 2026-05-28 | ✅ Done |
 | Antigravity | Phase F - Purchase Price Lists | 2026-05-28 | ✅ Done |

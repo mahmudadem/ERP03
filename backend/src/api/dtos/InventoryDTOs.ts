@@ -42,6 +42,8 @@ export interface ItemDTO {
   name: string;
   description?: string;
   barcode?: string;
+  barcodes?: string[];
+  uomBarcodes: Item['uomBarcodes'];
   type: Item['type'];
   categoryId?: string;
   brand?: string;
@@ -122,6 +124,7 @@ export interface UomDTO {
   companyId: string;
   code: string;
   name: string;
+  translations: Record<string, string>;
   dimension: Uom['dimension'];
   decimalPlaces: number;
   active: boolean;
@@ -369,6 +372,8 @@ export class InventoryDTOMapper {
       name: item.name,
       description: item.description,
       barcode: item.barcode,
+      barcodes: item.barcodes,
+      uomBarcodes: item.uomBarcodes.map((entry) => ({ ...entry, barcodes: [...entry.barcodes] })),
       type: item.type,
       categoryId: item.categoryId,
       brand: item.brand,
@@ -450,6 +455,7 @@ export class InventoryDTOMapper {
       companyId: uom.companyId,
       code: uom.code,
       name: uom.name,
+      translations: { ...uom.translations },
       dimension: uom.dimension,
       decimalPlaces: uom.decimalPlaces,
       active: uom.active,

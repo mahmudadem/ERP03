@@ -449,7 +449,7 @@ const SalesInvoicesListPage: React.FC = () => {
     () => [
       {
         key: 'invoiceNumber',
-        label: 'Invoice #',
+        label: t('sales.invoicesList.columns.invoiceNumber', 'Invoice #'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -461,7 +461,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'customerName',
-        label: 'Customer/Party',
+        label: t('sales.invoicesList.columns.customer', 'Customer/Party'),
         width: '200px',
         priority: 1,
         sortable: true,
@@ -475,7 +475,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'invoiceDate',
-        label: 'Invoice Date and time',
+        label: t('sales.invoicesList.columns.date', 'Invoice Date and time'),
         width: '180px',
         priority: 1,
         sortable: true,
@@ -492,7 +492,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'grandTotalDoc',
-        label: 'Grand Total',
+        label: t('sales.invoicesList.columns.total', 'Grand Total'),
         width: '130px',
         priority: 1,
         sortable: true,
@@ -506,7 +506,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'currency',
-        label: 'Currency',
+        label: t('sales.invoicesList.columns.currency', 'Currency'),
         width: '80px',
         priority: 1,
         sortable: true,
@@ -518,7 +518,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'persona',
-        label: 'Invoice Type/Persona',
+        label: t('sales.invoicesList.columns.persona', 'Invoice Type/Persona'),
         width: '140px',
         priority: 1,
         sortable: true,
@@ -532,7 +532,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'paymentStatus',
-        label: 'Payments',
+        label: t('sales.invoicesList.columns.paymentStatus', 'Payments'),
         width: '120px',
         priority: 1,
         sortable: true,
@@ -551,7 +551,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'status',
-        label: 'Status',
+        label: t('sales.invoicesList.columns.status', 'Status'),
         width: '150px',
         priority: 1,
         sortable: true,
@@ -570,7 +570,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'createdBy',
-        label: 'Created By',
+        label: t('sales.invoicesList.columns.createdBy', 'Created By'),
         width: '150px',
         priority: 2,
         accessor: 'createdBy',
@@ -588,7 +588,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'dueDate',
-        label: 'Due Date',
+        label: t('sales.invoicesList.columns.dueDate', 'Due Date'),
         width: '120px',
         priority: 2,
         accessor: 'dueDate',
@@ -597,7 +597,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'postedAt',
-        label: 'Posted At',
+        label: t('sales.invoicesList.columns.postedAt', 'Posted At'),
         width: '150px',
         priority: 3,
         accessor: 'postedAt',
@@ -624,14 +624,14 @@ const SalesInvoicesListPage: React.FC = () => {
     () => [
       {
         key: 'view',
-        label: 'View',
+        label: t('actions.view', 'View'),
         icon: Eye,
         onClick: (row) => handleOpenInvoice(row.id, row.invoiceNumber),
         primary: false,
       },
       {
         key: 'print',
-        label: 'Print',
+        label: t('actions.print', 'Print'),
         icon: Printer,
         onClick: (row) => {
           toast.success(`Printing invoice ${row.invoiceNumber}...`);
@@ -641,7 +641,7 @@ const SalesInvoicesListPage: React.FC = () => {
       },
       {
         key: 'delete',
-        label: 'Delete',
+        label: t('actions.delete', 'Delete'),
         icon: Trash2,
         variant: 'danger',
         isEnabled: (row) => row.status === 'DRAFT',

@@ -97,19 +97,26 @@ export class FirestoreVendorGroupRepository implements IVendorGroupRepository {
   async list(companyId: string, opts?: VendorGroupListOptions): Promise<VendorGroup[]> {
     let query: Query = this.collection(companyId);
 
+    const requestedStatus = opts?.status ?? (!opts?.includeInactive ? 'ACTIVE' : undefined);
     if (opts?.status) {
       query = query.where('status', '==', opts.status);
-    } else if (!opts?.includeInactive) {
-      query = query.where('status', '==', 'ACTIVE');
     }
 
-    query = query.orderBy('name', 'asc');
-
-    if (opts?.offset) query = query.offset(opts.offset);
-    if (opts?.limit) query = query.limit(opts.limit);
-
     const snap = await query.get();
-    return snap.docs.map((doc) => VendorGroupMapper.toDomain(doc.data()));
+    const all = snap.docs.map((doc) => VendorGroupMapper.toDomain(doc.data()));
+    const filtered = requestedStatus
+      ? all.filter((group) => group.status === requestedStatus)
+      : all;
+
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+    const offset = Math.max(0, opts?.offset ?? 0);
+    const limit = opts?.limit;
+
+    if (typeof limit === 'number') {
+      return filtered.slice(offset, offset + limit);
+    }
+    return filtered.slice(offset);
   }
 
   async delete(companyId: string, id: string): Promise<void> {

@@ -92,6 +92,15 @@ const Initiator: React.FC<{
 const VendorRow: React.FC<{ row: ApAgingVendorRowDTO; cellPad: string }> = ({ row, cellPad }) => {
   const { t } = useTranslation(['purchases', 'common']);
   const [open, setOpen] = useState(false);
+  const invoiceHeaders = [
+    { key: 'invoiceNumber', label: t("auto.ApAgingReportPage.invoiceNumber", "Invoice #") },
+    { key: 'vendorInvoiceNumber', label: t("auto.ApAgingReportPage.vendorInvoiceNumber", "Vendor Inv #") },
+    { key: 'invoiceDate', label: t("auto.ApAgingReportPage.invoiceDate", "Invoice Date") },
+    { key: 'dueDate', label: t("auto.ApAgingReportPage.dueDate", "Due Date") },
+    { key: 'daysOverdue', label: t("auto.ApAgingReportPage.daysOverdue", "Days Overdue") },
+    { key: 'bucket', label: t("auto.ApAgingReportPage.bucket", "Bucket") },
+    { key: 'outstanding', label: t("auto.ApAgingReportPage.outstanding", "Outstanding") },
+  ];
   return (
     <>
       <tr
@@ -117,8 +126,8 @@ const VendorRow: React.FC<{ row: ApAgingVendorRowDTO; cellPad: string }> = ({ ro
             <table className="w-full">
               <thead>
                 <tr className="border-b border-slate-200">
-                  {['Invoice #', 'Vendor Inv #', 'Invoice Date', 'Due Date', 'Days Overdue', 'Bucket', 'Outstanding'].map(h => (
-                    <th key={h} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', h === 'Outstanding' ? 'text-right' : 'text-left')}>{h}</th>
+                  {invoiceHeaders.map(h => (
+                    <th key={h.key} className={clsx('pb-1.5 text-[10px] font-black text-slate-400 uppercase tracking-widest pr-3', h.key === 'outstanding' ? 'text-right' : 'text-left')}>{h.label}</th>
                   ))}
                 </tr>
               </thead>
@@ -137,7 +146,9 @@ const VendorRow: React.FC<{ row: ApAgingVendorRowDTO; cellPad: string }> = ({ ro
                 {row.unallocated != null && Math.abs(row.unallocated) > 0.005 && (
                   <tr className="border-t border-dashed border-slate-300">
                     <td colSpan={6} className="py-1.5 pr-3 text-[11px] italic text-slate-500">
-                      {row.unallocated < 0 ? 'Debit notes / JV adjustments' : 'Unallocated balance'}
+                      {row.unallocated < 0
+                        ? t("auto.ApAgingReportPage.debitNotesJVAdjustments", "Debit notes / JV adjustments")
+                        : t("auto.ApAgingReportPage.unallocatedBalance", "Unallocated balance")}
                     </td>
                     <td className={clsx('py-1.5 pr-3 text-[11px] tabular-nums text-right font-medium italic', row.unallocated < 0 ? 'text-green-600' : 'text-amber-600')}>
                       {fmt(row.unallocated)}
@@ -181,13 +192,23 @@ const ReportContent: React.FC<{
   }, [report?.rows.length, setTotalItems]);
 
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
+  const vendorCount = report?.rows.length ?? 0;
+  const agingHeaders = [
+    { key: 'vendor', label: t("auto.ApAgingReportPage.vendorHeader", "Vendor") },
+    { key: 'current', label: t("auto.ApAgingReportPage.current", "Current") },
+    { key: 'days1_30', label: t("auto.ApAgingReportPage.days1_30", "1–30 Days") },
+    { key: 'days31_60', label: t("auto.ApAgingReportPage.days31_60", "31–60 Days") },
+    { key: 'days61_90', label: t("auto.ApAgingReportPage.days61_90", "61–90 Days") },
+    { key: 'days90Plus', label: t("auto.ApAgingReportPage.days90Plus", "90+ Days") },
+    { key: 'total', label: t("auto.ApAgingReportPage.total", "Total") },
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
-            <CalendarDays className="w-3 h-3 text-blue-600" />{t("auto.ApAgingReportPage.asOf", "As of")}{report?.asOfDate ?? params.asOfDate}
+            <CalendarDays className="w-3 h-3 text-blue-600" />{t("auto.ApAgingReportPage.asOfDateValue", "As of {{date}}", { date: report?.asOfDate ?? params.asOfDate })}
           </span>
           {params.vendorLabel && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
@@ -195,7 +216,8 @@ const ReportContent: React.FC<{
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            {report?.rows.length ?? 0}{t("auto.ApAgingReportPage.vendor", "vendor")}{(report?.rows.length ?? 0) === 1 ? '' : 's'}{t("auto.ApAgingReportPage.totalAP", "· Total AP:")}<span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
+            {t("auto.ApAgingReportPage.vendorCount", "{{count}} vendor", { count: vendorCount })}{' '}
+            {t("auto.ApAgingReportPage.totalAP", "· Total AP:")}<span className="font-black text-slate-700">{fmt(report?.totals.total ?? 0)}</span>
           </span>
         </div>
       </div>
@@ -214,15 +236,15 @@ const ReportContent: React.FC<{
           </div>
         ) : !report || report.rows.length === 0 ? (
           <div className="bg-white border rounded-xl p-12 text-center">
-            <p className="text-sm font-bold text-slate-600">{t("auto.ApAgingReportPage.noOutstandingPayablesAsOf", "No outstanding payables as of")}{report?.asOfDate ?? params.asOfDate}</p>
+            <p className="text-sm font-bold text-slate-600">{t("auto.ApAgingReportPage.noOutstandingPayablesAsOfDate", "No outstanding payables as of {{date}}", { date: report?.asOfDate ?? params.asOfDate })}</p>
           </div>
         ) : (
           <div className="bg-white border rounded-xl shadow-sm overflow-auto">
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                 <tr>
-                  {['Vendor', 'Current', '1–30 Days', '31–60 Days', '61–90 Days', '90+ Days', 'Total'].map((h, i) => (
-                    <th key={h} className={clsx(cellPad, i === 0 ? 'text-left' : 'text-right')}>{h}</th>
+                  {agingHeaders.map((h, i) => (
+                    <th key={h.key} className={clsx(cellPad, i === 0 ? 'text-left' : 'text-right')}>{h.label}</th>
                   ))}
                 </tr>
               </thead>

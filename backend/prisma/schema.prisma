@@ -19,7 +19,7 @@ model Company {
   id              String   @id
   name            String
   ownerId         String
-  taxId           String   @unique
+  taxId           String?  @unique
   address         String?
   country         String?
   logoUrl         String?
@@ -209,7 +209,11 @@ model UserPreferences {
 // ============================================
 
 model CompanyRole {
-  id                  String   @id @default(uuid())
+  // NOTE: id is scoped per-company, not globally unique. System roles use stable
+  // ids ('OWNER', 'ADMIN', 'MEMBER') that repeat across every company, so the
+  // primary key is composite (companyId, id) — mirrors the original Firestore
+  // layout (companies/{companyId}/roles/{roleId}). Custom roles default to a uuid.
+  id                  String   @default(uuid())
   companyId           String
   name                String
   permissions         String[] @default([])
@@ -221,6 +225,7 @@ model CompanyRole {
 
   company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
 
+  @@id([companyId, id])
   @@unique([companyId, name])
   @@index([companyId])
   @@map("company_roles")
@@ -600,6 +605,8 @@ model Item {
   description               String?
   barcode                   String?
   barcodes                  String[] @default([])
+  uomBarcodes               Json?
+  uomBarcodeValues          String[] @default([])
   type                      String   @default("PRODUCT")
   categoryId                String?
   brand                     String?
@@ -684,8 +691,14 @@ model Uom {
   companyId         String
   code              String
   name              String
+  dimension         String   @default("OTHER")
+  decimalPlaces     Int      @default(0)
+  active            Boolean  @default(true)
+  isSystem          Boolean  @default(false)
+  translations      Json?
   baseUomId         String?
   conversionFactor  Float    @default(1.0)
+  createdBy         String   @default("SYSTEM")
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 

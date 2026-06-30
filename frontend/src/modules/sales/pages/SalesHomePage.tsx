@@ -762,7 +762,9 @@ const SalesHomePage: React.FC = () => {
   if (loadError && initialized === null) {
     return (
       <div className="space-y-4 p-4">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Sales Hub</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">
+          {t('sales.home.title', 'Sales Overview Module')}
+        </h1>
         <Card className="flex items-center gap-3 p-5 text-sm text-red-700 dark:text-red-400">
           <AlertCircle size={18} className="flex-shrink-0" />
           {loadError}
@@ -796,14 +798,14 @@ const SalesHomePage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
-                Sales Overview Module
+                {t('sales.home.title', 'Sales Overview Module')}
               </h1>
               <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">
-                Module Dashboard
+                {t('sales.home.moduleDashboard', 'Module Dashboard')}
               </span>
             </div>
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Track and publish invoices, monitor receivables, and configure sales order funnels.
+              {t('sales.home.subtitle', 'Track and publish invoices, monitor receivables, and configure sales order funnels.')}
             </div>
           </div>
         </div>
@@ -836,7 +838,7 @@ const SalesHomePage: React.FC = () => {
             type="button"
             onClick={() => navigate('/sales/settings')}
             className="flex items-center gap-1.5 rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 transition-colors hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-805 dark:text-slate-200 dark:hover:bg-slate-700 shadow-sm"
-            title="Sales Settings"
+            title={t('sales.home.salesSettings', 'Sales Settings')}
           >
             <Settings size={14} />
             {t('sales.home.settings', 'Settings')}
@@ -847,40 +849,40 @@ const SalesHomePage: React.FC = () => {
       {/* ── KPI Cards ── */}
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         <KPICard
-          label="Total Revenue"
+          label={t('sales.home.kpis.totalRevenue', 'Total Revenue')}
           value={formatCurrency(totalRevenue)}
           suffix={companyCurrency}
           loading={loadingInvoices}
           accent="normal"
           subtextAccent="success"
-          subtext="Realized cash settlements"
+          subtext={t('sales.home.kpis.realizedCashSettlements', 'Realized cash settlements')}
         />
         <KPICard
-          label="Outstanding AR"
+          label={t('sales.home.kpis.outstandingAr', 'Outstanding AR')}
           value={formatCurrency(outstandingAR)}
           suffix={companyCurrency}
           loading={loadingInvoices}
           accent="normal"
           subtextAccent="danger"
-          subtext="Due collection ledger status"
+          subtext={t('sales.home.kpis.dueCollectionLedgerStatus', 'Due collection ledger status')}
         />
         <KPICard
-          label="Overdue Invoices"
+          label={t('sales.home.kpis.overdueInvoices', 'Overdue Invoices')}
           value={String(overdueInvoices)}
-          suffix="Active items"
+          suffix={t('sales.home.kpis.activeItems', 'Active items')}
           loading={loadingInvoices}
           accent={overdueInvoices > 0 ? 'danger' : 'normal'}
           subtextAccent={overdueInvoices > 0 ? 'danger' : 'normal'}
-          subtext="Requiring immediate credit claims"
+          subtext={t('sales.home.kpis.requiringImmediateCreditClaims', 'Requiring immediate credit claims')}
         />
         <KPICard
-          label="Pending Approval"
+          label={t('sales.home.kpis.pendingApproval', 'Pending Approval')}
           value={String(pendingApproval)}
-          suffix="Invoices pending"
+          suffix={t('sales.home.kpis.invoicesPending', 'Invoices pending')}
           loading={loadingInvoices}
           accent={pendingApproval > 0 ? 'warning' : 'normal'}
           subtextAccent={pendingApproval > 0 ? 'warning' : 'normal'}
-          subtext="Awaiting bank transfers"
+          subtext={t('sales.home.kpis.awaitingBankTransfers', 'Awaiting bank transfers')}
         />
       </div>
 
@@ -895,14 +897,14 @@ const SalesHomePage: React.FC = () => {
             <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
               <div className="mb-2.5 flex items-center justify-between">
                 <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                  Recent Sales Orders (SO)
+                  {t('sales.home.recentSalesOrders', 'Recent Sales Orders (SO)')}
                 </h3>
                 <button
                   type="button"
                   onClick={() => navigate('/sales/orders')}
                   className="text-[10px] font-bold text-indigo-650 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
                 >
-                  Fulfillment Queue
+                  {t('sales.home.fulfillmentQueue', 'Fulfillment Queue')}
                 </button>
               </div>
               <div className="border-b border-slate-100 dark:border-slate-700/60 mb-2.5" />
@@ -912,22 +914,22 @@ const SalesHomePage: React.FC = () => {
                 </div>
               ) : recentOrders.length === 0 ? (
                 <div className="h-[150px] flex items-center justify-center text-center text-xs text-slate-400 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50/20">
-                  No recent orders.
+                  {t('sales.home.noRecentOrders', 'No recent orders.')}
                 </div>
               ) : (
                 <div className="h-[150px] overflow-auto border border-slate-300 dark:border-slate-700 rounded-lg custom-scroll">
                   <table className="w-full text-[11px] text-left border-collapse">
                     <thead className="sticky top-0 z-10">
                       <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">SO Number</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Customer / Client</th>
-                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">Currency</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Raw Total</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">Created By</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Created At</th>
-                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Approved At</th>
-                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">Status</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.soNumber', 'SO Number')}</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.date', 'Date')}</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.customerClient', 'Customer / Client')}</th>
+                        <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">{t('sales.home.columns.currency', 'Currency')}</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.rawTotal', 'Raw Total')}</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">{t('sales.home.columns.createdBy', 'Created By')}</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t('sales.home.columns.createdAt', 'Created At')}</th>
+                        <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t('sales.home.columns.approvedAt', 'Approved At')}</th>
+                        <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">{t('sales.home.columns.status', 'Status')}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -980,14 +982,14 @@ const SalesHomePage: React.FC = () => {
           <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="mb-2.5 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Recent Sales Invoices (INV)
+                {t('sales.home.recentSalesInvoices', 'Recent Sales Invoices (INV)')}
               </h3>
               <button
                 type="button"
                 onClick={() => navigate('/sales/invoices')}
                 className="text-[10px] font-bold text-indigo-650 hover:text-indigo-800 dark:text-indigo-400 dark:hover:text-indigo-300"
               >
-                Postings Register
+                {t('sales.home.postingsRegister', 'Postings Register')}
               </button>
             </div>
             <div className="border-b border-slate-100 dark:border-slate-700/60 mb-2.5" />
@@ -997,22 +999,22 @@ const SalesHomePage: React.FC = () => {
               </div>
             ) : recentInvoices.length === 0 ? (
               <div className="h-[150px] flex items-center justify-center text-center text-xs text-slate-400 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50/20">
-                No recent invoices.
+                {t('sales.home.noRecentInvoices', 'No recent invoices.')}
               </div>
             ) : (
               <div className="h-[150px] overflow-auto border border-slate-300 dark:border-slate-700 rounded-lg custom-scroll">
                 <table className="w-full text-[11px] text-left border-collapse">
                   <thead className="sticky top-0 z-10">
                     <tr className="border-b border-slate-200 bg-slate-100 dark:border-slate-700 dark:bg-slate-900 shadow-sm">
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Invoice ID</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Date</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Debtor Customer</th>
-                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">Currency</th>
-                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Raw Total</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">Created By</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Created At</th>
-                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">Approved At</th>
-                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">Status</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.invoiceId', 'Invoice ID')}</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.date', 'Date')}</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.debtorCustomer', 'Debtor Customer')}</th>
+                      <th className="py-2 px-3 text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden sm:table-cell">{t('sales.home.columns.currency', 'Currency')}</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">{t('sales.home.columns.rawTotal', 'Raw Total')}</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden md:table-cell">{t('sales.home.columns.createdBy', 'Created By')}</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t('sales.home.columns.createdAt', 'Created At')}</th>
+                      <th className="py-2 px-3 text-left text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 hidden lg:table-cell">{t('sales.home.columns.approvedAt', 'Approved At')}</th>
+                      <th className="py-2 px-3 text-right text-[9px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 font-sans">{t('sales.home.columns.status', 'Status')}</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
@@ -1063,7 +1065,7 @@ const SalesHomePage: React.FC = () => {
           {/* Top Client Accounts */}
           <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-2.5">
-              Top Client Accounts
+              {t('sales.home.topClientAccounts', 'Top Client Accounts')}
             </h3>
             <div className="border-b border-slate-100 dark:border-slate-700/60 mb-2.5" />
             {loadingInvoices && topCustomers.length === 0 ? (
@@ -1072,7 +1074,7 @@ const SalesHomePage: React.FC = () => {
               </div>
             ) : topCustomers.length === 0 ? (
               <div className="h-[120px] flex items-center justify-center text-center text-xs text-slate-400 border border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50/20">
-                No client data available.
+                {t('sales.home.noClientData', 'No client data available.')}
               </div>
             ) : (
               <div className="h-[120px] overflow-auto pr-1 custom-scroll space-y-2">
@@ -1100,7 +1102,7 @@ const SalesHomePage: React.FC = () => {
                             {formatCurrency(c.total)} <span className="text-[9px] font-normal text-slate-400">{companyCurrency}</span>
                           </div>
                           <div className="text-[9px] font-bold tracking-wider text-slate-400 uppercase">
-                            BALANCE
+                            {t('sales.home.balance', 'Balance')}
                           </div>
                         </div>
                       </div>
@@ -1125,32 +1127,32 @@ const SalesHomePage: React.FC = () => {
           {/* Quick Links */}
           <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3">
-              Quick Navigation
+              {t('sales.home.quickNavigation', 'Quick Navigation')}
             </h3>
             <div className="grid grid-cols-2 gap-2">
               <QuickLinkTile
                 icon={<FileText size={13} />}
-                label="Invoices"
+                label={t('sales.home.quickLinks.invoices', 'Invoices')}
                 onClick={() => navigate('/sales/invoices')}
               />
               <QuickLinkTile
                 icon={<ShoppingCart size={13} />}
-                label="Orders"
+                label={t('sales.home.quickLinks.orders', 'Orders')}
                 onClick={() => navigate('/sales/orders')}
               />
               <QuickLinkTile
                 icon={<Truck size={13} />}
-                label="Delivery Notes"
+                label={t('sales.home.quickLinks.deliveryNotes', 'Delivery Notes')}
                 onClick={() => navigate('/sales/delivery-notes')}
               />
               <QuickLinkTile
                 icon={<ClipboardList size={13} />}
-                label="Quotations"
+                label={t('sales.home.quickLinks.quotations', 'Quotations')}
                 onClick={() => navigate('/sales/quotes')}
               />
               <QuickLinkTile
                 icon={<RotateCcw size={13} />}
-                label="Returns"
+                label={t('sales.home.quickLinks.returns', 'Returns')}
                 onClick={() => navigate('/sales/returns')}
               />
               <button
@@ -1161,7 +1163,7 @@ const SalesHomePage: React.FC = () => {
                 <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg bg-slate-50 text-slate-500 group-hover:bg-indigo-50 group-hover:text-indigo-655 dark:bg-slate-700 dark:text-slate-400">
                   <Settings size={13} />
                 </div>
-                <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">Settings</div>
+                <div className="text-xs font-semibold text-slate-800 dark:text-slate-100">{t('sales.home.settings', 'Settings')}</div>
               </button>
             </div>
           </Card>
@@ -1170,7 +1172,7 @@ const SalesHomePage: React.FC = () => {
           <Card className="p-3.5 shadow-sm border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800">
             <div className="mb-3 flex items-center justify-between">
               <h3 className="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                Recent Activity
+                {t('sales.home.recentActivity', 'Recent Activity')}
               </h3>
               <button
                 type="button"
@@ -1184,7 +1186,7 @@ const SalesHomePage: React.FC = () => {
                   setLastRefreshed(new Date());
                 }}
                 className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-300"
-                title="Refresh activity"
+                title={t('sales.home.refreshActivity', 'Refresh activity')}
               >
                 <RefreshCw size={11} className={loadingInvoices || loadingOrders ? 'animate-spin' : ''} />
               </button>
@@ -1195,7 +1197,7 @@ const SalesHomePage: React.FC = () => {
                 {[1, 2, 3].map((i) => <Skeleton key={i} className="h-12 rounded" />)}
               </div>
             ) : recentActivity.length === 0 ? (
-              <div className="py-4 text-center text-xs text-slate-400">No activity yet.</div>
+              <div className="py-4 text-center text-xs text-slate-400">{t('sales.home.noActivityYet', 'No activity yet.')}</div>
             ) : (
               <div className="space-y-2 max-h-[250px] overflow-y-auto pr-1">
                 {recentActivity.map((item) => {

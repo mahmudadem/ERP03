@@ -162,7 +162,6 @@
     "editDiscountAmount": "İndirim tutarını düzenle",
     "edit": "Düzenle",
     "heldCancelled": "Bekleyen satış iptal edildi.",
-    "barcodeNotFound": "Barkod bulunamadı.",
     "barcodeError": "Barkod okutulamadı.",
     "saleNotes": "Notlar",
     "saleNotesPlaceholder": "Satış için isteğe bağlı notlar...",
@@ -364,7 +363,13 @@
       "BANK_TRANSFER": "Sayılan banka transferi",
       "CUSTOM": "Sayılan özel"
     },
-    "close": "Kapat",
+    "close": "Vardiyayı kapat",
+    "viewCloseSummary": "Vardiya özetini göster",
+    "closeSummaryTitle": "Vardiya kapanış özeti",
+    "cashVariance": "Nakit farkı",
+    "closeSummaryHelp": "Oturumu bitirmeden önce vardiya toplamlarını inceleyin. Nakit fazla/eksik varsa ERP03 kapanış sırasında yapılandırılmış muhasebe etkisini kaydeder.",
+    "editCount": "Sayımı düzenle",
+    "confirmEndSession": "Oturumu bitirmeyi onayla",
     "historyTitle": "Vardiya geçmişi",
     "historySubtitle": "Bu şirketin son vardiyaları.",
     "empty": "Henüz vardiya yok.",
@@ -420,7 +425,7 @@
     }
   },
   "shortcuts": {
-    "title": "POS Kısayolları",
+    "title": "Klavye Kısayolları",
     "subtitle": "Terminal grupları oluşturun ve her gruba toplu ürün atayın.",
     "loading": "Yükleniyor...",
     "defaultLayoutName": "Varsayılan kısayollar",
@@ -462,7 +467,15 @@
       "disable": "Devre dışı bırak",
       "delete": "Sil",
       "save": "Kaydet",
-      "cancel": "İptal"
+      "cancel": "İptal",
+      "searchItems": "Ürünleri Ara",
+      "checkout": "Ödeme / Kasaya Git",
+      "voidSale": "Satışı İptal Et",
+      "holdCart": "Sepeti Beklet",
+      "addCustomItem": "Özel Ürün Ekle",
+      "applyDiscount": "Genel İndirim Uygula",
+      "cashPayment": "Hızlı Nakit Ödeme",
+      "cardPayment": "Hızlı Kart Ödemesi"
     },
     "errors": {
       "load": "POS kısayolları yüklenemedi.",
@@ -472,7 +485,11 @@
       "addItems": "Ürünler eklenemedi.",
       "updateShortcut": "Kısayol güncellenemedi.",
       "deleteShortcut": "Kısayol silinemedi."
-    }
+    },
+    "resetAll": "Tümünü Sıfırla",
+    "listening": "Tuşa basın...",
+    "resetAction": "Varsayılana sıfırla",
+    "defaultPrefix": "Varsayılan: "
   },
   "report": {
     "dateFrom": "Başlangıç tarihi",

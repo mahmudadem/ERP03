@@ -41,6 +41,12 @@ const ItemsListPage: React.FC = () => {
       : pathname.startsWith('/pos/')
         ? '/pos/items'
         : '/inventory/items';
+  // The browser route is plural (`/purchases`) while the mounted Purchase
+  // module API is singular (`/tenant/purchase`). Keep navigation and API
+  // paths separate so the shared catalog page does not request a 404 route.
+  const itemsApiPath = pathname.startsWith('/purchases/')
+    ? '/purchase/items'
+    : itemsBasePath;
 
   const loadItems = async (targetPage = 0) => {
     try {
@@ -54,8 +60,8 @@ const ItemsListPage: React.FC = () => {
       if (activeFilter === 'ACTIVE') params.active = true;
       if (activeFilter === 'INACTIVE') params.active = false;
       const result = search
-        ? await client.get(`/tenant${itemsBasePath}/search`, { params: { q: search, ...params } })
-        : await client.get(`/tenant${itemsBasePath}`, { params });
+        ? await client.get(`/tenant${itemsApiPath}/search`, { params: { q: search, ...params } })
+        : await client.get(`/tenant${itemsApiPath}`, { params });
       const rows = unwrap<InventoryItemDTO[]>(result) || [];
       setItems(rows);
       setHasNext(rows.length === pageSize);
@@ -136,7 +142,7 @@ const ItemsListPage: React.FC = () => {
     if (!ok) return;
     try {
       setPendingToggleId(item.id);
-      await client.put(`/tenant${itemsBasePath}/${item.id}`, { active: nextActive });
+      await client.put(`/tenant${itemsApiPath}/${item.id}`, { active: nextActive });
       toast.success(
         nextActive
           ? t('inventory.itemsList.activated', 'Item activated')
@@ -246,14 +252,14 @@ const ItemsListPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.code')}</th>
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.name')}</th>
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.type')}</th>
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.baseUom')}</th>
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.costCurrency')}</th>
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.costMethod')}</th>
-                <th className="py-2 text-left">{t('inventory.itemsList.columns.status')}</th>
-                <th className="py-2 text-right">{t('inventory.itemsList.columns.actions')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.code')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.name')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.type')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.baseUom')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.costCurrency')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.costMethod')}</th>
+                <th className="py-2 text-start">{t('inventory.itemsList.columns.status')}</th>
+                <th className="py-2 text-end">{t('inventory.itemsList.columns.actions')}</th>
               </tr>
             </thead>
             <tbody>
@@ -273,7 +279,7 @@ const ItemsListPage: React.FC = () => {
                   <td className="py-2">
                     <button
                         onClick={() => openItem(item)}
-                        className="font-mono text-blue-600 hover:underline text-left"
+                        className="font-mono text-blue-600 hover:underline text-start"
                     >
                         {item.code}
                     </button>
@@ -290,7 +296,7 @@ const ItemsListPage: React.FC = () => {
                         : t('inventory.itemsList.status.inactive', 'Inactive')}
                     </span>
                   </td>
-                  <td className="py-2 text-right">
+                  <td className="py-2 text-end">
                     <div className="inline-flex items-center gap-1">
                       <button
                         type="button"
@@ -298,20 +304,6 @@ const ItemsListPage: React.FC = () => {
                         onClick={() => openItem(item)}
                       >
                         {t('actions.open', 'Open')}
-                      </button>
-                      <button
-                        type="button"
-                        className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100 disabled:opacity-50"
-                        onClick={() => handleToggleActive(item)}
-                        disabled={pendingToggleId === item.id}
-                        title={item.active
-                          ? t('inventory.itemsList.deactivate.title', 'Deactivate item')
-                          : t('inventory.itemsList.activate.title', 'Activate item')}
-                      >
-                        <Power size={12} aria-hidden="true" />
-                        {item.active
-                          ? t('inventory.itemsList.deactivate.label', 'Deactivate')
-                          : t('inventory.itemsList.activate.label', 'Activate')}
                       </button>
                     </div>
                   </td>

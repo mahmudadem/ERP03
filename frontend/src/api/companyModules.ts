@@ -3,6 +3,7 @@ import { client } from './client';
 export interface CompanyModuleStatus {
   companyId: string;
   moduleCode: string;
+  isEnabled?: boolean;
   installedAt: Date;
   initialized: boolean;
   initializationStatus: 'pending' | 'in_progress' | 'complete';

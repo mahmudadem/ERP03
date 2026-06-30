@@ -15,6 +15,7 @@ import { IAccountRepository } from '../../../repository/interfaces/accounting/IA
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { IAccountingBridge } from '../../system-core';
+import { ValidationError } from '../../../errors/AppError';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -229,10 +230,12 @@ export class ClosePosShiftUseCase {
 
       const offsetAccountId = overShort > 0 ? settings.cashOverAccountId : settings.cashShortAccountId;
       if (!offsetAccountId) {
-        throw new Error(
+        throw new ValidationError(
           overShort > 0
             ? 'Configure a Cash Over account in POS Settings before closing a shift with a cash over.'
-            : 'Configure a Cash Short account in POS Settings before closing a shift with a cash short.'
+            : 'Configure a Cash Short account in POS Settings before closing a shift with a cash short.',
+          overShort > 0 ? 'cashOverAccountId' : 'cashShortAccountId',
+          { settingsPath: '/pos/settings', varianceType: overShort > 0 ? 'OVER' : 'SHORT' }
         );
       }
       await this.assertAccount(input.companyId, offsetAccountId, overShort > 0 ? 'cashOverAccountId' : 'cashShortAccountId');

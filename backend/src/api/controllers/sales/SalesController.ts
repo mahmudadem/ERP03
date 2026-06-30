@@ -56,6 +56,7 @@ import { SOStatus } from '../../../domain/sales/entities/SalesOrder';
 import { SRStatus } from '../../../domain/sales/entities/SalesReturn';
 import { diContainer } from '../../../infrastructure/di/bindRepositories';
 import { SalesDTOMapper } from '../../dtos/SalesDTOs';
+import { InventoryDTOMapper } from '../../dtos/InventoryDTOs';
 import { VoucherValidationService } from '../../../domain/accounting/services/VoucherValidationService';
 import { SubledgerVoucherPostingService } from '../../../application/accounting/services/SubledgerVoucherPostingService';
 import { InitializeAccountingUseCase } from '../../../application/accounting/use-cases/InitializeAccountingUseCase';
@@ -90,6 +91,7 @@ import { validateAndFilterModuleRules } from '../../validators/policyConfig.vali
 import { PolicyConfig } from '../../../domain/system-core/entities/PolicyConfig';
 import { ApiError } from '../../errors/ApiError';
 import { SellingPolicy } from '../../../domain/system-core/entities/SellingPolicy';
+import { CommunicationsSettings } from '../../../domain/communications/CommunicationsSettings';
 
 /**
  * Governance gate for credit-limit overrides.
@@ -366,6 +368,68 @@ export class SalesController {
       (res as any).json({
         success: true,
         data: settings ? SalesDTOMapper.toSettingsDTO(settings) : null,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  static async getInvoiceStartupReferenceData(req: Request, res: Response, next: NextFunction) {
+    try {
+      const companyId = SalesController.getCompanyId(req);
+      const settingsUseCase = new GetSalesSettingsUseCase(
+        diContainer.salesSettingsRepository,
+        diContainer.voucherTypeDefinitionRepository,
+        diContainer.voucherFormRepository
+      );
+
+      const [
+        settings,
+        customers,
+        rawItems,
+        rawTaxCodes,
+        rawWarehouses,
+        salesOrders,
+        rawSalespersons,
+        commSettings,
+        accountingPolicy,
+        invoiceTemplates,
+        formSettings,
+      ] = await Promise.all([
+        settingsUseCase.execute(companyId),
+        diContainer.partyRepository.list(companyId, { role: 'CUSTOMER' }),
+        diContainer.catalogCore.listItems(companyId, { limit: 1000 }),
+        diContainer.taxCodeRepository.list(companyId),
+        diContainer.warehouseRepository.getCompanyWarehouses(companyId, { limit: 1000 }),
+        new ListSalesOrdersUseCase(diContainer.salesOrderRepository).execute(companyId, { limit: 500 }),
+        diContainer.salespersonRepository.list(companyId, { includeInactive: true, limit: 1000 }),
+        diContainer.communicationsSettingsRepository.getSettings(companyId),
+        diContainer.accountingPolicyConfigProvider.getConfig(companyId).catch(() => null),
+        diContainer.voucherFormRepository.getAllByCompany(companyId),
+        diContainer.formSettingsRepository.listByCompanyAndModule(companyId, 'SALES'),
+      ]);
+
+      const activeItems = rawItems.filter((item) => item.active).slice(0, 500);
+      const activeTaxCodes = rawTaxCodes
+        .filter((taxCode) => taxCode.active && (taxCode.scope === 'SALES' || taxCode.scope === 'BOTH'));
+      const activeWarehouses = rawWarehouses.filter((warehouse) => warehouse.active);
+      const activeSalespersons = rawSalespersons.filter((salesperson) => salesperson.status === 'ACTIVE');
+
+      (res as any).json({
+        success: true,
+        data: {
+          settings: settings ? SalesDTOMapper.toSettingsDTO(settings) : null,
+          customers: customers.filter((party) => party.active).map((party) => party.toJSON()),
+          items: activeItems.map(InventoryDTOMapper.toItemDTO),
+          taxCodes: activeTaxCodes.map((taxCode) => taxCode.toJSON()),
+          warehouses: activeWarehouses.map(InventoryDTOMapper.toWarehouseDTO),
+          salesOrders: salesOrders.map((order) => SalesDTOMapper.toOrderDTO(order)),
+          salespersons: activeSalespersons.map((salesperson) => salesperson.toJSON()),
+          commSettings: (commSettings ?? CommunicationsSettings.createDefault(companyId)).toJSON(),
+          accountingPolicy,
+          invoiceTemplates,
+          formSettings,
+        },
       });
     } catch (error) {
       next(error);

@@ -11,6 +11,7 @@ import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { PartySelector } from '../../../components/shared/selectors/PartySelector';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 type Mode = 'STATEMENT' | 'LEDGER';
 
@@ -55,6 +56,14 @@ const lineTone = (type: LedgerEventDTO['type']) => {
   return 'bg-slate-100 text-slate-600';
 };
 
+const lineTypeLabelKeys: Record<LedgerEventDTO['type'], string> = {
+  INVOICE: 'sales.customerStatement.lineTypeInvoice',
+  PAYMENT: 'sales.customerStatement.lineTypePayment',
+  CREDIT_NOTE: 'sales.customerStatement.lineTypeCreditNote',
+  REFUND: 'sales.customerStatement.lineTypeRefund',
+  ADJUSTMENT: 'sales.customerStatement.lineTypeAdjustment',
+};
+
 // ─── Unified ledger table (opening/closing folded into thead/tfoot) ─────────
 
 const LedgerTable: React.FC<{
@@ -65,92 +74,105 @@ const LedgerTable: React.FC<{
   cellPad: string;
   onOpenSource: (line: LedgerEventDTO) => void;
   onOpenVoucher: (line: LedgerEventDTO) => void;
-}> = ({ title, openingBalance, closingBalance, lines, cellPad, onOpenSource, onOpenVoucher }) => (
-  <div className="bg-white border rounded-xl shadow-sm overflow-auto">
-    <div className="bg-slate-50/50 px-6 py-3 border-b">
-      <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{title}</p>
-    </div>
-    <table className="min-w-full text-sm">
-      <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
-        <tr>
-          {['Date', 'Type', 'Reference', 'Debit', 'Credit', 'Balance', 'Actions'].map((h, i) => (
-            <th key={h} className={clsx(cellPad, i < 3 || i === 6 ? 'text-left' : 'text-right')}>{h}</th>
-          ))}
-        </tr>
-        <tr className="bg-slate-50/40 border-b border-slate-100">
-          <td className={`${cellPad} text-[11px] font-bold text-slate-700 uppercase tracking-widest`} colSpan={6}>Opening Balance</td>
-          <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmt(openingBalance)}</td>
-        </tr>
-      </thead>
-      <tbody>
-        {lines.length === 0 ? (
+}> = ({ title, openingBalance, closingBalance, lines, cellPad, onOpenSource, onOpenVoucher }) => {
+  const { t } = useTranslation('common');
+  const ledgerHeaders = [
+    t('sales.customerStatement.date', 'Date'),
+    t('sales.customerStatement.type', 'Type'),
+    t('sales.customerStatement.reference', 'Reference'),
+    t('sales.customerStatement.debit', 'Debit'),
+    t('sales.customerStatement.credit', 'Credit'),
+    t('sales.customerStatement.balance', 'Balance'),
+    t('sales.customerStatement.actions', 'Actions'),
+  ];
+
+  return (
+    <div className="bg-white border rounded-xl shadow-sm overflow-auto">
+      <div className="bg-slate-50/50 px-6 py-3 border-b">
+        <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">{title}</p>
+      </div>
+      <table className="min-w-full text-sm">
+        <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
           <tr>
-            <td colSpan={7} className="py-10 text-center text-sm text-slate-400">No transactions in this period.</td>
+            {ledgerHeaders.map((h, i) => (
+              <th key={h} className={clsx(cellPad, i < 3 || i === 6 ? 'text-left' : 'text-right')}>{h}</th>
+            ))}
           </tr>
-        ) : (
-          lines.map((line, idx) => {
-            const canOpenSource = !!statementSourcePath(line);
-            const canOpenVoucher = !!voucherPath(line);
-            return (
-            <tr key={line.ledgerEntryId || idx} className="border-t border-slate-100 hover:bg-blue-50/40">
-              <td className={`${cellPad} text-xs text-slate-600`}>{line.date}</td>
-              <td className={`${cellPad} text-xs`}>
-                <span className={clsx('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest', lineTone(line.type))}>
-                  {line.type}
-                </span>
-              </td>
-              <td className={`${cellPad} text-xs`}>
-                <button
-                  type="button"
-                  onClick={() => (canOpenSource ? onOpenSource(line) : onOpenVoucher(line))}
-                  disabled={!canOpenSource && !canOpenVoucher}
-                  className="font-mono text-slate-700 hover:text-indigo-700 disabled:hover:text-slate-700 disabled:cursor-default"
-                  title={canOpenSource ? 'Open source document' : canOpenVoucher ? 'Open accounting voucher' : undefined}
-                >
-                  {line.reference}
-                </button>
-                {line.description && <div className="mt-1 max-w-sm truncate text-[11px] text-slate-400">{line.description}</div>}
-              </td>
-              <td className={`${cellPad} text-xs tabular-nums text-right text-slate-700`}>{line.debit > 0 ? fmt(line.debit) : '—'}</td>
-              <td className={`${cellPad} text-xs tabular-nums text-right text-emerald-600`}>{line.credit > 0 ? fmt(line.credit) : '—'}</td>
-              <td className={`${cellPad} text-xs tabular-nums text-right font-semibold text-slate-800`}>{fmt(line.runningBalance)}</td>
-              <td className={`${cellPad} text-xs`}>
-                <div className="flex flex-wrap gap-2">
-                  {canOpenSource && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenSource(line)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 hover:bg-indigo-100"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Source
-                    </button>
-                  )}
-                  {canOpenVoucher && (
-                    <button
-                      type="button"
-                      onClick={() => onOpenVoucher(line)}
-                      className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
-                    >
-                      <ReceiptText className="h-3 w-3" />
-                      Voucher
-                    </button>
-                  )}
-                </div>
-              </td>
+          <tr className="bg-slate-50/40 border-b border-slate-100">
+            <td className={`${cellPad} text-[11px] font-bold text-slate-700 uppercase tracking-widest`} colSpan={6}>{t('sales.customerStatement.openingBalance', 'Opening Balance')}</td>
+            <td className={`${cellPad} text-xs tabular-nums text-right font-bold text-slate-700`}>{fmt(openingBalance)}</td>
+          </tr>
+        </thead>
+        <tbody>
+          {lines.length === 0 ? (
+            <tr>
+              <td colSpan={7} className="py-10 text-center text-sm text-slate-400">{t('sales.customerStatement.noTransactionsInPeriod', 'No transactions in this period.')}</td>
             </tr>
-          );})
-        )}
-      </tbody>
-      <tfoot>
-        <tr className="bg-slate-100 border-t-2 border-slate-200">
-          <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`} colSpan={6}>Closing Balance</td>
-          <td className={`${cellPad} text-xs tabular-nums text-right font-black text-slate-900`}>{fmt(closingBalance)}</td>
-        </tr>
-      </tfoot>
-    </table>
-  </div>
-);
+          ) : (
+            lines.map((line, idx) => {
+              const canOpenSource = !!statementSourcePath(line);
+              const canOpenVoucher = !!voucherPath(line);
+              return (
+              <tr key={line.ledgerEntryId || idx} className="border-t border-slate-100 hover:bg-blue-50/40">
+                <td className={`${cellPad} text-xs text-slate-600`}>{line.date}</td>
+                <td className={`${cellPad} text-xs`}>
+                  <span className={clsx('px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest', lineTone(line.type))}>
+                    {t(lineTypeLabelKeys[line.type], line.type)}
+                  </span>
+                </td>
+                <td className={`${cellPad} text-xs`}>
+                  <button
+                    type="button"
+                    onClick={() => (canOpenSource ? onOpenSource(line) : onOpenVoucher(line))}
+                    disabled={!canOpenSource && !canOpenVoucher}
+                    className="font-mono text-slate-700 hover:text-indigo-700 disabled:hover:text-slate-700 disabled:cursor-default"
+                    title={canOpenSource ? t('sales.customerStatement.openSourceDocument', 'Open source document') : canOpenVoucher ? t('sales.customerStatement.openAccountingVoucher', 'Open accounting voucher') : undefined}
+                  >
+                    {line.reference}
+                  </button>
+                  {line.description && <div className="mt-1 max-w-sm truncate text-[11px] text-slate-400">{line.description}</div>}
+                </td>
+                <td className={`${cellPad} text-xs tabular-nums text-right text-slate-700`}>{line.debit > 0 ? fmt(line.debit) : '—'}</td>
+                <td className={`${cellPad} text-xs tabular-nums text-right text-emerald-600`}>{line.credit > 0 ? fmt(line.credit) : '—'}</td>
+                <td className={`${cellPad} text-xs tabular-nums text-right font-semibold text-slate-800`}>{fmt(line.runningBalance)}</td>
+                <td className={`${cellPad} text-xs`}>
+                  <div className="flex flex-wrap gap-2">
+                    {canOpenSource && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenSource(line)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-indigo-700 hover:bg-indigo-100"
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        {t('sales.customerStatement.source', 'Source')}
+                      </button>
+                    )}
+                    {canOpenVoucher && (
+                      <button
+                        type="button"
+                        onClick={() => onOpenVoucher(line)}
+                        className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2 py-1 text-[10px] font-black uppercase tracking-widest text-slate-600 hover:bg-slate-50"
+                      >
+                        <ReceiptText className="h-3 w-3" />
+                        {t('sales.customerStatement.voucher', 'Voucher')}
+                      </button>
+                    )}
+                  </div>
+                </td>
+              </tr>
+            );})
+          )}
+        </tbody>
+        <tfoot>
+          <tr className="bg-slate-100 border-t-2 border-slate-200">
+            <td className={`${cellPad} text-xs font-black text-slate-700 uppercase tracking-widest`} colSpan={6}>{t('sales.customerStatement.closingBalance', 'Closing Balance')}</td>
+            <td className={`${cellPad} text-xs tabular-nums text-right font-black text-slate-900`}>{fmt(closingBalance)}</td>
+          </tr>
+        </tfoot>
+      </table>
+    </div>
+  );
+};
 
 // ─── Initiator ──────────────────────────────────────────────────────────────
 
@@ -158,6 +180,7 @@ const Initiator: React.FC<{
   onSubmit: (p: StatementParams) => void;
   initialParams?: StatementParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('common');
   const [mode, setMode]                   = useState<Mode>(initialParams?.mode || 'STATEMENT');
   const [customerId, setCustomerId]       = useState(initialParams?.customerId || '');
   const [customerLabel, setCustomerLabel] = useState(initialParams?.customerLabel || '');
@@ -180,22 +203,22 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-            View
+            {t('sales.customerStatement.view', 'View')}
           </label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Mode)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-indigo-300 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
           >
-            <option value="STATEMENT">Statement (period summary)</option>
-            <option value="LEDGER">Full Ledger (all events)</option>
+            <option value="STATEMENT">{t('sales.customerStatement.statementPeriodSummary', 'Statement (period summary)')}</option>
+            <option value="LEDGER">{t('sales.customerStatement.fullLedgerAllEvents', 'Full Ledger (all events)')}</option>
           </select>
         </div>
 
         <div className="md:col-span-8 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Customer <span className="text-rose-500">*</span>
+            {t('sales.customerStatement.customer', 'Customer')} <span className="text-rose-500">*</span>
           </label>
           <PartySelector
             value={customerId}
@@ -205,14 +228,14 @@ const Initiator: React.FC<{
               setCustomerId(party.id);
               setCustomerLabel(party.displayName || party.legalName || party.id);
             }}
-            placeholder="Select a customer..."
+            placeholder={t('sales.customerStatement.selectCustomer', 'Select a customer...')}
           />
         </div>
 
         <div className="md:col-span-6 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            From Date
+            {t('sales.customerStatement.fromDate', 'From Date')}
           </label>
           <DatePicker value={fromDate} onChange={setFromDate} className="w-full" />
         </div>
@@ -220,7 +243,7 @@ const Initiator: React.FC<{
         <div className="md:col-span-6 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-            To Date
+            {t('sales.customerStatement.toDate', 'To Date')}
           </label>
           <DatePicker value={toDate} onChange={setToDate} className="w-full" />
         </div>
@@ -234,10 +257,10 @@ const Initiator: React.FC<{
           />
           <span>
             <span className="block text-[10px] font-black uppercase tracking-widest text-slate-500">
-              Include open commitments
+              {t('sales.customerStatement.includeOpenCommitments', 'Include open commitments')}
             </span>
             <span className="text-xs text-slate-500">
-              Shows open sales orders separately for commercial follow-up. These amounts do not affect the statement balance.
+              {t('sales.customerStatement.openCommitmentsHelp', 'Shows open sales orders separately for commercial follow-up. These amounts do not affect the statement balance.')}
             </span>
           </span>
         </label>
@@ -250,7 +273,7 @@ const Initiator: React.FC<{
           className="bg-slate-900 hover:bg-black disabled:opacity-50 text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
         >
           <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
+            {t('sales.customerStatement.generateReport', 'Generate Report')}
             <ChevronRight className="w-4 h-4" />
           </span>
         </Button>
@@ -266,6 +289,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, setTotalItems, density }) => {
+  const { t } = useTranslation('common');
   const navigate = useNavigate();
   const [statement, setStatement] = useState<CustomerStatementDTO | null>(null);
   const [loading, setLoading] = useState(false);
@@ -295,12 +319,12 @@ const ReportContent: React.FC<{
     })
       .then((data) => { if (!cancelled) setStatement(data); })
       .catch((err) => {
-        if (!cancelled) setError(err?.response?.data?.error?.message || err?.message || 'Failed to load report');
+        if (!cancelled) setError(err?.response?.data?.error?.message || err?.message || t('sales.customerStatement.failedToLoadReport', 'Failed to load report'));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
 
     return () => { cancelled = true; };
-  }, [params.customerId, params.fromDate, params.toDate, params.includeOpenCommitments]);
+  }, [params.customerId, params.fromDate, params.toDate, params.includeOpenCommitments, t]);
 
   useEffect(() => {
     setTotalItems?.(statement?.lines.length ?? 0);
@@ -308,28 +332,45 @@ const ReportContent: React.FC<{
 
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
   const customerName = statement?.customerName ?? params.customerLabel;
+  const invoiceHeaders = [
+    t('sales.customerStatement.invoiceNumber', 'Invoice #'),
+    t('sales.customerStatement.invoiceDate', 'Invoice Date'),
+    t('sales.customerStatement.dueDate', 'Due Date'),
+    t('sales.customerStatement.invoiceTotal', 'Invoice Total'),
+    t('sales.customerStatement.outstanding', 'Outstanding'),
+  ];
+  const commitmentHeaders = [
+    t('sales.customerStatement.salesOrder', 'Sales Order'),
+    t('sales.customerStatement.date', 'Date'),
+    t('sales.customerStatement.expected', 'Expected'),
+    t('sales.customerStatement.status', 'Status'),
+    t('sales.customerStatement.total', 'Total'),
+    t('sales.customerStatement.open', 'Open'),
+  ];
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-xs font-semibold text-slate-800">
-            {params.mode === 'STATEMENT' ? 'Statement' : 'Full Ledger'}
+            {params.mode === 'STATEMENT'
+              ? t('sales.customerStatement.statement', 'Statement')
+              : t('sales.customerStatement.fullLedger', 'Full Ledger')}
           </span>
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-amber-200 bg-amber-50 text-xs font-semibold text-slate-800">
             {customerName}
           </span>
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-blue-200 bg-blue-50 text-xs font-semibold text-slate-800">
             <CalendarDays className="w-3 h-3 text-blue-600" />
-            {params.fromDate} → {params.toDate}
+            {t('sales.customerStatement.dateRange', '{{fromDate}} → {{toDate}}', { fromDate: params.fromDate, toDate: params.toDate })}
           </span>
           {statement && (
             <>
               <span className="text-xs font-bold text-slate-500 ml-auto">
-                Invoiced: <span className="font-black text-blue-700">{fmt(statement.totalInvoiced)}</span> ·
-                Paid: <span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span> ·
-                Credits: <span className="font-black text-amber-700">{fmt(statement.totalCredited ?? 0)}</span> ·
-                Closing: <span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
+                {t('sales.customerStatement.invoiced', 'Invoiced:')} <span className="font-black text-blue-700">{fmt(statement.totalInvoiced)}</span> ·
+                {t('sales.customerStatement.paid', 'Paid:')} <span className="font-black text-emerald-700">{fmt(statement.totalPaid)}</span> ·
+                {t('sales.customerStatement.credits', 'Credits:')} <span className="font-black text-amber-700">{fmt(statement.totalCredited ?? 0)}</span> ·
+                {t('sales.customerStatement.closing', 'Closing:')} <span className="font-black text-slate-900">{fmt(statement.closingBalance)}</span>
               </span>
             </>
           )}
@@ -343,13 +384,15 @@ const ReportContent: React.FC<{
           )}
 
           {loading && (
-            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">Loading report...</div>
+            <div className="py-20 text-center text-sm text-slate-400 animate-pulse">{t('sales.customerStatement.loadingReport', 'Loading report...')}</div>
           )}
 
           {!loading && statement && (
             <>
               <LedgerTable
-                title={params.mode === 'STATEMENT' ? 'Transactions' : `Full Ledger — ${customerName}`}
+                title={params.mode === 'STATEMENT'
+                  ? t('sales.customerStatement.transactions', 'Transactions')
+                  : t('sales.customerStatement.fullLedgerForCustomer', 'Full Ledger — {{customerName}}', { customerName })}
                 openingBalance={statement.openingBalance}
                 closingBalance={statement.closingBalance}
                 lines={statement.lines}
@@ -362,13 +405,13 @@ const ReportContent: React.FC<{
                 <div className="bg-white border rounded-xl shadow-sm overflow-auto">
                   <div className="bg-slate-50/50 px-6 py-3 border-b">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      Open Invoices ({statement.openInvoices.length})
+                      {t('sales.customerStatement.openInvoicesCount', 'Open Invoices ({{count}})', { count: statement.openInvoices.length })}
                     </p>
                   </div>
                   <table className="min-w-full text-sm">
                     <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                       <tr>
-                        {['Invoice #', 'Invoice Date', 'Due Date', 'Invoice Total', 'Outstanding'].map((h, i) => (
+                        {invoiceHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, i < 3 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -392,13 +435,13 @@ const ReportContent: React.FC<{
                 <div className="bg-white border rounded-xl shadow-sm overflow-auto">
                   <div className="bg-slate-50/50 px-6 py-3 border-b">
                     <p className="text-xs font-bold text-slate-500 uppercase tracking-widest">
-                      Open Commitments ({statement.openCommitments.length}) · Not included in balance
+                      {t('sales.customerStatement.openCommitmentsCount', 'Open Commitments ({{count}}) · Not included in balance', { count: statement.openCommitments.length })}
                     </p>
                   </div>
                   <table className="min-w-full text-sm">
                     <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                       <tr>
-                        {['Sales Order', 'Date', 'Expected', 'Status', 'Total', 'Open'].map((h, i) => (
+                        {commitmentHeaders.map((h, i) => (
                           <th key={h} className={clsx(cellPad, i < 4 ? 'text-left' : 'text-right')}>{h}</th>
                         ))}
                       </tr>
@@ -434,7 +477,7 @@ const ReportContent: React.FC<{
               <div className="inline-flex p-6 bg-slate-50 rounded-full text-slate-300">
                 <FileText size={48} />
               </div>
-              <p className="text-sm font-bold text-slate-600">No data.</p>
+              <p className="text-sm font-bold text-slate-600">{t('sales.customerStatement.noData', 'No data.')}</p>
             </div>
           )}
         </div>
@@ -445,14 +488,18 @@ const ReportContent: React.FC<{
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-const CustomerStatementPage: React.FC = () => (
-  <ReportContainer<StatementParams>
-    title="Customer Statement"
-    subtitle="Period statement or full ledger for a customer"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: false }}
-  />
-);
+const CustomerStatementPage: React.FC = () => {
+  const { t } = useTranslation('common');
+
+  return (
+    <ReportContainer<StatementParams>
+      title={t('sales.customerStatement.title', 'Customer Statement')}
+      subtitle={t('sales.customerStatement.subtitle', 'Period statement or full ledger for a customer')}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: false }}
+    />
+  );
+};
 
 export default CustomerStatementPage;

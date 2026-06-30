@@ -31,6 +31,7 @@ export interface InventoryItemDTO {
   description?: string;
   barcode?: string;
   barcodes?: string[];
+  uomBarcodes?: Array<{ uomId?: string; uom: string; barcodes: string[] }>;
   type: 'PRODUCT' | 'SERVICE' | 'RAW_MATERIAL';
   categoryId?: string;
   brand?: string;
@@ -206,6 +207,7 @@ export interface InventoryUomDTO {
   companyId: string;
   code: string;
   name: string;
+  translations: Record<string, string>;
   dimension: UomDimension;
   decimalPlaces: number;
   active: boolean;
@@ -687,6 +689,7 @@ export const inventoryApi = {
   getMovements: (filters?: {
     itemId?: string;
     warehouseId?: string;
+    movementType?: string;
     referenceType?: string;
     referenceId?: string;
     from?: string;
