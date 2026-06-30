@@ -5891,3 +5891,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - `graphify update .` could not run because the Graphify CLI is unavailable.
 - Actual time: approximately 40 minutes.
 - Deploy: deferred until the full Telegram QA queue is complete.
+
+# 2026-06-30 — Production translation audit continuation
+
+- Goal: commit the current unified production-lane checkpoint without pushing, then continue translation cleanup across production pages.
+- Checkpoint commit: `ae81119b fix(production): checkpoint invoice query and translation audit [ACTIVE-278]` on `D:\DEV2026\ERP03-unified`, not pushed.
+- Continued 278ac by cleaning Turkish Purchases locale leftovers across shared/common Purchases keys, Goods Receipt legacy keys, Purchase Invoice detail rail/header/print/pricing labels, Purchase Order pricing/discount labels, Returns list/detail terminology, Purchase Settings terminology, Vendor list labels, and helper/toast text.
+- Accounting/ERP impact: localization only for the continuation slice. No ledger, voucher, posting, tax, inventory valuation, settlement, approval, tenant isolation, or audit behavior changed.
+- Verification: Purchases EN/AR/TR locale JSON parse passed; `npm run check:i18n-config` passed; frontend `npm run typecheck` passed; frontend `npm run build` passed with existing browser-data/chunk-size warnings only.
+- Time spent: approximately 1.2h after checkpoint commit.
+- Next: commit the continuation slice locally, then continue 278ac with full component-level passes for Purchase Invoice Detail, Purchase Settings, purchase voucher designer, dynamic purchase forms, then move to Sales.

@@ -34,17 +34,17 @@
 | `/purchases/vendor-groups` | `frontend/src/modules/purchases/pages/VendorGroupsPage.tsx` | Not checked | list/form/messages | |
 | `/purchases/price-lists` | `frontend/src/modules/purchases/pages/PurchasePriceListsPage.tsx` | Not checked | list/form/messages/placeholders | |
 | `/purchases/orders` | `frontend/src/modules/purchases/pages/PurchaseOrdersListPage.tsx` | Fixed, verify pending | list/actions/messages | Load error, filters, status labels, row actions localized. |
-| `/purchases/orders/:id` | `frontend/src/modules/purchases/pages/PurchaseOrderDetailPage.tsx` | Not checked | document UI, dialogs, toasts, warnings | |
+| `/purchases/orders/:id` | `frontend/src/modules/purchases/pages/PurchaseOrderDetailPage.tsx` | Locale recheck in progress | document UI, dialogs, toasts, warnings | Existing key wiring reviewed; Turkish PO/pricing/common labels cleaned. |
 | `/purchases/goods-receipts` | `frontend/src/modules/purchases/pages/GoodsReceiptsListPage.tsx` | Fixed, verify pending | list/actions/messages | Load error and filter/list labels use Purchases locale keys. |
 | `/purchases/goods-receipts/new` + `/:id` | `frontend/src/modules/purchases/pages/GoodsReceiptDetailPage.tsx` | Fixed, verify pending | document UI, dialogs, toasts, warnings | Validation, source-load errors, rail, headers, footer buttons, linked-PI tooltip, and unpost dialog localized. |
 | `/purchases/invoices` | `frontend/src/modules/purchases/pages/PurchaseInvoicesListPage.tsx` | Fixed, verify pending | list/actions/messages | Load error and list/filter labels localized. |
-| `/purchases/invoices/new` + `/:id` | `frontend/src/modules/purchases/pages/PurchaseInvoiceDetailPage.tsx` | Not checked | document UI, dialogs, toasts, warnings, print labels | |
+| `/purchases/invoices/new` + `/:id` | `frontend/src/modules/purchases/pages/PurchaseInvoiceDetailPage.tsx` | Locale recheck in progress | document UI, dialogs, toasts, warnings, print labels | Turkish PI rail/header/print/pricing labels cleaned; component-level page pass still pending. |
 | `/purchases/returns` | `frontend/src/modules/purchases/pages/PurchaseReturnsListPage.tsx` | Fixed, verify pending | list/actions/messages | Load error, empty state, status/context filters localized. |
 | `/purchases/returns/new` + `/:id` | `frontend/src/modules/purchases/pages/PurchaseReturnDetailPage.tsx` | Fixed, verify pending | document UI, dialogs, toasts, warnings | Source-picker errors, validation, line columns, rail, footer buttons, help text, and unpost dialog localized. |
 | `/purchases/reports/vendor-statement` | `frontend/src/modules/purchases/pages/VendorStatementPage.tsx` | Previously fixed, recheck pending | report filters, columns, export labels | |
 | `/purchases/reports/ap-aging` | `frontend/src/modules/purchases/pages/ApAgingReportPage.tsx` | Fixed, verify pending | report filters, columns, messages | Report load fallback localized. |
 | `/purchases/reports/purchases-analytics` | `frontend/src/modules/purchases/pages/PurchasesAnalyticsPage.tsx` | Previously fixed, recheck pending | report filters, columns, messages | |
-| `/purchases/settings` | `frontend/src/modules/purchases/pages/PurchaseSettingsPage.tsx` | Partially fixed | settings labels, account selectors, toasts | AP sub-account backfill toasts localized; full page recheck still pending. |
+| `/purchases/settings` | `frontend/src/modules/purchases/pages/PurchaseSettingsPage.tsx` | Partially fixed | settings labels, account selectors, toasts | AP sub-account backfill toasts localized; Turkish settings terminology cleaned; full page recheck still pending. |
 | `/purchases/tools/voucher-designer` | `frontend/src/modules/purchases/pages/PurchaseVoucherDesignerPage.tsx` | Not checked | form designer shell, default voucher/form names | |
 | Dynamic purchase forms | `frontend/src/modules/tools/pages/DynamicDocumentPage.tsx` | Not checked | runtime designed forms, errors, actions | system default form names included |
 | Purchase financial integration wizard | `frontend/src/modules/purchases/wizards/PurchaseFinancialIntegrationWizard.tsx` | Fixed, verify pending | setup validation, accounting default placeholders, errors | AP/GRNI required errors and configure failure localized. |
@@ -59,3 +59,7 @@
 | 2026-06-30 | `npm run build` | Passed locally and on Vercel production. |
 | 2026-06-30 | Vercel production deploy | Passed: `dpl_HF2KVf649ytNueED8t9iBy8pzg4z`, aliased to `https://erp-03.vercel.app`. |
 | 2026-06-30 | Live static probe | Passed: `https://erp-03.vercel.app/` returned HTTP 200. |
+| 2026-06-30 | Turkish Purchases locale JSON + targeted English-leak scan | Passed for the high-confidence Purchases continuation slice; remaining scan hits are mostly key names, abbreviations, or pages still queued for manual review. |
+| 2026-06-30 | `npm run check:i18n-config` | Passed. |
+| 2026-06-30 | `npm run typecheck` | Passed. |
+| 2026-06-30 | `npm run build` | Passed locally; existing browser-data/chunk-size warnings remain. |

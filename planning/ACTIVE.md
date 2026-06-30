@@ -87,7 +87,7 @@ production fixes from `ERP03-unified` back onto the SQL-converged main line:
 - **278ab i18n namespace guard + shared selector translations:** restored Arabic default, registered
   `inventory` and `shared` locales, localized shared selectors, and added the build guard.
 - **278ac Purchases translation audit batch 1/2:** Purchases list/detail/report/home/settings
-  translation cleanup continued; remaining audit work is still tracked in
+  translation cleanup continued, including Turkish purchase terminology cleanup. Remaining audit work is still tracked in
   `planning/tasks/278ac-production-translation-audit.md`.
 
 **Next:** finish reconciliation verification, then deploy both frontend and Firebase backend from the
