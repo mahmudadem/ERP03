@@ -45,7 +45,7 @@ jobs:
       # Some integration tests connect to Firestore on localhost:8080.
       # Run the suite inside the Firestore emulator (config lives at repo root).
       - name: Tests
-        run: npx firebase emulators:exec --only firestore --project demo-erp03 --config ../firebase.json "npm test"
+        run: npx -y firebase-tools emulators:exec --only firestore --project demo-erp03 --config ../firebase.json "npm test"
 
   frontend:
     name: Frontend — typecheck + build
