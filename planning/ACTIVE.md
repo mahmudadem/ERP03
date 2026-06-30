@@ -62,11 +62,10 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 - **278t Purchases Vendor Statement report translation:** complete; commit `05926af6`.
 - **278u Sales AR Aging report translation:** complete; commit `be6d76a0`.
 - **278v Sales Customer Statement report translation:** complete; commit `92a5fa22`.
-- **278w Sales/Purchases Analytics report translation:** complete; not committed yet.
-- **278x Localized default voucher/form names:** complete and verified locally in this
-  production worktree; not committed or deployed.
-- **Next:** request owner approval to commit 278x, then continue the remaining translation audit.
-- Work remains sequential: one verified fix and one commit at a time.
+- **278w Sales/Purchases Analytics report translation:** complete; committed.
+- **278x Localized default voucher/form names:** complete; committed.
+- **278y AP Parent Account selector filter fix:** complete; committed.
+- **Next:** Deploy frontend to Vercel.
 
 ---
 
