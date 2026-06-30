@@ -167,6 +167,8 @@
     "saleNotesPlaceholder": "Satış için isteğe bağlı notlar...",
     "creditSale": "Müşteri Hesabına Vadeli Ödeme",
     "needCustomerForCredit": "Vadeli satış için seçili bir müşteri gerekir.",
+    "creditSalesDisabled": "Vadeli ödeme kullanmadan önce POS ayarlarında vadeli satışları etkinleştirin.",
+    "creditSaleNeedsNamedCustomer": "Vadeli ödeme kullanmadan önce kayıtlı bir müşteri seçin.",
     "creditSaleNeedsApproval": "Vadeli ödeme için yönetici onayı gerekir.",
     "shortcuts": "Kısayollar",
     "keyboardShortcuts": "Klavye kısayolları"
