@@ -135,6 +135,37 @@ describe('PosShiftUseCases', () => {
       expect(openingArg.amount).toBe(150.5);
     });
 
+    it('opens a shift with zero opening float without creating a zero cash movement', async () => {
+      const register = makeRegister();
+      const settings = makeSettings();
+      const shiftRepo = {
+        getOpenShiftForRegister: jest.fn().mockResolvedValue(null),
+        getOpenShiftForCashier: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(undefined),
+        update: jest.fn(),
+        getById: jest.fn(),
+        list: jest.fn(),
+      };
+      const registerRepo = { getById: jest.fn().mockResolvedValue(register), create: jest.fn(), update: jest.fn(), list: jest.fn() };
+      const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(settings), saveSettings: jest.fn() };
+      const cashMovementRepo = { create: jest.fn().mockResolvedValue(undefined), listByShift: jest.fn(), sumByShift: jest.fn() };
+      const tx = { runTransaction: async (fn: any) => fn({}) };
+      const useCase = new OpenPosShiftUseCase(shiftRepo as any, registerRepo as any, posSettingsRepo as any, cashMovementRepo as any, tx as any);
+
+      const shift = await useCase.execute({
+        companyId: 'cmp_test',
+        registerId: 'reg_1',
+        cashierUserId: 'cashier_1',
+        openingFloat: 0,
+        actor: { userId: 'cashier_1' },
+      });
+
+      expect(shift.status).toBe('OPEN');
+      expect(shift.openingFloat).toBe(0);
+      expect(shiftRepo.create).toHaveBeenCalled();
+      expect(cashMovementRepo.create).not.toHaveBeenCalled();
+    });
+
     it('rejects an INACTIVE register', async () => {
       const register = makeRegister({ status: 'INACTIVE' });
       const settings = makeSettings();
