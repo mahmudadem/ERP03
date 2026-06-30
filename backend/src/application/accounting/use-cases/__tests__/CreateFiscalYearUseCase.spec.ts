@@ -51,7 +51,7 @@ describe('CreateFiscalYearUseCase', () => {
       const saveCall = mockFiscalYearRepo.save.mock.calls[0][0];
       expect(saveCall.periodScheme).toBe(PeriodScheme.MONTHLY);
       expect(saveCall.periods).toHaveLength(12);
-      expect(saveCall.id).toBe('FY2027'); // ID derived from End Year
+      expect(saveCall.id).toBe('company1_FY2027'); // ID scoped by company and derived from End Year
       expect(saveCall.periods[0].id).toBe('FY2027-P01'); // Period IDs match FY ID
     });
 
