@@ -1,4 +1,5 @@
 import { CompletePosSaleUseCase } from '../../../application/pos/use-cases/CompletePosSaleUseCase';
+import { ValidationError } from '../../../errors/AppError';
 import { PosShift } from '../../../domain/pos/entities/PosShift';
 import { PosSettings } from '../../../domain/pos/entities/PosSettings';
 import { PosRegister } from '../../../domain/pos/entities/PosRegister';
@@ -454,17 +455,22 @@ describe('CompletePosSaleUseCase', () => {
   describe('Credit Sale Policies', () => {
     it('rejects credit sale if allowCreditSales=false', async () => {
       const { useCase } = setup({ settings: { allowCreditSales: false } });
-      await expect(run(useCase, [], { isCreditSale: true, customerId: 'cust-1' }))
-        .rejects.toThrow(/Credit sales are not allowed by POS settings/);
+      const rejection = run(useCase, [], { isCreditSale: true, customerId: 'cust-1' });
+      await expect(rejection).rejects.toBeInstanceOf(ValidationError);
+      await expect(rejection).rejects.toMatchObject({
+        field: 'allowCreditSales',
+        context: { settingsPath: '/pos/settings' },
+      });
     });
 
     it('rejects credit sale if customer is missing or walk-in', async () => {
       const { useCase } = setup({ settings: { allowCreditSales: true, walkInCustomerId: 'walk-in' } });
       await expect(run(useCase, [], { isCreditSale: true }))
-        .rejects.toThrow(/Credit sale requires a selected customer/);
+        .rejects.toBeInstanceOf(ValidationError);
 
-      await expect(run(useCase, [], { isCreditSale: true, customerId: 'walk-in' }))
-        .rejects.toThrow(/Credit sales cannot be made to the walk-in customer/);
+      const rejection = run(useCase, [], { isCreditSale: true, customerId: 'walk-in' });
+      await expect(rejection).rejects.toBeInstanceOf(ValidationError);
+      await expect(rejection).rejects.toMatchObject({ field: 'customerId' });
     });
 
     it('rejects credit sale if creditSaleManagerOverride=true and no manager approval', async () => {

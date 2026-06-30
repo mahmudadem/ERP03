@@ -167,6 +167,8 @@
     "saleNotesPlaceholder": "Optional sale notes...",
     "creditSale": "Deferred Payment to Customer Account",
     "needCustomerForCredit": "Credit sale requires a selected customer.",
+    "creditSalesDisabled": "Enable POS credit sales in Settings before using deferred payment.",
+    "creditSaleNeedsNamedCustomer": "Select a named customer before using deferred payment.",
     "creditSaleNeedsApproval": "Manager approval is required for deferred payment.",
     "shortcuts": "Shortcuts",
     "keyboardShortcuts": "Keyboard shortcuts"
