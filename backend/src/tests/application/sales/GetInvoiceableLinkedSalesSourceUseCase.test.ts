@@ -85,6 +85,8 @@ const makePostedDeliveryNote = (): DeliveryNote =>
     customerName: 'Customer A',
     deliveryDate: '2026-01-11',
     warehouseId: 'wh-dn',
+    currency: 'USD',
+    exchangeRate: 1,
     lines: [
       {
         lineId: 'dn-line-1',

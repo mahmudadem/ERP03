@@ -160,6 +160,8 @@ const makeDN = (id: string, soId: string, item: Item, deliveredQty: number): Del
     customerName: 'Customer One',
     deliveryDate: '2026-01-11',
     warehouseId: 'wh-1',
+    currency: 'USD',
+    exchangeRate: 1,
     lines: [
       {
         lineId: 'dn-line-1',
