@@ -125,3 +125,48 @@ DB_TYPE=SQL npm run smoke:companies
 The first SQL-readiness milestone (Epic 275 sub-tasks 275a/275b/275c/275d/275e) shipped a Prisma repository twin for every Firestore repo, but the schema and the domain entities had drifted apart. The build was green because of 520 `as any` casts that hid the schema↔repo mismatches; Prisma rejected the queries at runtime as `PrismaClientValidationError`. This reconciliation closes the gap by bringing the schema up to the domain (per the product owner's 2026-06-30 decision: code is truth), removing the masking casts, and verifying with the cast-stripped sweep.
 
 See `planning/SQL_REMEDIATION_GUIDE.md` for the full triage and `planning/done/275-sql-remediation-report.md` for the per-item resolution log.
+
+---
+
+## Request-path DB-agnosticism (2026-07-01)
+
+The repository layer being DB-aware is not enough: the **request path** (controllers,
+routes, services, use-cases) must also resolve everything through the DI container
+(`diContainer`) so `DB_TYPE` is honored. Any code that instantiates a `Firestore*` repo
+directly, or calls `admin.firestore()` / `admin.database()` unconditionally, silently
+talks to Firebase even in SQL mode — a green build hides it, and it surfaces only at
+runtime (wrong DB, or a hang).
+
+**Rule:** in the request path, never `new Firestore…()` and never call `admin.database()`
+unconditionally. Resolve repos/services via `diContainer.*`. If a piece is inherently
+Firebase-only (e.g. Realtime DB push), provide a no-op/alternative for the SQL lane and
+branch on `DB_TYPE`.
+
+Fixes applied under this rule:
+- **`FirebaseRealtimeDispatcher` → `NullRealtimeDispatcher` when `DB_TYPE==='SQL'`**
+  (`infrastructure/di/bindRepositories.ts`). `notify()` is `await`ed before the HTTP
+  response in create/update controllers; the Firebase dispatcher calls
+  `admin.database().ref().update()`, which blocks forever when no Realtime DB exists
+  (SQL lane) — freezing the request. Notifications still persist via the Prisma
+  notification repo; only the RTDB *push* is skipped.
+- **`CompanyController`** now resolves `diContainer.companyRepository` (was hardwired
+  `FirestoreCompanyRepository` at module load).
+- **`SettingsController`** (`/accounting/policy-config` GET+PUT) branches on `DB_TYPE`:
+  SQL routes through `diContainer.accountingPolicyConfigProvider` (read) and
+  `companyModuleSettingsRepository` (write, `company_module_settings` moduleId=`accounting`);
+  the Firebase path is unchanged.
+
+**Audit command** (should return only DB-branched Firebase else-branches):
+```bash
+grep -rln "new Firestore\|admin.firestore()\|admin.database()" \
+  backend/src/api/controllers backend/src/api/routes backend/src/application backend/src/domain
+```
+
+### Frontend note
+Some frontend services still read Firestore directly (bypassing the API), which breaks
+them in SQL mode. They are being ported to the existing backend endpoints (which are
+DB-agnostic and work in both lanes). Ported: `accounting/services/voucherTypesService.ts`
+(→ `voucherTypeManagementApi.catalog`). Remaining: `voucher-wizard/services/voucherWizardService.ts`,
+`voucher-wizard/validators/uniquenessValidator.ts`,
+`tools/forms-designer/services/documentDesignerService.ts`,
+`tools/forms-designer/validators/uniquenessValidator.ts`.
