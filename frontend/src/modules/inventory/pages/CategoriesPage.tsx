@@ -1,11 +1,13 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { InventoryCategoryDTO, inventoryApi } from '../../../api/inventoryApi';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const ROOT_KEY = '__ROOT__';
 
 const CategoriesPage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const [categories, setCategories] = useState<InventoryCategoryDTO[]>([]);
   const [name, setName] = useState('');
   const [parentId, setParentId] = useState('');
@@ -47,7 +49,7 @@ const CategoriesPage: React.FC = () => {
         >
           <div className="col-span-7 font-medium">{category.name}</div>
           <div className="col-span-2">{category.sortOrder}</div>
-          <div className="col-span-3">{category.active ? 'ACTIVE' : 'INACTIVE'}</div>
+          <div className="col-span-3">{category.active ? t('common.active', { defaultValue: 'Active' }) : t('common.inactive', { defaultValue: 'Inactive' })}</div>
         </div>
         {renderTree(category.id, depth + 1)}
       </React.Fragment>
@@ -72,13 +74,13 @@ const CategoriesPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Categories</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('categories.title', { defaultValue: 'Categories' })}</h1>
 
       <Card className="p-6">
         <form className="grid gap-3 md:grid-cols-3" onSubmit={handleCreate}>
           <input
             className="rounded border border-slate-300 px-3 py-2 text-sm"
-            placeholder="Category name"
+            placeholder={t('categories.namePlaceholder', { defaultValue: 'Category name' })}
             value={name}
             onChange={(e) => setName(e.target.value)}
             required
@@ -88,7 +90,7 @@ const CategoriesPage: React.FC = () => {
             value={parentId}
             onChange={(e) => setParentId(e.target.value)}
           >
-            <option value="">Root Category</option>
+            <option value="">{t('categories.root', { defaultValue: 'Root Category' })}</option>
             {categories.map((category) => (
               <option key={category.id} value={category.id}>
                 {category.name}
@@ -96,16 +98,16 @@ const CategoriesPage: React.FC = () => {
             ))}
           </select>
           <button className="rounded bg-slate-900 px-4 py-2 text-sm font-medium text-white" type="submit">
-            Add Category
+            {t('categories.add', { defaultValue: 'Add Category' })}
           </button>
         </form>
       </Card>
 
       <Card className="p-6">
         <div className="grid grid-cols-12 border-b border-slate-200 pb-2 text-sm font-semibold">
-          <div className="col-span-7">Name</div>
-          <div className="col-span-2">Sort</div>
-          <div className="col-span-3">Status</div>
+          <div className="col-span-7">{t('common.name', { defaultValue: 'Name' })}</div>
+          <div className="col-span-2">{t('categories.sort', { defaultValue: 'Sort' })}</div>
+          <div className="col-span-3">{t('common.status', { defaultValue: 'Status' })}</div>
         </div>
         <div className="pt-2">{renderTree(ROOT_KEY, 0)}</div>
       </Card>

@@ -7,11 +7,13 @@ import { Plus, Warehouse as WarehouseIcon, Search, Layers, ChevronRight, Edit3 }
 import { clsx } from 'clsx';
 import { useWindowManager } from '../../../context/WindowManagerContext';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const ROOT_KEY = '__ROOT__';
 
 const WarehousesPage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const { openWindow } = useWindowManager();
   const { uiMode } = useUserPreferences();
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -39,7 +41,7 @@ const WarehousesPage: React.FC = () => {
     if (uiMode === 'windows') {
        openWindow({
          type: 'warehouse',
-         title: `Logistics Node: ${name}`,
+         title: t('warehouses.windowTitle', { name, defaultValue: `Logistics Node: ${name}` }),
          data: { warehouseId: id },
          size: { width: 900, height: 600 }
        });
@@ -52,7 +54,7 @@ const WarehousesPage: React.FC = () => {
     if (uiMode === 'windows') {
        openWindow({
          type: 'warehouse',
-         title: 'New Storage Node',
+         title: t('warehouses.newWindowTitle', { defaultValue: 'New Storage Node' }),
          data: { warehouseId: 'new', onSaved: load },
          size: { width: 900, height: 600 }
        });
@@ -91,9 +93,9 @@ const WarehousesPage: React.FC = () => {
               <div className="flex items-center gap-2">
                 <span className="text-sm font-bold text-slate-900 dark:text-slate-100">{warehouse.name}</span>
                 <span className="text-[10px] font-mono font-bold bg-slate-100 dark:bg-slate-800 px-1.5 py-0.5 rounded text-slate-500">{warehouse.code}</span>
-                {warehouse.isDefault && <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest pl-2">DEFAULT</span>}
+                {warehouse.isDefault && <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest ps-2">{t('warehouses.default', { defaultValue: 'Default' })}</span>}
               </div>
-              <div className="text-[11px] text-slate-400 line-clamp-1 max-w-md">{warehouse.address || 'No physical address defined'}</div>
+              <div className="text-[11px] text-slate-400 line-clamp-1 max-w-md">{warehouse.address || t('warehouses.noAddress', { defaultValue: 'No physical address defined' })}</div>
             </div>
           </div>
           <div className="flex items-center gap-4">
@@ -101,7 +103,7 @@ const WarehousesPage: React.FC = () => {
                  "text-[9px] font-black px-2 py-0.5 rounded-full border tracking-widest uppercase",
                  warehouse.active ? "border-green-200 text-green-600 bg-green-50" : "border-slate-200 text-slate-400 bg-slate-50"
              )}>
-                {warehouse.active ? 'Operational' : 'Inactive'}
+                {warehouse.active ? t('warehouses.operational', { defaultValue: 'Operational' }) : t('common.inactive', { defaultValue: 'Inactive' })}
              </div>
              <button 
                 onClick={() => handleWarehouseClick(warehouse.id, warehouse.name)}
@@ -142,8 +144,8 @@ const WarehousesPage: React.FC = () => {
                 <Layers size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Warehouse Logistics</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Distribution Nodes & Global Storage Hierarchy</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t('warehouses.title', { defaultValue: 'Warehouse Logistics' })}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t('warehouses.subtitle', { defaultValue: 'Distribution Nodes & Global Storage Hierarchy' })}</p>
             </div>
           </div>
           <button 
@@ -151,7 +153,7 @@ const WarehousesPage: React.FC = () => {
             className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
           >
             <Plus size={16} />
-            AUTHORIZE NEW WAREHOUSE
+            {t('warehouses.add', { defaultValue: 'Authorize New Warehouse' })}
           </button>
         </div>
       </div>
@@ -161,9 +163,9 @@ const WarehousesPage: React.FC = () => {
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
                 <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                    <Search size={14} /> Master Directory
+                    <Search size={14} /> {t('warehouses.directory', { defaultValue: 'Master Directory' })}
                 </div>
-                {loading && <div className="text-[10px] text-blue-500 font-black animate-pulse uppercase tracking-tighter">Syncing Nodes...</div>}
+                {loading && <div className="text-[10px] text-blue-500 font-black animate-pulse uppercase tracking-tighter">{t('warehouses.syncing', { defaultValue: 'Syncing Nodes...' })}</div>}
             </div>
             
             <div className="p-6">
@@ -173,8 +175,8 @@ const WarehousesPage: React.FC = () => {
                         <WarehouseIcon size={48} />
                     </div>
                     <div>
-                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Warehouses Registered</p>
-                        <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Start by clicking the button above to register your first storage location.</p>
+                        <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t('warehouses.emptyTitle', { defaultValue: 'No Warehouses Registered' })}</p>
+                        <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t('warehouses.emptyDescription', { defaultValue: 'Use the button above to register your first storage location.' })}</p>
                     </div>
                 </div>
               ) : (
@@ -186,9 +188,9 @@ const WarehousesPage: React.FC = () => {
           </Card>
           
           <div className="mt-8 grid grid-cols-3 gap-6">
-             <MetricCard label="Total Capacity" value={warehouses.length} unit="NODES" />
-             <MetricCard label="Active Status" value={warehouses.filter(w => w.active).length} unit="OPERATIONAL" />
-             <MetricCard label="Default Zone" value={warehouses.find(w => w.isDefault)?.code || 'UNDEFINED'} unit="PRIMARY" />
+             <MetricCard label={t('warehouses.totalCapacity', { defaultValue: 'Total Capacity' })} value={warehouses.length} unit={t('warehouses.nodes', { defaultValue: 'Nodes' })} />
+             <MetricCard label={t('warehouses.activeStatus', { defaultValue: 'Active Status' })} value={warehouses.filter(w => w.active).length} unit={t('warehouses.operational', { defaultValue: 'Operational' })} />
+             <MetricCard label={t('warehouses.defaultZone', { defaultValue: 'Default Zone' })} value={warehouses.find(w => w.isDefault)?.code || t('warehouses.undefined', { defaultValue: 'Undefined' })} unit={t('warehouses.primary', { defaultValue: 'Primary' })} />
           </div>
         </div>
       </div>

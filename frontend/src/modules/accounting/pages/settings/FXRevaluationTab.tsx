@@ -228,7 +228,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = ({ defaultGainLossAcco
 
             <div>
               <label className="block text-xs font-semibold text-slate-500 mb-1">
-                Unrealized Gain/Loss Account <span className="text-red-500">*</span>
+                {t('settings.fxRevaluation.gainLossAccount', { defaultValue: 'Unrealized Gain/Loss Account' })} <span className="text-red-500">*</span>
               </label>
               <AccountSelector
                 value={targetGainLossAccountId}
@@ -264,7 +264,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = ({ defaultGainLossAcco
               </div>
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs text-slate-500">
+                  <tr className="border-b text-start text-xs text-slate-500">
                     <th className="py-2 px-2">{t('settings.fxRevaluation.columns.currency', { defaultValue: 'Currency' })}</th>
                     <th className="py-2 px-2">{t('settings.fxRevaluation.columns.suggestedRate', { defaultValue: 'Suggested Rate' })}</th>
                     <th className="py-2 px-2">{t('settings.fxRevaluation.columns.yourRate', { defaultValue: 'Your Rate' })}</th>
@@ -334,7 +334,7 @@ const FXRevaluationTab: React.FC<FXRevaluationTabProps> = ({ defaultGainLossAcco
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b text-left text-xs text-slate-500">
+                  <tr className="border-b text-start text-xs text-slate-500">
                     <th className="py-2 px-2">{t('settings.fxRevaluation.preview.account', { defaultValue: 'Account' })}</th>
                     <th className="py-2 px-2">{t('settings.fxRevaluation.preview.currency', { defaultValue: 'Currency' })}</th>
                     <th className="py-2 px-2 text-right">{t('settings.fxRevaluation.preview.foreignBalance', { defaultValue: 'Foreign Balance' })}</th>

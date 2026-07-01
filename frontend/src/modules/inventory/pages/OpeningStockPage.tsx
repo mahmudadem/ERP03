@@ -818,7 +818,7 @@ const OpeningStockPage: React.FC = () => {
         />
       )}
       <OperationalListLayout<OpeningStockDocumentDTO>
-        title="Opening Stock Documents"
+        title={t('openingStockDocuments.title', { defaultValue: 'Opening Stock Documents' })}
         subtitle=""
         compactHeader
         summaryWidgets={showLegacyOpeningStockWarning ? (
@@ -845,7 +845,7 @@ const OpeningStockPage: React.FC = () => {
           </div>
         ) : undefined}
         statusFilterConfig={statusFilterConfig}
-        newButtonLabel="New Document"
+        newButtonLabel={t('openingStockDocuments.newDocument', { defaultValue: 'New Document' })}
         onNewClick={() => navigate('/inventory/opening-stock/new')}
         onRefresh={loadPageData}
         loading={loading}
@@ -876,7 +876,7 @@ const OpeningStockPage: React.FC = () => {
                     setPage(1);
                   }
                 }}
-                placeholder="Search document, warehouse, voucher..."
+                placeholder={t('openingStockDocuments.searchPlaceholder', { defaultValue: 'Search document, warehouse, voucher...' })}
                 className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
               />
             </div>
@@ -888,7 +888,7 @@ const OpeningStockPage: React.FC = () => {
               }}
               className="min-w-[180px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              <option value="ALL">All warehouses</option>
+              <option value="ALL">{t('openingStockDocuments.allWarehouses', { defaultValue: 'All warehouses' })}</option>
               {warehouses.map((warehouse) => (
                 <option key={warehouse.id} value={warehouse.id}>
                   {warehouse.code} - {warehouse.name}
@@ -901,7 +901,7 @@ const OpeningStockPage: React.FC = () => {
                 setDateFromFilter(value);
                 setPage(1);
               }}
-              placeholder="Date From"
+              placeholder={t('openingStockDocuments.dateFrom', { defaultValue: 'Date From' })}
               className="min-w-[135px]"
               inputClassName="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
@@ -911,7 +911,7 @@ const OpeningStockPage: React.FC = () => {
                 setDateToFilter(value);
                 setPage(1);
               }}
-              placeholder="Date To"
+              placeholder={t('openingStockDocuments.dateTo', { defaultValue: 'Date To' })}
               className="min-w-[135px]"
               inputClassName="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
@@ -923,11 +923,11 @@ const OpeningStockPage: React.FC = () => {
               }}
               className="min-w-[185px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             >
-              <option value="ALL">All accounting modes</option>
-              <option value="WITH_ACCOUNTING">Inventory + Accounting</option>
-              <option value="INVENTORY_ONLY">Inventory only</option>
-              <option value="WITH_VOUCHER">With voucher</option>
-              <option value="NO_VOUCHER">No voucher</option>
+              <option value="ALL">{t('openingStockDocuments.accountingModes.all', { defaultValue: 'All accounting modes' })}</option>
+              <option value="WITH_ACCOUNTING">{t('openingStockDocuments.accountingModes.withAccounting', { defaultValue: 'Inventory + Accounting' })}</option>
+              <option value="INVENTORY_ONLY">{t('openingStockDocuments.accountingModes.inventoryOnly', { defaultValue: 'Inventory only' })}</option>
+              <option value="WITH_VOUCHER">{t('openingStockDocuments.accountingModes.withVoucher', { defaultValue: 'With voucher' })}</option>
+              <option value="NO_VOUCHER">{t('openingStockDocuments.accountingModes.noVoucher', { defaultValue: 'No voucher' })}</option>
             </select>
             <input
               type="number"
@@ -955,7 +955,7 @@ const OpeningStockPage: React.FC = () => {
             />
             <button type="button" onClick={() => { setSearchFilter(localSearch); setPage(1); }} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-700">
               <Filter size={16} />
-              Apply
+              {t('openingStockDocuments.apply', { defaultValue: 'Apply' })}
             </button>
             <button
               type="button"
@@ -972,7 +972,7 @@ const OpeningStockPage: React.FC = () => {
                 setPage(1);
               }}
               className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition-all hover:bg-slate-50 hover:text-rose-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
-              title="Clear Filters"
+              title={t('openingStockDocuments.clearFilters', { defaultValue: 'Clear Filters' })}
             >
               <RotateCcw size={16} />
             </button>
@@ -980,7 +980,7 @@ const OpeningStockPage: React.FC = () => {
         }
         columns={listColumns}
         data={paginatedData}
-        emptyMessage="No Opening Stock Documents found"
+        emptyMessage={t('openingStockDocuments.empty', { defaultValue: 'No Opening Stock Documents found' })}
         onRowClick={(row) => navigate(`/inventory/opening-stock/${row.id}`)}
         sorting={{ field: sortField, direction: sortDirection, onSort: handleSort }}
         pagination={{

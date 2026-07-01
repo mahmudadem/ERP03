@@ -11,7 +11,7 @@ import { InventoryInitializationWizard } from '../wizards/InventoryInitializatio
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const InventoryHomePage: React.FC = () => {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('inventory');
   const navigate = useNavigate();
   const { companyId } = useCompanyAccess();
   const [dashboard, setDashboard] = useState<InventoryDashboardDTO | null>(null);
@@ -87,9 +87,9 @@ const InventoryHomePage: React.FC = () => {
     return (
       <div className="space-y-6 p-4">
         <h1 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-100">
-          {t('modulePlaceholders.inventory.title', { defaultValue: 'Inventory Overview' })}
+          {t('dashboard.title', { defaultValue: 'Inventory Overview' })}
         </h1>
-        <Card className="p-6">Loading inventory module...</Card>
+        <Card className="p-6">{t('dashboard.loading', { defaultValue: 'Loading inventory module...' })}</Card>
       </div>
     );
   }
@@ -98,7 +98,7 @@ const InventoryHomePage: React.FC = () => {
     return (
       <div className="space-y-6 p-4">
         <h1 className="text-2xl font-bold mb-2 text-slate-900 dark:text-slate-100">
-          {t('modulePlaceholders.inventory.title', { defaultValue: 'Inventory Overview' })}
+          {t('dashboard.title', { defaultValue: 'Inventory Overview' })}
         </h1>
         <Card className="p-6">
           <p className="text-sm text-red-700">{loadError}</p>
@@ -129,14 +129,14 @@ const InventoryHomePage: React.FC = () => {
           <div>
             <div className="flex items-center gap-2">
               <h1 className="text-xl font-extrabold tracking-tight text-slate-900 dark:text-slate-50">
-                {t('modulePlaceholders.inventory.title', { defaultValue: 'Inventory Overview' })}
+                {t('dashboard.title', { defaultValue: 'Inventory Overview' })}
               </h1>
               <span className="inline-flex items-center rounded-md bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10 dark:bg-indigo-950/30 dark:text-indigo-400 dark:ring-indigo-400/20">
-                Module Dashboard
+                {t('dashboard.moduleDashboard', { defaultValue: 'Module Dashboard' })}
               </span>
             </div>
             <div className="mt-1 text-xs text-slate-500 dark:text-slate-400">
-              Track stock levels, manage warehouses, process adjustments, transfers, and valuation.
+              {t('dashboard.subtitle', { defaultValue: 'Track stock levels, manage warehouses, process adjustments, transfers, and valuation.' })}
             </div>
           </div>
         </div>
@@ -144,35 +144,35 @@ const InventoryHomePage: React.FC = () => {
 
       <div className="grid gap-4 md:grid-cols-5">
         <Card className={kpiClass}>
-          <div className="text-sm text-slate-500">Total Value (Base)</div>
+          <div className="text-sm text-slate-500">{t('dashboard.totalValueBase', { defaultValue: 'Total Value (Base)' })}</div>
           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {loading ? '...' : (dashboard?.totalInventoryValueBase ?? 0).toFixed(2)}
           </div>
         </Card>
 
         <Card className={kpiClass}>
-          <div className="text-sm text-slate-500">Items</div>
+          <div className="text-sm text-slate-500">{t('dashboard.items', { defaultValue: 'Items' })}</div>
           <div className="mt-2 text-2xl font-semibold text-slate-900 dark:text-slate-100">
             {loading ? '...' : dashboard?.totalTrackedItems ?? 0}
           </div>
         </Card>
 
         <Card className={`${kpiClass} cursor-pointer`} onClick={() => navigate('/inventory/alerts/low-stock')}>
-          <div className="text-sm text-slate-500">Low Stock Alerts</div>
+          <div className="text-sm text-slate-500">{t('dashboard.lowStockAlerts', { defaultValue: 'Low Stock Alerts' })}</div>
           <div className="mt-2 text-2xl font-semibold text-amber-700">
             {loading ? '...' : dashboard?.lowStockAlerts ?? 0}
           </div>
         </Card>
 
         <Card className={kpiClass}>
-          <div className="text-sm text-slate-500">Negative Stock</div>
+          <div className="text-sm text-slate-500">{t('dashboard.negativeStock', { defaultValue: 'Negative Stock' })}</div>
           <div className="mt-2 text-2xl font-semibold text-red-700">
             {loading ? '...' : dashboard?.negativeStockCount ?? 0}
           </div>
         </Card>
 
         <Card className={`${kpiClass} cursor-pointer`} onClick={() => navigate('/inventory/reports/unsettled-costs')}>
-          <div className="text-sm text-slate-500">Unsettled</div>
+          <div className="text-sm text-slate-500">{t('dashboard.unsettled', { defaultValue: 'Unsettled' })}</div>
           <div className="mt-2 text-2xl font-semibold text-blue-700">
             {loading ? '...' : dashboard?.unsettledMovementsCount ?? 0}
           </div>
@@ -180,18 +180,18 @@ const InventoryHomePage: React.FC = () => {
       </div>
 
       <Card className="p-5">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Movements</h2>
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{t('dashboard.recentMovements', { defaultValue: 'Recent Movements' })}</h2>
         <div className="mt-4 overflow-x-auto">
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left font-semibold">Date</th>
-                <th className="py-2 text-left font-semibold">Item</th>
-                <th className="py-2 text-left font-semibold">Warehouse</th>
-                <th className="py-2 text-left font-semibold">Type</th>
-                <th className="py-2 text-left font-semibold">Dir</th>
-                <th className="py-2 text-right font-semibold">Qty</th>
-                <th className="py-2 text-right font-semibold">Cost Base</th>
+                <th className="py-2 text-start font-semibold">{t('common.date', { defaultValue: 'Date' })}</th>
+                <th className="py-2 text-start font-semibold">{t('common.item', { defaultValue: 'Item' })}</th>
+                <th className="py-2 text-start font-semibold">{t('common.warehouse', { defaultValue: 'Warehouse' })}</th>
+                <th className="py-2 text-start font-semibold">{t('common.type', { defaultValue: 'Type' })}</th>
+                <th className="py-2 text-start font-semibold">{t('common.direction', { defaultValue: 'Direction' })}</th>
+                <th className="py-2 text-end font-semibold">{t('common.quantity', { defaultValue: 'Qty' })}</th>
+                <th className="py-2 text-end font-semibold">{t('common.costBase', { defaultValue: 'Cost Base' })}</th>
               </tr>
             </thead>
             <tbody>
@@ -219,7 +219,7 @@ const InventoryHomePage: React.FC = () => {
               {!loading && (dashboard?.recentMovements?.length ?? 0) === 0 && (
                 <tr>
                   <td className="py-3 text-slate-500" colSpan={7}>
-                    No recent movements.
+                    {t('dashboard.noRecentMovements', { defaultValue: 'No recent movements.' })}
                   </td>
                 </tr>
               )}

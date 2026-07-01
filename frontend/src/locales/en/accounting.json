@@ -325,7 +325,35 @@
       "nov": "Nov",
       "dec": "Dec"
     },
-    "allCostCenters": "All cost centers"
+    "allCostCenters": "All cost centers",
+    "title": "Budget Management",
+    "subtitle": "Create, approve, and monitor budget versions by fiscal year.",
+    "existingBudgets": "Existing Budgets",
+    "closed": "Closed",
+    "draft": "Draft",
+    "approvedStatus": "Approved",
+    "editor": "Budget Editor",
+    "selectFiscalYear": "Select fiscal year",
+    "create": "Create Budget",
+    "saving": "Saving...",
+    "newDraft": "New Draft",
+    "readOnlyMode": "Read-only mode: you can view budgets, but create/update/approve is disabled.",
+    "readPermissionRequired": "You do not have permission to view budgets.",
+    "loading": "Loading budgets...",
+    "selectAccount": "Select account",
+    "annualDistribute": "Annual (Auto-Distribute)",
+    "evenSplitHint": "Even split over 12 months",
+    "removeLine": "Remove",
+    "emptyList": "No budgets created yet.",
+    "active": "Active",
+    "activeForReports": "Yes (default in reports)",
+    "createRevision": "Create Revision",
+    "approving": "Approving...",
+    "revisionPrepared": "Prepared revision v{{version}} from selected budget.",
+    "selectFiscalYearError": "Please select a fiscal year.",
+    "nameRequired": "Budget name is required.",
+    "lineRequired": "At least one account line is required.",
+    "duplicateLines": "Duplicate account/cost-center lines are not allowed."
   },
   "budgetVsActual": {
     "selectBudget": "Select a budget first.",
@@ -364,7 +392,30 @@
     "status": {
       "active": "Active",
       "inactive": "Inactive"
-    }
+    },
+    "listTitle": "Hierarchy Preview",
+    "itemsCount": "cost centers",
+    "clickHint": "Click row to expand/collapse",
+    "searchHint": "Search by code, name...",
+    "expandAll": "Expand All",
+    "collapseAll": "Collapse All",
+    "noDescription": "No description",
+    "addChild": "Add Child Cost Center",
+    "codePlaceholder": "e.g. MKT-01",
+    "namePlaceholder": "e.g. Marketing Department",
+    "parentLabel": "Parent Cost Center",
+    "noParent": "No Parent (Root Level)",
+    "descriptionPlaceholder": "Optional details about this cost center...",
+    "createDesc": "Add a new node to your hierarchy.",
+    "updateDesc": "Update the details below.",
+    "statusLabel": "Cost Center Status",
+    "statusActiveDesc": "Currently active and available for use.",
+    "statusInactiveDesc": "Currently inactive and hidden from new assignments.",
+    "confirmActivate": "Are you sure you want to activate cost center \"{{name}}\"?",
+    "confirmDeactivate": "Are you sure you want to deactivate cost center \"{{name}}\"?",
+    "confirmDelete": "Are you sure you want to permanently delete cost center \"{{name}}\"? This cannot be undone.",
+    "activateError": "Failed to activate",
+    "deleteError": "Failed to delete"
   },
   "recurring": {
     "title": "Recurring Vouchers",
@@ -567,7 +618,7 @@
       "windows": "Windows (V3)",
       "windowsDesc": "Multi-window multitasking",
       "multiCurrencyDefaults": "Global FX Configuration",
-      "fxAccountDesc": "Primary account for exchange differences. Pre-fills the wizard below and serves as a default for all modules."
+      "fxAccountDesc": "The default account for exchange gain/loss differences. It pre-fills the wizard below and is used as the default for all modules."
     },
     "currencies": {
       "description": "Manage your enterprise currency list and base currency"
@@ -625,7 +676,64 @@
       "fxRevaluation": "FX Revaluation"
     },
     "fxRevaluation": {
-      "description": "Configure automatic exchange rate revaluation for multi-currency accounts"
+      "description": "Revalue foreign currency balances to current exchange rates and generate adjustment vouchers.",
+      "title": "FX Revaluation",
+      "globalSettings": "Global Exchange Settings",
+      "globalSettingsDesc": "The default account for exchange gain/loss differences. It pre-fills the wizard below and is used as the default for all modules.",
+      "configuration": "Configuration",
+      "filterAccount": "Filter by Account (Optional)",
+      "asOfDate": "As Of Date",
+      "gainLossAccount": "Unrealized Gain/Loss Account",
+      "gainLossAccountHint": "The account where the FX gain/loss adjustment will be posted.",
+      "detectCurrencies": "Detect Currencies",
+      "errors": {
+        "detectFirst": "No currencies detected. Click Detect Currencies first.",
+        "noForeignBalances": "No foreign currency balances found for the selected scope and date.",
+        "detectFailed": "Failed to detect currencies",
+        "selectGainLoss": "Please select an Unrealized Gain/Loss account.",
+        "calculateFailed": "Failed to calculate revaluation",
+        "generateFailed": "Failed to generate voucher"
+      },
+      "done": {
+        "title": "FX Revaluation Voucher Created!",
+        "savedAsDraftPrefix": "Voucher",
+        "savedAsDraftSuffix": "has been saved as a",
+        "draft": "DRAFT",
+        "reviewHint": "You can review and post it from the Voucher List.",
+        "runAnother": "Run Another Revaluation"
+      },
+      "subtitle": "Revalue foreign currency balances to current exchange rates and generate adjustment vouchers.",
+      "startOver": "Start Over",
+      "filterByAccount": "Filter by Account",
+      "gainLossHint": "The account where the FX gain/loss adjustment will be posted.",
+      "foreignDetected": "Foreign Currencies Detected ({{count}})",
+      "base": "Base",
+      "latestRatesHint": "The system has fetched the latest exchange rates. You may override them below before processing.",
+      "calculate": "Calculate Revaluation",
+      "totalGain": "Total Unrealized Gain",
+      "totalLoss": "Total Unrealized Loss",
+      "netDelta": "Net Delta",
+      "affectedAccounts": "Affected Accounts ({{count}})",
+      "generateDraft": "Generate Draft Voucher",
+      "steps": {
+        "scopeRates": "1. Scope & Rates",
+        "preview": "2. Preview",
+        "done": "3. Done"
+      },
+      "columns": {
+        "currency": "Currency",
+        "suggestedRate": "Suggested Rate",
+        "yourRate": "Your Rate"
+      },
+      "preview": {
+        "account": "Account",
+        "currency": "Currency",
+        "foreignBalance": "Foreign Balance",
+        "historicalBase": "Historical Base",
+        "newRate": "New Rate",
+        "targetBase": "Target Base",
+        "delta": "Delta"
+      }
     },
     "saving": "Saving...",
     "saveLabel": "Save {{section}}",
@@ -634,7 +742,9 @@
     "off": "OFF",
     "common": {
       "refresh": "Refresh",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "optional": "Optional",
+      "back": "Back"
     },
     "errorMode": {
       "title": "Policy Error Mode",
@@ -719,7 +829,31 @@
       "saveNext": "Save Next",
       "sequences": "Sequences",
       "noSequences": "No sequences yet.",
-      "last": "Last: {{value}}"
+      "last": "Last: {{value}}",
+      "descriptionLong": "Monitor active voucher sequences and override numbering for migration or corrections.",
+      "howItWorks": "How Numbering Works",
+      "howItWorksLine1": "Each voucher form has its own prefix, set in the Voucher Designer.",
+      "howItWorksLine2": "The system maintains an independent sequence counter per prefix.",
+      "howItWorksLine3": "If annual reset is enabled in General Settings, counters reset per fiscal year.",
+      "howItWorksLine4": "Format: PREFIX-0001 or PREFIX-2026-0001",
+      "activeSequences": "Active Sequences",
+      "noFormWithPrefix": "No form - {{prefix}}",
+      "noneFound": "No voucher forms or sequences found. Create voucher forms in the Voucher Designer first.",
+      "columns": {
+        "voucherForm": "Voucher Form",
+        "prefix": "Prefix",
+        "last": "Last #",
+        "next": "Next Will Be",
+        "year": "Year",
+        "actions": "Actions"
+      },
+      "setNext": "Set Next #",
+      "formatReference": "Format Template Reference",
+      "formatReferenceDesc": "Custom formats can be set per form in the Voucher Designer. Available placeholders:",
+      "placeholderPrefix": "Voucher form prefix (e.g. JE, PV, RV)",
+      "placeholderYear": "Fiscal year (e.g. 2026)",
+      "placeholderCounter": "Zero-padded sequence (e.g. 0001)",
+      "example": "Example"
     },
     "messages": {
       "generalSaved": "General settings saved!",
@@ -740,11 +874,24 @@
       "retainedEarningsExists": "Retained Earnings account already exists. Selected it.",
       "fiscalYearClosedError": "Cannot modify period because the fiscal year is closed. You must reopen the fiscal year before you can change the status of its monthly periods.",
       "prefixRequired": "Prefix and next number are required",
-      "nextNumberUpdated": "Next number updated"
+      "nextNumberUpdated": "Next number updated",
+      "changesDiscarded": "Changes discarded"
     },
     "metadata": {
       "lastUpdated": "Last updated: {{value}}",
       "updatedBy": " by {{user}}"
+    },
+    "paymentMethods": {
+      "description": "Manage the payment methods available in voucher forms.",
+      "configuredMethods": "Configured Methods",
+      "configuredMethodsDesc": "Status of payment options in voucher forms",
+      "addMethod": "Add Method",
+      "newMethodDefault": "New Payment Method",
+      "noneDefined": "No payment methods defined. Click Add Method to get started.",
+      "enabled": "Enabled",
+      "disabled": "Disabled",
+      "formIntegration": "Form Integration",
+      "formIntegrationDesc": "Payment methods defined here automatically populate Voucher Editor dropdowns. Disabled methods are hidden from selectors but preserved in existing records."
     }
   },
   "dashboard": {
@@ -1317,7 +1464,12 @@
   "accountForm": {
     "createTitle": "Create New Account",
     "editTitle": "Edit Account",
-    "tabs": { "general": "General Settings", "accounting": "Accounting Rules", "currency": "Currency Policy", "governance": "Approval Workflow" },
+    "tabs": {
+      "general": "General Settings",
+      "accounting": "Accounting Rules",
+      "currency": "Currency Policy",
+      "governance": "Approval Workflow"
+    },
     "generalTitle": "General Information",
     "generalDescription": "Configure identity and structural properties",
     "parentAccount": "Parent Account (Start Here)",
@@ -1366,12 +1518,155 @@
     "securing": "Securing Data...",
     "createAction": "Create Account",
     "updateAction": "Update Account",
-    "classifications": { "ASSET": "Asset", "LIABILITY": "Liability", "EQUITY": "Equity", "REVENUE": "Revenue", "EXPENSE": "Expense" },
-    "roles": { "POSTING": "Posting Account (Transaction)", "HEADER": "Header Account (Folder)" },
-    "balanceNatures": { "DEBIT": "Debit", "CREDIT": "Credit", "BOTH": "Both" },
-    "balanceRules": { "WARN_ABNORMAL": "Warn on abnormal balance", "BLOCK_ABNORMAL": "Block abnormal balance", "ALLOW_ABNORMAL": "Allow (No check)" },
-    "currencyPolicies": { "INHERIT": "Inherit from Parent", "FIXED": "Fixed Currency", "OPEN": "Any Currency" },
-    "cashFlowCategories": { "AUTO": "Auto (By Account Type)", "OPERATING": "Operating", "INVESTING": "Investing", "FINANCING": "Financing" },
-    "subgroups": { "NONE": "None (Unassigned)", "SALES": "Sales", "OTHER_REVENUE": "Other Revenue", "COST_OF_SALES": "Cost of Sales (COGS)", "OPERATING_EXPENSES": "Operating Expenses", "OTHER_EXPENSES": "Other Expenses", "RETAINED_EARNINGS": "Retained Earnings", "CONTRIBUTED_CAPITAL": "Contributed Capital", "RESERVES": "Reserves" }
+    "classifications": {
+      "ASSET": "Asset",
+      "LIABILITY": "Liability",
+      "EQUITY": "Equity",
+      "REVENUE": "Revenue",
+      "EXPENSE": "Expense"
+    },
+    "roles": {
+      "POSTING": "Posting Account (Transaction)",
+      "HEADER": "Header Account (Folder)"
+    },
+    "balanceNatures": {
+      "DEBIT": "Debit",
+      "CREDIT": "Credit",
+      "BOTH": "Both"
+    },
+    "balanceRules": {
+      "WARN_ABNORMAL": "Warn on abnormal balance",
+      "BLOCK_ABNORMAL": "Block abnormal balance",
+      "ALLOW_ABNORMAL": "Allow (No check)"
+    },
+    "currencyPolicies": {
+      "INHERIT": "Inherit from Parent",
+      "FIXED": "Fixed Currency",
+      "OPEN": "Any Currency"
+    },
+    "cashFlowCategories": {
+      "AUTO": "Auto (By Account Type)",
+      "OPERATING": "Operating",
+      "INVESTING": "Investing",
+      "FINANCING": "Financing"
+    },
+    "subgroups": {
+      "NONE": "None (Unassigned)",
+      "SALES": "Sales",
+      "OTHER_REVENUE": "Other Revenue",
+      "COST_OF_SALES": "Cost of Sales (COGS)",
+      "OPERATING_EXPENSES": "Operating Expenses",
+      "OTHER_EXPENSES": "Other Expenses",
+      "RETAINED_EARNINGS": "Retained Earnings",
+      "CONTRIBUTED_CAPITAL": "Contributed Capital",
+      "RESERVES": "Reserves"
+    }
+  },
+  "common": {
+    "refresh": "Refresh",
+    "save": "Save",
+    "cancel": "Cancel",
+    "add": "Add",
+    "activate": "Activate",
+    "deactivate": "Deactivate",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm"
+  },
+  "instructions": {
+    "howThisWorks": "How this works",
+    "importantNotes": "Important Notes",
+    "pages": {
+      "accounting-settings-general": {
+        "title": "General Accounting Settings",
+        "overview": "Configure core enterprise preferences that affect how data is recorded and displayed across the system.",
+        "sections": [
+          {
+            "title": "Timezone & Localization",
+            "content": "The timezone setting determines how transaction timestamps are interpreted and stored. Changing this affects displayed dates for existing and future vouchers."
+          },
+          {
+            "title": "UI Mode",
+            "content": "Choose between a standard web layout or a multi-window desktop experience. This is a personal preference and does not affect ledger data."
+          }
+        ]
+      },
+      "accounting-settings-policies": {
+        "title": "Approval & Posting Policies",
+        "overview": "Define the internal controls that a voucher must pass before it affects the ledger.",
+        "sections": [
+          {
+            "title": "Workflow Modes",
+            "content": "Flexible mode posts faster when financial approval is off. Strict mode holds vouchers for approval and protects posted records through reversal-based correction."
+          },
+          {
+            "title": "Approval Gates",
+            "content": "Financial Approval verifies and releases vouchers to the ledger. Custody Confirmation verifies the physical side of cash or warehouse transactions."
+          },
+          {
+            "title": "Voucher Amount Threshold",
+            "content": "Small vouchers below the threshold can bypass custody confirmation to reduce administrative work."
+          },
+          {
+            "title": "Immutability & Correction",
+            "content": "In strict workflows, posted vouchers are locked. Corrections should use reversal entries to preserve the audit trail.",
+            "warning": "Disabling financial approval later does not unlock vouchers posted while strict policy was active."
+          }
+        ]
+      },
+      "accounting-settings-payment-methods": {
+        "title": "Payment Methods Management",
+        "overview": "Define the available payment options for transaction forms.",
+        "sections": [
+          {
+            "title": "Form Integration",
+            "content": "Methods defined here appear in the Payment Method dropdown in the Voucher Editor. Disabled methods are hidden from new forms but preserved in historical records."
+          }
+        ]
+      },
+      "accounting-settings-cost-center": {
+        "title": "Cost Center Enforcement",
+        "overview": "Configure mandatory categorization of expenses and assets to departments, branches, or projects.",
+        "sections": [
+          {
+            "title": "Mandatory Assignment",
+            "content": "When enabled for selected account types, voucher submission is blocked until a cost center is assigned."
+          }
+        ]
+      },
+      "accounting-settings-error-mode": {
+        "title": "Validation & Error Reporting",
+        "overview": "Control how policy violations are reported during voucher entry.",
+        "sections": [
+          {
+            "title": "Fail fast vs aggregate",
+            "content": "Fail fast stops at the first error. Aggregate scans the whole voucher and shows all violations at once."
+          }
+        ]
+      },
+      "accounting-settings-fiscal": {
+        "title": "Accounting Periods Management",
+        "overview": "Manage your company's financial timeline, including fiscal years, reporting periods, and data locking controls.",
+        "sections": [
+          {
+            "title": "Fiscal Year & Periods",
+            "content": "Accounting periods contain financial transactions. The system needs an active fiscal year to generate periods, and transactions require an open period for their date.",
+            "warning": "Periods are only visible and active after a fiscal year has been created."
+          },
+          {
+            "title": "Period Statuses",
+            "content": "Open: transactions can be posted.\n• Closed: temporarily closed for reporting and can be reopened by an admin.\n• Locked: permanently finalized and cannot be reopened."
+          },
+          {
+            "title": "Data Locking",
+            "content": "The Locked Through Date freezes all data before a specific date, regardless of period status."
+          },
+          {
+            "title": "Year-End Closing",
+            "content": "Closing a fiscal year moves net profit or loss to retained earnings and resets P&L accounts for the new year. This action is irreversible."
+          }
+        ]
+      }
+    }
   }
 }

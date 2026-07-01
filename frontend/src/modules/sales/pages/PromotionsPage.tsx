@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 // ─── Editor ───────────────────────────────────────────────────────────────────
 
@@ -331,6 +332,7 @@ const typeLabel = (type: PromotionType) => {
 };
 
 const PromotionsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [promotions, setPromotions] = useState<PromotionRuleDTO[]>([]);
   const [loading, setLoading] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -377,15 +379,15 @@ const PromotionsPage: React.FC = () => {
               <Tag size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Promotions</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Discount Rules & Promotional Campaigns</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t('salesAdminLists.promotions.title')}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t('salesAdminLists.promotions.subtitle')}</p>
             </div>
           </div>
           <button
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
           >
-            <Plus size={16} /> New Promotion
+            <Plus size={16} /> {t('salesAdminLists.promotions.new')}
           </button>
         </div>
       </div>
@@ -394,7 +396,7 @@ const PromotionsPage: React.FC = () => {
         <div className="mx-auto max-w-5xl">
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
-              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Promotion Directory</div>
+              <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">{t('salesAdminLists.promotions.directory')}</div>
               {loading && <div className="text-[10px] text-violet-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
             </div>
 
@@ -405,8 +407,8 @@ const PromotionsPage: React.FC = () => {
                     <Tag size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Promotions Found</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Create your first promotion by clicking the button above.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t('salesAdminLists.promotions.emptyTitle')}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t('salesAdminLists.promotions.emptyDescription')}</p>
                   </div>
                 </div>
               ) : (

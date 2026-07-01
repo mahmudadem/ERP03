@@ -14,30 +14,36 @@
     "end": "BİTİŞ"
   },
   "salesGrossProfit": {
-    "titleByDocument": "Gross Profit by Document",
-    "titleByItem": "Gross Profit by Item",
-    "subtitle": "Historical gross profit facts by invoice currency and base currency",
-    "fromDate": "From Date",
-    "toDate": "To Date",
-    "documentScope": "Document Scope",
-    "scopeSales": "Sales invoices and returns",
-    "scopeSalesInvoices": "Sales invoices only",
-    "scopeSalesReturns": "Sales returns only",
-    "scopeAll": "All tracked document types",
-    "scopePurchaseInvoices": "Purchase invoices only",
-    "scopePurchaseReturns": "Purchase returns only",
-    "limit": "Row Limit",
-    "itemFilter": "Item Filter",
-    "allItems": "All items",
-    "docCurrency": "Document Currency",
-    "anyCurrency": "Any currency",
-    "generate": "Generate Report",
-    "netProfit": "Net Profit Base",
-    "profitIn": "Profit IN Base",
-    "profitOut": "Profit OUT Base",
-    "lines": "Fact Lines",
-    "managementNote": "Management report from historical profit facts. This does not recalculate inventory valuation or COGS.",
-    "noData": "No gross profit facts match these filters."
+    "titleByDocument": "Belgeye Göre Brüt Kâr",
+    "titleByItem": "Ürüne Göre Brüt Kâr",
+    "subtitle": "Fatura para birimi ve temel para biriminde tarihsel brüt kâr verileri",
+    "fromDate": "Başlangıç Tarihi",
+    "toDate": "Bitiş Tarihi",
+    "documentScope": "Belge Kapsamı",
+    "scopeSales": "Satış faturaları ve iadeleri",
+    "scopeSalesInvoices": "Yalnızca satış faturaları",
+    "scopeSalesReturns": "Yalnızca satış iadeleri",
+    "scopeAll": "İzlenen tüm belge türleri",
+    "scopePurchaseInvoices": "Yalnızca alış faturaları",
+    "scopePurchaseReturns": "Yalnızca alış iadeleri",
+    "limit": "Satır Sınırı",
+    "itemFilter": "Ürün Filtresi",
+    "allItems": "Tüm ürünler",
+    "docCurrency": "Belge Para Birimi",
+    "anyCurrency": "Tüm para birimleri",
+    "generate": "Rapor Oluştur",
+    "netProfit": "Temel Para Biriminde Net Kâr",
+    "profitIn": "Temel Para Biriminde Giren Kâr",
+    "profitOut": "Temel Para Biriminde Çıkan Kâr",
+    "lines": "Veri Satırları",
+    "managementNote": "Tarihsel kâr verilerinden oluşturulan yönetim raporu. Stok değerlemesini veya satılan malın maliyetini yeniden hesaplamaz.",
+    "noData": "Bu filtrelerle eşleşen brüt kâr verisi yok."
+  },
+  "salesAdminLists": {
+    "customerGroups": { "title": "Müşteri Grupları", "subtitle": "Segmentasyon ve Varsayılan Koşullar", "new": "Yeni Grup", "directory": "Grup Dizini", "emptyTitle": "Müşteri Grubu Yok", "emptyDescription": "Müşterileri varsayılan koşullara göre sınıflandırmak için ilk grubu oluşturun." },
+    "priceLists": { "title": "Fiyat Listeleri", "subtitle": "Fiyatlandırma Kuralları ve Ürün Tarifeleri", "new": "Yeni Fiyat Listesi", "directory": "Fiyat Listesi Dizini", "emptyTitle": "Fiyat Listesi Bulunamadı", "emptyDescription": "Yukarıdaki düğmeyi kullanarak ilk fiyat listenizi oluşturun." },
+    "salespersons": { "title": "Satış Temsilcileri", "subtitle": "Satış Ekibi ve Komisyon Oranları", "new": "Yeni Satış Temsilcisi", "directory": "Satış Ekibi Dizini", "emptyTitle": "Satış Temsilcisi Kayıtlı Değil", "emptyDescription": "Komisyonları ve atamaları izlemek için satış temsilcileri ekleyin." },
+    "promotions": { "title": "Promosyonlar", "subtitle": "İndirim Kuralları ve Promosyon Kampanyaları", "new": "Yeni Promosyon", "directory": "Promosyon Dizini", "emptyTitle": "Promosyon Bulunamadı", "emptyDescription": "Yukarıdaki düğmeyi kullanarak ilk promosyonunuzu oluşturun." }
   },
   "language": {
     "label": "Dil",
@@ -191,11 +197,15 @@
     "arAging": "Müşteri Yaşlandırma",
     "customerStatement": "Müşteri Ekstresi",
     "salesAnalytics": "Satış Analizi",
+    "grossProfitByDocument": "Belgeye Göre Brüt Kâr",
+    "grossProfitByItem": "Ürüne Göre Brüt Kâr",
     "agedBacklog": "Vadesi Geçmiş Bakiye",
     "customerGroups": "Müşteri Grupları",
     "priceLists": "Fiyat Listeleri",
     "salespersons": "Satış Temsilcileri",
     "promotions": "Promosyonlar",
+    "taxCodes": "Vergi Kodları",
+    "printLayoutDesigner": "Baskı Düzeni Tasarımcısı",
     "goodsReceipts": "Mal Kabul Notları",
     "purchaseInvoices": "Alış Faturaları",
     "purchaseReturns": "Alış İadeleri",
@@ -209,9 +219,11 @@
     "transfers": "Stok Transferleri",
     "stockLevels": "Stok Seviyeleri",
     "movements": "Stok Hareketleri",
+    "itemMovement": "Ürün Hareketi",
     "lowStockAlerts": "Düşük Stok Uyarıları",
     "unsettledCosts": "Uzlaşılmamış Maliyetler",
     "inventoryValuation": "Stok Değerlemesi",
+    "inventoryGLReconciliation": "Stok ve Büyük Defter Mutabakatı",
     "categories": "Kategoriler",
     "uomMaster": "Ölçü Birimleri",
     "tasks": "Görevler",
@@ -3219,30 +3231,32 @@
       "actionFailed": "İşlem başarısız oldu."
     },
     "quotesList": {
-      "title": "Quotations",
-      "subtitle": "Sales quotes and proposals.",
-      "newQuote": "New Quote",
-      "allStatuses": "All Statuses",
-      "allCustomers": "All Customers",
-      "refresh": "Refresh",
-      "clearFilters": "Clear Filters",
-      "quoteNumber": "Quote #",
-      "customer": "Customer",
-      "quoteDate": "Quote Date",
-      "validUntil": "Valid Until",
-      "grandTotal": "Grand Total",
-      "status": "Status",
-      "loading": "Loading...",
-      "emptyTitle": "No Quotations",
-      "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
-      "loadError": "Failed to load quotations.",
+      "title": "Teklifler",
+      "subtitle": "Satış teklifleri ve önerileri.",
+      "newQuote": "Yeni Teklif",
+      "searchPlaceholder": "Teklif no., müşteri, durum...",
+      "allStatuses": "Tüm Durumlar",
+      "allCustomers": "Tüm Müşteriler",
+      "refresh": "Yenile",
+      "clearFilters": "Filtreleri Temizle",
+      "quoteNumber": "Teklif No.",
+      "customer": "Müşteri",
+      "quoteDate": "Teklif Tarihi",
+      "validUntil": "Geçerlilik Tarihi",
+      "grandTotal": "Genel Toplam",
+      "status": "Durum",
+      "loading": "Yükleniyor...",
+      "emptyTitle": "Teklif Bulunamadı",
+      "emptyDescription": "Filtrelerinize uyan teklif yok. İlk teklifinizi oluşturun veya filtreleri değiştirin.",
+      "loadError": "Teklifler yüklenemedi.",
       "statuses": {
-        "DRAFT": "Draft",
-        "SENT": "Sent",
-        "ACCEPTED": "Accepted",
-        "REJECTED": "Rejected",
-        "EXPIRED": "Expired",
-        "CONVERTED": "Converted"
+        "ALL": "Tümü",
+        "DRAFT": "Taslak",
+        "SENT": "Gönderildi",
+        "ACCEPTED": "Kabul Edildi",
+        "REJECTED": "Reddedildi",
+        "EXPIRED": "Süresi Doldu",
+        "CONVERTED": "Dönüştürüldü"
       }
     },
     "invoicesList": {
@@ -3548,43 +3562,102 @@
       }
     },
     "returnsList": {
-      "title": "Sales Returns",
-      "subtitle": "Track sales return documents posted before or after invoicing.",
-      "newButton": "New Sales Return",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales returns...",
-      "loadError": "Failed to load sales returns.",
+      "title": "Satış İadeleri",
+      "subtitle": "Faturalamadan önce veya sonra kaydedilen satış iadelerini izleyin.",
+      "newButton": "Yeni Satış İadesi",
+      "refresh": "Yenile",
+      "clearFilters": "Filtreleri temizle",
+      "open": "Aç",
+      "loading": "Satış iadeleri yükleniyor...",
+      "loadError": "Satış iadeleri yüklenemedi.",
       "filters": {
-        "status": "Status",
-        "context": "Context",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
+        "status": "Durum",
+        "statusPlaceholder": "Durum",
+        "context": "Bağlam",
+        "contextPlaceholder": "Bağlam",
+        "customer": "Müşteri",
+        "allCustomers": "Tüm Müşteriler",
+        "searchPlaceholder": "İade no., müşteri, neden...",
+        "dateFrom": "Başlangıç Tarihi",
+        "dateTo": "Bitiş Tarihi"
       },
       "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
+        "ALL": "Tümü",
+        "DRAFT": "Taslak",
+        "POSTED": "Kaydedildi",
+        "CANCELLED": "İptal Edildi"
       },
       "context": {
-        "ALL": "All",
-        "AFTER_INVOICE": "After Invoice",
-        "BEFORE_INVOICE": "Before Invoice"
+        "ALL": "Tümü",
+        "AFTER_INVOICE": "Fatura Sonrası",
+        "BEFORE_INVOICE": "Fatura Öncesi",
+        "DIRECT": "Doğrudan"
       },
       "headers": {
-        "returnNumber": "Return #",
-        "customer": "Customer",
-        "returnDate": "Return Date",
-        "context": "Context",
-        "grandTotal": "Grand Total",
-        "status": "Status",
-        "actions": "Actions"
+        "returnNumber": "İade No.",
+        "customer": "Müşteri",
+        "returnDate": "İade Tarihi",
+        "context": "Bağlam",
+        "grandTotal": "Genel Toplam",
+        "reason": "Neden",
+        "postedAt": "Kayıt Tarihi",
+        "status": "Durum",
+        "actions": "İşlemler"
       },
       "empty": {
-        "title": "No sales returns yet",
-        "description": "Record customer returns posted before or after invoicing."
+        "title": "Henüz satış iadesi yok",
+        "description": "Faturalamadan önce veya sonra müşteri iadelerini kaydedin."
+      },
+      "printQueued": "{{number}} numaralı satış iadesi yazdırılıyor..."
+    },
+    "customersPage": {
+      "title": "Müşteriler",
+      "subtitle": "Müşteri ana kayıtlarını ve alacak hesaplarını yönetin.",
+      "addCustomer": "Müşteri Ekle",
+      "loading": "Müşteri kayıtları yükleniyor...",
+      "window": {
+        "customerTitle": "Müşteri: {{name}}",
+        "newCustomer": "Yeni Müşteri"
+      },
+      "kpi": {
+        "total": "Toplam müşteri",
+        "records": "kayıt",
+        "active": "Aktif müşteriler",
+        "operational": "aktif",
+        "withEmail": "E-postası olan",
+        "contactable": "ulaşılabilir",
+        "withCreditLimit": "Kredi limitli",
+        "creditLines": "kredi limiti"
+      },
+      "search": "Müşteri ara",
+      "searchPlaceholder": "Kod, ad, e-posta veya telefon ara...",
+      "statusFilter": {
+        "all": "Tüm durumlar",
+        "active": "Yalnızca aktif",
+        "inactive": "Yalnızca pasif"
+      },
+      "columns": {
+        "code": "Kod",
+        "name": "Görünen Ad",
+        "roles": "Roller",
+        "phone": "Telefon",
+        "email": "E-posta",
+        "credit": "Kredi Limiti",
+        "status": "Durum"
+      },
+      "status": {
+        "active": "Aktif",
+        "inactive": "Pasif"
+      },
+      "roles": {
+        "CUSTOMER": "Müşteri",
+        "VENDOR": "Tedarikçi"
+      },
+      "emptyFiltered": "Geçerli filtrelerle eşleşen müşteri yok.",
+      "empty": "Müşteri kaydı bulunamadı.",
+      "footerCount": "{{total}} müşteriden {{shown}} tanesi gösteriliyor",
+      "messages": {
+        "loadFailed": "Müşteriler yüklenemedi"
       }
     },
     "invoiceDetail": {
@@ -5239,7 +5312,8 @@
     },
     "authTabs": {
       "createAccount": "HESAP OLUŞTUR",
-      "login": "GİRİŞ YAP"
+      "login": "GİRİŞ YAP",
+      "signIn": "GİRİŞ YAP"
     },
     "login": {
       "title": "ERP03'e Giriş Yap",
@@ -5309,6 +5383,12 @@
       "prefix": "Devam ederek su kosullari kabul edersiniz:",
       "terms": "Kosullar",
       "privacy": "Gizlilik"
+    },
+    "stats": {
+      "industryBundles": "Sektör Paketleri",
+      "activeOrgs": "Aktif Kuruluşlar",
+      "uptimeSla": "Çalışma Süresi SLA",
+      "globalSupport": "Küresel Destek"
     },
     "errors": {
       "invalidCredential": "Geçersiz e-posta veya şifre.",

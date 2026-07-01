@@ -45,16 +45,20 @@ const AccountingDashboard: React.FC = () => {
     <div className="p-8 bg-[#F8FAFC] min-h-screen">
       <div className="max-w-7xl mx-auto">
         <div className="flex justify-between items-center mb-10">
-          <div>
-            <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-3">
-              <Landmark size={32} className="text-primary-600" />
-              {t('accountingDashboard.title', { defaultValue: 'Accounting Dashboard' })}
-            </h1>
-            <p className="text-slate-500 mt-2 font-medium">
-              {t('accountingDashboard.subtitle', {
-                defaultValue: 'Real-time overview of your financial operations and required actions.',
-              })}
-            </p>
+          <div className="flex items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl border border-indigo-100/50 bg-indigo-50 text-indigo-600 shadow-sm dark:border-indigo-900/30 dark:bg-indigo-950/40 dark:text-indigo-400">
+              <Landmark size={24} />
+            </div>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-slate-900">
+                {t('accountingDashboard.title', { defaultValue: 'Accounting Dashboard' })}
+              </h1>
+              <p className="mt-1 text-xs text-slate-500">
+                {t('accountingDashboard.subtitle', {
+                  defaultValue: 'Real-time overview of accounts, entries, and financial reports.',
+                })}
+              </p>
+            </div>
           </div>
           <button
             onClick={load}

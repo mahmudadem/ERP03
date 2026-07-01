@@ -607,7 +607,7 @@ const PosSettingsPage: React.FC<Props> = () => {
             <div className="p-2">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-xs text-slate-500 border-b">
+                  <tr className="text-start text-xs text-slate-500 border-b">
                     <th className="py-2 px-2">{t('pos:settings.method.code', { defaultValue: 'Code' })}</th>
                     <th className="py-2 px-2">{t('pos:settings.method.label', { defaultValue: 'Label' })}</th>
                     <th className="py-2 px-2">{t('pos:settings.method.change', { defaultValue: 'Allows change' })}</th>
@@ -624,6 +624,7 @@ const PosSettingsPage: React.FC<Props> = () => {
                           type="text"
                           value={m.label || ''}
                           onChange={(e) => updateMethod(m.code, { label: e.target.value })}
+                          placeholder={t(`pos:settings.method.defaults.${m.code}`, { defaultValue: m.code.replace(/_/g, ' ') })}
                           className="w-full rounded border border-slate-300 px-2 py-1 text-sm"
                         />
                       </td>

@@ -325,7 +325,35 @@
       "nov": "Kas",
       "dec": "Ara"
     },
-    "allCostCenters": "Tüm maliyet merkezleri"
+    "allCostCenters": "Tüm maliyet merkezleri",
+    "title": "Bütçe Yönetimi",
+    "subtitle": "Mali yıl bazında bütçe sürümleri oluşturun, onaylayın ve izleyin.",
+    "existingBudgets": "Mevcut Bütçeler",
+    "closed": "Kapalı",
+    "draft": "Taslak",
+    "approvedStatus": "Onaylandı",
+    "editor": "Bütçe Düzenleyici",
+    "selectFiscalYear": "Mali yıl seç",
+    "create": "Bütçe Oluştur",
+    "saving": "Kaydediliyor...",
+    "newDraft": "Yeni Taslak",
+    "readOnlyMode": "Salt okunur mod: bütçeleri görüntüleyebilirsiniz, oluşturma/güncelleme/onay kapalıdır.",
+    "readPermissionRequired": "Bütçeleri görüntüleme yetkiniz yok.",
+    "loading": "Bütçeler yükleniyor...",
+    "selectAccount": "Hesap seç",
+    "annualDistribute": "Yıllık (Otomatik Dağıt)",
+    "evenSplitHint": "12 aya eşit dağıt",
+    "removeLine": "Kaldır",
+    "emptyList": "Henüz bütçe oluşturulmadı.",
+    "active": "Aktif",
+    "activeForReports": "Evet (raporlarda varsayılan)",
+    "createRevision": "Revizyon Oluştur",
+    "approving": "Onaylanıyor...",
+    "revisionPrepared": "Seçilen bütçeden v{{version}} revizyonu hazırlandı.",
+    "selectFiscalYearError": "Lütfen mali yıl seçin.",
+    "nameRequired": "Bütçe adı zorunludur.",
+    "lineRequired": "En az bir hesap satırı zorunludur.",
+    "duplicateLines": "Aynı hesap/maliyet merkezi satırı tekrar edemez."
   },
   "budgetVsActual": {
     "selectBudget": "Önce bütçe seçin.",
@@ -364,7 +392,30 @@
     "status": {
       "active": "Aktif",
       "inactive": "Pasif"
-    }
+    },
+    "listTitle": "Hiyerarşi Önizleme",
+    "itemsCount": "maliyet merkezi",
+    "clickHint": "Genişletmek/daraltmak için satıra tıklayın",
+    "searchHint": "Kod veya ada göre ara...",
+    "expandAll": "Tümünü Genişlet",
+    "collapseAll": "Tümünü Daralt",
+    "noDescription": "Açıklama yok",
+    "addChild": "Alt Maliyet Merkezi Ekle",
+    "codePlaceholder": "örn. MKT-01",
+    "namePlaceholder": "örn. Pazarlama Departmanı",
+    "parentLabel": "Üst Maliyet Merkezi",
+    "noParent": "Üst Yok (Kök Seviye)",
+    "descriptionPlaceholder": "Bu maliyet merkezi hakkında isteğe bağlı detaylar...",
+    "createDesc": "Hiyerarşiye yeni düğüm ekleyin.",
+    "updateDesc": "Aşağıdaki bilgileri güncelleyin.",
+    "statusLabel": "Maliyet Merkezi Durumu",
+    "statusActiveDesc": "Şu anda aktif ve kullanıma açık.",
+    "statusInactiveDesc": "Şu anda pasif ve yeni atamalarda gizli.",
+    "confirmActivate": "\"{{name}}\" maliyet merkezini aktifleştirmek istiyor musunuz?",
+    "confirmDeactivate": "\"{{name}}\" maliyet merkezini pasifleştirmek istiyor musunuz?",
+    "confirmDelete": "\"{{name}}\" maliyet merkezini kalıcı olarak silmek istiyor musunuz? Bu işlem geri alınamaz.",
+    "activateError": "Aktifleştirilemedi",
+    "deleteError": "Silinemedi"
   },
   "recurring": {
     "title": "Tekrarlayan Fişler",
@@ -564,7 +615,7 @@
       "windows": "Windows (V3)",
       "windowsDesc": "Çok pencereli çoklu görev",
       "multiCurrencyDefaults": "Küresel Döviz Yapılandırması",
-      "fxAccountDesc": "Kur farkları için birincil hesap. Aşağıdaki sihirbazı önceden doldurur ve tüm modüller için varsayılan görevi görür."
+      "fxAccountDesc": "Kur farkı kazanç/kayıp hesabı. Aşağıdaki sihirbazı önceden doldurur ve tüm modüller için varsayılan olur."
     },
     "currencies": {
       "description": "Kur listesi ve baz para birimini yönetin"
@@ -622,7 +673,64 @@
       "fxRevaluation": "Kur Değerleme"
     },
     "fxRevaluation": {
-      "description": "Çok para birimli hesaplar için otomatik döviz kuru değerlemesini yapılandırın"
+      "description": "Yabancı para bakiyelerini güncel kurlarla değerleyin ve düzeltme fişleri oluşturun.",
+      "title": "Kur Değerleme",
+      "globalSettings": "Genel Kur Ayarları",
+      "globalSettingsDesc": "Kur farkı kazanç/kayıp hesabı. Aşağıdaki sihirbazı önceden doldurur ve tüm modüller için varsayılan olur.",
+      "configuration": "Yapılandırma",
+      "filterAccount": "Hesaba Göre Filtrele (Opsiyonel)",
+      "asOfDate": "Tarih",
+      "gainLossAccount": "Gerçekleşmemiş Kur Kazanç/Kayıp Hesabı",
+      "gainLossAccountHint": "Kur farkı düzeltmesinin kaydedileceği hesap.",
+      "detectCurrencies": "Para Birimlerini Algıla",
+      "errors": {
+        "detectFirst": "Para birimi algılanmadı. Önce Para Birimlerini Algıla düğmesine basın.",
+        "noForeignBalances": "Seçilen kapsam ve tarihte yabancı para bakiyesi bulunamadı.",
+        "detectFailed": "Para birimleri algılanamadı",
+        "selectGainLoss": "Lütfen gerçekleşmemiş kur kazanç/kayıp hesabı seçin.",
+        "calculateFailed": "Değerleme hesaplanamadı",
+        "generateFailed": "Fiş oluşturulamadı"
+      },
+      "done": {
+        "title": "Kur Değerleme Fişi Oluşturuldu!",
+        "savedAsDraftPrefix": "Fiş",
+        "savedAsDraftSuffix": "şu durumda kaydedildi:",
+        "draft": "TASLAK",
+        "reviewHint": "Fiş Listesinden inceleyip gönderebilirsiniz.",
+        "runAnother": "Başka Değerleme Çalıştır"
+      },
+      "subtitle": "Yabancı para bakiyelerini güncel kurlarla değerleyin ve düzeltme fişleri oluşturun.",
+      "startOver": "Baştan Başla",
+      "filterByAccount": "Hesaba Göre Filtrele",
+      "gainLossHint": "Kur farkı düzeltmesinin kaydedileceği hesap.",
+      "foreignDetected": "Algılanan Yabancı Para Birimleri ({{count}})",
+      "base": "Baz",
+      "latestRatesHint": "Sistem en güncel kurları aldı. İşleme geçmeden önce aşağıda değiştirebilirsiniz.",
+      "calculate": "Değerlemeyi Hesapla",
+      "totalGain": "Toplam Gerçekleşmemiş Kazanç",
+      "totalLoss": "Toplam Gerçekleşmemiş Kayıp",
+      "netDelta": "Net Fark",
+      "affectedAccounts": "Etkilenen Hesaplar ({{count}})",
+      "generateDraft": "Taslak Fiş Oluştur",
+      "steps": {
+        "scopeRates": "1. Kapsam ve Kurlar",
+        "preview": "2. Önizleme",
+        "done": "3. Tamamlandı"
+      },
+      "columns": {
+        "currency": "Para Birimi",
+        "suggestedRate": "Önerilen Kur",
+        "yourRate": "Sizin Kurunuz"
+      },
+      "preview": {
+        "account": "Hesap",
+        "currency": "Para Birimi",
+        "foreignBalance": "Yabancı Para Bakiyesi",
+        "historicalBase": "Tarihsel Baz",
+        "newRate": "Yeni Kur",
+        "targetBase": "Hedef Baz",
+        "delta": "Fark"
+      }
     },
     "saving": "Kaydediliyor...",
     "saveLabel": "{{section}} kaydet",
@@ -630,7 +738,9 @@
     "on": "Açık",
     "off": "Kapalı",
     "common": {
-      "refresh": "Yenile"
+      "refresh": "Yenile",
+      "optional": "Opsiyonel",
+      "back": "Geri"
     },
     "errorMode": {
       "title": "Politika Hata Modu",
@@ -713,7 +823,31 @@
       "saveNext": "Sonrakini kaydet",
       "sequences": "Sekanslar",
       "noSequences": "Henüz sekans yok.",
-      "last": "Son: {{value}}"
+      "last": "Son: {{value}}",
+      "descriptionLong": "Etkin fiş sekanslarını izleyin ve geçiş/düzeltmeler için numaralamayı değiştirin.",
+      "howItWorks": "Numaralama Nasıl Çalışır",
+      "howItWorksLine1": "Her fiş formunun Fiş Tasarımcısında ayarlanan kendi ön eki vardır.",
+      "howItWorksLine2": "Sistem her ön ek için bağımsız bir sayaç tutar.",
+      "howItWorksLine3": "Yıllık sıfırlama Genel Ayarlarda açıksa sayaçlar mali yıl bazında sıfırlanır.",
+      "howItWorksLine4": "Format: PREFIX-0001 veya PREFIX-2026-0001",
+      "activeSequences": "Etkin Sekanslar",
+      "noFormWithPrefix": "Form yok - {{prefix}}",
+      "noneFound": "Fiş formu veya sekans bulunamadı. Önce Fiş Tasarımcısında form oluşturun.",
+      "columns": {
+        "voucherForm": "Fiş Formu",
+        "prefix": "Ön Ek",
+        "last": "Son #",
+        "next": "Sonraki",
+        "year": "Yıl",
+        "actions": "İşlemler"
+      },
+      "setNext": "Sonrakini Ayarla",
+      "formatReference": "Format Şablonu Referansı",
+      "formatReferenceDesc": "Özel formatlar her form için Fiş Tasarımcısında ayarlanabilir. Kullanılabilir yer tutucular:",
+      "placeholderPrefix": "Fiş formu ön eki (örn. JE, PV, RV)",
+      "placeholderYear": "Mali yıl (örn. 2026)",
+      "placeholderCounter": "Sıfır dolgulu sekans (örn. 0001)",
+      "example": "Örnek"
     },
     "messages": {
       "generalSaved": "Genel ayarlar kaydedildi",
@@ -733,11 +867,24 @@
       "retainedEarningsExists": "Geçmiş yıllar kârı hesabı zaten mevcut. Seçildi.",
       "fiscalYearClosedError": "Mali yıl kapalı olduğu için dönem değiştirilemez. Aylık dönemlerin durumunu değiştirebilmek için önce mali yılı yeniden açmalısınız.",
       "prefixRequired": "Ön ek ve sonraki numara gerekli",
-      "nextNumberUpdated": "Sonraki numara güncellendi"
+      "nextNumberUpdated": "Sonraki numara güncellendi",
+      "changesDiscarded": "Değişiklikler atıldı"
     },
     "metadata": {
       "lastUpdated": "Son güncelleme: {{value}}",
       "updatedBy": " - {{user}}"
+    },
+    "paymentMethods": {
+      "description": "Fiş formlarında kullanılacak ödeme yöntemlerini yönetin.",
+      "configuredMethods": "Yapılandırılmış Yöntemler",
+      "configuredMethodsDesc": "Fiş formlarındaki ödeme seçeneklerinin durumu",
+      "addMethod": "Yöntem Ekle",
+      "newMethodDefault": "Yeni Ödeme Yöntemi",
+      "noneDefined": "Tanımlı ödeme yöntemi yok. Başlamak için Yöntem Ekle düğmesine basın.",
+      "enabled": "Etkin",
+      "disabled": "Devre dışı",
+      "formIntegration": "Form Entegrasyonu",
+      "formIntegrationDesc": "Burada tanımlanan ödeme yöntemleri Fiş Düzenleyici açılır listelerini otomatik doldurur. Devre dışı yöntemler seçimden gizlenir ama mevcut kayıtlarda korunur."
     }
   },
   "dashboard": {
@@ -1291,7 +1438,12 @@
   "accountForm": {
     "createTitle": "Yeni Hesap Oluştur",
     "editTitle": "Hesabı Düzenle",
-    "tabs": { "general": "Genel Ayarlar", "accounting": "Muhasebe Kuralları", "currency": "Para Birimi Politikası", "governance": "Onay Akışı" },
+    "tabs": {
+      "general": "Genel Ayarlar",
+      "accounting": "Muhasebe Kuralları",
+      "currency": "Para Birimi Politikası",
+      "governance": "Onay Akışı"
+    },
     "generalTitle": "Genel Bilgiler",
     "generalDescription": "Kimlik ve yapısal özellikleri yapılandırın",
     "parentAccount": "Üst Hesap (Buradan Başlayın)",
@@ -1340,12 +1492,155 @@
     "securing": "Veriler Kaydediliyor...",
     "createAction": "Hesap Oluştur",
     "updateAction": "Hesabı Güncelle",
-    "classifications": { "ASSET": "Varlık", "LIABILITY": "Yükümlülük", "EQUITY": "Özkaynak", "REVENUE": "Gelir", "EXPENSE": "Gider" },
-    "roles": { "POSTING": "Kayıt Hesabı (İşlem)", "HEADER": "Üst Hesap (Klasör)" },
-    "balanceNatures": { "DEBIT": "Borç", "CREDIT": "Alacak", "BOTH": "Her İkisi" },
-    "balanceRules": { "WARN_ABNORMAL": "Olağandışı bakiyede uyar", "BLOCK_ABNORMAL": "Olağandışı bakiyeyi engelle", "ALLOW_ABNORMAL": "İzin ver (Kontrol yok)" },
-    "currencyPolicies": { "INHERIT": "Üst Hesaptan Devral", "FIXED": "Sabit Para Birimi", "OPEN": "Herhangi Bir Para Birimi" },
-    "cashFlowCategories": { "AUTO": "Otomatik (Hesap Türüne Göre)", "OPERATING": "İşletme", "INVESTING": "Yatırım", "FINANCING": "Finansman" },
-    "subgroups": { "NONE": "Atanmamış", "SALES": "Satışlar", "OTHER_REVENUE": "Diğer Gelirler", "COST_OF_SALES": "Satışların Maliyeti", "OPERATING_EXPENSES": "Faaliyet Giderleri", "OTHER_EXPENSES": "Diğer Giderler", "RETAINED_EARNINGS": "Geçmiş Yıl Kârları", "CONTRIBUTED_CAPITAL": "Ödenmiş Sermaye", "RESERVES": "Yedekler" }
+    "classifications": {
+      "ASSET": "Varlık",
+      "LIABILITY": "Yükümlülük",
+      "EQUITY": "Özkaynak",
+      "REVENUE": "Gelir",
+      "EXPENSE": "Gider"
+    },
+    "roles": {
+      "POSTING": "Kayıt Hesabı (İşlem)",
+      "HEADER": "Üst Hesap (Klasör)"
+    },
+    "balanceNatures": {
+      "DEBIT": "Borç",
+      "CREDIT": "Alacak",
+      "BOTH": "Her İkisi"
+    },
+    "balanceRules": {
+      "WARN_ABNORMAL": "Olağandışı bakiyede uyar",
+      "BLOCK_ABNORMAL": "Olağandışı bakiyeyi engelle",
+      "ALLOW_ABNORMAL": "İzin ver (Kontrol yok)"
+    },
+    "currencyPolicies": {
+      "INHERIT": "Üst Hesaptan Devral",
+      "FIXED": "Sabit Para Birimi",
+      "OPEN": "Herhangi Bir Para Birimi"
+    },
+    "cashFlowCategories": {
+      "AUTO": "Otomatik (Hesap Türüne Göre)",
+      "OPERATING": "İşletme",
+      "INVESTING": "Yatırım",
+      "FINANCING": "Finansman"
+    },
+    "subgroups": {
+      "NONE": "Atanmamış",
+      "SALES": "Satışlar",
+      "OTHER_REVENUE": "Diğer Gelirler",
+      "COST_OF_SALES": "Satışların Maliyeti",
+      "OPERATING_EXPENSES": "Faaliyet Giderleri",
+      "OTHER_EXPENSES": "Diğer Giderler",
+      "RETAINED_EARNINGS": "Geçmiş Yıl Kârları",
+      "CONTRIBUTED_CAPITAL": "Ödenmiş Sermaye",
+      "RESERVES": "Yedekler"
+    }
+  },
+  "common": {
+    "refresh": "Yenile",
+    "save": "Kaydet",
+    "cancel": "İptal",
+    "add": "Ekle",
+    "activate": "Aktifleştir",
+    "deactivate": "Pasifleştir",
+    "delete": "Sil",
+    "edit": "Düzenle",
+    "confirm": "Onayla"
+  },
+  "instructions": {
+    "howThisWorks": "Nasıl çalışır?",
+    "importantNotes": "Önemli notlar",
+    "pages": {
+      "accounting-settings-general": {
+        "title": "General Accounting Settings",
+        "overview": "Configure core enterprise preferences that affect how data is recorded and displayed across the system.",
+        "sections": [
+          {
+            "title": "Timezone & Localization",
+            "content": "The timezone setting determines how transaction timestamps are interpreted and stored. Changing this affects displayed dates for existing and future vouchers."
+          },
+          {
+            "title": "UI Mode",
+            "content": "Choose between a standard web layout or a multi-window desktop experience. This is a personal preference and does not affect ledger data."
+          }
+        ]
+      },
+      "accounting-settings-policies": {
+        "title": "Approval & Posting Policies",
+        "overview": "Define the internal controls that a voucher must pass before it affects the ledger.",
+        "sections": [
+          {
+            "title": "Workflow Modes",
+            "content": "Flexible mode posts faster when financial approval is off. Strict mode holds vouchers for approval and protects posted records through reversal-based correction."
+          },
+          {
+            "title": "Approval Gates",
+            "content": "Financial Approval verifies and releases vouchers to the ledger. Custody Confirmation verifies the physical side of cash or warehouse transactions."
+          },
+          {
+            "title": "Voucher Amount Threshold",
+            "content": "Small vouchers below the threshold can bypass custody confirmation to reduce administrative work."
+          },
+          {
+            "title": "Immutability & Correction",
+            "content": "In strict workflows, posted vouchers are locked. Corrections should use reversal entries to preserve the audit trail.",
+            "warning": "Disabling financial approval later does not unlock vouchers posted while strict policy was active."
+          }
+        ]
+      },
+      "accounting-settings-payment-methods": {
+        "title": "Payment Methods Management",
+        "overview": "Define the available payment options for transaction forms.",
+        "sections": [
+          {
+            "title": "Form Integration",
+            "content": "Methods defined here appear in the Payment Method dropdown in the Voucher Editor. Disabled methods are hidden from new forms but preserved in historical records."
+          }
+        ]
+      },
+      "accounting-settings-cost-center": {
+        "title": "Cost Center Enforcement",
+        "overview": "Configure mandatory categorization of expenses and assets to departments, branches, or projects.",
+        "sections": [
+          {
+            "title": "Mandatory Assignment",
+            "content": "When enabled for selected account types, voucher submission is blocked until a cost center is assigned."
+          }
+        ]
+      },
+      "accounting-settings-error-mode": {
+        "title": "Validation & Error Reporting",
+        "overview": "Control how policy violations are reported during voucher entry.",
+        "sections": [
+          {
+            "title": "Fail fast vs aggregate",
+            "content": "Fail fast stops at the first error. Aggregate scans the whole voucher and shows all violations at once."
+          }
+        ]
+      },
+      "accounting-settings-fiscal": {
+        "title": "Accounting Periods Management",
+        "overview": "Manage your company's financial timeline, including fiscal years, reporting periods, and data locking controls.",
+        "sections": [
+          {
+            "title": "Fiscal Year & Periods",
+            "content": "Accounting periods contain financial transactions. The system needs an active fiscal year to generate periods, and transactions require an open period for their date.",
+            "warning": "Periods are only visible and active after a fiscal year has been created."
+          },
+          {
+            "title": "Period Statuses",
+            "content": "Open: transactions can be posted.\n• Closed: temporarily closed for reporting and can be reopened by an admin.\n• Locked: permanently finalized and cannot be reopened."
+          },
+          {
+            "title": "Data Locking",
+            "content": "The Locked Through Date freezes all data before a specific date, regardless of period status."
+          },
+          {
+            "title": "Year-End Closing",
+            "content": "Closing a fiscal year moves net profit or loss to retained earnings and resets P&L accounts for the new year. This action is irreversible."
+          }
+        ]
+      }
+    }
   }
 }

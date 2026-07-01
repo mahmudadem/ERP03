@@ -215,7 +215,13 @@
       "account": "حساب التسوية",
       "change": "يسمح بالباقي",
       "reference": "يتطلب مرجع",
-      "enabled": "مفعل"
+      "enabled": "مفعل",
+      "defaults": {
+        "CASH": "نقدي",
+        "CARD": "بطاقة",
+        "BANK_TRANSFER": "تحويل بنكي",
+        "CUSTOM": "طريقة مخصصة"
+      }
     },
     "overShort": {
       "title": "حسابات الفرق النقدي"

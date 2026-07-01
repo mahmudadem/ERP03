@@ -8,7 +8,7 @@ import { errorHandler } from '../../../services/errorHandler';
 import { useCompanyProfile } from '../../../hooks/useCompanyAdmin';
 import { Folder, FolderOpen, FileText, Lock, AlertTriangle, ChevronLeft, ChevronRight, ChevronDown, Circle, MoreVertical, Edit2, Trash2, Search, Plus, Globe, AlertCircle, Sliders } from 'lucide-react';
 import { ConfirmDialog } from '../../../components/ui/ConfirmDialog';
-import { AccountDrilldownModal } from '../components/AccountDrilldownModal';
+import { AccountDrilldownModal, AccountInfoPanel } from '../components/AccountDrilldownModal';
 import { Spinner } from '../../../components/ui/Spinner';
 
 export default function AccountsListPage() {
@@ -288,6 +288,24 @@ export default function AccountsListPage() {
         return { code: baseCurrency, isInherited: true, type: 'FIXED' };
     };
 
+    const isInSelectedBranch = (account: any) => {
+        if (!drilldownAccount) return false;
+        if (account.id === drilldownAccount.id) return true;
+        let parentId = account.parentId;
+        while (parentId) {
+            if (parentId === drilldownAccount.id) return true;
+            parentId = safeAccounts.find((a) => a.id === parentId)?.parentId || null;
+        }
+        return false;
+    };
+
+    const getDepthBackground = (level: number, inSelectedBranch: boolean, isSelected: boolean) => {
+        if (isSelected) return 'rgba(37, 99, 235, 0.12)';
+        if (inSelectedBranch) return `rgba(37, 99, 235, ${Math.min(0.05 + level * 0.018, 0.14)})`;
+        if (level > 0) return `rgba(15, 23, 42, ${Math.min(level * 0.008, 0.04)})`;
+        return undefined;
+    };
+
     if (isLoading) {
         return (
             <div className="p-8 flex justify-center items-center">
@@ -299,7 +317,8 @@ export default function AccountsListPage() {
 
     return (
         <div className="p-6" dir={isRtl ? 'rtl' : 'ltr'}>
-            <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
+            <div className="flex items-start gap-4">
+            <div className="min-w-0 flex-1 bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                 <div className="px-5 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="relative w-full md:w-96">
                         <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -347,7 +366,7 @@ export default function AccountsListPage() {
 
                 <div className="px-5 pb-4 flex items-center gap-3">
                     <div className="flex items-center text-gray-400 text-xs font-bold tracking-wider">
-                        <Sliders className="w-4 h-4 mr-1.5" />
+                        <Sliders className="w-4 h-4 me-1.5" />
                         {t('accountsList.filter', { defaultValue: 'Filter' })}:
                     </div>
                     <div className="flex gap-1.5">
@@ -385,7 +404,7 @@ export default function AccountsListPage() {
                         {t('accountsList.columns.currency', { defaultValue: 'CCY' })}
                     </div>
                     <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-end">
-                        {t('accountsList.columns.balance', { defaultValue: 'Balance' })} SYP
+                        {t('accountsList.columns.balance', { defaultValue: 'Balance' })} {baseCurrency || ''}
                     </div>
                 </div>
 
@@ -395,36 +414,40 @@ export default function AccountsListPage() {
                         const hasChildren = account.children?.length > 0;
                         const canExpand = isHeader || hasChildren;
                         const isExpanded = !collapsedIds.has(account.id);
+                        const isSelected = drilldownAccount?.id === account.id;
+                        const inSelectedBranch = isInSelectedBranch(account);
+                        const rowBackground = getDepthBackground(account.level, inSelectedBranch, isSelected);
 
                         return (
                             <div 
                                 key={account.id} 
-                                className="group grid grid-cols-12 items-stretch px-6 hover:bg-slate-50/90 transition-colors cursor-pointer min-h-[44px]"
+                                className={`group grid grid-cols-12 items-stretch px-6 transition-colors cursor-pointer min-h-[44px] ${isSelected ? 'ring-1 ring-inset ring-blue-200' : 'hover:bg-slate-50/90'}`}
+                                style={rowBackground ? { backgroundColor: rowBackground } : undefined}
                                 onClick={() => setDrilldownAccount(account)}
                             >
-                                <div className={`col-span-8 flex items-stretch flex-1 min-w-0 ${isRtl ? 'flex-row-reverse justify-end' : ''}`}>
+                                <div className="col-span-8 flex items-stretch flex-1 min-w-0">
                                     {/* Ancestor tree lines */}
                                     {Array.from({ length: account.level }).map((_, i) => {
                                         const showVertical = account.isLastPath && !account.isLastPath[i];
                                         return (
-                                            <div key={i} className="w-7 flex-shrink-0 relative">
-                                                {showVertical && (
-                                                    <div className="absolute top-0 bottom-0 start-1/2 border-s border-slate-300/80" />
+                                            <div key={i} className="w-6 flex-shrink-0 relative">
+                                                {i > 0 && showVertical && (
+                                                    <div className="absolute top-0 bottom-0 start-1/2 border-s border-slate-300/70" />
                                                 )}
                                             </div>
                                         );
                                     })}
 
                                     {/* Current node tree lines and chevron */}
-                                    <div className="w-[40px] flex-shrink-0 relative flex items-center justify-center">
+                                    <div className="w-6 flex-shrink-0 relative flex items-center justify-center">
                                         {account.level > 0 && (
                                             <>
                                                 {/* Curved elbow connecting from parent */}
-                                                <div className="absolute top-0 start-1/2 w-[calc(50%+4px)] h-1/2 border-s border-b border-slate-300/80 rounded-es-lg" />
+                                                <div className="absolute top-0 start-1/2 w-[calc(50%+6px)] h-1/2 border-s border-b border-slate-300/70 rounded-es-md" />
                                                 
                                                 {/* Line continuing downwards to next sibling */}
                                                 {account.isLastPath && !account.isLastPath[account.level] && (
-                                                    <div className="absolute top-1/2 bottom-0 start-1/2 border-s border-slate-300/80" />
+                                                    <div className="absolute top-1/2 bottom-0 start-1/2 border-s border-slate-300/70" />
                                                 )}
                                             </>
                                         )}
@@ -432,7 +455,7 @@ export default function AccountsListPage() {
                                         {canExpand ? (
                                             <button
                                                 type="button"
-                                                className="w-[36px] h-[36px] shrink-0 flex items-center justify-center cursor-pointer hover:bg-gray-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 rounded-full bg-white z-10 relative"
+                                                className="w-6 h-6 shrink-0 flex items-center justify-center cursor-pointer rounded-md bg-white/95 text-slate-500 hover:bg-slate-100 hover:text-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 z-10 relative"
                                                 onClick={(e) => toggleCollapse(account.id, e)}
                                                 aria-expanded={isExpanded}
                                                 aria-label={t(
@@ -445,19 +468,19 @@ export default function AccountsListPage() {
                                                 )}
                                             >
                                                 {isExpanded ? (
-                                                    <ChevronDown className="w-4 h-4 text-gray-600" strokeWidth={2.5} />
+                                                    <ChevronDown className="w-3.5 h-3.5" strokeWidth={2.4} />
                                                 ) : isRtl ? (
-                                                    <ChevronLeft className="w-4 h-4 text-gray-600" strokeWidth={2.5} />
+                                                    <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.4} />
                                                 ) : (
-                                                    <ChevronRight className="w-4 h-4 text-gray-600" strokeWidth={2.5} />
+                                                    <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.4} />
                                                 )}
                                             </button>
                                         ) : (
-                                            <div className="w-[36px] h-[36px] z-10 relative" aria-hidden="true" />
+                                            <div className="w-6 h-6 z-10 relative" aria-hidden="true" />
                                         )}
                                     </div>
 
-                                    <div className={`flex items-center gap-3 py-2.5 min-w-0 ${isRtl ? 'me-2 flex-row-reverse text-right' : 'ms-2 text-left'}`}>
+                                    <div className={`flex items-center gap-2.5 py-2.5 min-w-0 ${isRtl ? 'me-2 text-right' : 'ms-2 text-left'}`}>
                                         <span className="font-mono text-xs text-gray-400 w-14 flex-shrink-0 tracking-tight text-end">
                                             {account.userCode}
                                         </span>
@@ -562,6 +585,17 @@ export default function AccountsListPage() {
                 </div>
             </div>
 
+            <aside className="hidden xl:block w-80 2xl:w-96 shrink-0 sticky top-4 max-h-[calc(100vh-120px)]">
+                <AccountInfoPanel
+                    isOpen={true}
+                    onClose={() => setDrilldownAccount(null)}
+                    account={drilldownAccount}
+                    currencyCode={drilldownAccount ? getEffectiveCurrency(drilldownAccount).code : baseCurrency}
+                    embedded
+                />
+            </aside>
+            </div>
+
             {/* Create Modal */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 backdrop-blur-sm p-4">
@@ -599,6 +633,7 @@ export default function AccountsListPage() {
                 isOpen={!!drilldownAccount}
                 onClose={() => setDrilldownAccount(null)}
                 account={drilldownAccount}
+                currencyCode={drilldownAccount ? getEffectiveCurrency(drilldownAccount).code : baseCurrency}
             />
 
             {/* Posting Account Safety Overlay */}

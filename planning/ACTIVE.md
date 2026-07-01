@@ -89,6 +89,9 @@ production fixes from `ERP03-unified` back onto the SQL-converged main line:
 - **278ac Purchases translation audit batch 1/2:** Purchases list/detail/report/home/settings
   translation cleanup continued, including Turkish purchase terminology cleanup. Remaining audit work is still tracked in
   `planning/tasks/278ac-production-translation-audit.md`.
+- **Frontend RTL/i18n polish dirty slice:** applied onto this reconciliation branch for review. Scope is
+  presentation-only cleanup across Accounting, Inventory, POS, Purchases, Sales, onboarding, and sidebar
+  labels; no backend posting or database behavior is intended.
 
 **Next:** finish reconciliation verification, then deploy both frontend and Firebase backend from the
 same main-derived branch so Firebase and SQL fixes stop living in separate lanes.

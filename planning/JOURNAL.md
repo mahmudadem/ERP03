@@ -12,6 +12,9 @@
 - **Included from Firebase production lane:** filtered Sales/Purchase invoice list query workaround,
   Firestore index tiebreaker metadata, i18n namespace guard, shared selector translations, and
   Purchases translation audit checkpoint docs.
+- **Applied for review:** the uncommitted unified frontend RTL/i18n polish slice from
+  `D:\DEV2026\ERP03-unified` as a separate working-tree change. It touches presentation/localization
+  files only plus planning notes.
 - **Accounting/ERP impact:** invoice-list query reliability and localization only for the Firebase
   production fixes; no posting, tax, inventory valuation, settlement, approval, tenant isolation, or
   ledger math changed. SQL catalog fix is read-path wizard/bootstrap behavior, not posting logic.

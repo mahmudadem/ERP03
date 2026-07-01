@@ -7,6 +7,7 @@
 
 import React, { useState } from 'react';
 import { HelpCircle } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { InstructionsModal } from './InstructionsModal';
 import { PageInstructions } from './types';
 
@@ -21,10 +22,11 @@ interface InstructionsButtonProps {
 
 export const InstructionsButton: React.FC<InstructionsButtonProps> = ({
   instructions,
-  label = 'How this works',
+  label,
   className = '',
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const { t } = useTranslation('accounting');
 
   return (
     <>
@@ -40,7 +42,7 @@ export const InstructionsButton: React.FC<InstructionsButtonProps> = ({
         `}
       >
         <HelpCircle className="w-4 h-4" />
-        {label}
+        {label || t('instructions.howThisWorks', { defaultValue: 'How this works' })}
       </button>
 
       <InstructionsModal

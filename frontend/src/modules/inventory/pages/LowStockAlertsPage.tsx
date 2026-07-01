@@ -1,10 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { LowStockAlertDTO, inventoryApi } from '../../../api/inventoryApi';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const LowStockAlertsPage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const [alerts, setAlerts] = useState<LowStockAlertDTO[]>([]);
   const [loading, setLoading] = useState(false);
 
@@ -26,12 +28,12 @@ const LowStockAlertsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Low Stock Alerts</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('lowStock.title', { defaultValue: 'Low Stock Alerts' })}</h1>
 
       <Card className="p-6">
         <div className="mb-3">
           <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white" onClick={load} type="button">
-            Refresh
+            {t('common.refresh', { defaultValue: 'Refresh' })}
           </button>
         </div>
 
@@ -39,11 +41,11 @@ const LowStockAlertsPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-left">Warehouse</th>
-                <th className="py-2 text-right">Current Qty</th>
-                <th className="py-2 text-right">Min Level</th>
-                <th className="py-2 text-right">Deficit</th>
+                <th className="py-2 text-start">{t('common.item', { defaultValue: 'Item' })}</th>
+                <th className="py-2 text-start">{t('common.warehouse', { defaultValue: 'Warehouse' })}</th>
+                <th className="py-2 text-end">{t('lowStock.currentQty', { defaultValue: 'Current Qty' })}</th>
+                <th className="py-2 text-end">{t('lowStock.minLevel', { defaultValue: 'Min Level' })}</th>
+                <th className="py-2 text-end">{t('lowStock.deficit', { defaultValue: 'Deficit' })}</th>
               </tr>
             </thead>
             <tbody>
@@ -62,7 +64,7 @@ const LowStockAlertsPage: React.FC = () => {
               {!loading && alerts.length === 0 && (
                 <tr>
                   <td className="py-3 text-slate-500" colSpan={5}>
-                    No low stock alerts.
+                    {t('lowStock.empty', { defaultValue: 'No low stock alerts.' })}
                   </td>
                 </tr>
               )}

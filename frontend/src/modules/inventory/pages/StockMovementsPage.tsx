@@ -2,10 +2,12 @@ import React, { useEffect, useState } from 'react';
 import { Card } from '../../../components/ui/Card';
 import { DatePicker } from '../../../components/shared/selectors';
 import { StockMovementDTO, InventoryItemDTO, InventoryWarehouseDTO, inventoryApi } from '../../../api/inventoryApi';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
 const StockMovementsPage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const [movements, setMovements] = useState<StockMovementDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
@@ -53,7 +55,7 @@ const StockMovementsPage: React.FC = () => {
 
   return (
     <div className="space-y-6 p-4">
-      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Stock Movements</h1>
+      <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">{t('movements.title', { defaultValue: 'Stock Movements' })}</h1>
 
       <Card className="p-6">
         <div className="grid gap-3 md:grid-cols-4">
@@ -68,7 +70,7 @@ const StockMovementsPage: React.FC = () => {
             onChange={setTo}
           />
           <button className="rounded bg-slate-700 px-3 py-2 text-sm text-white md:col-span-2 disabled:opacity-50" onClick={loadData} disabled={loading}>
-            {loading ? 'Applying...' : 'Apply Filters'}
+            {loading ? t('common.applying', { defaultValue: 'Applying...' }) : t('common.applyFilters', { defaultValue: 'Apply Filters' })}
           </button>
         </div>
       </Card>
@@ -78,13 +80,13 @@ const StockMovementsPage: React.FC = () => {
           <table className="min-w-full text-sm">
             <thead>
               <tr className="border-b border-slate-200">
-                <th className="py-2 text-left">Date</th>
-                <th className="py-2 text-left">Item</th>
-                <th className="py-2 text-left">Warehouse</th>
-                <th className="py-2 text-left">Type</th>
-                <th className="py-2 text-left">Direction</th>
-                <th className="py-2 text-right">Qty</th>
-                <th className="py-2 text-right">Cost Base</th>
+                <th className="py-2 text-start">{t('common.date', { defaultValue: 'Date' })}</th>
+                <th className="py-2 text-start">{t('common.item', { defaultValue: 'Item' })}</th>
+                <th className="py-2 text-start">{t('common.warehouse', { defaultValue: 'Warehouse' })}</th>
+                <th className="py-2 text-start">{t('common.type', { defaultValue: 'Type' })}</th>
+                <th className="py-2 text-start">{t('common.direction', { defaultValue: 'Direction' })}</th>
+                <th className="py-2 text-end">{t('common.quantity', { defaultValue: 'Qty' })}</th>
+                <th className="py-2 text-end">{t('common.costBase', { defaultValue: 'Cost Base' })}</th>
               </tr>
             </thead>
             <tbody>
