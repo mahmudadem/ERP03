@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PaymentHistory, PaymentMethod, PaymentSourceType } from '../../../../domain/shared/entities/PaymentHistory';
 import { IPaymentHistoryRepository } from '../../../../repository/interfaces/shared/IPaymentHistoryRepository';
 
@@ -6,7 +6,7 @@ export class PrismaPaymentHistoryRepository implements IPaymentHistoryRepository
   constructor(private prisma: PrismaClient) {}
 
   async create(payment: PaymentHistory, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     await prisma.paymentHistory.create({
       data: {
         id: payment.id,

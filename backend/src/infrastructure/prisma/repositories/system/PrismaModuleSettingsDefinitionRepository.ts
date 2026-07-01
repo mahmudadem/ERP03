@@ -14,7 +14,7 @@ export class PrismaModuleSettingsDefinitionRepository implements IModuleSettings
 
     return records.map(r => ({
       moduleId: r.moduleId,
-      fields: (r.settingsSchema as any)?.fields || [],
+      fields: (r.settingsSchema as { fields?: unknown[] } | null)?.fields || [],
       createdBy: 'system',
       updatedAt: r.updatedAt,
       autoAttachToRoles: []
@@ -30,7 +30,7 @@ export class PrismaModuleSettingsDefinitionRepository implements IModuleSettings
 
     return {
       moduleId: record.moduleId,
-      fields: (record.settingsSchema as any)?.fields || [],
+      fields: (record.settingsSchema as { fields?: unknown[] } | null)?.fields || [],
       createdBy: 'system',
       updatedAt: record.updatedAt,
       autoAttachToRoles: []

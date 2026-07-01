@@ -43,7 +43,7 @@ export class PrismaModulePermissionsDefinitionRepository implements IModulePermi
     await this.prisma.modulePermissionsDefinition.create({
       data: {
         moduleId: def.moduleId,
-        permissions: permissions as any
+        permissions: permissions
       }
     });
   }

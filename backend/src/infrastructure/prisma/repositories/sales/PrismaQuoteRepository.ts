@@ -19,7 +19,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
 
   async create(quote: Quote, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).quote.create({
+    await (client).quote.create({
       data: {
         id: quote.id,
         companyId: quote.companyId,
@@ -34,7 +34,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
         validUntil: quote.validUntil ?? null,
         currency: quote.currency,
         exchangeRate: quote.exchangeRate,
-        lines: quote.lines.map((l: any) => ({ ...l })) as any,
+        lines: quote.lines.map((l: any) => ({ ...l })),
         subtotalDoc: quote.subtotalDoc,
         taxTotalDoc: quote.taxTotalDoc,
         grandTotalDoc: quote.grandTotalDoc,
@@ -53,7 +53,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
 
   async update(quote: Quote, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).quote.update({
+    await (client).quote.update({
       where: { id: quote.id },
       data: {
         quoteNumber: quote.quoteNumber,
@@ -67,7 +67,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
         validUntil: quote.validUntil ?? null,
         currency: quote.currency,
         exchangeRate: quote.exchangeRate,
-        lines: quote.lines.map((l: any) => ({ ...l })) as any,
+        lines: quote.lines.map((l: any) => ({ ...l })),
         subtotalDoc: quote.subtotalDoc,
         taxTotalDoc: quote.taxTotalDoc,
         grandTotalDoc: quote.grandTotalDoc,
@@ -83,7 +83,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
   }
 
   async getById(companyId: string, id: string): Promise<Quote | null> {
-    const row = await (this.prisma as any).quote.findFirst({
+    const row = await (this.prisma).quote.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -91,7 +91,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
   }
 
   async getByNumber(companyId: string, quoteNumber: string): Promise<Quote | null> {
-    const row = await (this.prisma as any).quote.findFirst({
+    const row = await (this.prisma).quote.findFirst({
       where: { companyId, quoteNumber },
     });
     if (!row) return null;
@@ -103,7 +103,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
     if (opts?.status) where.status = opts.status;
     if (opts?.customerId) where.customerId = opts.customerId;
 
-    const rows = await (this.prisma as any).quote.findMany({
+    const rows = await (this.prisma).quote.findMany({
       where,
       orderBy: { quoteDate: 'desc' },
       skip: opts?.offset,
@@ -113,7 +113,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).quote.deleteMany({
+    await (this.prisma).quote.deleteMany({
       where: { id, companyId },
     });
   }

@@ -28,7 +28,7 @@ export class PrismaPartyRepository implements IPartyRepository {
         createdBy: party.createdBy,
         createdAt: party.createdAt,
         updatedAt: party.updatedAt,
-      } as any,
+      },
     });
   }
 
@@ -52,7 +52,7 @@ export class PrismaPartyRepository implements IPartyRepository {
         vendorGroupId: party.vendorGroupId,
         active: party.active,
         updatedAt: party.updatedAt,
-      } as any,
+      },
     });
   }
 

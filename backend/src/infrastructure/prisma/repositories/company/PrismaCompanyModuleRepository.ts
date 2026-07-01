@@ -30,7 +30,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
         installedAt: module.installedAt,
         initialized: module.initialized,
         initializationStatus: module.initializationStatus,
-        config: module.config as any,
+        config: module.config,
       },
     });
   }
@@ -40,7 +40,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
     if (updates.isEnabled !== undefined) data.isEnabled = updates.isEnabled;
     if (updates.initialized !== undefined) data.initialized = updates.initialized;
     if (updates.initializationStatus !== undefined) data.initializationStatus = updates.initializationStatus;
-    if (updates.config !== undefined) data.config = updates.config as any;
+    if (updates.config !== undefined) data.config = updates.config;
     if (updates.installedAt !== undefined) data.installedAt = updates.installedAt;
     data.updatedAt = new Date();
 
@@ -67,7 +67,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
             installedAt: m.installedAt,
             initialized: m.initialized,
             initializationStatus: m.initializationStatus,
-            config: m.config as any,
+            config: m.config,
           },
         })
       )

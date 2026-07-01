@@ -28,7 +28,7 @@ export class PrismaAiChatRepository implements IAiChatRepository {
         createdAt: message.createdAt,
       },
     });
-    return AiChatMessage.fromJSON(record as any);
+    return AiChatMessage.fromJSON(record);
   }
 
   async getById(companyId: string, messageId: string): Promise<AiChatMessage | null> {
@@ -38,7 +38,7 @@ export class PrismaAiChatRepository implements IAiChatRepository {
     if (!record) return null;
     return AiChatMessage.fromJSON({
       ...record,
-      metadata: typeof (record as any).metadata === 'string' ? JSON.parse((record as any).metadata) : (record as any).metadata,
+      metadata: typeof (record).metadata === 'string' ? JSON.parse((record).metadata) : (record).metadata,
     });
   }
 
@@ -49,7 +49,7 @@ export class PrismaAiChatRepository implements IAiChatRepository {
     });
     return AiChatMessage.fromJSON({
       ...record,
-      metadata: typeof (record as any).metadata === 'string' ? JSON.parse((record as any).metadata) : (record as any).metadata,
+      metadata: typeof (record).metadata === 'string' ? JSON.parse((record).metadata) : (record).metadata,
     });
   }
 

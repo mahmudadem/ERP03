@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IStockMovementRepository, MovementQueryOptions } from '../../../../repository/interfaces/inventory/IStockMovementRepository';
 import { StockMovement, ReferenceType, MovementType, StockDirection } from '../../../../domain/inventory/entities/StockMovement';
 
@@ -6,7 +6,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
   constructor(private prisma: PrismaClient) {}
 
   async recordMovement(movement: StockMovement, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     await prisma.stockMovement.create({
       data: {
         id: movement.id,
@@ -48,8 +48,8 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
         isBackdated: movement.isBackdated,
         costSource: movement.costSource,
         notes: movement.notes || null,
-        metadata: (movement.metadata as any) || null,
-      } as any,
+        metadata: (movement.metadata) || null,
+      },
     });
   }
 
@@ -89,7 +89,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
 
   async getMovementsByReference(companyId: string, referenceType: ReferenceType, referenceId: string): Promise<StockMovement[]> {
     const records = await this.prisma.stockMovement.findMany({
-      where: { companyId, referenceType: referenceType as any, referenceId },
+      where: { companyId, referenceType: referenceType, referenceId },
       orderBy: { postingSeq: 'asc' },
     });
     return records.map((r) => this.toDomain(r));
@@ -101,7 +101,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
     referenceId: string,
     referenceLineId?: string
   ): Promise<StockMovement | null> {
-    const where: any = { companyId, referenceType: referenceType as any, referenceId };
+    const where: any = { companyId, referenceType: referenceType, referenceId };
     if (referenceLineId !== undefined) {
       where.referenceLineId = referenceLineId;
     }
@@ -160,7 +160,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
   }
 
   async deleteMovement(companyId: string, id: string, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     await prisma.stockMovement.delete({
       where: { id, companyId },
     });
@@ -205,7 +205,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
       // matches the Firestore "field absent" semantics.
       settledQty: record.settledQty ?? undefined,
       unsettledQty: record.unsettledQty ?? undefined,
-      unsettledCostBasis: (record.unsettledCostBasis ?? undefined) as any,
+      unsettledCostBasis: (record.unsettledCostBasis ?? undefined),
       settlesNegativeQty: record.settlesNegativeQty ?? undefined,
       newPositiveQty: record.newPositiveQty ?? undefined,
       negativeQtyAtPosting: record.negativeQtyAtPosting,

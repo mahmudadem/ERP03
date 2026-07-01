@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IFormDefinitionRepository } from '../../../../repository/interfaces/designer/IFormDefinitionRepository';
 import { FormDefinition, FormSection } from '../../../../domain/designer/entities/FormDefinition';
 import { FieldDefinition } from '../../../../domain/designer/entities/FieldDefinition';
@@ -14,8 +14,8 @@ export class PrismaFormDefinitionRepository implements IFormDefinitionRepository
         name: def.name,
         module: def.module,
         type: def.type,
-        fields: def.fields as any,
-        sections: def.sections as any,
+        fields: def.fields as unknown as Prisma.InputJsonValue,
+        sections: def.sections as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -27,8 +27,8 @@ export class PrismaFormDefinitionRepository implements IFormDefinitionRepository
         name: data.name,
         module: data.module,
         type: data.type,
-        fields: data.fields as any,
-        sections: data.sections as any,
+        fields: data.fields as unknown as Prisma.InputJsonValue,
+        sections: data.sections as unknown as Prisma.InputJsonValue,
       },
     });
   }
@@ -55,8 +55,8 @@ export class PrismaFormDefinitionRepository implements IFormDefinitionRepository
       record.name,
       record.module,
       record.type,
-      (record.fields as any[]) || [],
-      (record.sections as any[]) || []
+      (record.fields as unknown as FieldDefinition[]) || [],
+      (record.sections as unknown as FormSection[]) || []
     );
   }
 }

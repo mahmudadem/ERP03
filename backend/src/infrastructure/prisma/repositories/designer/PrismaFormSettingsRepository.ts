@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   FormSettingsIdentity,
   FormSettingsModule,
@@ -78,7 +78,7 @@ export class PrismaFormSettingsRepository implements IFormSettingsRepository {
     const row = await this.prisma.companyModuleSettings.findUnique({
       where: { companyId_moduleId: { companyId, moduleId: MODULE_ID } },
     });
-    return (row?.settings as any)?.records || {};
+    return (row?.settings as { records?: Record<string, FormSettingsRecord> } | null)?.records || {};
   }
 
   private async saveStore(companyId: string, records: Record<string, FormSettingsRecord>): Promise<void> {
@@ -87,10 +87,10 @@ export class PrismaFormSettingsRepository implements IFormSettingsRepository {
       create: {
         companyId,
         moduleId: MODULE_ID,
-        settings: { records } as any,
+        settings: { records } as unknown as Prisma.InputJsonValue,
       },
       update: {
-        settings: { records } as any,
+        settings: { records } as unknown as Prisma.InputJsonValue,
       },
     });
   }

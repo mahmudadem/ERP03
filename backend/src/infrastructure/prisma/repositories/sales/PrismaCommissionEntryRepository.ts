@@ -58,7 +58,7 @@ export class PrismaCommissionEntryRepository implements ICommissionEntryReposito
         createdBy: entry.createdBy,
         createdAt: entry.createdAt,
         updatedAt: entry.updatedAt,
-      } as any,
+      },
     });
   }
 
@@ -84,14 +84,14 @@ export class PrismaCommissionEntryRepository implements ICommissionEntryReposito
         paymentReference: entry.paymentReference ?? null,
         notes: entry.notes ?? null,
         updatedAt: entry.updatedAt,
-      } as any,
+      },
     });
   }
 
   async getById(companyId: string, id: string): Promise<CommissionEntry | null> {
     const row = await this.prisma.commissionEntry.findFirst({
       where: { id, companyId },
-    } as any);
+    });
     if (!row) return null;
     return this.toDomain(row);
   }
@@ -107,7 +107,7 @@ export class PrismaCommissionEntryRepository implements ICommissionEntryReposito
       if (opts.toDate) where.invoiceDate.lte = opts.toDate;
     }
 
-    const rows = await (this.prisma as any).commissionEntry.findMany({
+    const rows = await (this.prisma).commissionEntry.findMany({
       where,
       orderBy: { invoiceDate: 'desc' },
       skip: opts?.offset,
@@ -121,7 +121,7 @@ export class PrismaCommissionEntryRepository implements ICommissionEntryReposito
     sourceType: string,
     sourceId: string
   ): Promise<CommissionEntry | null> {
-    const row = await (this.prisma as any).commissionEntry.findFirst({
+    const row = await (this.prisma).commissionEntry.findFirst({
       where: { companyId, sourceType, sourceId },
     });
     if (!row) return null;
@@ -132,7 +132,7 @@ export class PrismaCommissionEntryRepository implements ICommissionEntryReposito
     companyId: string,
     salespersonId: string
   ): Promise<{ accrued: number; paid: number; cancelled: number }> {
-    const rows = await (this.prisma as any).commissionEntry.findMany({
+    const rows = await (this.prisma).commissionEntry.findMany({
       where: { companyId, salespersonId },
       select: { status: true, commissionAmountBase: true },
     });

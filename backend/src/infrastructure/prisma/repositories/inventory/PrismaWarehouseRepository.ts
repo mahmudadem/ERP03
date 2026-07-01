@@ -18,14 +18,14 @@ export class PrismaWarehouseRepository implements IWarehouseRepository {
         isDefault: warehouse.isDefault,
         createdAt: warehouse.createdAt,
         updatedAt: warehouse.updatedAt,
-      } as any,
+      },
     });
   }
 
   async updateWarehouse(id: string, data: Partial<Warehouse>): Promise<void> {
     await this.prisma.warehouse.update({
       where: { id },
-      data: data as any,
+      data: data,
     });
   }
 

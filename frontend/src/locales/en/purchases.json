@@ -191,6 +191,7 @@
     "posting": "Posting...",
     "print": "Print",
     "printFailed": "Failed to print purchase invoice.",
+    "printPopupBlocked": "Print popup was blocked.",
     "printStarted": "Print preview opened.",
     "printing": "Printing...",
     "rail": {

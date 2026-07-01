@@ -140,7 +140,7 @@ export class PrismaCapabilityRegistryRepository implements ICapabilityRegistryRe
       await this.prisma.companyCapability.update({
         where: { companyId_capabilityId: { companyId, capabilityId } },
         data: {
-          config: config as any,
+          config: config,
           updatedAt: new Date(),
         },
       });

@@ -14,7 +14,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async createProductLayout(layout: PosProductShortcutLayout): Promise<void> {
     const data = layout.toJSON();
-    await (this.prisma as any).posProductShortcutLayout.create({
+    await (this.prisma).posProductShortcutLayout.create({
       data: {
         id: data.id,
         companyId: data.companyId,
@@ -31,7 +31,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async updateProductLayout(layout: PosProductShortcutLayout): Promise<void> {
     const data = layout.toJSON();
-    await (this.prisma as any).posProductShortcutLayout.update({
+    await (this.prisma).posProductShortcutLayout.update({
       where: { id: layout.id },
       data: {
         name: data.name,
@@ -45,13 +45,13 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async deleteProductLayout(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).posProductShortcutLayout.deleteMany({
+    await (this.prisma).posProductShortcutLayout.deleteMany({
       where: { id, companyId },
     });
   }
 
   async getProductLayout(companyId: string, id: string): Promise<PosProductShortcutLayout | null> {
-    const row = await (this.prisma as any).posProductShortcutLayout.findFirst({
+    const row = await (this.prisma).posProductShortcutLayout.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -59,7 +59,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async listProductLayouts(companyId: string): Promise<PosProductShortcutLayout[]> {
-    const rows = await (this.prisma as any).posProductShortcutLayout.findMany({
+    const rows = await (this.prisma).posProductShortcutLayout.findMany({
       where: { companyId },
     });
     return rows.map((r: any) => PosProductShortcutLayout.fromJSON(rowToLayoutJSON(r)));
@@ -69,7 +69,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async createProductNode(node: PosProductShortcutNode): Promise<void> {
     const data = node.toJSON();
-    await (this.prisma as any).posProductShortcutNode.create({
+    await (this.prisma).posProductShortcutNode.create({
       data: {
         id: data.id,
         companyId: data.companyId,
@@ -95,7 +95,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async updateProductNode(node: PosProductShortcutNode): Promise<void> {
     const data = node.toJSON();
-    await (this.prisma as any).posProductShortcutNode.update({
+    await (this.prisma).posProductShortcutNode.update({
       where: { id: node.id },
       data: {
         parentId: data.parentId ?? null,
@@ -117,13 +117,13 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async deleteProductNode(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).posProductShortcutNode.deleteMany({
+    await (this.prisma).posProductShortcutNode.deleteMany({
       where: { id, companyId },
     });
   }
 
   async getProductNode(companyId: string, id: string): Promise<PosProductShortcutNode | null> {
-    const row = await (this.prisma as any).posProductShortcutNode.findFirst({
+    const row = await (this.prisma).posProductShortcutNode.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -131,7 +131,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async listProductNodes(companyId: string, layoutId: string): Promise<PosProductShortcutNode[]> {
-    const rows = await (this.prisma as any).posProductShortcutNode.findMany({
+    const rows = await (this.prisma).posProductShortcutNode.findMany({
       where: { companyId, layoutId },
     });
     return rows.map((r: any) => PosProductShortcutNode.fromJSON(rowToNodeJSON(r)));
@@ -141,7 +141,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async createControlLayout(layout: PosControlButtonLayout): Promise<void> {
     const data = layout.toJSON();
-    await (this.prisma as any).posControlButtonLayout.create({
+    await (this.prisma).posControlButtonLayout.create({
       data: {
         id: data.id,
         companyId: data.companyId,
@@ -158,7 +158,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async updateControlLayout(layout: PosControlButtonLayout): Promise<void> {
     const data = layout.toJSON();
-    await (this.prisma as any).posControlButtonLayout.update({
+    await (this.prisma).posControlButtonLayout.update({
       where: { id: layout.id },
       data: {
         name: data.name,
@@ -172,13 +172,13 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async deleteControlLayout(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).posControlButtonLayout.deleteMany({
+    await (this.prisma).posControlButtonLayout.deleteMany({
       where: { id, companyId },
     });
   }
 
   async getControlLayout(companyId: string, id: string): Promise<PosControlButtonLayout | null> {
-    const row = await (this.prisma as any).posControlButtonLayout.findFirst({
+    const row = await (this.prisma).posControlButtonLayout.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -186,7 +186,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async listControlLayouts(companyId: string): Promise<PosControlButtonLayout[]> {
-    const rows = await (this.prisma as any).posControlButtonLayout.findMany({
+    const rows = await (this.prisma).posControlButtonLayout.findMany({
       where: { companyId },
     });
     return rows.map((r: any) => PosControlButtonLayout.fromJSON(rowToLayoutJSON(r)));
@@ -196,7 +196,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async createControlButton(button: PosControlButton): Promise<void> {
     const data = button.toJSON();
-    await (this.prisma as any).posControlButton.create({
+    await (this.prisma).posControlButton.create({
       data: {
         id: data.id,
         companyId: data.companyId,
@@ -219,7 +219,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
 
   async updateControlButton(button: PosControlButton): Promise<void> {
     const data = button.toJSON();
-    await (this.prisma as any).posControlButton.update({
+    await (this.prisma).posControlButton.update({
       where: { id: button.id },
       data: {
         zone: data.zone,
@@ -238,13 +238,13 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async deleteControlButton(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).posControlButton.deleteMany({
+    await (this.prisma).posControlButton.deleteMany({
       where: { id, companyId },
     });
   }
 
   async getControlButton(companyId: string, id: string): Promise<PosControlButton | null> {
-    const row = await (this.prisma as any).posControlButton.findFirst({
+    const row = await (this.prisma).posControlButton.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -252,7 +252,7 @@ export class PrismaPosLayoutRepository implements IPosLayoutRepository {
   }
 
   async listControlButtons(companyId: string, layoutId: string): Promise<PosControlButton[]> {
-    const rows = await (this.prisma as any).posControlButton.findMany({
+    const rows = await (this.prisma).posControlButton.findMany({
       where: { companyId, layoutId },
     });
     return rows.map((r: any) => PosControlButton.fromJSON(rowToButtonJSON(r)));

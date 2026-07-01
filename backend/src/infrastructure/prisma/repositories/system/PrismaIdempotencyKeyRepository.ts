@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IdempotencyKeyRecord } from '../../../../domain/system/entities/IdempotencyKey';
 import { IIdempotencyKeyRepository } from '../../../../repository/interfaces/system/IIdempotencyKeyRepository';
 
@@ -6,7 +6,7 @@ export class PrismaIdempotencyKeyRepository implements IIdempotencyKeyRepository
   constructor(private readonly prisma: PrismaClient) {}
 
   async get(companyId: string, key: string): Promise<IdempotencyKeyRecord | null> {
-    const row = await (this.prisma as any).idempotencyKey.findUnique({
+    const row = await (this.prisma).idempotencyKey.findUnique({
       where: { companyId_key: { companyId, key } },
     });
     if (!row) return null;
@@ -29,7 +29,7 @@ export class PrismaIdempotencyKeyRepository implements IIdempotencyKeyRepository
   }
 
   async put(record: IdempotencyKeyRecord): Promise<void> {
-    await (this.prisma as any).idempotencyKey.upsert({
+    await (this.prisma).idempotencyKey.upsert({
       where: { companyId_key: { companyId: record.companyId, key: record.key } },
       create: {
         companyId: record.companyId,
@@ -38,7 +38,7 @@ export class PrismaIdempotencyKeyRepository implements IIdempotencyKeyRepository
         path: record.path,
         bodyHash: record.bodyHash,
         statusCode: record.statusCode,
-        responseBody: record.responseBody as any,
+        responseBody: record.responseBody as unknown as Prisma.InputJsonValue,
         createdAt: record.createdAt,
         expiresAt: record.expiresAt,
       },
@@ -47,14 +47,14 @@ export class PrismaIdempotencyKeyRepository implements IIdempotencyKeyRepository
         path: record.path,
         bodyHash: record.bodyHash,
         statusCode: record.statusCode,
-        responseBody: record.responseBody as any,
+        responseBody: record.responseBody as unknown as Prisma.InputJsonValue,
         expiresAt: record.expiresAt,
       },
     });
   }
 
   async delete(companyId: string, key: string): Promise<void> {
-    await (this.prisma as any).idempotencyKey.deleteMany({
+    await (this.prisma).idempotencyKey.deleteMany({
       where: { companyId, key },
     });
   }

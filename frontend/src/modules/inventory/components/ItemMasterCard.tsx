@@ -558,11 +558,11 @@ const ItemMasterCard: React.FC<ItemMasterCardProps> = ({
               <div className="col-span-1 sm:col-span-2 flex items-center pt-3 pb-2">
                 <label className="flex items-start gap-3 cursor-pointer group p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors w-full sm:w-auto">
                   <div className="flex h-5 items-center mt-0.5 shrink-0">
-                    <input 
-                      type="checkbox" 
+                    <input
+                      type="checkbox"
                       className="h-5 w-5 rounded border-slate-300 text-blue-600 focus:ring-blue-600 cursor-pointer"
-                      checked={item.active !== false} 
-                      onChange={e => setItem(p => ({ ...p, active: e.target.checked }))} 
+                      checked={item.active !== false}
+                      onChange={e => setItem(p => ({ ...p, active: e.target.checked }))}
                     />
                   </div>
                   <div className="flex flex-col text-start">

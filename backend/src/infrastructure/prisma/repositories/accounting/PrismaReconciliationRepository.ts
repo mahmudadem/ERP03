@@ -17,7 +17,7 @@ export class PrismaReconciliationRepository implements IReconciliationRepository
   // =========================================================================
 
   private toDomain(record: any): Reconciliation {
-    const matchedEntries = (record.matchedEntries as any) ?? {};
+    const matchedEntries = (record.matchedEntries) ?? {};
     const adjustments: ReconciliationAdjustment[] = matchedEntries.adjustments ?? [];
     const bankStatementId = matchedEntries.bankStatementId ?? '';
     const periodEnd = matchedEntries.periodEnd ?? record.period;
@@ -61,12 +61,12 @@ export class PrismaReconciliationRepository implements IReconciliationRepository
         accountId: reconciliation.accountId,
         period: reconciliation.periodEnd,
         status: reconciliation.status,
-        matchedEntries: this.buildMatchedEntries(reconciliation) as any,
+        matchedEntries: this.buildMatchedEntries(reconciliation),
         discrepancy: reconciliation.bookBalance - reconciliation.bankBalance,
         notes: null,
         completedAt: reconciliation.completedAt ?? null,
         completedBy: reconciliation.completedBy ?? null,
-      } as any,
+      },
     });
 
     return this.toDomain(record);
@@ -100,11 +100,11 @@ export class PrismaReconciliationRepository implements IReconciliationRepository
       where: { id: reconciliation.id },
       data: {
         status: reconciliation.status,
-        matchedEntries: this.buildMatchedEntries(reconciliation) as any,
+        matchedEntries: this.buildMatchedEntries(reconciliation),
         discrepancy: reconciliation.bookBalance - reconciliation.bankBalance,
         completedAt: reconciliation.completedAt ?? null,
         completedBy: reconciliation.completedBy ?? null,
-      } as any,
+      },
     });
   }
 }

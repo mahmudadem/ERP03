@@ -11,7 +11,7 @@ export class PrismaCompanyCreationSessionRepository implements ICompanyCreationS
         id: session.id,
         userId: session.userId,
         status: 'IN_PROGRESS',
-        data: session.data as any,
+        data: session.data,
         createdAt: session.createdAt,
         updatedAt: session.updatedAt,
       },
@@ -23,7 +23,7 @@ export class PrismaCompanyCreationSessionRepository implements ICompanyCreationS
       where: { id: session.id },
       data: {
         status: 'IN_PROGRESS',
-        data: session.data as any,
+        data: session.data,
         updatedAt: session.updatedAt,
       },
     });

@@ -30,7 +30,7 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
             notes: this.packLineCosts(line),
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -90,7 +90,7 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
 
   async getByStatus(companyId: string, status: StockTransferStatus, opts?: StockTransferListOptions): Promise<StockTransfer[]> {
     const records = await this.prisma.stockTransfer.findMany({
-      where: { companyId, status: status as any },
+      where: { companyId, status: status },
       include: { lines: true },
       orderBy: { createdAt: 'asc' },
       take: opts?.limit,
@@ -129,12 +129,12 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
       notes: record.notes,
       lines,
       status: record.status,
-      transferPairId: (record as any).transferPairId || record.id,
-      reversesTransferId: (record as any).reversesTransferId,
-      reversedByTransferId: (record as any).reversedByTransferId,
+      transferPairId: (record).transferPairId || record.id,
+      reversesTransferId: (record).reversesTransferId,
+      reversedByTransferId: (record).reversedByTransferId,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
-      completedAt: (record as any).completedAt,
+      completedAt: (record).completedAt,
     });
   }
 

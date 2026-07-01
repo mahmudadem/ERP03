@@ -29,6 +29,8 @@ export interface GoodsReceiptProps {
   vendorName: string;
   receiptDate: string;
   warehouseId: string;
+  currency: string;
+  exchangeRate: number;
   lines: GoodsReceiptLine[];
   status?: GRNStatus;
   notes?: string;
@@ -58,6 +60,8 @@ export class GoodsReceipt {
   vendorName: string;
   receiptDate: string;
   warehouseId: string;
+  currency: string;
+  exchangeRate: number;
   lines: GoodsReceiptLine[];
   status: GRNStatus;
   notes?: string;
@@ -74,6 +78,10 @@ export class GoodsReceipt {
     if (!props.vendorId?.trim()) throw new Error('GoodsReceipt vendorId is required');
     if (!props.receiptDate?.trim()) throw new Error('GoodsReceipt receiptDate is required');
     if (!props.warehouseId?.trim()) throw new Error('GoodsReceipt warehouseId is required');
+    if (!props.currency?.trim()) throw new Error('GoodsReceipt currency is required');
+    if (props.exchangeRate <= 0 || Number.isNaN(props.exchangeRate)) {
+      throw new Error('GoodsReceipt exchangeRate must be greater than 0');
+    }
     if (!props.createdBy?.trim()) throw new Error('GoodsReceipt createdBy is required');
     if (!Array.isArray(props.lines) || props.lines.length === 0) {
       throw new Error('GoodsReceipt must contain at least one line');
@@ -87,6 +95,8 @@ export class GoodsReceipt {
     this.vendorName = props.vendorName || '';
     this.receiptDate = props.receiptDate;
     this.warehouseId = props.warehouseId.trim();
+    this.currency = props.currency.toUpperCase().trim();
+    this.exchangeRate = props.exchangeRate;
     this.lines = props.lines.map((line, index) => this.normalizeLine(line, index));
 
     const status = props.status || 'DRAFT';
@@ -151,6 +161,8 @@ export class GoodsReceipt {
       vendorName: this.vendorName,
       receiptDate: this.receiptDate,
       warehouseId: this.warehouseId,
+      currency: this.currency,
+      exchangeRate: this.exchangeRate,
       lines: this.lines.map((line) => ({ ...line })),
       status: this.status,
       notes: this.notes,
@@ -172,6 +184,8 @@ export class GoodsReceipt {
       vendorName: data.vendorName,
       receiptDate: data.receiptDate,
       warehouseId: data.warehouseId,
+      currency: data.currency,
+      exchangeRate: data.exchangeRate ?? 1,
       lines: data.lines || [],
       status: data.status || 'DRAFT',
       notes: data.notes,

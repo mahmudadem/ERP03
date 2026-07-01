@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   ProfitFactAggregationRow,
   ProfitFactCurrencyTotals,
@@ -213,7 +213,7 @@ export class PrismaSalesProfitLineFactRepository implements ISalesProfitLineFact
     facts: SalesProfitLineFact[],
     transaction?: unknown
   ): Promise<void> {
-    const tx = (transaction as any) || this.prisma;
+    const tx = (transaction as Prisma.TransactionClient) || this.prisma;
     for (const fact of facts) {
       if (fact.documentId !== documentId) {
         throw new Error(`replaceForDocumentVersion: fact ${fact.id} has documentId ${fact.documentId}, expected ${documentId}`);
@@ -285,7 +285,7 @@ export class PrismaSalesProfitLineFactRepository implements ISalesProfitLineFact
     supersededByVersion: number,
     transaction?: unknown
   ): Promise<void> {
-    const tx = (transaction as any) || this.prisma;
+    const tx = (transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesProfitLineFact.updateMany({
       where: {
         companyId,
@@ -302,7 +302,7 @@ export class PrismaSalesProfitLineFactRepository implements ISalesProfitLineFact
     documentId: string,
     transaction?: unknown
   ): Promise<void> {
-    const tx = (transaction as any) || this.prisma;
+    const tx = (transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesProfitLineFact.updateMany({
       where: { companyId, documentId, status: 'ACTIVE' },
       data: { status: 'REVERSED', updatedAt: new Date() },

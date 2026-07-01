@@ -22,8 +22,8 @@ export class PrismaCompanyRepository implements ICompanyRepository {
     constructor(private prisma: PrismaClient) { }
 
     async save(company: Company): Promise<void> {
-        const fiscalYearStart = new Date(company.fiscalYearStart as any);
-        const fiscalYearEnd = new Date(company.fiscalYearEnd as any);
+        const fiscalYearStart = new Date(company.fiscalYearStart);
+        const fiscalYearEnd = new Date(company.fiscalYearEnd);
         await this.prisma.company.upsert({
             where: { id: company.id },
             create: {
@@ -41,7 +41,7 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                 baseCurrency: company.baseCurrency,
                 fiscalYearStart: fiscalYearStart,
                 fiscalYearEnd: fiscalYearEnd,
-                modules: company.modules as any,
+                modules: company.modules,
                 createdAt: company.createdAt,
                 updatedAt: company.updatedAt,
             },
@@ -55,7 +55,7 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                 baseCurrency: company.baseCurrency,
                 fiscalYearStart: fiscalYearStart,
                 fiscalYearEnd: fiscalYearEnd,
-                modules: company.modules as any,
+                modules: company.modules,
                 updatedAt: company.updatedAt,
             },
         });
@@ -77,14 +77,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             data.baseCurrency,
             data.fiscalYearStart,
             data.fiscalYearEnd,
-            data.modules as any,
-            (data as any).features || [],
+            data.modules,
+            (data).features || [],
             data.taxId,
-            (data as any).subscriptionPlan || undefined,
+            (data).subscriptionPlan || undefined,
             data.address || undefined,
-            (data as any).country || undefined,
-            (data as any).logoUrl || undefined,
-            (data as any).contactInfo || undefined
+            (data).country || undefined,
+            (data).logoUrl || undefined,
+            (data).contactInfo || undefined
         );
     }
 
@@ -104,14 +104,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             data.baseCurrency,
             data.fiscalYearStart,
             data.fiscalYearEnd,
-            data.modules as any,
-            (data as any).features || [],
+            data.modules,
+            (data).features || [],
             data.taxId,
-            (data as any).subscriptionPlan || undefined,
+            (data).subscriptionPlan || undefined,
             data.address || undefined,
-            (data as any).country || undefined,
-            (data as any).logoUrl || undefined,
-            (data as any).contactInfo || undefined
+            (data).country || undefined,
+            (data).logoUrl || undefined,
+            (data).contactInfo || undefined
         );
     }
 
@@ -134,14 +134,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             data.baseCurrency,
             data.fiscalYearStart,
             data.fiscalYearEnd,
-            data.modules as any,
-            (data as any).features || [],
+            data.modules,
+            (data).features || [],
             data.taxId,
-            (data as any).subscriptionPlan || undefined,
+            (data).subscriptionPlan || undefined,
             data.address || undefined,
-            (data as any).country || undefined,
-            (data as any).logoUrl || undefined,
-            (data as any).contactInfo || undefined
+            (data).country || undefined,
+            (data).logoUrl || undefined,
+            (data).contactInfo || undefined
         );
     }
 
@@ -167,14 +167,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                     data.baseCurrency,
                     data.fiscalYearStart,
                     data.fiscalYearEnd,
-                    data.modules as any,
-                    (data as any).features || [],
+                    data.modules,
+                    (data).features || [],
                     data.taxId,
-                    (data as any).subscriptionPlan || undefined,
+                    (data).subscriptionPlan || undefined,
                     data.address || undefined,
-                    (data as any).country || undefined,
-                    (data as any).logoUrl || undefined,
-                    (data as any).contactInfo || undefined
+                    (data).country || undefined,
+                    (data).logoUrl || undefined,
+                    (data).contactInfo || undefined
                 )
         );
     }
@@ -188,14 +188,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             throw new Error('Company not found');
         }
 
-        const modules = [...((company.modules as any[]) || [])];
+        const modules = [...((company.modules as unknown as string[]) || [])];
         if (!modules.includes(moduleName)) {
             modules.push(moduleName);
         }
 
         await this.prisma.company.update({
             where: { id: companyId },
-            data: { modules: modules as any },
+            data: { modules: modules },
         });
     }
 
@@ -203,7 +203,7 @@ export class PrismaCompanyRepository implements ICompanyRepository {
         const data: any = { ...updates };
         const updated = await this.prisma.company.update({
             where: { id: companyId },
-            data: data as any,
+            data: data,
         });
         return new Company(
             updated.id,
@@ -214,28 +214,28 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             updated.baseCurrency,
             updated.fiscalYearStart,
             updated.fiscalYearEnd,
-            updated.modules as any,
-            (updated as any).features || [],
+            updated.modules,
+            (updated).features || [],
             updated.taxId,
-            (updated as any).subscriptionPlan || undefined,
+            (updated).subscriptionPlan || undefined,
             updated.address || undefined,
-            (updated as any).country || undefined,
-            (updated as any).logoUrl || undefined,
-            (updated as any).contactInfo || undefined
+            (updated).country || undefined,
+            (updated).logoUrl || undefined,
+            (updated).contactInfo || undefined
         );
     }
 
     async disableModule(companyId: string, moduleName: string): Promise<void> {
         const company = await this.prisma.company.findUnique({ where: { id: companyId } });
         if (!company) return;
-        const modules = ((company.modules as any[]) || []).filter((m) => m !== moduleName);
-        await this.prisma.company.update({ where: { id: companyId }, data: { modules: modules as any } });
+        const modules = ((company.modules as unknown as string[]) || []).filter((m) => m !== moduleName);
+        await this.prisma.company.update({ where: { id: companyId }, data: { modules: modules } });
     }
 
     async updateBundle(companyId: string, bundleId: string): Promise<Company> {
         const updated = await this.prisma.company.update({
             where: { id: companyId },
-            data: { subscriptionPlan: bundleId } as any,
+            data: { subscriptionPlan: bundleId },
         });
         return new Company(
             updated.id,
@@ -246,21 +246,21 @@ export class PrismaCompanyRepository implements ICompanyRepository {
             updated.baseCurrency,
             updated.fiscalYearStart,
             updated.fiscalYearEnd,
-            updated.modules as any,
-            (updated as any).features || [],
+            updated.modules,
+            (updated).features || [],
             updated.taxId,
-            (updated as any).subscriptionPlan || undefined,
+            (updated).subscriptionPlan || undefined,
             updated.address || undefined,
-            (updated as any).country || undefined,
-            (updated as any).logoUrl || undefined,
-            (updated as any).contactInfo || undefined
+            (updated).country || undefined,
+            (updated).logoUrl || undefined,
+            (updated).contactInfo || undefined
         );
     }
 
     async updateFeatures(companyId: string, features: string[]): Promise<void> {
         await this.prisma.company.update({
             where: { id: companyId },
-            data: { features } as any,
+            data: { features },
         });
     }
 
@@ -277,14 +277,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
                     data.baseCurrency,
                     data.fiscalYearStart,
                     data.fiscalYearEnd,
-                    data.modules as any,
-                    (data as any).features || [],
+                    data.modules,
+                    (data).features || [],
                     data.taxId,
-                    (data as any).subscriptionPlan || undefined,
+                    (data).subscriptionPlan || undefined,
                     data.address || undefined,
-                    (data as any).country || undefined,
-                    (data as any).logoUrl || undefined,
-                    (data as any).contactInfo || undefined
+                    (data).country || undefined,
+                    (data).logoUrl || undefined,
+                    (data).contactInfo || undefined
                 )
         );
     }

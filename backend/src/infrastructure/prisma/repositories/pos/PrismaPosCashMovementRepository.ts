@@ -40,7 +40,7 @@ export class PrismaPosCashMovementRepository implements IPosCashMovementReposito
     for (const r of records) {
       const type = r.type as keyof PosCashMovementTotals;
       const next = (totals[type] as number) + Number(r.amount);
-      (totals as any)[type] = round2(next);
+      (totals)[type] = round2(next);
     }
     totals.expectedCash = round2(
       totals.OPENING_FLOAT + totals.SALE_CASH - totals.REFUND_CASH + totals.PAYIN - totals.PAYOUT - totals.DROP

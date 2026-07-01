@@ -19,11 +19,11 @@ export class PrismaPurchaseSettingsRepository implements IPurchaseSettingsReposi
       create: {
         // companyId is set via the `company` relation connect — Prisma rejects the
         // scalar FK and the relation together on create.
-        settings: settings.toJSON() as any,
+        settings: settings.toJSON(),
         company: { connect: { id: settings.companyId } },
-      } as any,
+      },
       update: {
-        settings: settings.toJSON() as any,
+        settings: settings.toJSON(),
       },
     });
   }

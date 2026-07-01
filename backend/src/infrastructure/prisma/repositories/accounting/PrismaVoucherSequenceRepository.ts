@@ -75,7 +75,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
           prefix,
           currentNumber: 1,
           fiscalYearId,
-        } as any,
+        },
       });
 
       return formatNumber(prefix, 1, year, format);
@@ -86,7 +86,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
       where: { id: sequence.id },
       data: {
         currentNumber: { increment: 1 },
-      } as any,
+      },
     });
 
     return formatNumber(prefix, updated.currentNumber, year, format);
@@ -122,7 +122,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
         where: { id: sequence.id },
         data: {
           currentNumber: nextNumber - 1, // Set to nextNumber - 1 so getNextNumber returns nextNumber
-        } as any,
+        },
       });
     } else {
       await this.prisma.voucherSequence.create({
@@ -133,7 +133,7 @@ export class PrismaVoucherSequenceRepository implements IVoucherSequenceReposito
           prefix,
           currentNumber: nextNumber - 1,
           fiscalYearId,
-        } as any,
+        },
       });
     }
   }

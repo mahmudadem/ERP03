@@ -19,16 +19,16 @@ export class PrismaInventorySettingsRepository implements IInventorySettingsRepo
       where: { companyId: settings.companyId },
       create: {
         companyId: settings.companyId,
-        settings: settingsJson as any,
+        settings: settingsJson,
       },
       update: {
-        settings: settingsJson as any,
+        settings: settingsJson,
       },
     });
   }
 
   private toDomain(record: any): InventorySettings {
-    const data = record.settings as any;
+    const data = record.settings;
     return InventorySettings.fromJSON({
       companyId: record.companyId,
       ...data,

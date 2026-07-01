@@ -23,13 +23,13 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
 
   async create(template: PrintLayoutTemplate): Promise<void> {
     const data = template.toJSON();
-    await (this.prisma as any).printLayoutTemplate.create({
+    await (this.prisma).printLayoutTemplate.create({
       data: {
         id: data.id,
         companyId: data.companyId,
         name: data.name,
         documentType: data.documentType,
-        layout: data.layout as any,
+        layout: data.layout,
         isDefault: data.isDefault,
         createdBy: data.createdBy,
         updatedBy: data.updatedBy ?? null,
@@ -41,12 +41,12 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
 
   async update(template: PrintLayoutTemplate): Promise<void> {
     const data = template.toJSON();
-    await (this.prisma as any).printLayoutTemplate.update({
+    await (this.prisma).printLayoutTemplate.update({
       where: { id: template.id },
       data: {
         name: data.name,
         documentType: data.documentType,
-        layout: data.layout as any,
+        layout: data.layout,
         isDefault: data.isDefault,
         updatedBy: data.updatedBy ?? null,
         updatedAt: data.updatedAt,
@@ -55,7 +55,7 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
   }
 
   async getById(companyId: string, id: string): Promise<PrintLayoutTemplate | null> {
-    const row = await (this.prisma as any).printLayoutTemplate.findFirst({
+    const row = await (this.prisma).printLayoutTemplate.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -65,7 +65,7 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
   async list(companyId: string, documentType?: PrintDocumentType): Promise<PrintLayoutTemplate[]> {
     const where: any = { companyId };
     if (documentType) where.documentType = documentType;
-    const rows = await (this.prisma as any).printLayoutTemplate.findMany({ where });
+    const rows = await (this.prisma).printLayoutTemplate.findMany({ where });
     return rows
       .map((r: any) => this.toDomain(r))
       .sort((a: PrintLayoutTemplate, b: PrintLayoutTemplate) =>
@@ -74,7 +74,7 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
   }
 
   async getDefault(companyId: string, documentType: PrintDocumentType): Promise<PrintLayoutTemplate | null> {
-    const row = await (this.prisma as any).printLayoutTemplate.findFirst({
+    const row = await (this.prisma).printLayoutTemplate.findFirst({
       where: { companyId, documentType, isDefault: true },
     });
     if (!row) return null;
@@ -84,14 +84,14 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
   async clearDefault(companyId: string, documentType: PrintDocumentType, exceptId?: string): Promise<void> {
     const where: any = { companyId, documentType, isDefault: true };
     if (exceptId) where.id = { not: exceptId };
-    await (this.prisma as any).printLayoutTemplate.updateMany({
+    await (this.prisma).printLayoutTemplate.updateMany({
       where,
       data: { isDefault: false, updatedAt: new Date() },
     });
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).printLayoutTemplate.deleteMany({
+    await (this.prisma).printLayoutTemplate.deleteMany({
       where: { id, companyId },
     });
   }

@@ -27,7 +27,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
 
   async create(group: CustomerGroup, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).customerGroup.create({
+    await (client).customerGroup.create({
       data: {
         id: group.id,
         companyId: group.companyId,
@@ -47,7 +47,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
 
   async update(group: CustomerGroup, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).customerGroup.update({
+    await (client).customerGroup.update({
       where: { id: group.id },
       data: {
         name: group.name,
@@ -63,7 +63,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
   }
 
   async getById(companyId: string, id: string): Promise<CustomerGroup | null> {
-    const row = await (this.prisma as any).customerGroup.findFirst({
+    const row = await (this.prisma).customerGroup.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -71,7 +71,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
   }
 
   async getByName(companyId: string, name: string): Promise<CustomerGroup | null> {
-    const row = await (this.prisma as any).customerGroup.findFirst({
+    const row = await (this.prisma).customerGroup.findFirst({
       where: { companyId, name },
     });
     if (!row) return null;
@@ -86,7 +86,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
       where.status = 'ACTIVE';
     }
 
-    const rows = await (this.prisma as any).customerGroup.findMany({
+    const rows = await (this.prisma).customerGroup.findMany({
       where,
       orderBy: { name: 'asc' },
       skip: opts?.offset,
@@ -96,7 +96,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).customerGroup.deleteMany({
+    await (this.prisma).customerGroup.deleteMany({
       where: { id, companyId },
     });
   }

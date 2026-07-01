@@ -71,7 +71,7 @@ export class PrismaFiscalYearRepository implements IFiscalYearRepository {
   }
 
   private toDomain(record: any): FiscalYear {
-    const periods: FiscalPeriod[] = (record.periods as any[]) ?? [];
+    const periods: FiscalPeriod[] = (record.periods as unknown as FiscalPeriod[]) ?? [];
     return new FiscalYear(
       record.id,
       record.companyId,

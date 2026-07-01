@@ -188,6 +188,8 @@ export class CreateGoodsReceiptUseCase {
       vendorName,
       receiptDate: input.receiptDate,
       warehouseId: input.warehouseId,
+      currency: po?.currency ?? 'USD',
+      exchangeRate: po?.exchangeRate ?? 1,
       lines,
       status: 'DRAFT',
       notes: input.notes,

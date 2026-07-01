@@ -33,8 +33,8 @@ export class PrismaNotificationRepository implements INotificationRepository {
         category: notification.category,
         title: notification.title,
         message: notification.message,
-        recipientUserIds: notification.recipientUserIds as any,
-        readBy: notification.readBy as any,
+        recipientUserIds: notification.recipientUserIds,
+        readBy: notification.readBy,
         actionUrl: notification.actionUrl || null,
         sourceModule: notification.sourceModule || null,
         sourceEntityType: notification.sourceEntityType || null,
@@ -76,7 +76,7 @@ export class PrismaNotificationRepository implements INotificationRepository {
     await this.prisma.notification.update({
       where: { id: notificationId },
       data: {
-        readBy: { push: userId } as any,
+        readBy: { push: userId },
       },
     });
   }
@@ -91,7 +91,7 @@ export class PrismaNotificationRepository implements INotificationRepository {
     await this.prisma.notification.update({
       where: { id: notificationId },
       data: {
-        readBy: { set: notification.readBy.filter((id: string) => id !== userId) } as any,
+        readBy: { set: notification.readBy.filter((id: string) => id !== userId) },
       },
     });
   }
@@ -109,7 +109,7 @@ export class PrismaNotificationRepository implements INotificationRepository {
       await this.prisma.notification.update({
         where: { id: n.id },
         data: {
-          readBy: { push: userId } as any,
+          readBy: { push: userId },
         },
       });
     }
@@ -119,7 +119,7 @@ export class PrismaNotificationRepository implements INotificationRepository {
     await this.prisma.notification.update({
       where: { id: notificationId },
       data: {
-        readBy: { push: '_legacy' } as any,
+        readBy: { push: '_legacy' },
       },
     });
   }

@@ -9,9 +9,42 @@ import { VoucherFormConfig } from '../types';
 import { uiToCanonical, canonicalToUi, validateUiConfig } from '../mappers';
 import { validateUniqueness } from '../validators/uniquenessValidator';
 
-// Firebase imports
+// Firebase imports (still used by the write/clone/toggle paths — full API port is a follow-up)
 import { db } from '../../../../config/firebase';
 import { collection, doc, getDocs, getDoc, setDoc, updateDoc, deleteDoc, query, where } from 'firebase/firestore';
+
+// DB-agnostic READ of company forms: go through the backend API so this works in
+// both Firestore and SQL/Postgres modes instead of querying Firestore from the browser.
+import { voucherFormApi, VoucherFormResponse } from '../../../../api/voucherFormApi';
+
+/** Map a backend VoucherFormResponse to the wizard's VoucherFormConfig shape. */
+function mapResponseToConfig(r: VoucherFormResponse): VoucherFormConfig {
+  return {
+    id: r.id,
+    name: r.name,
+    code: r.code,
+    prefix: r.prefix || '',
+    numberFormat: r.numberFormat,
+    module: r.module,
+    startNumber: 1,
+    rules: (r.rules as any) || [],
+    isMultiLine: r.isMultiLine ?? true,
+    defaultCurrency: r.defaultCurrency,
+    tableColumns: (r.tableColumns as any) || [],
+    tableStyle: r.tableStyle,
+    actions: (r.actions as any) || [],
+    uiModeOverrides: (r.uiModeOverrides as any) || { classic: { sections: {} }, windows: { sections: {} } },
+    enabled: r.enabled,
+    isSystemGenerated: r.isSystemGenerated,
+    isDefault: r.isDefault,
+    isLocked: r.isLocked,
+    formType: r.formType,
+    voucherType: r.voucherType,
+    persona: r.persona,
+    baseType: r.baseType,
+    headerFields: (r.headerFields as any) || [],
+  } as VoucherFormConfig;
+}
 
 /**
  * Load default system voucher templates from Firestore
@@ -44,24 +77,12 @@ export async function loadDefaultTemplates(): Promise<VoucherFormConfig[]> {
 /**
  * Load company-specific voucher forms
  */
-export async function loadCompanyForms(companyId: string): Promise<VoucherFormConfig[]> {
+export async function loadCompanyForms(_companyId: string): Promise<VoucherFormConfig[]> {
   try {
-    const formsRef = collection(db, `companies/${companyId}/accounting/Settings/voucherForms`);
-    const snapshot = await getDocs(formsRef);
-    
-    const forms: VoucherFormConfig[] = [];
-    
-    snapshot.forEach(doc => {
-      try {
-        const canonical = { id: doc.id, ...doc.data() } as any;
-        const uiConfig = canonicalToUi(canonical);
-        forms.push(uiConfig);
-      } catch (err) {
-        console.error(`[loadCompanyForms] Failed to parse document ${doc.id}:`, err);
-      }
-    });
-    
-    return forms;
+    // Reads company voucher forms via the backend API (DB-agnostic) instead of
+    // querying Firestore directly — so this works in SQL/Postgres mode too.
+    const responses = await voucherFormApi.list();
+    return (responses || []).map(mapResponseToConfig);
   } catch (error) {
     console.error('Failed to load company forms:', error);
     return [];

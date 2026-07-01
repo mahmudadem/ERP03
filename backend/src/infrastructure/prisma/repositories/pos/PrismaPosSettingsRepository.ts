@@ -20,10 +20,10 @@ export class PrismaPosSettingsRepository implements IPosSettingsRepository {
       where: { companyId: settings.companyId },
       create: {
         companyId: settings.companyId,
-        settings: settings.toJSON() as any,
+        settings: settings.toJSON(),
       },
       update: {
-        settings: settings.toJSON() as any,
+        settings: settings.toJSON(),
         updatedAt: new Date(),
       },
     });

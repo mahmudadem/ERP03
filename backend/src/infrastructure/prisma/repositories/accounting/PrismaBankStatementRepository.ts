@@ -17,7 +17,7 @@ export class PrismaBankStatementRepository implements IBankStatementRepository {
   // =========================================================================
 
   private toDomain(record: any): BankStatement {
-    const lines: BankStatementLine[] = (record.lines as any[]) ?? [];
+    const lines: BankStatementLine[] = (record.lines as unknown as BankStatementLine[]) ?? [];
 
     return new BankStatement(
       record.id,
@@ -62,11 +62,11 @@ export class PrismaBankStatementRepository implements IBankStatementRepository {
           accountNo: statement.accountId,
           accountName: statement.bankName,
           statementDate: new Date(statement.statementDate),
-          lines: this.toPrismaLines(statement.lines) as any,
+          lines: this.toPrismaLines(statement.lines),
           closingBalance: statement.lines.length > 0
             ? statement.lines[statement.lines.length - 1].balance ?? 0
             : 0,
-        } as any,
+        },
       });
       return this.toDomain(record);
     }
@@ -83,9 +83,9 @@ export class PrismaBankStatementRepository implements IBankStatementRepository {
           ? statement.lines[statement.lines.length - 1].balance ?? 0
           : 0,
         currency: 'USD',
-        lines: this.toPrismaLines(statement.lines) as any,
+        lines: this.toPrismaLines(statement.lines),
         status: 'IMPORTED',
-      } as any,
+      },
     });
 
     return this.toDomain(record);
@@ -127,7 +127,7 @@ export class PrismaBankStatementRepository implements IBankStatementRepository {
       throw new Error(`BankStatement not found: ${statementId}`);
     }
 
-    const lines: any[] = (statement.lines as any[]) ?? [];
+    const lines: any[] = (statement.lines as unknown[]) ?? [];
     const lineIndex = lines.findIndex((l: any) => l.id === lineId);
 
     if (lineIndex === -1) {
@@ -142,7 +142,7 @@ export class PrismaBankStatementRepository implements IBankStatementRepository {
 
     await this.prisma.bankStatement.update({
       where: { id: statementId },
-      data: { lines: lines as any } as any,
+      data: { lines: lines },
     });
   }
 }

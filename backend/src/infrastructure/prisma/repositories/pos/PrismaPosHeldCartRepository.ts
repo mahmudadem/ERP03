@@ -51,7 +51,7 @@ export class PrismaPosHeldCartRepository implements IPosHeldCartRepository {
       customerId: cart.customerId || null,
       note: cart.note || null,
       status: cart.status,
-      lines: cart.lines as any,
+      lines: cart.lines,
       subtotal: cart.subtotal,
       discountTotal: cart.discountTotal,
       taxTotal: cart.taxTotal,

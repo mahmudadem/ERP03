@@ -127,7 +127,7 @@ export class PrismaCompanyCurrencyRepository implements ICompanyCurrencyReposito
       data: {
         isEnabled: false,
         disabledAt: new Date(),
-      } as any,
+      },
     });
   }
 

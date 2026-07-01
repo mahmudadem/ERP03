@@ -18,7 +18,7 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
       (data.notificationCategoryOverrides as Record<string, boolean>) || {},
       data.createdAt,
       data.updatedAt,
-      (data.appearanceSettings as any)?.layoutMode || 'legacy',
+      (data.appearanceSettings)?.layoutMode || 'legacy',
       (data.posShortcuts as Record<string, string>) || {}
     );
   }
@@ -35,7 +35,7 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
     const existing = await this.prisma.userPreferences.findUnique({
       where: { userId },
     });
-    const existingAppearance = (existing?.appearanceSettings as any) || {};
+    const existingAppearance = ((existing?.appearanceSettings as Record<string, unknown>) || {});
 
     const updateData: any = {};
     if (prefs.language !== undefined) updateData.language = prefs.language;
@@ -57,9 +57,9 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
         layoutMode: prefs.layoutMode
       };
     }
-    if (prefs.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = prefs.disabledNotificationCategories as any;
-    if (prefs.notificationCategoryOverrides !== undefined) updateData.notificationCategoryOverrides = prefs.notificationCategoryOverrides as any;
-    if (prefs.posShortcuts !== undefined) updateData.posShortcuts = prefs.posShortcuts as any;
+    if (prefs.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = prefs.disabledNotificationCategories;
+    if (prefs.notificationCategoryOverrides !== undefined) updateData.notificationCategoryOverrides = prefs.notificationCategoryOverrides;
+    if (prefs.posShortcuts !== undefined) updateData.posShortcuts = prefs.posShortcuts;
 
     const data = await this.prisma.userPreferences.upsert({
       where: { userId },

@@ -39,7 +39,7 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
 
   async create(rule: PromotionRule, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).promotionRule.create({
+    await (client).promotionRule.create({
       data: {
         id: rule.id,
         companyId: rule.companyId,
@@ -53,9 +53,9 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
         scope: rule.scope,
         itemIds: rule.itemIds,
         categoryIds: rule.categoryIds,
-        buyXGetY: rule.buyXGetY != null ? (rule.buyXGetY as any) : undefined,
+        buyXGetY: rule.buyXGetY != null ? (rule.buyXGetY as unknown as Prisma.InputJsonValue) : undefined,
         thresholdDiscount:
-          rule.thresholdDiscount != null ? (rule.thresholdDiscount as any) : undefined,
+          rule.thresholdDiscount != null ? (rule.thresholdDiscount as unknown as Prisma.InputJsonValue) : undefined,
         createdBy: rule.createdBy,
         createdAt: rule.createdAt,
         updatedAt: rule.updatedAt,
@@ -65,7 +65,7 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
 
   async update(rule: PromotionRule, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).promotionRule.update({
+    await (client).promotionRule.update({
       where: { id: rule.id },
       data: {
         name: rule.name,
@@ -78,16 +78,16 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
         scope: rule.scope,
         itemIds: rule.itemIds,
         categoryIds: rule.categoryIds,
-        buyXGetY: rule.buyXGetY != null ? (rule.buyXGetY as any) : undefined,
+        buyXGetY: rule.buyXGetY != null ? (rule.buyXGetY as unknown as Prisma.InputJsonValue) : undefined,
         thresholdDiscount:
-          rule.thresholdDiscount != null ? (rule.thresholdDiscount as any) : undefined,
+          rule.thresholdDiscount != null ? (rule.thresholdDiscount as unknown as Prisma.InputJsonValue) : undefined,
         updatedAt: rule.updatedAt,
       },
     });
   }
 
   async getById(companyId: string, id: string): Promise<PromotionRule | null> {
-    const row = await (this.prisma as any).promotionRule.findFirst({
+    const row = await (this.prisma).promotionRule.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -103,7 +103,7 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
     }
     if (opts?.type) where.type = opts.type;
 
-    const rows = await (this.prisma as any).promotionRule.findMany({
+    const rows = await (this.prisma).promotionRule.findMany({
       where,
       orderBy: { priority: 'asc' },
       skip: opts?.offset,
@@ -113,7 +113,7 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).promotionRule.deleteMany({
+    await (this.prisma).promotionRule.deleteMany({
       where: { id, companyId },
     });
   }

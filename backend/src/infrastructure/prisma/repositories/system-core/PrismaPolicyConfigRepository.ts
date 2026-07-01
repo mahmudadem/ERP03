@@ -13,7 +13,7 @@ export class PrismaPolicyConfigRepository implements IPolicyConfigRepository {
   constructor(private readonly prisma: PrismaClient) {}
 
   async getConfig(companyId: string): Promise<PolicyConfig | null> {
-    const row = await (this.prisma as any).policyConfig.findUnique({
+    const row = await (this.prisma).policyConfig.findUnique({
       where: { companyId },
     });
     if (!row) return null;
@@ -33,14 +33,14 @@ export class PrismaPolicyConfigRepository implements IPolicyConfigRepository {
     config.updatedAt = new Date();
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
     const payload = config.toJSON();
-    await (client as any).policyConfig.upsert({
+    await (client).policyConfig.upsert({
       where: { companyId: config.companyId },
       create: {
         companyId: config.companyId,
-        rules: payload.rules as any,
+        rules: payload.rules,
       },
       update: {
-        rules: payload.rules as any,
+        rules: payload.rules,
       },
     });
   }

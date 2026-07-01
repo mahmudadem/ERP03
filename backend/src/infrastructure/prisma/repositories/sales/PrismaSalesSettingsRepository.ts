@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ISalesSettingsRepository } from '../../../../repository/interfaces/sales/ISalesSettingsRepository';
 import { SalesSettings } from '../../../../domain/sales/entities/SalesSettings';
 
@@ -14,17 +14,17 @@ export class PrismaSalesSettingsRepository implements ISalesSettingsRepository {
   }
 
   async saveSettings(settings: SalesSettings, transaction?: unknown): Promise<void> {
-    const tx = (transaction as any) || this.prisma;
+    const tx = (transaction as Prisma.TransactionClient) || this.prisma;
     await tx.salesSettings.upsert({
       where: { companyId: settings.companyId },
       create: {
         // companyId is set via the `company` relation connect below — Prisma rejects
         // the scalar FK and the relation together on create.
-        settings: settings.toJSON() as any,
+        settings: settings.toJSON(),
         company: { connect: { id: settings.companyId } },
-      } as any,
+      },
       update: {
-        settings: settings.toJSON() as any,
+        settings: settings.toJSON(),
       },
     });
   }

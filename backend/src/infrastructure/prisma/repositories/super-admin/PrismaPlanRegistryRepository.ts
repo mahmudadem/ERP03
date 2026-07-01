@@ -27,8 +27,8 @@ export class PrismaPlanRegistryRepository implements IPlanRegistryRepository {
         code: plan.id,
         name: plan.name,
         description: plan.description,
-        pricing: { price: plan.price } as any,
-        limits: plan.limits as any,
+        pricing: { price: plan.price },
+        limits: plan.limits,
         createdAt: plan.createdAt,
         updatedAt: plan.updatedAt,
       },
@@ -39,9 +39,9 @@ export class PrismaPlanRegistryRepository implements IPlanRegistryRepository {
     const updateData: any = {};
     if (plan.name !== undefined) updateData.name = plan.name;
     if (plan.description !== undefined) updateData.description = plan.description;
-    if (plan.price !== undefined) updateData.pricing = { price: plan.price } as any;
-    if (plan.limits !== undefined) updateData.limits = plan.limits as any;
-    if (plan.status !== undefined) updateData.features = { status: plan.status } as any;
+    if (plan.price !== undefined) updateData.pricing = { price: plan.price };
+    if (plan.limits !== undefined) updateData.limits = plan.limits;
+    if (plan.status !== undefined) updateData.features = { status: plan.status };
     updateData.updatedAt = new Date();
 
     await this.prisma.planRegistry.update({
@@ -57,8 +57,8 @@ export class PrismaPlanRegistryRepository implements IPlanRegistryRepository {
   }
 
   private toDomain(record: any): PlanDefinition {
-    const pricing = record.pricing as any;
-    const limits = record.limits as any;
+    const pricing = record.pricing;
+    const limits = record.limits;
     return {
       id: record.id,
       name: record.name,

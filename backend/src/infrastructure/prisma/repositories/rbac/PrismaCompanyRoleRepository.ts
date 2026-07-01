@@ -45,10 +45,10 @@ export class PrismaCompanyRoleRepository implements ICompanyRoleRepository {
         id: role.id,
         companyId: role.companyId,
         name: role.name,
-        permissions: role.permissions as any,
-        moduleBundles: (role.moduleBundles || []) as any,
-        explicitPermissions: (role.explicitPermissions || []) as any,
-        resolvedPermissions: (role.resolvedPermissions || []) as any,
+        permissions: role.permissions,
+        moduleBundles: (role.moduleBundles || []),
+        explicitPermissions: (role.explicitPermissions || []),
+        resolvedPermissions: (role.resolvedPermissions || []),
       },
     });
   }
@@ -56,10 +56,10 @@ export class PrismaCompanyRoleRepository implements ICompanyRoleRepository {
   async update(companyId: string, roleId: string, role: Partial<CompanyRole>): Promise<void> {
     const updateData: any = {};
     if (role.name !== undefined) updateData.name = role.name;
-    if (role.permissions !== undefined) updateData.permissions = role.permissions as any;
-    if (role.moduleBundles !== undefined) updateData.moduleBundles = role.moduleBundles as any;
-    if (role.explicitPermissions !== undefined) updateData.explicitPermissions = role.explicitPermissions as any;
-    if (role.resolvedPermissions !== undefined) updateData.resolvedPermissions = role.resolvedPermissions as any;
+    if (role.permissions !== undefined) updateData.permissions = role.permissions;
+    if (role.moduleBundles !== undefined) updateData.moduleBundles = role.moduleBundles;
+    if (role.explicitPermissions !== undefined) updateData.explicitPermissions = role.explicitPermissions;
+    if (role.resolvedPermissions !== undefined) updateData.resolvedPermissions = role.resolvedPermissions;
     await this.prisma.companyRole.updateMany({
       where: { id: roleId, companyId },
       data: updateData,

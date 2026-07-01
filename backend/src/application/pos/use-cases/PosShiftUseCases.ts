@@ -75,6 +75,9 @@ export class OpenPosShiftUseCase {
       updatedAt: now,
     });
 
+    // A cash movement represents an actual cash event and must be > 0. Opening a
+    // shift with a zero opening float is legitimate ("no cash counted in"), so we
+    // only record an OPENING_FLOAT movement when there is actually cash to record.
     const openingFloat = round2(input.openingFloat);
     const openingMovement = openingFloat > 0
       ? new PosCashMovement({

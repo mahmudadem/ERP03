@@ -23,7 +23,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
 
   async create(group: VendorGroup, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).vendorGroup.create({
+    await (client).vendorGroup.create({
       data: {
         id: group.id,
         companyId: group.companyId,
@@ -39,7 +39,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
 
   async update(group: VendorGroup, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
-    await (client as any).vendorGroup.update({
+    await (client).vendorGroup.update({
       where: { id: group.id },
       data: {
         name: group.name,
@@ -51,7 +51,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
   }
 
   async getById(companyId: string, id: string): Promise<VendorGroup | null> {
-    const row = await (this.prisma as any).vendorGroup.findFirst({
+    const row = await (this.prisma).vendorGroup.findFirst({
       where: { id, companyId },
     });
     if (!row) return null;
@@ -59,7 +59,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
   }
 
   async getByName(companyId: string, name: string): Promise<VendorGroup | null> {
-    const row = await (this.prisma as any).vendorGroup.findFirst({
+    const row = await (this.prisma).vendorGroup.findFirst({
       where: { companyId, name },
     });
     if (!row) return null;
@@ -74,7 +74,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
       where.status = 'ACTIVE';
     }
 
-    const rows = await (this.prisma as any).vendorGroup.findMany({
+    const rows = await (this.prisma).vendorGroup.findMany({
       where,
       orderBy: { name: 'asc' },
       skip: opts?.offset,
@@ -84,7 +84,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
   }
 
   async delete(companyId: string, id: string): Promise<void> {
-    await (this.prisma as any).vendorGroup.deleteMany({
+    await (this.prisma).vendorGroup.deleteMany({
       where: { id, companyId },
     });
   }

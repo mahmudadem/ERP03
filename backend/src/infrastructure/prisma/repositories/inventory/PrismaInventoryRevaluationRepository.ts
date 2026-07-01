@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import {
   IInventoryRevaluationRepository,
   InventoryRevaluationListOptions,
@@ -12,7 +12,7 @@ export class PrismaInventoryRevaluationRepository implements IInventoryRevaluati
   constructor(private prisma: PrismaClient) {}
 
   async createRevaluation(revaluation: InventoryRevaluation, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     await prisma.inventoryRevaluation.create({
       data: {
         id: revaluation.id,
@@ -40,7 +40,7 @@ export class PrismaInventoryRevaluationRepository implements IInventoryRevaluati
             reason: line.reason || null,
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -50,7 +50,7 @@ export class PrismaInventoryRevaluationRepository implements IInventoryRevaluati
     data: Partial<InventoryRevaluation>,
     transaction?: unknown
   ): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     const updateData: any = {};
     if (data.date !== undefined) updateData.date = new Date(data.date);
     if (data.reason !== undefined) updateData.reason = data.reason;
@@ -113,7 +113,7 @@ export class PrismaInventoryRevaluationRepository implements IInventoryRevaluati
     opts?: InventoryRevaluationListOptions
   ): Promise<InventoryRevaluation[]> {
     const records = await this.prisma.inventoryRevaluation.findMany({
-      where: { companyId, status: status as any },
+      where: { companyId, status: status },
       include: { lines: true },
       orderBy: { date: 'desc' },
       take: opts?.limit,

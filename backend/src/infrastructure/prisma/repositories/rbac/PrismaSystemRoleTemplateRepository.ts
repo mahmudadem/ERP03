@@ -37,7 +37,7 @@ export class PrismaSystemRoleTemplateRepository implements ISystemRoleTemplateRe
         code: template.id,
         name: template.name,
         description: template.description || null,
-        permissions: template.permissions as any,
+        permissions: template.permissions,
       },
     });
   }
@@ -46,7 +46,7 @@ export class PrismaSystemRoleTemplateRepository implements ISystemRoleTemplateRe
     const updateData: any = {};
     if (template.name !== undefined) updateData.name = template.name;
     if (template.description !== undefined) updateData.description = template.description;
-    if (template.permissions !== undefined) updateData.permissions = template.permissions as any;
+    if (template.permissions !== undefined) updateData.permissions = template.permissions;
     await this.prisma.systemRoleTemplate.update({
       where: { id },
       data: updateData,

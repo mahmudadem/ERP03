@@ -26,7 +26,7 @@ export class PrismaAuditLogRepository implements IAuditLogRepository {
         entityId: entry.entityId,
         userId: entry.userId,
         timestamp: entry.timestamp,
-        meta: entry.meta as any,
+        meta: entry.meta,
       },
     });
   }

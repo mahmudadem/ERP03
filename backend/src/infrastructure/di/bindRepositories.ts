@@ -1610,7 +1610,13 @@ get aiProviderRegistryUseCase(): AiProviderRegistryUseCase {
   },
 
   // REAL-TIME DISPATCHER
+  // SQL lane has no Firebase Realtime Database — use a no-op dispatcher so that
+  // awaited notification pushes don't hang the request (see NullRealtimeDispatcher).
   get realtimeDispatcher() {
+    if (DB_TYPE === 'SQL') {
+      const { NullRealtimeDispatcher } = require('../realtime/NullRealtimeDispatcher');
+      return new NullRealtimeDispatcher();
+    }
     const { FirebaseRealtimeDispatcher } = require('../realtime/FirebaseRealtimeDispatcher');
     return new FirebaseRealtimeDispatcher();
   },

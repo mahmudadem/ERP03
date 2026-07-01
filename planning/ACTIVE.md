@@ -6,27 +6,35 @@
 
 ---
 
-## ⚠️ Worktree map (read first)
+## Current task — CONVERGING TO ONE BRANCH (2026-07-01)
 
-Two worktrees, one repo. **Do not mix their roles.**
+**Decision (owner-approved):** stop the two-lane drift; collapse to a single DB-agnostic
+codebase on `main`. This SQL-readiness branch (`codex/sql-readiness-wip-20260628`) is being
+**merged up to current `main`** (which carries the production 278a–z fix queue) so that from now
+on every feature is written **once** and tested against either DB via the `DB_TYPE` toggle.
 
-| Worktree | Branch | Role |
-|---|---|---|
-| `D:\DEV2026\ERP03` | `codex/sql-readiness-wip-20260628` | **SQL-readiness lane** — Supabase / PostgreSQL continuation. |
-| `D:\DEV2026\ERP03-unified` | `codex/unified-firestore-deploy-20260628` | **Production lane** — Firebase/Firestore live fixes + deploys (this folder). |
+- The architecture already supports "one codebase, any DB" (repository interfaces + DI +
+  `DB_TYPE`). Convergence is a **branch/workflow** fix, not an architecture change.
+- The SQL-lane fixes are low-risk to Firebase: they live in Prisma-only files or behind
+  `if (DB_TYPE === 'SQL')`, so Firebase mode doesn't execute most of them.
+- Next after merge lands: one working branch off `main`; retire the `ERP03-unified` worktree;
+  resume feature work (e.g. account-balance snapshots) on the unified branch, DB-agnostically.
 
-- Production fix / retest / Firebase deploy → **`ERP03-unified`** (this folder).
-- SQL readiness / Supabase / PostgreSQL → **`ERP03`**.
-- Backups of both dirty states: `D:\DEV2026\ERP03-worktree-backups\20260629-160718`.
-- Rollback tag for this lane: `backup/unified-before-heal`.
+Backups / rollback: safety tag `backup/sql-before-main-merge-20260701` (pre-merge HEAD of the SQL
+branch); prod lane rollback tag `backup/unified-before-heal`; dirty-state backups in
+`D:\DEV2026\ERP03-worktree-backups\20260629-160718`.
+
+> 🔒 **Until the merge fully lands and is verified, keep lane discipline:** SQL/PostgreSQL work in
+> `D:\DEV2026\ERP03`; Firebase production deploys in `D:\DEV2026\ERP03-unified`. After convergence
+> this map is retired.
 
 ---
 
 ## ✅ Production — healed & LIVE (2026-06-29)
 
-The verified 503/500 storm fix (`9e5d0ac1`) was split across lanes; it is now complete in this
-production lane and **deployed live to `erp-03`** (functions + firestore indexes). Verified:
-server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md`.
+The verified 503/500 storm fix (`9e5d0ac1`) is complete in the production lane and **deployed live
+to `erp-03`** (functions + firestore indexes). Verified: server boots and serves (no more
+`503 Server not ready`). Details in `JOURNAL.md`.
 
 **Deploy how-to for this project** (no predeploy hook — build first):
 1. `cd backend && npm run build` (compiles to `lib/`; deploy uses the compiled output).
@@ -36,55 +44,76 @@ server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md
 
 ---
 
-## 🔄 Production QA fixes — Telegram export
+## 🔄 Production QA fixes — Telegram export queue (278a–z, on `main`)
 
-- **278a ledger statement indexes:** committed as `7ef1917b`; production deployment remains
-  pending until the full fix queue finishes.
-- **278b Purchase item API route:** committed as `26fa87ac`; frontend production deployment
-  remains pending until the full fix queue finishes.
-- **278c Purchase invoice query index:** committed as `a3990984`; awaiting final deployment.
-- **278d POS shift-close validation:** committed as `300eab98`; awaiting final deployment.
-- **278e Default Arabic language:** committed as `4090ccee`; awaiting final deployment.
-- **278f Account form translation:** complete; commits `e7a72724` and `798a92a4`.
-- **278g Account tree RTL controls:** complete; commits `c3d3ec33` and `12754d34`.
-- **278h Clear API error labels:** complete; commits `ccd97a81` and `75a4f6f0`.
-- **278i POS report date/time sort:** complete; commits `e52683c0` and `cbdbd133`.
-- **278j Opening Stock legacy movement warning:** complete; commits `64117d93` and `d56d5832`.
-- **278k Sales dashboard / Purchase Settings translations:** complete; commit `bfd636e0`.
-- **278l POS shift-close summary modal:** complete; commit `f4917b14`.
-- **278m POS report date range / DatePicker i18n:** complete; commit `37a2feb0`.
-- **278n Inventory Unsettled Costs report translation:** complete; commit `1ecda880`.
-- **278o Inventory Valuation report translation:** complete; commit `5b663468`.
-- **278p Inventory Stock Levels report translation:** complete; commit `a07c78d4`.
-- **278q Inventory Item Movement report translation:** complete; commit `1aee7dd8`.
-- **278r Inventory GL Reconciliation report translation:** complete; commit `9a42cfba`.
-- **278s Purchases AP Aging report translation:** complete; commit `5f47a7da`.
-- **278t Purchases Vendor Statement report translation:** complete; commit `05926af6`.
-- **278u Sales AR Aging report translation:** complete; commit `be6d76a0`.
-- **278v Sales Customer Statement report translation:** complete; commit `92a5fa22`.
-- **278w Sales/Purchases Analytics report translation:** complete; committed.
-- **278x Localized default voucher/form names:** complete; committed.
-- **278y AP Parent Account selector filter fix:** complete; committed.
-- **278z Onboarding landing RTL and translations:** complete; deployed to Vercel.\n- **Next:** TBD.
+278a ledger statement indexes (`7ef1917b`); 278b Purchase item API route (`26fa87ac`);
+278c Purchase invoice query index (`a3990984`); 278d POS shift-close validation (`300eab98`);
+278e Default Arabic language (`4090ccee`); 278f Account form translation (`e7a72724`, `798a92a4`);
+278g Account tree RTL controls (`c3d3ec33`, `12754d34`); 278h Clear API error labels
+(`ccd97a81`, `75a4f6f0`); 278i POS report date/time sort (`e52683c0`, `cbdbd133`); 278j Opening
+Stock legacy movement warning (`64117d93`, `d56d5832`); 278k Sales dashboard / Purchase Settings
+translations (`bfd636e0`); 278l POS shift-close summary modal (`f4917b14`); 278m POS report date
+range / DatePicker i18n (`37a2feb0`); 278n–278v inventory/purchases/sales report translations;
+278w–278z analytics/voucher-name/AP-selector/onboarding-RTL — all complete on `main`.
 
 ---
 
-## ⏭️ Later: collapse to ONE canonical worktree
+## 🔶 SQL-readiness — Epic 275 (remediation DONE 2026-06-30)
 
-Hold the two-lane model until production is confirmed stable under ~1 day of real use, **then**:
+> ✅ **FIXED & INDEPENDENTLY VERIFIED 2026-06-30.** All 520 write-masking `as any` casts were removed
+> from the repo layer and the 96 resulting schema↔repository type errors (41 files, every module)
+> driven to **0**. Verified this session: `npx tsc --noEmit` (whole backend) = **0 errors**;
+> `grep "as any"` in `src/infrastructure/prisma/repositories` = **0** (write- AND read-side casts gone);
+> `npm run build` clean; **25/25** integration checks + smoke (2 companies, all invariants) PASS on real
+> Postgres (5432 `erp_db`). DB already in sync with schema (`prisma db push` = no changes).
+> 107 files changed (93 repo files + schema/domain/migration/docs). Architecture doc:
+> `docs/architecture/sql-repository-layer.md`. Per-item resolution log:
+> `planning/done/275-sql-remediation-report.md`. Schema/migration:
+> `backend/prisma/migrations/20260630000000_init_schema_readiness_275/`.
+> **Runtime-verified 2026-07-01:** the exact Category-A operations that threw
+> `PrismaClientValidationError` in the UI now execute cleanly against real Postgres —
+> `scripts/sql-ui-throwers-probe.ts` = **7/7 PASS** (account.update rename, auditLog.create,
+> uomConversion findMany/create/update, inventoryPeriodSnapshot.saveSnapshot). This closes the
+> gap between "green tsc" and "queries actually run." (Two initial probe failures were bad
+> test data — FK to non-existent UOM rows — not repo bugs; fixed by using real UOM ids.)
+> ⚠️ Still UNVERIFIED beyond this: full *browser* round-trips per module (clicking through the
+> live UI), and cloud deploy.
 
-1. Land this production work to `main` (route through `main`, never merge the two dirty branches directly).
-2. Rebase the SQL-readiness branch on top of the updated `main`.
-3. Delete this `ERP03-unified` worktree/branch → single folder `D:\DEV2026\ERP03` remains.
+**Backend SQL layer = partially verified (narrow path) on real Postgres (2026-06-29 session):**
+- `scripts/sql-integration-275e.ts` → **25/25 checks PASS** (Accounting, Inventory, Sales, Purchases, RBAC, Core, POS).
+- `npm run smoke:companies` (forced SQL) → **PASS** — 2 companies created end-to-end (48-acct COA, 16 voucher types/forms, FY, balanced journal, ledger balanced).
 
-Firebase and SQL stay independent (same codebase, either DB stands alone) — reconciliation is folder
-tidy-up only, not an architecture change.
+**Why it felt "totally broken" before = environment, not code.** Root causes found + fixed:
+1. This worktree had **zero deps installed** (`npm install` was never run here — git worktrees don't share `node_modules`).
+2. Prisma client not generated.
+3. DB schema stale — needed `prisma db push` (Task 277 added `uomBarcodes` columns).
+4. One real regression fixed: `PrismaItemRepository.createItem` crashed on undefined `uomBarcodes` (commit `1ffee919`).
+5. **Env trap:** `.env` has `DB_TYPE=FIRESTORE`; SQL lives in `.env.local`, but standalone scripts load `.env` → they silently run in Firestore mode. Must force `DB_TYPE=SQL` for SQL runs.
 
-Open PR for this lane: #50 (`codex/unified-firestore-deploy-20260628` → `main`).
+**Reproducible SQL setup (run in `backend/`):**
+```bash
+npm install
+node_modules/.bin/prisma generate
+node_modules/.bin/prisma db push --skip-generate            # uses .env DATABASE_URL (5432 erp_db)
+npx ts-node --transpile-only scripts/sql-integration-275e.ts          # expect 25/25
+DB_TYPE=SQL DATABASE_URL="postgresql://postgres:root@localhost:5432/erp_db?schema=public" npm run smoke:companies
+```
+Local DB the app uses: **port 5432**, `postgres:root`, db `erp_db` (per `.env`/`.env.local`). A second Postgres on 5433 exists but is unused/leftover.
 
----
+**Running app on SQL = VERIFIED (2026-06-29, via in-process probe, now removed):** the real Express app boots in SQL mode (startup validation reads Postgres), serves `/health` (200), enforces auth (401 without a token), creates+initializes a company through the running DI (42–48 accounts, voucher types/forms, fiscal year), and an authenticated owner request `GET /tenant/accounting/accounts` returns **200 with 48 accounts** — full HTTP→auth→tenant→controller→use-case→Prisma→Postgres. (Only the Firebase token *signature* check was stubbed; it's DB-agnostic.)
 
-## 🔶 SQL-readiness — Epic 275 (paused, in the other worktree)
+**Browser end-to-end on SQL = VERIFIED (2026-06-29):** real frontend (Vite) + Firebase Auth emulator + standalone SQL backend (Express on Postgres). Logged in as `sa@test.com` → auth emulator `signInWithPassword` 200 → app routed to the Super Admin portal and rendered, with authenticated API round-trips to the SQL backend all 200 (`/auth/me/permissions`, `/user/preferences`, `/super-admin/overview`). Proves the *whole stack* works on SQL in a browser. (Setup: standalone Express backend on an alt port + the running Auth emulator, to avoid colliding with Codex's production-lane emulators on the default ports.)
 
-Lives in `D:\DEV2026\ERP03`. Awaiting owner go; not merged to `main`. See that worktree's
-`ACTIVE.md` + `planning/done/275*` for detail.
+**Known gaps (not blockers):**
+- **Frontend voucher-forms / forms-designer feature reads Firestore directly (bypasses the SQL API)** — surfaced in browser test as `Failed to load company forms: FirebaseError ... false for 'list'` during inventory setup. Non-fatal (returns `[]`), but voucher-form/designer features won't work on SQL until converted to the API. **Bounded to 5 files.** `src/api/voucherFormApi.ts` already exists to route through. Rest of frontend is API-driven (works on SQL).
+  - **Symptom confirmed (2026-06-30):** the **Accounting Init Wizard** builds its selectable voucher-type list from `voucherTypesService.loadSystemVoucherTypeGroups` (Firestore-direct) → empty in SQL → user "selects all" of an empty list → `InitializeAccountingUseCase.copyDefaultVoucherTypes` skips ("if no vouchers selected, skip copying") → company ends with **0 voucher types/forms** (sidebar empty). Workaround used: seeded companies directly via `syncCompanyVoucherTemplatesFromSystem` (16 types/forms each). **Proper fix:** add a backend endpoint exposing SYSTEM voucher types (SYSTEM company has 16: ACC 5 / SALES 5 / PURCHASE 6) + point `voucherTypesService` at it. Note: company *creation* via onboarding also leaves new companies at 0 voucher types until accounting init runs (unlike `SimpleTradingCompanyInitializer`, which seeds them).
+  - **Partial fix (2026-06-30):** `loadCompanyForms` ported to `voucherFormApi.list()` + a `VoucherFormResponse→VoucherFormConfig` mapper — **viewing company forms now works on SQL** (zxc company has 16 forms in Postgres; route `GET /tenant/accounting/voucher-forms`, owner bypasses the permission guard). **Still on Firestore (port pending):** in `voucherWizardService.ts` — `loadDefaultTemplates` (system templates), `saveVoucherForm`, `cloneVoucherForm`, `toggleFormEnabled`, `checkFormDeletable`/delete; plus `voucherTypesService.ts` (system types), both `uniquenessValidator.ts`, and `tools/forms-designer/services/documentDesignerService.ts`. These need a system-templates read endpoint + create/update/delete wiring (endpoints exist) before create/edit forms work on SQL.
+- **FIXED (2026-06-30): `company-modules.routes.ts` was hardwired to `FirestoreCompanyModuleRepository`** (ignored `DB_TYPE`). In SQL mode the module list + initialize read/wrote **Firestore**, not Postgres — so the frontend never saw SQL-initialized modules and setup wizards looped forever ("inventory wizard won't complete"; accounting init silently written to the wrong DB). Fix: use `diContainer.companyModuleRepository` (Prisma in SQL, Firestore in Firebase — correct for both lanes). Verified: `GET /company-modules/{id}` now returns all modules from Postgres with correct `initialized` flags. ⚠️ Audit other route files for the same hardwired-Firestore-repo pattern.
+- **Stale/invalid `user.activeCompanyId` breaks ALL `/tenant` calls (400 "Company Context Required")** — found 2026-06-30 while debugging a silent inventory-wizard failure. `authMiddleware` resolves company context as `headerCompanyId || storedActiveCompanyId`, but when the stored active company points to a deleted company, requests 400 instead of falling back / honoring the `x-company-id` header. Robustness bug (auth should clear or ignore an invalid stored active company). Manifested via leftover test-probe data (a user's active company pointed at a deleted company; also `CreateCompanyUseCase` sets active company but company-delete doesn't reset it). Once the pointer was valid, inventory init + all tenant reads returned 200. **Fix candidates:** in `authMiddleware`, validate the stored active company exists (else null it) and let `x-company-id` take real precedence; on company delete, null out referencing users' `activeCompanyId`.
+- **FIXED (2026-07-01): create/update controllers hung forever in SQL mode ("Securing Data…" spinner never resolves).** Root cause: `AccountController.create` (and peers) `await notificationService.notify()` *before* sending the HTTP response; `notify` → `realtimeDispatcher.pushToMany()` was **hardwired to `FirebaseRealtimeDispatcher`** regardless of `DB_TYPE`. In the SQL lane there is no Firebase Realtime DB, so `admin.database().ref().update()` blocks with no timeout — the row IS written to Postgres but the response never returns. Fix: added `NullRealtimeDispatcher` and bound it in `bindRepositories.ts` when `DB_TYPE==='SQL'` (notifications still persist via Prisma; only the RTDB push is skipped). Verified: `notify()` returns in ~150ms in SQL mode. Covers ALL notify-firing controllers at once (they resolve the dispatcher through DI). Firebase lane untouched. Found via live browser QA (account create).
+- **FIXED (2026-07-01): two more hardwired-Firebase runtime spots (the "audit other route files" follow-up above).** (1) `CompanyController.ts` instantiated `FirestoreCompanyRepository` at module load → now resolves `diContainer.companyRepository` (Prisma in SQL). (2) `SettingsController.ts` (`/accounting/policy-config` GET/PUT) read/wrote accounting policy settings straight to Firestore via `SettingsResolver`/`FieldValue` → now branches on `DB_TYPE`: SQL routes through `diContainer.accountingPolicyConfigProvider` + `companyModuleSettingsRepository` (company_module_settings, moduleId='accounting'); Firebase path byte-for-byte unchanged. Verified on SQL: getConfig + saveSettings→getSettings round-trip persists, `companyRepository`→`PrismaCompanyRepository`, backend `tsc` 0. Request-path audit for `new Firestore*`/`admin.firestore()`/`admin.database()` is now **clean** (only DB-branched Firebase else-branches remain).
+- **Super Admin overview stats return all zeros in SQL mode** (`totalUsers/totalCompanies/...` = 0 though Postgres has 3 users) — the overview aggregation isn't wired for Postgres. Minor reporting gap; the page loads fine.
+- Deleting a company that has transactions fails on `voucher_lines→accounts` RESTRICT (documented; cleanup-ordering follow-up). One stale `SMOKE-*` company left in local QA db because of this.
+- **Still UNVERIFIED:** cloud deploy (275f: Supabase + Railway/Vercel). **Not merged to `main`.** Detail: `planning/done/275*`, `planning/tasks/DEPLOYMENT-PLAN-SUPABASE.md`. Migration is captured and ready for `prisma migrate deploy`.
+
+> Browser-E2E note: `sa@test.com`'s password in the local Auth emulator was set to `password123` (the repo's `testLogin.ts` convention) during this test.

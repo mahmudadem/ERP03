@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IOpeningStockDocumentRepository, OpeningStockDocumentListOptions } from '../../../../repository/interfaces/inventory/IOpeningStockDocumentRepository';
 import { OpeningStockDocument, OpeningStockDocumentStatus } from '../../../../domain/inventory/entities/OpeningStockDocument';
 
@@ -6,7 +6,7 @@ export class PrismaOpeningStockDocumentRepository implements IOpeningStockDocume
   constructor(private prisma: PrismaClient) {}
 
   async createDocument(document: OpeningStockDocument, transaction?: unknown): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     await prisma.openingStockDocument.create({
       data: {
         id: document.id,
@@ -28,7 +28,7 @@ export class PrismaOpeningStockDocumentRepository implements IOpeningStockDocume
             notes: `${line.unitCostInMoveCurrency}|${line.fxRateMovToBase}|${line.fxRateCCYToBase}`,
           })),
         },
-      } as any,
+      },
     });
   }
 
@@ -38,7 +38,7 @@ export class PrismaOpeningStockDocumentRepository implements IOpeningStockDocume
     data: Partial<OpeningStockDocument>,
     transaction?: unknown
   ): Promise<void> {
-    const prisma = (transaction as any) || this.prisma;
+    const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
     const existing = await prisma.openingStockDocument.findUnique({
       where: { id, companyId },
       include: { lines: true },
@@ -104,7 +104,7 @@ export class PrismaOpeningStockDocumentRepository implements IOpeningStockDocume
     opts?: OpeningStockDocumentListOptions
   ): Promise<OpeningStockDocument[]> {
     const records = await this.prisma.openingStockDocument.findMany({
-      where: { companyId, status: status as any },
+      where: { companyId, status: status },
       include: { lines: true },
       orderBy: { createdAt: 'asc' },
       take: opts?.limit,
@@ -138,18 +138,18 @@ export class PrismaOpeningStockDocumentRepository implements IOpeningStockDocume
     return OpeningStockDocument.fromJSON({
       id: record.id,
       companyId: record.companyId,
-      warehouseId: record.lines?.[0]?.warehouseId || (record as any).warehouseId || '',
+      warehouseId: record.lines?.[0]?.warehouseId || (record).warehouseId || '',
       date: record.date instanceof Date ? record.date.toISOString().split('T')[0] : String(record.date).split('T')[0],
       notes: record.notes,
       lines,
       status: record.status,
-      createAccountingEffect: (record as any).createAccountingEffect ?? false,
-      openingBalanceAccountId: (record as any).openingBalanceAccountId,
-      voucherId: (record as any).voucherId,
-      totalValueBase: (record as any).totalValueBase ?? 0,
+      createAccountingEffect: (record).createAccountingEffect ?? false,
+      openingBalanceAccountId: (record).openingBalanceAccountId,
+      voucherId: (record).voucherId,
+      totalValueBase: (record).totalValueBase ?? 0,
       createdBy: record.createdBy,
       createdAt: record.createdAt,
-      postedAt: (record as any).postedAt,
+      postedAt: (record).postedAt,
     });
   }
 }

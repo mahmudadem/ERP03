@@ -16,7 +16,7 @@ export class PrismaAiSettingsRepository implements IAiSettingsRepository {
       where: { companyId },
     });
     if (!record) return null;
-    return AiProviderConfig.fromJSON(record as any);
+    return AiProviderConfig.fromJSON(record);
   }
 
   async saveConfig(config: AiProviderConfig): Promise<void> {

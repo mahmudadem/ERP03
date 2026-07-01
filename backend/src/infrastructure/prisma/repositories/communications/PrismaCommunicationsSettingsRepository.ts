@@ -6,7 +6,7 @@ export class PrismaCommunicationsSettingsRepository implements ICommunicationsSe
   constructor(private readonly prisma: PrismaClient) {}
 
   async getSettings(companyId: string): Promise<CommunicationsSettings | null> {
-    const row = await (this.prisma as any).communicationsSettings.findUnique({
+    const row = await (this.prisma).communicationsSettings.findUnique({
       where: { companyId },
     });
     if (!row) return null;
@@ -19,14 +19,14 @@ export class PrismaCommunicationsSettingsRepository implements ICommunicationsSe
   async saveSettings(settings: CommunicationsSettings, transaction?: unknown): Promise<void> {
     const client = (transaction as Prisma.TransactionClient) ?? this.prisma;
     const payload = settings.toJSON();
-    await (client as any).communicationsSettings.upsert({
+    await (client).communicationsSettings.upsert({
       where: { companyId: settings.companyId },
       create: {
         companyId: settings.companyId,
-        messagingAccounts: payload.messagingAccounts as any,
+        messagingAccounts: payload.messagingAccounts as unknown as Prisma.InputJsonValue,
       },
       update: {
-        messagingAccounts: payload.messagingAccounts as any,
+        messagingAccounts: payload.messagingAccounts as unknown as Prisma.InputJsonValue,
       },
     });
   }

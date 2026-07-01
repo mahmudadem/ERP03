@@ -298,22 +298,22 @@ export default function AccountsListPage() {
     }
 
     return (
-        <div className="p-6">
+        <div className="p-6" dir={isRtl ? 'rtl' : 'ltr'}>
             <div className="bg-white border border-gray-200 rounded-lg shadow-sm overflow-hidden">
                 <div className="px-5 py-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div className="relative w-full md:w-96">
-                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                         <input
                             type="text"
                             placeholder={t('accountsList.searchPlaceholder', { defaultValue: 'Search by accounts code or name...' })}
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="w-full pl-9 pr-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
+                            className="w-full ps-9 pe-4 py-2 bg-gray-50 border border-gray-200 rounded-md text-sm text-start focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white transition-all"
                         />
                         {searchQuery && (
                             <button 
                                 onClick={() => setSearchQuery('')}
-                                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                                className="absolute end-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                             >
                                 &times;
                             </button>
@@ -375,7 +375,7 @@ export default function AccountsListPage() {
                 </div>
 
                 <div className="grid grid-cols-12 px-6 py-3 border-t border-b border-gray-100 bg-gray-50/50">
-                    <div className="col-span-8 text-[10px] font-bold text-gray-500 uppercase tracking-widest">
+                    <div className="col-span-8 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-start">
                         {t('accountsList.columns.accountCodeName', { defaultValue: 'Account Code & Name' })}
                     </div>
                     <div className="col-span-2 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">
@@ -384,33 +384,32 @@ export default function AccountsListPage() {
                     <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-center">
                         {t('accountsList.columns.currency', { defaultValue: 'CCY' })}
                     </div>
-                    <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-right">
+                    <div className="col-span-1 text-[10px] font-bold text-gray-500 uppercase tracking-widest text-end">
                         {t('accountsList.columns.balance', { defaultValue: 'Balance' })} SYP
                     </div>
                 </div>
 
-                <div className="divide-y divide-gray-50 max-h-[calc(100vh-250px)] overflow-y-auto pb-4">
+                <div className="divide-y divide-gray-100 max-h-[calc(100vh-250px)] overflow-y-auto pb-4">
                     {flatAccounts.map((account) => {
                         const isHeader = account.accountRole === 'HEADER';
                         const hasChildren = account.children?.length > 0;
                         const canExpand = isHeader || hasChildren;
                         const isExpanded = !collapsedIds.has(account.id);
-                        const paddingLeft = account.level * 32;
 
                         return (
                             <div 
                                 key={account.id} 
-                                className="group grid grid-cols-12 items-stretch px-6 hover:bg-gray-50/80 transition-all cursor-pointer min-h-[44px]"
+                                className="group grid grid-cols-12 items-stretch px-6 hover:bg-slate-50/90 transition-colors cursor-pointer min-h-[44px]"
                                 onClick={() => setDrilldownAccount(account)}
                             >
-                                <div className="col-span-8 flex items-stretch flex-1">
+                                <div className={`col-span-8 flex items-stretch flex-1 min-w-0 ${isRtl ? 'flex-row-reverse justify-end' : ''}`}>
                                     {/* Ancestor tree lines */}
                                     {Array.from({ length: account.level }).map((_, i) => {
                                         const showVertical = account.isLastPath && !account.isLastPath[i];
                                         return (
-                                            <div key={i} className="w-8 flex-shrink-0 relative">
+                                            <div key={i} className="w-7 flex-shrink-0 relative">
                                                 {showVertical && (
-                                                    <div className="absolute top-0 bottom-0 start-1/2 border-s border-gray-300" />
+                                                    <div className="absolute top-0 bottom-0 start-1/2 border-s border-slate-300/80" />
                                                 )}
                                             </div>
                                         );
@@ -421,11 +420,11 @@ export default function AccountsListPage() {
                                         {account.level > 0 && (
                                             <>
                                                 {/* Curved elbow connecting from parent */}
-                                                <div className="absolute top-0 start-1/2 w-[calc(50%+4px)] h-1/2 border-s border-b border-gray-300 rounded-es-lg" />
+                                                <div className="absolute top-0 start-1/2 w-[calc(50%+4px)] h-1/2 border-s border-b border-slate-300/80 rounded-es-lg" />
                                                 
                                                 {/* Line continuing downwards to next sibling */}
                                                 {account.isLastPath && !account.isLastPath[account.level] && (
-                                                    <div className="absolute top-1/2 bottom-0 start-1/2 border-s border-gray-300" />
+                                                    <div className="absolute top-1/2 bottom-0 start-1/2 border-s border-slate-300/80" />
                                                 )}
                                             </>
                                         )}
@@ -458,8 +457,8 @@ export default function AccountsListPage() {
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-3 py-2.5 ms-2">
-                                        <span className="font-mono text-xs text-gray-400 w-12 flex-shrink-0 tracking-tight text-right rtl:text-left">
+                                    <div className={`flex items-center gap-3 py-2.5 min-w-0 ${isRtl ? 'me-2 flex-row-reverse text-right' : 'ms-2 text-left'}`}>
+                                        <span className="font-mono text-xs text-gray-400 w-14 flex-shrink-0 tracking-tight text-end">
                                             {account.userCode}
                                         </span>
                                         {isHeader ? (
@@ -471,11 +470,11 @@ export default function AccountsListPage() {
                                         ) : (
                                             <FileText className="w-4 h-4 text-emerald-500" />
                                         )}
-                                        <span className={`text-sm tracking-tight ${isHeader ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
+                                        <span className={`truncate text-sm tracking-tight ${isHeader ? 'font-bold text-gray-900' : 'font-semibold text-gray-700'}`}>
                                             {account.name}
                                         </span>
                                         
-                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity space-x-1 ml-2">
+                                        <div className="flex items-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 ms-2">
                                             <button
                                                 onClick={(e) => {
                                                     e.stopPropagation();
@@ -552,7 +551,7 @@ export default function AccountsListPage() {
                                     </span>
                                 </div>
 
-                                <div className="col-span-1 text-right flex items-center justify-end py-2.5">
+                                <div className="col-span-1 text-end flex items-center justify-end py-2.5">
                                     <span className="text-sm font-bold text-gray-700">
                                         -
                                     </span>
