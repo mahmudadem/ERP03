@@ -11,6 +11,62 @@ export interface SystemOverview {
   totalRoles: number;
 }
 
+export type DiagnosticStatus = 'ok' | 'warn' | 'error';
+
+export interface DeploymentDiagnosticCheck {
+  status: DiagnosticStatus;
+  label: string;
+  detail?: string;
+  latencyMs?: number;
+}
+
+export interface DeploymentDiagnostics {
+  generatedAt: string;
+  overallStatus: DiagnosticStatus;
+  checks: DeploymentDiagnosticCheck[];
+  backend: {
+    service: string;
+    revision: string | null;
+    region: string | null;
+    nodeEnv: string;
+    nodeVersion: string;
+    uptimeSeconds: number;
+    memoryMb: {
+      rss: number;
+      heapUsed: number;
+      heapTotal: number;
+    };
+  };
+  database: {
+    type: string;
+    connection: DiagnosticStatus;
+  };
+  auth: {
+    provider: string;
+    requestAuthenticated: boolean;
+    superAdminGuard: boolean;
+    actorUid: string | null;
+    connection: DiagnosticStatus;
+  };
+  firebase: {
+    projectId: string;
+    adminApps: number;
+    firestoreEmulator: boolean;
+    authEmulator: boolean;
+    databaseEmulator: boolean;
+    storageBucketConfigured: boolean;
+    databaseUrlConfigured: boolean;
+  };
+  deployment: {
+    projectId: string;
+    cloudRunService: string | null;
+    cloudRunRevision: string | null;
+    functionTarget: string | null;
+    commit: string | null;
+    secretsRedacted: boolean;
+  };
+}
+
 export interface SuperAdminUser {
   id: string;
   email: string;
@@ -449,6 +505,9 @@ export const superAdminApi = {
   // System Overview
   getSystemOverview: (): Promise<SystemOverview> => 
     client.get('/super-admin/overview'),
+
+  getDeploymentDiagnostics: (): Promise<DeploymentDiagnostics> =>
+    client.get('/super-admin/deployment-diagnostics'),
 
   // User Management
   getAllUsers: (): Promise<SuperAdminUser[]> => 

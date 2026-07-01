@@ -119,6 +119,7 @@ const AiApiKeysPage = lazy(() => import('../modules/super-admin/pages/AiApiKeysP
 const AiProposalPolicyPage = lazy(() => import('../modules/super-admin/pages/AiProposalPolicyPage').then(m => ({ default: m.AiProposalPolicyPage })));
 const SuperAdminAppearancePage = lazy(() => import('../modules/super-admin/pages/SuperAdminAppearancePage'));
 const SystemFormDesignerPage = lazy(() => import('../modules/super-admin/pages/SystemFormDesignerPage').then(m => ({ default: m.default })));
+const DeploymentDiagnosticsPage = lazy(() => import('../modules/super-admin/pages/DeploymentDiagnosticsPage'));
 
 // Company Wizard (user-level)
 const SelectModelPage = lazy(() => import('../modules/company-wizard/pages/SelectModelPage'));
@@ -328,6 +329,7 @@ export const routesConfig: AppRoute[] = [
 
   // RBAC
   { path: '/super-admin/overview', label: 'System Overview', component: SystemOverviewPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
+  { path: '/super-admin/deployment-diagnostics', label: 'Deployment Diagnostics', component: DeploymentDiagnosticsPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/users', label: 'Users Management', component: SuperAdminUsersManagementPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/companies', label: 'All Companies', component: CompaniesListPage, section: 'SUPER_ADMIN', requiredGlobalRole: 'SUPER_ADMIN' },
   { path: '/super-admin/companies/:companyId/entitlements', label: 'Company Modules', component: lazy(() => import('../modules/super-admin/pages/CompanyEntitlementsPage')), section: 'SUPER_ADMIN', hideInMenu: true, requiredGlobalRole: 'SUPER_ADMIN' },

@@ -2,6 +2,16 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-02 (Deploy Deployment Diagnostics to production)
+
+- **Goal:** Deploy the Super Admin deployment diagnostics page so the owner can verify production state from inside the app.
+- **Branch/worktree:** `D:\DEV2026\ERP03-vercel-fix` on `codex/deployment-diagnostics-page`.
+- **Deployed:** Firebase Functions to project `erp-03` and Vercel production frontend aliased to `https://erp-03.vercel.app`.
+- **Verification:** backend `npm run build` passed; frontend `npm run build` passed; live frontend returned `200`; live backend health returned `ok`; unauthenticated diagnostics endpoint returned `401`, confirming the route is live and protected.
+- **Accounting/ERP impact:** operational visibility only. No posting, voucher, tax, inventory valuation, AR/AP, approval, tenant transaction, or ledger behavior changed.
+- **Important note:** production was deployed from the local diagnostics branch before commit. Next step is owner logged-in verification, then commit/merge so production is backed by git history.
+- **Actual time:** ~0.4h for deploy and live verification.
+
 ### Session: 2026-07-01 (Reconcile Firebase production fixes onto SQL-converged main)
 
 - **Goal:** Stop the Firebase/SQL lane split by bringing post-main production fixes from
@@ -5743,6 +5753,17 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - **Accounting/ERP impact:** None. Centralized item logic.
 - **Time spent:** ~1h.
 - **Next:** Waiting for user instruction.
+
+# 2026-07-02 — Task 280 deployment diagnostics page
+
+- Goal: add a production page where the owner can see safe deployment/runtime status from inside ERP03.
+- Implemented a Super Admin-only endpoint `GET /super-admin/deployment-diagnostics` behind the existing `authMiddleware` + `assertSuperAdmin` guard.
+- Added lightweight live checks for Firebase Auth, configured DB backend (`DB_TYPE=SQL` via Prisma `SELECT 1`, otherwise Firestore Admin SDK), and Firebase Admin initialization.
+- Added `/super-admin/deployment-diagnostics` in the Super Admin shell with frontend host/API/Firebase/build metadata, backend runtime info, DB/auth/Firebase status cards, and localized EN/AR/TR text.
+- Security decision: no secrets, service-account details, raw env dumps, tokens, API keys, or database URLs are exposed.
+- Accounting impact: none; read-only operations/diagnostics only.
+- Verification: backend build passed; frontend typecheck passed; EN/AR/TR common locale JSON parse passed; frontend production build passed.
+- Time spent so far: ~1.4h. Next: owner approval to commit and deploy, then live production verification.
 
 ### 2026-06-27: Finalized POS Fixes and Tests
 - Completed layout restructure cleanly on branch codex/pos-terminal-layout.

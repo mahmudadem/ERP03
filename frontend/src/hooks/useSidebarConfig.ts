@@ -199,6 +199,25 @@ export const useSidebarConfig = () => {
     'Reprint Audit': 'sidebar.posReprintAudit',
     'Tax Codes': 'sidebar.taxCodes',
     'Print Layout Designer': 'sidebar.printLayoutDesigner',
+    'System Overview': 'sidebar.systemOverview',
+    'Deployment Diagnostics': 'sidebar.deploymentDiagnostics',
+    'Appearance Lab': 'sidebar.appearanceLab',
+    'System Forms': 'sidebar.systemForms',
+    'Voucher Templates': 'sidebar.voucherTemplates',
+    'Field Library': 'sidebar.fieldLibrary',
+    'All Companies': 'sidebar.allCompanies',
+    'Business Domains': 'sidebar.businessDomains',
+    Plans: 'sidebar.plans',
+    'Users Management': 'sidebar.usersManagement',
+    'Modules Registry': 'sidebar.modulesRegistry',
+    'Permissions Registry': 'sidebar.permissionsRegistry',
+    Configuration: 'sidebar.configuration',
+    Providers: 'sidebar.providers',
+    'Model Profiles': 'sidebar.modelProfiles',
+    'Runtime Profiles': 'sidebar.runtimeProfiles',
+    Governance: 'sidebar.governance',
+    'Tool Catalog': 'sidebar.toolCatalog',
+    'Proposal Policies': 'sidebar.proposalPolicies',
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });
@@ -391,6 +410,7 @@ export const useSidebarConfig = () => {
           icon: 'Settings',
           items: [
             { label: translateLabel('System Overview'), path: '/super-admin/overview' },
+            { label: translateLabel('Deployment Diagnostics'), path: '/super-admin/deployment-diagnostics' },
             { label: translateLabel('Appearance Lab'), path: '/super-admin/appearance' },
             { label: translateLabel('System Forms'), path: '/super-admin/system-forms' },
             { label: translateLabel('Voucher Templates'), path: '/super-admin/voucher-templates' },

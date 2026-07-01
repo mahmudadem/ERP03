@@ -10,6 +10,7 @@ import { BundleRegistryController } from '../controllers/super-admin/BundleRegis
 import { PlanRegistryController } from '../controllers/super-admin/PlanRegistryController';
 import { RoleTemplateRegistryController } from '../controllers/super-admin/RoleTemplateRegistryController';
 import { SuperAdminEntitlementsController } from '../controllers/super-admin/SuperAdminEntitlementsController';
+import { DeploymentDiagnosticsController } from '../controllers/super-admin/DeploymentDiagnosticsController';
 import { authMiddleware } from '../middlewares/authMiddleware';
 import { assertSuperAdmin } from '../middlewares/assertSuperAdmin';
 
@@ -41,6 +42,7 @@ router.delete('/companies/:companyId/entitlements/modules/:moduleKey', SuperAdmi
 
 // System overview
 router.get('/overview', SuperAdminController.getSystemOverview);
+router.get('/deployment-diagnostics', DeploymentDiagnosticsController.getDiagnostics);
 
 // Permission Registry
 router.get('/permissions', PermissionRegistryController.list);

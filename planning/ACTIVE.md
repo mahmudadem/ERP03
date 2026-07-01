@@ -6,6 +6,28 @@
 
 ---
 
+## Current task — Deployment Diagnostics page (Task 280, 2026-07-02)
+
+**Goal:** add a production-safe Super Admin page that shows frontend/backend deployment metadata,
+database mode, DB health, Firebase/Auth health, and safe runtime status without exposing secrets.
+
+**Status:** deployed to production from branch `codex/deployment-diagnostics-page` on 2026-07-02.
+Pending owner logged-in verification of `/super-admin/deployment-diagnostics`.
+
+**Verification passed:**
+- `backend`: `npm run build`
+- `frontend`: `npm run typecheck`
+- `frontend`: `npm run build`
+- EN/AR/TR `common.json` parse check
+- Firebase Functions production deploy to `erp-03` passed.
+- Vercel production deploy passed and aliased to `https://erp-03.vercel.app`.
+- Live checks passed: frontend `200`, backend health `ok`, diagnostics endpoint returns `401` without auth.
+
+**Next:** owner logs in as Super Admin and verifies the live diagnostics page. Then commit/merge this
+branch so production is backed by git history.
+
+---
+
 ## Current task — CONVERGENCE MERGED ✅; finishing "SQL alone entirely" (2026-07-01)
 
 **DONE:** convergence landed on `main` via **PR #54** (merge commit `0c6f0ebc`). One DB-agnostic
