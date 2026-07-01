@@ -28,26 +28,39 @@ export class SettingsController {
       // Permission check would go here in production
       // await permissionChecker.assertOrThrow(userId, companyId, 'accounting.settings.read');
 
-      const { FirestoreAccountingPolicyConfigProvider } = await import('../../../infrastructure/accounting/config/FirestoreAccountingPolicyConfigProvider');
-      
-      const db = admin.firestore();
-      const settingsResolver = new SettingsResolver(db);
-      const provider = new FirestoreAccountingPolicyConfigProvider(settingsResolver);
-      
-      const config = await provider.getConfig(companyId);
+      let config;
+      let metadata: any = {};
 
-      // 1. Resolve Base Currency from Shared Currencies (Tier 2)
+      if ((process.env.DB_TYPE || 'FIRESTORE').toUpperCase() === 'SQL') {
+        // SQL lane: read through DI (Prisma provider + company_module_settings).
+        // The Firestore-hardwired path below only works against Firestore.
+        config = await diContainer.accountingPolicyConfigProvider.getConfig(companyId);
+        const existing = await diContainer.companyModuleSettingsRepository.getSettings(companyId, 'accounting');
+        if (existing) {
+          metadata = { updatedAt: (existing as any).updatedAt, updatedBy: (existing as any).updatedBy };
+        }
+      } else {
+        const { FirestoreAccountingPolicyConfigProvider } = await import('../../../infrastructure/accounting/config/FirestoreAccountingPolicyConfigProvider');
+
+        const db = admin.firestore();
+        const settingsResolver = new SettingsResolver(db);
+        const provider = new FirestoreAccountingPolicyConfigProvider(settingsResolver);
+
+        config = await provider.getConfig(companyId);
+
+        // Get metadata (updatedAt, updatedBy) if available
+        const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
+        const settingsDoc = await settingsRef.get();
+
+        metadata = settingsDoc.exists ? {
+          updatedAt: settingsDoc.data()?.updatedAt,
+          updatedBy: settingsDoc.data()?.updatedBy
+        } : {};
+      }
+
+      // Resolve Base Currency from Shared Currencies (Tier 2) — DB-aware repo
       const currencies = await diContainer.companyCurrencyRepository.findEnabledByCompany(companyId);
       const baseCurrency = currencies.find(c => c.isBase)?.currencyCode;
-
-      // 2. Get metadata (updatedAt, updatedBy) if available
-      const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
-      const settingsDoc = await settingsRef.get();
-
-      const metadata = settingsDoc.exists ? {
-        updatedAt: settingsDoc.data()?.updatedAt,
-        updatedBy: settingsDoc.data()?.updatedBy
-      } : {};
 
       res.json({
         success: true,
@@ -102,9 +115,6 @@ export class SettingsController {
         });
       }
 
-      const db = admin.firestore();
-      const settingsResolver = new SettingsResolver(db);
-
       // Build update payload
       const updateData: any = {
         // ... (preserving payload building logic)
@@ -145,18 +155,33 @@ export class SettingsController {
         updateData.paymentMethods = req.body.paymentMethods;
       }
 
-      // Update Firestore
-      const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
-      console.log('[SettingsController] Saving to path:', settingsRef.path);
-      
-      // CLEANUP: Explicitly remove baseCurrency if it's trapped in this tier
-      // We use FieldValue.delete() to ensure it's gone from the document
-      await settingsRef.update({
-        ...updateData,
-        baseCurrency: FieldValue.delete()
-      });
-      
-      console.log('[SettingsController] Save and cleanup successful');
+      if ((process.env.DB_TYPE || 'FIRESTORE').toUpperCase() === 'SQL') {
+        // SQL lane: persist through DI (company_module_settings, moduleId='accounting').
+        // Merge onto existing settings to preserve keys we don't touch (mirrors the
+        // Firestore partial .update()), then strip baseCurrency (it lives in the
+        // shared-currency tier, not here).
+        const existing = (await diContainer.companyModuleSettingsRepository.getSettings(companyId, 'accounting')) || {};
+        const merged: any = { ...existing, ...updateData };
+        delete merged.baseCurrency;
+        await diContainer.companyModuleSettingsRepository.saveSettings(companyId, 'accounting', merged, userId);
+        console.log('[SettingsController] Save successful (SQL)');
+      } else {
+        const db = admin.firestore();
+        const settingsResolver = new SettingsResolver(db);
+
+        // Update Firestore
+        const settingsRef = settingsResolver.getAccountingSettingsRef(companyId);
+        console.log('[SettingsController] Saving to path:', settingsRef.path);
+
+        // CLEANUP: Explicitly remove baseCurrency if it's trapped in this tier
+        // We use FieldValue.delete() to ensure it's gone from the document
+        await settingsRef.update({
+          ...updateData,
+          baseCurrency: FieldValue.delete()
+        });
+
+        console.log('[SettingsController] Save and cleanup successful');
+      }
 
       res.json({
         success: true,
