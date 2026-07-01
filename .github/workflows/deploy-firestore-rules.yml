@@ -1,0 +1,39 @@
+name: Deploy Firestore Rules
+
+# Manual, network-independent deploy of Firestore security rules from a
+# GitHub runner. Use this whenever a local `firebase deploy --only
+# firestore:rules` is blocked (e.g. DNS cannot resolve
+# firebaserules.googleapis.com). Runs against erp-03.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: Git ref (branch/tag/sha) whose firestore.rules to deploy
+        required: false
+        default: main
+
+jobs:
+  deploy-rules:
+    name: Deploy firestore.rules → erp-03
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.ref }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # Auth: a Firebase CI token stored as the FIREBASE_TOKEN repo secret.
+      # Generate locally with: npx firebase-tools login:ci
+      - name: Deploy Firestore rules
+        env:
+          FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
+        run: >-
+          npx -y firebase-tools deploy
+          --only firestore:rules
+          --project erp-03
+          --non-interactive
+          --force
