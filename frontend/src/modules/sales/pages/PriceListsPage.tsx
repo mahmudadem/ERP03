@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { CurrencySelector } from '../../accounting/components/shared/CurrencySelector';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -335,6 +336,7 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
 // ─── List Page ────────────────────────────────────────────────────────────────
 
 const PriceListsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -387,15 +389,15 @@ const PriceListsPage: React.FC = () => {
               <Tag size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Price Lists</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Pricing Rules & Item Schedules</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t('salesAdminLists.priceLists.title')}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t('salesAdminLists.priceLists.subtitle')}</p>
             </div>
           </div>
           <button
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
           >
-            <Plus size={16} /> New Price List
+            <Plus size={16} /> {t('salesAdminLists.priceLists.new')}
           </button>
         </div>
       </div>
@@ -405,7 +407,7 @@ const PriceListsPage: React.FC = () => {
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                <Search size={14} /> Price List Directory
+                <Search size={14} /> {t('salesAdminLists.priceLists.directory')}
               </div>
               {loading && <div className="text-[10px] text-emerald-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
             </div>
@@ -417,8 +419,8 @@ const PriceListsPage: React.FC = () => {
                     <Tag size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Price Lists Found</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Create your first price list by clicking the button above.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t('salesAdminLists.priceLists.emptyTitle')}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t('salesAdminLists.priceLists.emptyDescription')}</p>
                   </div>
                 </div>
               ) : (

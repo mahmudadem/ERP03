@@ -68,8 +68,24 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
   onClose,
   instructions,
 }) => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation(['accounting', 'common']);
   if (!isOpen) return null;
+
+  const dir = i18n.dir();
+  const pageKey = `instructions.pages.${instructions.pageId}`;
+  const sections = instructions.sections.map((section, idx) => ({
+    ...section,
+    title: t(`${pageKey}.sections.${idx}.title`, { ns: 'accounting', defaultValue: section.title }),
+    content: t(`${pageKey}.sections.${idx}.content`, { ns: 'accounting', defaultValue: section.content }),
+    warning: section.warning
+      ? t(`${pageKey}.sections.${idx}.warning`, { ns: 'accounting', defaultValue: section.warning })
+      : undefined,
+    tip: section.tip
+      ? t(`${pageKey}.sections.${idx}.tip`, { ns: 'accounting', defaultValue: section.tip })
+      : undefined,
+  }));
+  const localizedTitle = t(`${pageKey}.title`, { ns: 'accounting', defaultValue: instructions.title });
+  const localizedOverview = t(`${pageKey}.overview`, { ns: 'accounting', defaultValue: instructions.overview });
 
   return (
     <>
@@ -80,19 +96,22 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
       />
       
       {/* Slide-over Panel */}
-      <div className="fixed inset-y-0 right-0 w-full max-w-lg bg-white dark:bg-[var(--color-bg-secondary)] shadow-2xl z-50 overflow-hidden flex flex-col">
+      <div
+        dir={dir}
+        className={`fixed inset-y-0 ${dir === 'rtl' ? 'left-0' : 'right-0'} w-full max-w-lg bg-white dark:bg-[var(--color-bg-secondary)] shadow-2xl z-50 overflow-hidden flex flex-col`}
+      >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-[var(--color-border)] bg-gradient-to-r from-indigo-50 to-white dark:from-indigo-900/20 dark:to-[var(--color-bg-secondary)]">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
               <HelpCircle className="w-5 h-5 text-indigo-600 dark:text-indigo-400" />
             </div>
-            <h2 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{instructions.title}</h2>
+            <h2 className="text-lg font-bold text-gray-900 dark:text-[var(--color-text-primary)]">{localizedTitle}</h2>
           </div>
           <button
             onClick={onClose}
             className="p-2 hover:bg-gray-100 dark:hover:bg-[var(--color-bg-tertiary)] rounded-lg transition-colors"
-            aria-label={t('actions.close', { defaultValue: 'Close' })}
+            aria-label={t('actions.close', { ns: 'common', defaultValue: 'Close' })}
           >
             <X className="w-5 h-5 text-gray-500 dark:text-[var(--color-text-muted)]" />
           </button>
@@ -102,11 +121,11 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
         <div className="flex-1 overflow-y-auto px-6 py-5">
           {/* Overview */}
           <p className="text-gray-600 dark:text-[var(--color-text-secondary)] mb-6 pb-4 border-b border-gray-100 dark:border-[var(--color-border)]">
-            {instructions.overview}
+            {localizedOverview}
           </p>
 
           {/* Sections */}
-          {instructions.sections.map((section, idx) => (
+          {sections.map((section, idx) => (
             <div key={idx} className="mb-6">
               <h3 className="text-base font-bold text-gray-900 dark:text-[var(--color-text-primary)] mb-3 flex items-center gap-2">
                 <span className="w-6 h-6 bg-indigo-100 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-400 rounded-full flex items-center justify-center text-xs font-bold">
@@ -142,7 +161,7 @@ export const InstructionsModal: React.FC<InstructionsModalProps> = ({
         {instructions.footerWarnings && instructions.footerWarnings.length > 0 && (
           <div className="px-6 py-4 bg-gray-50 dark:bg-[var(--color-bg-primary)] border-t border-gray-200 dark:border-[var(--color-border)]">
             <p className="text-xs font-semibold text-gray-500 dark:text-[var(--color-text-muted)] uppercase tracking-wider mb-2">
-              {t('instructions.importantNotes', { defaultValue: 'Important Notes' })}
+              {t('instructions.importantNotes', { ns: 'accounting', defaultValue: 'Important Notes' })}
             </p>
             <ul className="space-y-1">
               {instructions.footerWarnings.map((warning, idx) => (

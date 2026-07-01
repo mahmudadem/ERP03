@@ -20,18 +20,65 @@
     "labels": {
       "draftReceiptPostingWillUpdateInventoryReceiptStateThroughTheExistingPurchaseFlow": "Draft receipt. Posting will update inventory receipt state through the existing purchase flow.",
       "item": "Item",
+      "lineItems": "Line Items",
       "lines": "Lines",
+      "addItem": "Add Item",
+      "backToGoodsReceipts": "Back to goods receipts",
+      "cancelEdit": "Cancel edit",
+      "cannotUnpostLinkedPi": "Cannot unpost because this GRN is linked to a PI",
+      "createDraftGrn": "Create Draft GRN",
+      "editGoodsReceipt": "Edit {{number}}",
+      "loadPoLines": "Load PO Lines",
       "newGoodsReceipt": "New Goods Receipt",
+      "poReference": "PO Reference",
+      "postGrn": "Post GRN",
+      "posting": "Posting...",
       "purchaseOrder": "Purchase Order",
       "receiptDate": "Receipt Date",
       "received": "Received",
       "receivedQty": "Received Qty",
       "sourcePOLinesCanBeLoadedIntoThisReceipt": "Source PO lines can be loaded into this receipt.",
+      "unpostGrn": "Unpost GRN",
+      "unposting": "Unposting...",
+      "updateDraft": "Update Draft",
       "uOM": "UOM",
       "vendor": "Vendor",
+      "vendorStandaloneOnly": "Vendor (standalone only)",
+      "viewSubtitle": "Vendor: {{vendor}}{{poPart}}",
+      "viewSubtitlePoPart": " | PO: {{po}}",
       "warehouse": "Warehouse"
     },
-    "title": "Unpost Goods Receipt"
+    "errors": {
+      "loadFailed": "Failed to load goods receipt.",
+      "loadPoLinesFailed": "Failed to load lines from PO.",
+      "noOpenStockLines": "No open stock lines found on this PO.",
+      "poReferenceRequired": "Please enter a PO reference first.",
+      "postFailed": "Failed to post goods receipt.",
+      "saveDraftFailed": "Failed to save draft GRN.",
+      "unpostFailed": "Failed to unpost goods receipt."
+    },
+    "rail": {
+      "direct": "Direct",
+      "documentStatus": "Document Status",
+      "info": "Info",
+      "po": "PO",
+      "title": "Goods receipt side rail",
+      "totals": "Totals"
+    },
+    "subtitle": "Warehouse receiving document. Posting records received stock through the existing Purchases flow.",
+    "title": "Goods Receipt",
+    "unpost": {
+      "confirmTitle": "Unpost Goods Receipt",
+      "confirmMessage": "This will reverse all inventory movements recorded for this goods receipt. The action is auditable but cannot be undone in place. Continue?"
+    },
+    "validation": {
+      "directLinesRequired": "At least one line is required for direct goods receipts.",
+      "lineItemRequired": "Line {{lineNum}}: item is required.",
+      "lineReceivedQtyPositive": "Line {{lineNum}}: received quantity must be greater than 0.",
+      "receiptDateRequired": "Receipt date is required.",
+      "vendorRequiredWithoutPo": "Vendor is required when PO is not provided.",
+      "warehouseRequired": "Warehouse is required."
+    }
   },
   "goodsReceiptsList": {
     "emptyMessage": "No goods receipts found.",
@@ -45,6 +92,9 @@
     },
     "newButton": "New GRN",
     "title": "Goods Receipts",
+    "errors": {
+      "loadFailed": "Failed to load goods receipts."
+    },
     "filters": {
       "statusPlaceholder": "Status",
       "clear": "Clear"
@@ -336,6 +386,9 @@
     },
     "emptyDescription": "Create a new vendor invoice or adjust the filters to find existing invoices.",
     "emptyTitle": "No purchase invoices found",
+    "errors": {
+      "loadFailed": "Failed to load purchase invoices."
+    },
     "filters": {
       "allTypes": "Type",
       "apply": "Apply",
@@ -481,6 +534,7 @@
       "created": "Purchase price list created",
       "deleteFailed": "Failed to delete price list",
       "deleted": "Price list deleted successfully",
+      "loadFailed": "Failed to load purchase price lists",
       "saveFailed": "Save failed",
       "updated": "Purchase price list updated"
     },
@@ -494,6 +548,15 @@
     "validation": {
       "nameRequired": "Price list name is required."
     },
+    "table": {
+      "item": "Item",
+      "minQty": "Min Qty",
+      "unitPrice": "Unit Price",
+      "discountPct": "Discount %",
+      "comment": "Comment"
+    },
+    "validFromShort": "from",
+    "validToShort": "to",
     "vendorFieldLabel": "Default Price List"
   },
   "pricing": {
@@ -507,6 +570,9 @@
   },
   "purchaseOrdersList": {
     "emptyMessage": "No purchase orders found.",
+    "errors": {
+      "loadFailed": "Failed to load purchase orders."
+    },
     "labels": {
       "confirmedAt": "Confirmed At",
       "createdBy": "Created By",
@@ -556,26 +622,87 @@
     }
   },
   "returnDetail": {
+    "addItem": "Add Item",
+    "available": "Available",
+    "backToPurchaseReturns": "Back to purchase returns",
+    "cancelEdit": "Cancel edit",
+    "createDraftReturn": "Create Draft Return",
+    "creating": "Creating...",
+    "discount": "Discount",
+    "discountType": "Discount Type",
+    "emptyLineHelp": "Start by adding items manually or fetch from a source document.",
+    "errors": {
+      "createDraftFailed": "Failed to create purchase return draft.",
+      "fetchSourceFailed": "Failed to fetch source document. Check the ID.",
+      "loadFailed": "Failed to load purchase return.",
+      "loadLatestGoodsReceiptsFailed": "Failed to load latest goods receipts.",
+      "loadLatestPurchaseInvoicesFailed": "Failed to load latest purchase invoices.",
+      "postFailed": "Failed to post purchase return.",
+      "selectGoodsReceipt": "Please select a Goods Receipt.",
+      "selectPurchaseInvoice": "Please select a Purchase Invoice.",
+      "sourceRequired": "Please enter a Purchase Invoice ID or Goods Receipt ID first.",
+      "unpostFailed": "Failed to unpost purchase return.",
+      "updateFailed": "Failed to update purchase return."
+    },
     "glImpact": "GL Impact",
     "goodsReceipt": "Goods Receipt",
+    "grand": "Grand",
+    "grandTotal": "Grand Total",
     "grnNo": "GRN No",
+    "item": "Item",
+    "lineTotal": "Line Total",
     "lines": "Lines",
     "loadingGoodsReceipts": "Loading goods receipts...",
     "modeDirect": "Direct",
     "modeFromGrn": "From GRN",
     "modeFromPi": "From PI",
+    "newReturn": "New Return",
     "noPostedGoodsReceipts": "No posted goods receipts found.",
     "noPurchaseTaxCodes": "No purchase tax codes found.",
+    "postReturn": "Post Return",
+    "posting": "Posting...",
     "pullSelectedReceipt": "Pull Selected Receipt",
     "purchaseInvoice": "Purchase Invoice",
+    "rail": {
+      "documentStatus": "Document Status",
+      "info": "Info",
+      "title": "Purchase return side rail",
+      "totals": "Totals"
+    },
     "receiptDate": "Receipt Date",
+    "returnDate": "Return Date",
     "returnMode": "Return Mode",
+    "returnQty": "Return Qty",
+    "saveChanges": "Save Changes",
     "selectGoodsReceiptHint": "Latest posted receipts. Choose one to pull lines into this return.",
     "selectGoodsReceiptTitle": "Select Goods Receipt",
     "selectPostedGrn": "Select posted GRN",
     "selectPostedPi": "Select posted PI",
     "selectVendor": "Select vendor",
-    "vendor": "Vendor"
+    "sourceLineHelp": "Items already fetched from source are restricted to source quantities. Manual entries can search from the full catalog.",
+    "status": "Status",
+    "subtotal": "Subtotal",
+    "tax": "Tax",
+    "total": "Total",
+    "unitCost": "Unit Cost",
+    "unitPrice": "Unit Price",
+    "unpost": {
+      "confirmMessage": "This will reverse all accounting and inventory entries posted for this purchase return. The action is auditable but cannot be undone in place. Continue?"
+    },
+    "unpostReturn": "Unpost Return",
+    "unposting": "Unposting...",
+    "uom": "UOM",
+    "validation": {
+      "directVendorRequired": "Vendor is required for direct purchase return.",
+      "linesRequired": "At least one item with a return quantity is required.",
+      "postedGoodsReceiptRequired": "Select a posted Goods Receipt first.",
+      "postedPurchaseInvoiceRequired": "Select a posted Purchase Invoice first.",
+      "reasonRequired": "Reason is required.",
+      "returnDateRequired": "Return date is required."
+    },
+    "vendor": "Vendor",
+    "viewSubtitle": "Vendor: {{vendor}}",
+    "warehouse": "Warehouse"
   },
   "returnsList": {
     "actions": {
@@ -589,12 +716,34 @@
       "status": "Status",
       "vendorName": "Vendor"
     },
+    "context": {
+      "AFTER_INVOICE": "After Invoice",
+      "ALL": "All Contexts",
+      "BEFORE_INVOICE": "Before Invoice"
+    },
+    "emptyMessage": "No purchase returns found.",
+    "errors": {
+      "loadFailed": "Failed to load purchase returns."
+    },
+    "filters": {
+      "contextPlaceholder": "Context",
+      "statusPlaceholder": "Status"
+    },
     "newReturn": "New Return",
+    "status": {
+      "ALL": "All",
+      "CANCELLED": "Cancelled",
+      "DRAFT": "Draft",
+      "POSTED": "Posted"
+    },
     "title": "Purchase Returns"
   },
   "settings": {
     "apGeneration": {
       "backfillButton": "Backfill vendor AP sub-accounts",
+      "backfillCompleted": "Backfill completed. Created: {{created}}, skipped: {{skipped}}.",
+      "backfillCompletedWithIssues": "Backfill completed with issues. Created: {{created}}, skipped: {{skipped}}, errors: {{errors}}",
+      "backfillFailed": "Failed to backfill vendor AP sub-accounts.",
       "confirmAction": "Run Backfill",
       "confirmMessage": "This will scan active vendors and create dedicated AP sub-accounts for parties that do not already have one under the configured AP parent.",
       "confirmTitle": "Backfill Vendor AP Sub-accounts",
@@ -659,6 +808,10 @@
     "vendorFormHelp": "Groups classify vendors for filtering and reporting. They do not change AP posting or payment behavior.",
     "vendorFormTitle": "Vendor Segmentation"
   },
+  "vendorsList": {
+    "newWindowTitle": "New Vendor",
+    "windowTitle": "Vendor: {{name}}"
+  },
   "auto": {
     "ApAgingReportPage": {
       "asOfDate": "As Of Date",
@@ -692,7 +845,8 @@
       "bucket": "Bucket",
       "outstanding": "Outstanding",
       "debitNotesJVAdjustments": "Debit notes / JV adjustments",
-      "unallocatedBalance": "Unallocated balance"
+      "unallocatedBalance": "Unallocated balance",
+      "failedToLoadReport": "Failed to load report"
     },
     "GoodsReceiptDetailPage": {
       "goodsReceipt": "Goods Receipt",
@@ -729,6 +883,20 @@
       "purchasesOverviewModule": "Purchases Overview Module",
       "moduleDashboard": "Module Dashboard",
       "manageVendorsTrackPurchaseOrdersAndReceiptsAnd": "Manage vendors, track purchase orders and receipts, and process vendor invoices.",
+      "failedToLoadPurchasesModule": "Failed to load purchases module.",
+      "newPO": "New PO",
+      "newPurchaseInvoice": "New Purchase Invoice",
+      "openPOs": "Open POs",
+      "pendingGRNs": "Pending GRNs",
+      "unpaidInvoices": "Unpaid Invoices",
+      "overdueInvoices": "Overdue Invoices",
+      "totalPurchases": "Total Purchases",
+      "postedInvoices": "Posted Invoices",
+      "postedReturns": "Posted Returns",
+      "recentActivity": "Recent Activity",
+      "recentPurchaseInvoicesAndReturns": "Recent Purchase Invoices & Returns",
+      "returns": "Returns",
+      "invoices": "Invoices",
       "settings": "Settings",
       "noRecentActivityYet": "No recent activity yet."
     },
@@ -1002,7 +1170,10 @@
       "back": "Back",
       "nextStep": "Next Step",
       "configuring": "Configuring...",
-      "enableIntegration": "Enable Integration"
+      "enableIntegration": "Enable Integration",
+      "defaultAPRequired": "Default Accounts Payable account is required.",
+      "defaultGRNIRequired": "Default GRNI account is required for perpetual accounting mode.",
+      "configureFailed": "Failed to configure financial integration."
     },
     "PurchaseInitializationWizard": {
       "welcomeToPurchasesSetup": "Welcome to Purchases Setup",

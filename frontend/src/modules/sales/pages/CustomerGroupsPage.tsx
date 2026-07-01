@@ -7,6 +7,7 @@ import {
 } from '../../../api/salesMasterDataApi';
 import { Users, Search, Plus, Edit3, ChevronLeft, Save, X } from 'lucide-react';
 import { clsx } from 'clsx';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 
@@ -210,6 +211,7 @@ const Editor: React.FC<EditorProps> = ({ initial, priceLists, onClose, onSaved }
 // ─── List Page ────────────────────────────────────────────────────────────────
 
 const CustomerGroupsPage: React.FC = () => {
+  const { t } = useTranslation('common');
   const [groups, setGroups] = useState<CustomerGroupDTO[]>([]);
   const [priceLists, setPriceLists] = useState<PriceListDTO[]>([]);
   const [loading, setLoading] = useState(false);
@@ -264,15 +266,15 @@ const CustomerGroupsPage: React.FC = () => {
               <Users size={24} />
             </div>
             <div>
-              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">Customer Groups</h1>
-              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">Segmentation & Default Terms</p>
+              <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">{t('salesAdminLists.customerGroups.title')}</h1>
+              <p className="text-xs text-slate-500 font-medium uppercase tracking-[0.15em]">{t('salesAdminLists.customerGroups.subtitle')}</p>
             </div>
           </div>
           <button
             onClick={() => setIsAdding(true)}
             className="flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white px-5 py-2 rounded-lg text-xs font-bold shadow-md transition-all uppercase tracking-widest"
           >
-            <Plus size={16} /> New Group
+            <Plus size={16} /> {t('salesAdminLists.customerGroups.new')}
           </button>
         </div>
       </div>
@@ -282,7 +284,7 @@ const CustomerGroupsPage: React.FC = () => {
           <Card className="p-0 overflow-hidden border-slate-200 dark:border-slate-800 shadow-xl shadow-slate-200/50 dark:shadow-none">
             <div className="bg-slate-50/50 dark:bg-slate-900/50 px-6 py-4 border-b dark:border-slate-800 flex items-center justify-between">
               <div className="flex items-center gap-2 text-xs font-bold text-slate-500 uppercase tracking-widest">
-                <Search size={14} /> Group Directory
+                <Search size={14} /> {t('salesAdminLists.customerGroups.directory')}
               </div>
               {loading && <div className="text-[10px] text-violet-500 font-black animate-pulse uppercase tracking-tighter">Loading...</div>}
             </div>
@@ -294,8 +296,8 @@ const CustomerGroupsPage: React.FC = () => {
                     <Users size={48} />
                   </div>
                   <div>
-                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">No Customer Groups</p>
-                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">Create your first customer group to segment customers by default terms.</p>
+                    <p className="text-sm font-bold text-slate-600 dark:text-slate-400">{t('salesAdminLists.customerGroups.emptyTitle')}</p>
+                    <p className="text-xs text-slate-400 max-w-xs mx-auto mt-1">{t('salesAdminLists.customerGroups.emptyDescription')}</p>
                   </div>
                 </div>
               ) : (

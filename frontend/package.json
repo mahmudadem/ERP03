@@ -6,11 +6,12 @@
   "scripts": {
     "dev": "vite",
     "dev:remote": "vite --host 0.0.0.0 --port 5173",
-    "build": "npm run check:reports && npm run check:no-confirm && npm run check:sod-approve && npm run check:voucher-locales && npx tsc && vite build",
+    "build": "npm run check:reports && npm run check:no-confirm && npm run check:sod-approve && npm run check:voucher-locales && npm run check:i18n-config && npx tsc && vite build",
     "check:reports": "node scripts/check-reports.mjs",
     "check:no-confirm": "node scripts/check-no-confirm.mjs",
     "check:sod-approve": "node scripts/check-sod-approve.mjs",
     "check:voucher-locales": "node scripts/check-voucher-locales.mjs",
+    "check:i18n-config": "node scripts/check-i18n-config.mjs",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview"
   },

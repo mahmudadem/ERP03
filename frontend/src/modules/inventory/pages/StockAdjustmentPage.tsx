@@ -24,6 +24,7 @@ import { ColumnDefinition, RowAction } from '../../../components/ui/DataTable/ty
 import { Spinner } from '../../../components/ui/Spinner';
 import { useUserPreferences } from '../../../hooks/useUserPreferences';
 import { errorHandler } from '../../../services/errorHandler';
+import { useTranslation } from 'react-i18next';
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
 const todayIso = () => new Date().toISOString().slice(0, 10);
@@ -55,6 +56,7 @@ const emptyLine = (): AdjLine => ({
 const REASONS = ['CORRECTION', 'LOSS', 'DAMAGE', 'FOUND', 'EXPIRED', 'OTHER'];
 
 const StockAdjustmentPage: React.FC = () => {
+  const { t } = useTranslation('inventory');
   const navigate = useNavigate();
   const { id } = useParams<{ id?: string }>();
   const { uiMode } = useUserPreferences();
@@ -576,11 +578,11 @@ const StockAdjustmentPage: React.FC = () => {
 
   return (
     <OperationalListLayout<StockAdjustmentDTO>
-      title="Stock Adjustments"
+      title={t('adjustments.title', { defaultValue: 'Stock Adjustments' })}
       subtitle=""
       compactHeader
       statusFilterConfig={statusFilterConfig}
-      newButtonLabel="New Adjustment"
+      newButtonLabel={t('adjustments.new', { defaultValue: 'New Adjustment' })}
       onNewClick={() => navigate('/inventory/adjustments/new')}
       onRefresh={load}
       loading={loading}
@@ -605,7 +607,7 @@ const StockAdjustmentPage: React.FC = () => {
                   setPage(1);
                 }
               }}
-              placeholder="Search adjustment, warehouse, reason..."
+              placeholder={t('adjustments.searchPlaceholder', { defaultValue: 'Search adjustment, warehouse, reason...' })}
               className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
@@ -618,7 +620,7 @@ const StockAdjustmentPage: React.FC = () => {
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-700"
           >
             <Filter size={16} />
-            Apply
+            {t('common.applyFilters', { defaultValue: 'Apply' })}
           </button>
           <button
             type="button"
@@ -629,7 +631,7 @@ const StockAdjustmentPage: React.FC = () => {
               setPage(1);
             }}
             className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition-all hover:bg-slate-50 hover:text-rose-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
-            title="Clear Filters"
+            title={t('common.clearFilters', { defaultValue: 'Clear Filters' })}
           >
             <RotateCcw size={16} />
           </button>
@@ -637,7 +639,7 @@ const StockAdjustmentPage: React.FC = () => {
       }
       columns={listColumns}
       data={paginatedData}
-      emptyMessage="No stock adjustments found"
+      emptyMessage={t('adjustments.empty', { defaultValue: 'No stock adjustments found' })}
       onRowClick={(row) => navigate(`/inventory/adjustments/${row.id}`)}
       sorting={{ field: sortField, direction: sortDirection, onSort: handleSort }}
       pagination={{

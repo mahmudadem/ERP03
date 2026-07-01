@@ -460,14 +460,14 @@ const SalesReturnsListPage: React.FC = () => {
       filters={
         <div className="flex w-full flex-row items-center gap-2.5 overflow-x-auto whitespace-nowrap pb-1.5 scrollbar-thin lg:pb-0">
           <div className="relative min-w-[200px] flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
               placeholder={t('sales.returnsList.filters.searchPlaceholder', 'Return #, customer, reason...')}
               value={localSearch}
               onChange={(event) => setLocalSearch(event.target.value)}
               onKeyDown={(event) => event.key === 'Enter' && handleApply()}
-              className="w-full rounded-lg border border-slate-300 bg-white py-2 pl-10 pr-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
+              className="w-full rounded-lg border border-slate-300 bg-white py-2 ps-10 pe-3 text-sm text-slate-900 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
           </div>
 

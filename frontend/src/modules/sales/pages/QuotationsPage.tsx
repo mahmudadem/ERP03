@@ -11,14 +11,14 @@ import { formatMoney } from '../../../utils/formatMoney';
 
 const ALL_STATUSES: QuoteStatus[] = ['DRAFT', 'SENT', 'ACCEPTED', 'REJECTED', 'EXPIRED', 'CONVERTED'];
 
-const STATUS_OPTIONS: Array<{ label: string; value: QuoteStatus | 'ALL'; color: string }> = [
-  { label: 'All', value: 'ALL', color: 'bg-slate-400' },
-  { label: 'Draft', value: 'DRAFT', color: 'bg-slate-500' },
-  { label: 'Sent', value: 'SENT', color: 'bg-blue-500' },
-  { label: 'Accepted', value: 'ACCEPTED', color: 'bg-emerald-500' },
-  { label: 'Rejected', value: 'REJECTED', color: 'bg-rose-500' },
-  { label: 'Expired', value: 'EXPIRED', color: 'bg-amber-500' },
-  { label: 'Converted', value: 'CONVERTED', color: 'bg-violet-500' },
+const STATUS_OPTIONS: Array<{ labelKey: string; value: QuoteStatus | 'ALL'; color: string }> = [
+  { labelKey: 'sales.quotesList.statuses.ALL', value: 'ALL', color: 'bg-slate-400' },
+  { labelKey: 'sales.quotesList.statuses.DRAFT', value: 'DRAFT', color: 'bg-slate-500' },
+  { labelKey: 'sales.quotesList.statuses.SENT', value: 'SENT', color: 'bg-blue-500' },
+  { labelKey: 'sales.quotesList.statuses.ACCEPTED', value: 'ACCEPTED', color: 'bg-emerald-500' },
+  { labelKey: 'sales.quotesList.statuses.REJECTED', value: 'REJECTED', color: 'bg-rose-500' },
+  { labelKey: 'sales.quotesList.statuses.EXPIRED', value: 'EXPIRED', color: 'bg-amber-500' },
+  { labelKey: 'sales.quotesList.statuses.CONVERTED', value: 'CONVERTED', color: 'bg-violet-500' },
 ];
 
 const statusChipClasses = (status: QuoteStatus): string => {
@@ -176,14 +176,14 @@ const QuotationsPage: React.FC = () => {
         <div className="flex flex-row items-center gap-2.5 w-full overflow-x-auto whitespace-nowrap pb-1.5 lg:pb-0 scrollbar-thin">
           {/* SEARCH */}
           <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
               value={localSearch}
               onChange={(e) => setLocalSearch(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleApply()}
-              placeholder="Quote #, customer, status..."
-              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 pl-10 pr-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
+              placeholder={t('sales.quotesList.searchPlaceholder')}
+              className="w-full rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 ps-10 pe-3 py-2 text-sm text-slate-900 dark:text-slate-100 focus:ring-2 focus:ring-primary-500 outline-none"
             />
           </div>
 
@@ -241,7 +241,7 @@ const QuotationsPage: React.FC = () => {
       hasActiveFilters={hasActiveFilters}
       onClearFilters={handleClear}
       statusFilterConfig={{
-        options: STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label, color: option.color })),
+        options: STATUS_OPTIONS.map((option) => ({ value: option.value, label: t(option.labelKey), color: option.color })),
         activeValue: statusFilter,
         onChange: (value) => {
           setStatusFilter(value as QuoteStatus | 'ALL');

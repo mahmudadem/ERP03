@@ -117,7 +117,7 @@ const PurchaseHomePage: React.FC = () => {
         error?.response?.data?.error?.message
           || error?.response?.data?.message
           || error?.message
-          || 'Failed to load purchases module.'
+          || t('auto.PurchaseHomePage.failedToLoadPurchasesModule', 'Failed to load purchases module.')
       );
     } finally {
       setLoading(false);
@@ -243,7 +243,7 @@ const PurchaseHomePage: React.FC = () => {
             onClick={() => navigate(showOperational ? '/purchases/orders/new' : '/purchases/invoices/new')}
             className="rounded-lg bg-slate-900 px-4 py-2 text-sm font-medium text-white"
           >
-            {showOperational ? 'New PO' : 'New Purchase Invoice'}
+            {showOperational ? t('auto.PurchaseHomePage.newPO', 'New PO') : t('auto.PurchaseHomePage.newPurchaseInvoice', 'New Purchase Invoice')}
           </button>
           <button
             type="button"
@@ -258,25 +258,25 @@ const PurchaseHomePage: React.FC = () => {
           <>
             <StatsCard
               icon={<ShoppingCart className="h-5 w-5" />}
-              label="Open POs"
+              label={t('auto.PurchaseHomePage.openPOs', 'Open POs')}
               value={loading ? '...' : String(openPOsCount)}
               accentClass="bg-blue-100 text-blue-700"
             />
             <StatsCard
               icon={<ClipboardList className="h-5 w-5" />}
-              label="Pending GRNs"
+              label={t('auto.PurchaseHomePage.pendingGRNs', 'Pending GRNs')}
               value={loading ? '...' : String(pendingGRNsCount)}
               accentClass="bg-amber-100 text-amber-700"
             />
             <StatsCard
               icon={<FileText className="h-5 w-5" />}
-              label="Unpaid Invoices"
+              label={t('auto.PurchaseHomePage.unpaidInvoices', 'Unpaid Invoices')}
               value={loading ? '...' : String(unpaidInvoicesCount)}
               accentClass="bg-emerald-100 text-emerald-700"
             />
             <StatsCard
               icon={<AlertTriangle className="h-5 w-5" />}
-              label="Overdue Invoices"
+              label={t('auto.PurchaseHomePage.overdueInvoices', 'Overdue Invoices')}
               value={loading ? '...' : String(overdueInvoicesCount)}
               accentClass="bg-rose-100 text-rose-700"
             />
@@ -285,25 +285,25 @@ const PurchaseHomePage: React.FC = () => {
           <>
             <StatsCard
               icon={<FileText className="h-5 w-5" />}
-              label="Total Purchases"
+              label={t('auto.PurchaseHomePage.totalPurchases', 'Total Purchases')}
               value={loading ? '...' : totalPurchases.toFixed(2)}
               accentClass="bg-emerald-100 text-emerald-700"
             />
             <StatsCard
               icon={<ClipboardList className="h-5 w-5" />}
-              label="Posted Invoices"
+              label={t('auto.PurchaseHomePage.postedInvoices', 'Posted Invoices')}
               value={loading ? '...' : String(postedInvoices.length)}
               accentClass="bg-blue-100 text-blue-700"
             />
             <StatsCard
               icon={<AlertTriangle className="h-5 w-5" />}
-              label="Overdue Invoices"
+              label={t('auto.PurchaseHomePage.overdueInvoices', 'Overdue Invoices')}
               value={loading ? '...' : String(overdueInvoicesCount)}
               accentClass="bg-rose-100 text-rose-700"
             />
             <StatsCard
               icon={<Undo2 className="h-5 w-5" />}
-              label="Posted Returns"
+              label={t('auto.PurchaseHomePage.postedReturns', 'Posted Returns')}
               value={loading ? '...' : String(postedReturnsCount)}
               accentClass="bg-amber-100 text-amber-700"
             />
@@ -314,7 +314,7 @@ const PurchaseHomePage: React.FC = () => {
       <Card className="p-5">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-            {showOperational ? 'Recent Activity' : 'Recent Purchase Invoices & Returns'}
+            {showOperational ? t('auto.PurchaseHomePage.recentActivity', 'Recent Activity') : t('auto.PurchaseHomePage.recentPurchaseInvoicesAndReturns', 'Recent Purchase Invoices & Returns')}
           </h2>
           <button
             type="button"
@@ -322,7 +322,7 @@ const PurchaseHomePage: React.FC = () => {
             onClick={() => navigate(showOperational ? '/purchases/returns' : '/purchases/invoices')}
           >
             <Undo2 className="h-4 w-4" />
-            {showOperational ? 'Returns' : 'Invoices'}
+            {showOperational ? t('auto.PurchaseHomePage.returns', 'Returns') : t('auto.PurchaseHomePage.invoices', 'Invoices')}
           </button>
         </div>
         <div className="space-y-2">

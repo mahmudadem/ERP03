@@ -322,6 +322,8 @@ const labelKeyMap: Record<string, string> = {
   'Modules': 'sidebar.modules',
   'Features': 'sidebar.features',
   'Bundles': 'sidebar.bundles',
+  'Currencies': 'sidebar.currencies',
+  'Tax Codes': 'sidebar.taxCodes',
   'Notifications': 'sidebar.notifications',
   'Communications': 'sidebar.communications',
   'General Settings': 'sidebar.generalSettings',

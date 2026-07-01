@@ -1,0 +1,16 @@
+{
+  "partySelector": {
+    "placeholder": "Musteri veya tedarikci sec...",
+    "customerPlaceholder": "Musteri sec...",
+    "vendorPlaceholder": "Tedarikci sec...",
+    "searchPlaceholder": "Ad, kod veya e-posta ile ara...",
+    "refresh": "Taraflari yenile",
+    "create": "Yeni taraf olustur",
+    "noResults": "\"{{query}}\" ile eslesen taraf bulunamadi",
+    "createNewParty": "Yeni taraf olustur",
+    "createRequired": "Kod, gorunen ad ve para birimi zorunludur.",
+    "createFailed": "Taraf olusturulamadi.",
+    "roleCustomer": "Musteri",
+    "roleVendor": "Tedarikci"
+  }
+}

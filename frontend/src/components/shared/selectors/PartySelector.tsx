@@ -53,6 +53,13 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
   role,
 }, ref) => {
   const { t } = useTranslation('shared');
+  const actualPlaceholder = placeholder || (
+    role === 'CUSTOMER'
+      ? t('partySelector.customerPlaceholder')
+      : role === 'VENDOR'
+      ? t('partySelector.vendorPlaceholder')
+      : t('partySelector.placeholder')
+  );
   const { data: currencies = [] } = useCompanyCurrencies();
   const currencyOptions = currencies.map((currency) => ({
     code: currency.code,
@@ -290,7 +297,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
     e.preventDefault();
 
     if (!createForm.code.trim() || !createForm.displayName.trim() || !createForm.defaultCurrency.trim()) {
-      setCreateError('Code, display name, and currency are required.');
+      setCreateError(t('partySelector.createRequired'));
       return;
     }
 
@@ -318,7 +325,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
 
       handleSelect(created);
     } catch (error: any) {
-      setCreateError(error?.response?.data?.message || error?.message || 'Failed to create party.');
+      setCreateError(error?.response?.data?.message || error?.message || t('partySelector.createFailed'));
     } finally {
       setIsCreating(false);
     }
@@ -338,7 +345,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
           onFocus={(e) => { try { e.currentTarget.select(); } catch { /* noop */ } }}
           onBlur={handleInputBlur}
           onKeyDown={handleInputKeyDown}
-          placeholder={placeholder || (role === 'CUSTOMER' ? 'Select customer...' : role === 'VENDOR' ? 'Select vendor...' : 'Select customer or vendor...')}
+          placeholder={actualPlaceholder}
           disabled={disabled}
           className={`w-full transition-all duration-200 outline-none
             ${noBorder
@@ -396,7 +403,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                   ref={modalInputRef}
                   autoFocus
                   className="flex-1 border-none bg-transparent text-sm outline-none font-medium"
-                  placeholder="Search by name, code or email..."
+                  placeholder={t('partySelector.searchPlaceholder')}
                   value={modalSearch}
                   onChange={(e) => {
                     setModalSearch(e.target.value);
@@ -441,13 +448,13 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                 {searchResults.length === 0 && !isLoading && (
                   <div className="flex flex-col items-center p-10 text-center">
                     <User size={40} className="mb-3 text-slate-200" />
-                    <p className="text-sm font-medium text-slate-500">No parties found matching "{modalSearch}"</p>
+                    <p className="text-sm font-medium text-slate-500">{t('partySelector.noResults', { query: modalSearch })}</p>
                     <button
                       type="button"
                       onClick={handleOpenCreateModal}
                       className="mt-4 flex items-center gap-2 rounded-xl bg-indigo-50 px-4 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-100 transition-colors"
                     >
-                      <Plus size={16} /> Create New Party
+                      <Plus size={16} /> {t('partySelector.createNewParty')}
                     </button>
                   </div>
                 )}
@@ -478,7 +485,7 @@ export const PartySelector = forwardRef<HTMLInputElement, PartySelectorProps>(({
                         {party.roles.map(role => (
                           <span key={role} className={`rounded-full px-2 py-0.5 text-[9px] font-black uppercase tracking-wider
                             ${role === 'CUSTOMER' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'}`}>
-                            {role}
+                            {role === 'CUSTOMER' ? t('partySelector.roleCustomer') : t('partySelector.roleVendor')}
                           </span>
                         ))}
                       </div>

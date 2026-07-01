@@ -50,7 +50,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
 }, ref) => {
   const { t } = useTranslation('inventory');
   const { hasPermission } = useRBAC();
-  const actualPlaceholder = placeholder || t('Select warehouse...', { defaultValue: 'Select warehouse...' });
+  const actualPlaceholder = placeholder || t('warehouseSelector.placeholder');
   const [inputValue, setInputValue] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -271,14 +271,14 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
     }
 
     if (error instanceof Error) return error.message;
-    return 'Failed to create warehouse.';
+    return t('warehouseSelector.createFailed');
   };
 
   const handleCreateWarehouse = async (event: React.FormEvent) => {
     event.preventDefault();
 
     if (!createForm.name.trim() || !createForm.code.trim()) {
-      setCreateError('Warehouse code and name are required.');
+      setCreateError(t('warehouseSelector.createRequired'));
       return;
     }
 
@@ -377,7 +377,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                   ref={modalInputRef}
                   autoFocus
                   className="flex-1 bg-transparent border-none outline-none text-sm"
-                  placeholder="Search warehouses..."
+                  placeholder={t('warehouseSelector.searchPlaceholder')}
                   value={modalSearch}
                   onChange={(e) => {
                     setModalSearch(e.target.value);
@@ -395,7 +395,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                   type="button"
                   onClick={handleRefresh}
                   disabled={isRefreshing}
-                  title="Refresh warehouses"
+                  title={t('warehouseSelector.refresh')}
                   className="rounded p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:cursor-not-allowed disabled:opacity-50"
                 >
                   <RefreshCw size={16} className={isRefreshing ? 'animate-spin' : ''} />
@@ -411,7 +411,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                   <button
                     type="button"
                     onClick={handleOpenCreateModal}
-                    title="Create new warehouse"
+                    title={t('warehouseSelector.create')}
                     className="rounded p-1.5 text-indigo-600 hover:bg-indigo-50 transition-colors"
                   >
                     <Plus size={18} />
@@ -420,18 +420,18 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
               </div>
               <div className="overflow-y-auto p-1">
                 {isLoading ? (
-                  <div className="p-8 text-center text-sm text-slate-500">Loading warehouses...</div>
+                  <div className="p-8 text-center text-sm text-slate-500">{t('warehouseSelector.loading')}</div>
                 ) : filtered.length === 0 ? (
                   <div className="flex flex-col items-center p-8 text-center">
                     <WarehouseIcon size={32} className="mb-2 text-slate-200" />
-                    <p className="text-sm text-slate-500">No warehouses found matching "{modalSearch}"</p>
+                    <p className="text-sm text-slate-500">{t('warehouseSelector.noResults', { query: modalSearch })}</p>
                     {canCreate && (
                       <button
                         type="button"
                         onClick={handleOpenCreateModal}
                         className="mt-4 flex items-center gap-1 text-xs font-bold text-indigo-600 hover:underline"
                       >
-                        <Plus size={14} /> Create New Warehouse
+                        <Plus size={14} /> {t('warehouseSelector.create')}
                       </button>
                     )}
                   </div>
@@ -449,7 +449,7 @@ export const WarehouseSelector = forwardRef<HTMLInputElement, WarehouseSelectorP
                         <span className="text-xs text-slate-500 font-mono">{w.code}</span>
                         {w.address && <span className="text-[11px] text-slate-400">{w.address}</span>}
                       </div>
-                      {w.isDefault && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">Default</span>}
+                      {w.isDefault && <span className="text-[10px] bg-indigo-100 text-indigo-600 px-1.5 py-0.5 rounded font-bold uppercase">{t('warehouseSelector.default')}</span>}
                     </div>
                   ))
                 )}

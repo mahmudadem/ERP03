@@ -6,11 +6,34 @@
 
 ---
 
-## Current task — CONVERGING TO ONE BRANCH (2026-07-01)
+## Current task — CONVERGENCE MERGED ✅; finishing "SQL alone entirely" (2026-07-01)
+
+**DONE:** convergence landed on `main` via **PR #54** (merge commit `0c6f0ebc`). One DB-agnostic
+codebase now; test either DB via the `DB_TYPE` toggle.
+
+**Goal scorecard (runs on each DB entirely):**
+- **Firebase — entirely:** ✅ proven (live in prod `erp-03`; our changes were Prisma-only or
+  `DB_TYPE`-guarded, so its path is unchanged).
+- **SQL backend — entirely:** ✅ proven (25/25 integration across all modules + 7/7 throwers +
+  settings round-trip + company create on real Postgres).
+- **SQL frontend — one gap left:** ⚠️ 5 files still read Firestore directly (won't work on SQL):
+  `accounting/services/voucherTypesService.ts`, `accounting/voucher-wizard/services/voucherWizardService.ts`,
+  `accounting/voucher-wizard/validators/uniquenessValidator.ts`,
+  `tools/forms-designer/services/documentDesignerService.ts`,
+  `tools/forms-designer/validators/uniquenessValidator.ts`.
+  **Backend endpoints already exist** to port them to (`/tenant/accounting/voucher-types/catalog`,
+  `/designer/voucher-types`, `/tenant/accounting/voucher-forms` full CRUD+clone). Risk: these files
+  ALSO run in the live Firebase lane (Firestore-direct is correct there) — the port must keep working
+  in BOTH modes, so build+verify on SQL, keep on a branch, open a separate PR, verify Firebase mode
+  before it lands on `main`. This is the last mile to "SQL alone entirely."
+
+---
+
+### (history) Convergence — how it landed
 
 **Decision (owner-approved):** stop the two-lane drift; collapse to a single DB-agnostic
-codebase on `main`. This SQL-readiness branch (`codex/sql-readiness-wip-20260628`) is being
-**merged up to current `main`** (which carries the production 278a–z fix queue) so that from now
+codebase on `main`. The SQL-readiness branch (`codex/sql-readiness-wip-20260628`) was
+**merged up to `main`** (which carries the production 278a–z fix queue) so that from now
 on every feature is written **once** and tested against either DB via the `DB_TYPE` toggle.
 
 - The architecture already supports "one codebase, any DB" (repository interfaces + DI +
@@ -55,6 +78,23 @@ Stock legacy movement warning (`64117d93`, `d56d5832`); 278k Sales dashboard / P
 translations (`bfd636e0`); 278l POS shift-close summary modal (`f4917b14`); 278m POS report date
 range / DatePicker i18n (`37a2feb0`); 278n–278v inventory/purchases/sales report translations;
 278w–278z analytics/voucher-name/AP-selector/onboarding-RTL — all complete on `main`.
+
+**Reconciliation branch `codex/reconcile-prod-sql-20260701`:** adds the post-main Firebase
+production fixes from `ERP03-unified` back onto the SQL-converged main line:
+- **278aa Purchase/Sales filtered invoice list production 500:** fixed and deployed live to
+  Firebase Functions on 2026-06-30. Backend now avoids the failing filtered invoice composite-index
+  query by sorting/limiting after equality-filter reads; index config still includes the tiebreaker.
+- **278ab i18n namespace guard + shared selector translations:** restored Arabic default, registered
+  `inventory` and `shared` locales, localized shared selectors, and added the build guard.
+- **278ac Purchases translation audit batch 1/2:** Purchases list/detail/report/home/settings
+  translation cleanup continued, including Turkish purchase terminology cleanup. Remaining audit work is still tracked in
+  `planning/tasks/278ac-production-translation-audit.md`.
+- **Frontend RTL/i18n polish dirty slice:** applied onto this reconciliation branch for review. Scope is
+  presentation-only cleanup across Accounting, Inventory, POS, Purchases, Sales, onboarding, and sidebar
+  labels; no backend posting or database behavior is intended.
+
+**Next:** finish reconciliation verification, then deploy both frontend and Firebase backend from the
+same main-derived branch so Firebase and SQL fixes stop living in separate lanes.
 
 ---
 

@@ -155,6 +155,8 @@ export const useSidebarConfig = () => {
     'AR Aging': 'sidebar.arAging',
     'Customer Statement': 'sidebar.customerStatement',
     'Sales Analytics': 'sidebar.salesAnalytics',
+    'Gross Profit by Document': 'sidebar.grossProfitByDocument',
+    'Gross Profit by Item': 'sidebar.grossProfitByItem',
     'Aged Backlog': 'sidebar.agedBacklog',
     'Customer Groups': 'sidebar.customerGroups',
     'Price Lists': 'sidebar.priceLists',
@@ -171,12 +173,15 @@ export const useSidebarConfig = () => {
     // Inventory items
     'Opening Stock Documents': 'sidebar.openingStock',
     Adjustments: 'sidebar.adjustments',
+    Revaluations: 'sidebar.revaluations',
     Transfers: 'sidebar.transfers',
     'Stock Levels': 'sidebar.stockLevels',
     Movements: 'sidebar.movements',
+    'Item Movement': 'sidebar.itemMovement',
     'Low Stock Alerts': 'sidebar.lowStockAlerts',
     'Unsettled Costs': 'sidebar.unsettledCosts',
     'Inventory Valuation': 'sidebar.inventoryValuation',
+    'Inventory GL Reconciliation': 'sidebar.inventoryGLReconciliation',
     Categories: 'sidebar.categories',
     'UOM Master': 'sidebar.uomMaster',
     // Accounting tools
@@ -192,6 +197,8 @@ export const useSidebarConfig = () => {
     'Top Selling Items': 'sidebar.posTopSellingItems',
     'Override Audit': 'sidebar.posOverrideAudit',
     'Reprint Audit': 'sidebar.posReprintAudit',
+    'Tax Codes': 'sidebar.taxCodes',
+    'Print Layout Designer': 'sidebar.printLayoutDesigner',
   };
 
   const translateLabel = (label: string) => t(labelKeyMap[label] || label, { defaultValue: label });

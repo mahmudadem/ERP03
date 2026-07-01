@@ -2,6 +2,35 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-01 (Reconcile Firebase production fixes onto SQL-converged main)
+
+- **Goal:** Stop the Firebase/SQL lane split by bringing post-main production fixes from
+  `D:\DEV2026\ERP03-unified` onto a clean branch from `origin/main` while preserving SQL fixes.
+- **Branch/worktree:** `D:\DEV2026\ERP03-reconcile` on `codex/reconcile-prod-sql-20260701`.
+- **Included from SQL lane:** post-PR #54 SQL frontend catalog fix (`voucherTypesService` now uses
+  the API catalog) plus convergence documentation.
+- **Included from Firebase production lane:** filtered Sales/Purchase invoice list query workaround,
+  Firestore index tiebreaker metadata, i18n namespace guard, shared selector translations, and
+  Purchases translation audit checkpoint docs.
+- **Applied for review:** the uncommitted unified frontend RTL/i18n polish slice from
+  `D:\DEV2026\ERP03-unified` as a separate working-tree change. It touches presentation/localization
+  files only plus planning notes.
+- **Accounting/ERP impact:** invoice-list query reliability and localization only for the Firebase
+  production fixes; no posting, tax, inventory valuation, settlement, approval, tenant isolation, or
+  ledger math changed. SQL catalog fix is read-path wizard/bootstrap behavior, not posting logic.
+- **Next:** apply/review the dirty unified deployed slice, run verification, then deploy both
+  frontend and Firebase backend from the same reconciled line.
+
+### Session: 2026-07-01 (Converge to one branch + kill SQL-mode "talks-to-Firebase" bugs via live QA)
+
+- **Trigger:** owner did live browser QA on the SQL stack and hit a frozen "Securing Data…" spinner on account create; broader concern that "a lot of hidden issues still exist" and that the two lanes were drifting (SQL branch was 53 commits behind `main`).
+- **Root-caused the freeze (real bug, found via server log):** `AccountController.create` (and every notify-firing controller) `await`s `notificationService.notify()` *before* sending the HTTP response. `notify → realtimeDispatcher.pushToMany()` was hardwired to `FirebaseRealtimeDispatcher` → `admin.database().ref().update()`, which blocks forever when no Realtime DB exists (SQL lane has none). Row was written to Postgres but the response never returned. **Fix:** `NullRealtimeDispatcher` bound when `DB_TYPE==='SQL'` (commit `cdca5974`) — fixes the whole class at once (all controllers resolve the dispatcher via DI). Verified `notify()` returns ~150ms.
+- **Audited + fixed the same "hardwired Firebase in the request path" class:** `CompanyController` (→ `diContainer.companyRepository`) and `SettingsController` `/accounting/policy-config` GET+PUT (branch on `DB_TYPE`: SQL → `accountingPolicyConfigProvider` + `companyModuleSettingsRepository`; Firebase path byte-for-byte unchanged) — commit `751487db`. Backend request-path audit for `new Firestore*`/`admin.firestore()`/`admin.database()` is now **clean** (only DB-branched Firebase else-branches remain).
+- **Convergence (owner-approved):** merged `origin/main` (production 278a–z queue) into the SQL branch. 10 conflicts resolved (took main's superset/newer code+UI; UNION-merged `firestore.indexes.json` → 51 indexes; lossless doc merges). Verified on merged tree: backend+frontend `tsc` 0, 25/25 integration + 7/7 throwers on Postgres. Opened + **merged PR #54** to `main` (merge commit `0c6f0ebc`). Safety tag `backup/sql-before-main-merge-20260701`.
+- **Started the last SQL-frontend gap (5 Firestore-direct files):** ported `voucherTypesService` to `voucherTypeManagementApi.catalog(module)` (commit `1f7ca07a`) — init wizards now load the 16 system voucher types on SQL (was 0). Remaining 4 (forms-designer/wizard CRUD: `voucherWizardService`, 2 `uniquenessValidator`s, `documentDesignerService`) still to port — they do writes and also run in the live Firebase lane, so being done one-at-a-time with verification.
+- **Goal scorecard:** Firebase-entirely ✅ (live, untouched); SQL-backend-entirely ✅ (25/25); SQL-frontend ⚠️ 4 files left. Detail + plan in `ACTIVE.md`.
+- **Verification scripts (kept):** `backend/scripts/sql-ui-throwers-probe.ts` (7/7). Architecture: `docs/architecture/sql-repository-layer.md` (added request-path DB-agnosticism section).
+
 ### Session: 2026-06-30 (SQL lane — schema↔repository reconciliation DONE; 96 errors → 0, 520 as-any → 0)
 
 > ⚠️ **Correction (independent re-verification):** when first written, this entry described the
@@ -5865,3 +5894,13 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - `graphify update .` could not run because the Graphify CLI is unavailable.
 - Actual time: approximately 40 minutes.
 - Deploy: deferred until the full Telegram QA queue is complete.
+
+# 2026-06-30 — Production translation audit continuation
+
+- Goal: commit the current unified production-lane checkpoint without pushing, then continue translation cleanup across production pages.
+- Checkpoint commit: `ae81119b fix(production): checkpoint invoice query and translation audit [ACTIVE-278]` on `D:\DEV2026\ERP03-unified`, not pushed.
+- Continued 278ac by cleaning Turkish Purchases locale leftovers across shared/common Purchases keys, Goods Receipt legacy keys, Purchase Invoice detail rail/header/print/pricing labels, Purchase Order pricing/discount labels, Returns list/detail terminology, Purchase Settings terminology, Vendor list labels, and helper/toast text.
+- Accounting/ERP impact: localization only for the continuation slice. No ledger, voucher, posting, tax, inventory valuation, settlement, approval, tenant isolation, or audit behavior changed.
+- Verification: Purchases EN/AR/TR locale JSON parse passed; `npm run check:i18n-config` passed; frontend `npm run typecheck` passed; frontend `npm run build` passed with existing browser-data/chunk-size warnings only.
+- Time spent: approximately 1.2h after checkpoint commit.
+- Next: commit the continuation slice locally, then continue 278ac with full component-level passes for Purchase Invoice Detail, Purchase Settings, purchase voucher designer, dynamic purchase forms, then move to Sales.

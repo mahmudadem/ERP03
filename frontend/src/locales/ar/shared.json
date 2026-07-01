@@ -1,0 +1,16 @@
+{
+  "partySelector": {
+    "placeholder": "اختر عميلا أو موردا...",
+    "customerPlaceholder": "اختر عميلا...",
+    "vendorPlaceholder": "اختر موردا...",
+    "searchPlaceholder": "ابحث بالاسم أو الرمز أو البريد...",
+    "refresh": "تحديث الأطراف",
+    "create": "إنشاء طرف جديد",
+    "noResults": "لا توجد أطراف تطابق \"{{query}}\"",
+    "createNewParty": "إنشاء طرف جديد",
+    "createRequired": "الرمز واسم العرض والعملة مطلوبة.",
+    "createFailed": "فشل إنشاء الطرف.",
+    "roleCustomer": "عميل",
+    "roleVendor": "مورد"
+  }
+}

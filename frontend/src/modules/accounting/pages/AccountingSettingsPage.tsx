@@ -371,7 +371,7 @@ const AccountingSettingsPageContent: React.FC = () => {
   const handleGlobalDiscard = () => {
     if (activeTab === 'general' || activeTab === 'fx-revaluation') {
       setLocalCoreSettings(originalCoreSettings);
-      toast('Changes discarded', { icon: 'ℹ️' });
+      toast(t('settings.messages.changesDiscarded', { defaultValue: 'Changes discarded' }), { icon: 'ℹ️' });
     } else if (originalConfig) {
       if (activeTab === 'policies') {
         setConfig(prev => ({
@@ -410,7 +410,7 @@ const AccountingSettingsPageContent: React.FC = () => {
           allowPeriodLockOverride: originalConfig.allowPeriodLockOverride
         }));
       }
-      toast('Changes discarded', { icon: 'ℹ️' });
+      toast(t('settings.messages.changesDiscarded', { defaultValue: 'Changes discarded' }), { icon: 'ℹ️' });
     }
   };
 

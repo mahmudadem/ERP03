@@ -22,7 +22,7 @@ const unwrap = <T,>(payload: any): T => {
 type TabId = 'accounting' | 'operational' | 'item-coding';
 
 const InventorySettingsPage: React.FC = () => {
-  const { t } = useTranslation('common');
+  const { t } = useTranslation('inventory');
   const [activeTab, setActiveTab] = useState<TabId>('accounting');
   const [settings, setSettings] = useState<InventorySettingsDTO | null>(null);
   const [originalSettings, setOriginalSettings] = useState<InventorySettingsDTO | null>(null);
@@ -44,7 +44,7 @@ const InventorySettingsPage: React.FC = () => {
         setWarehouses(unwrap<InventoryWarehouseDTO[]>(warehousesResult) || []);
       } catch (err: any) {
         console.error('Failed to load inventory settings', err);
-        errorHandler.showError('Failed to load inventory settings.');
+        errorHandler.showError(t('settings.messages.loadFailed', { defaultValue: 'Failed to load inventory settings.' }));
       } finally {
         setLoading(false);
       }
@@ -63,7 +63,7 @@ const InventorySettingsPage: React.FC = () => {
 
     const accountingMode = resolveInventoryAccountingMode(settings);
     if (accountingMode === 'PERPETUAL' && !settings.defaultInventoryAssetAccountId) {
-      errorHandler.showError('Default Inventory Asset Account is required for Perpetual accounting.');
+      errorHandler.showError(t('settings.messages.assetRequired', { defaultValue: 'Default Inventory Asset Account is required for Perpetual accounting.' }));
       return;
     }
 
@@ -93,10 +93,10 @@ const InventorySettingsPage: React.FC = () => {
       const saved = unwrap<InventorySettingsDTO>(result);
       setSettings(saved);
       setOriginalSettings(saved);
-      errorHandler.showSuccess('Inventory settings updated successfully.');
+      errorHandler.showSuccess(t('settings.messages.saved', { defaultValue: 'Inventory settings updated successfully.' }));
     } catch (err: any) {
       console.error('Failed to save inventory settings', err);
-      errorHandler.showError(err?.response?.data?.error?.message || 'Failed to save inventory settings.');
+      errorHandler.showError(err?.response?.data?.error?.message || t('settings.messages.saveFailed', { defaultValue: 'Failed to save inventory settings.' }));
     } finally {
       setSaving(false);
     }
@@ -115,15 +115,15 @@ const InventorySettingsPage: React.FC = () => {
   const accountingModeLocked = settings.accountingModeLocked === true;
 
   const tabs = [
-    { id: 'accounting', label: 'Accounting Foundation', icon: DollarSign },
-    { id: 'operational', label: 'Operational Rules', icon: Warehouse },
-    { id: 'item-coding', label: 'Item Coding', icon: Hash },
+    { id: 'accounting', label: t('settings.tabs.accounting', { defaultValue: 'Accounting Foundation' }), icon: DollarSign },
+    { id: 'operational', label: t('settings.tabs.operational', { defaultValue: 'Operational Rules' }), icon: Warehouse },
+    { id: 'item-coding', label: t('settings.tabs.itemCoding', { defaultValue: 'Item Coding' }), icon: Hash },
   ];
 
   return (
     <ModuleSettingsLayout
-      title="Inventory Settings"
-      subtitle="Configure global inventory and accounting rules."
+      title={t('settings.title', { defaultValue: 'Inventory Settings' })}
+      subtitle={t('settings.subtitle', { defaultValue: 'Configure global inventory and accounting rules.' })}
       tabs={tabs as any}
       activeTab={activeTab}
       onTabChange={(id) => setActiveTab(id as TabId)}
@@ -131,7 +131,7 @@ const InventorySettingsPage: React.FC = () => {
       onSave={handleSave}
       onDiscard={() => {
         setSettings(originalSettings);
-        toast('Changes discarded', { icon: 'ℹ️' });
+        toast(t('settings.messages.discarded', { defaultValue: 'Changes discarded' }), { icon: 'ℹ️' });
       }}
       saving={saving}
     >
@@ -144,8 +144,8 @@ const InventorySettingsPage: React.FC = () => {
       {/* Accounting Foundation Tab */}
       {activeTab === 'accounting' && (
         <SettingsSection
-          title="Accounting Foundation"
-          description="Manage how inventory value and COGS are handled in your general ledger."
+          title={t('settings.accounting.title', { defaultValue: 'Accounting Foundation' })}
+          description={t('settings.accounting.description', { defaultValue: 'Manage how inventory value and COGS are handled in your general ledger.' })}
           onSave={handleSave}
           disabled={!hasChanges || saving}
           saving={saving}
@@ -155,7 +155,7 @@ const InventorySettingsPage: React.FC = () => {
               <div className="grid md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
-                    {t('inventory.settings.accountingMode.label', { defaultValue: 'Accounting Mode' })}
+                    {t('settings.accountingMode.label', { defaultValue: 'Accounting Mode' })}
                   </label>
                   <select
                     value={settings.accountingMode}
@@ -164,13 +164,13 @@ const InventorySettingsPage: React.FC = () => {
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none bg-white font-medium disabled:bg-gray-50 disabled:text-gray-500"
                   >
                     <option value="PERIODIC">
-                      {t('inventory.settings.accountingMode.options.periodic', { defaultValue: 'Periodic' })}
+                      {t('settings.accountingMode.options.periodic', { defaultValue: 'Periodic' })}
                     </option>
                     <option value="INVOICE_DRIVEN">
-                      {t('inventory.settings.accountingMode.options.invoiceDriven', { defaultValue: 'Invoice-driven' })}
+                      {t('settings.accountingMode.options.invoiceDriven', { defaultValue: 'Invoice-driven' })}
                     </option>
                     <option value="PERPETUAL">
-                      {t('inventory.settings.accountingMode.options.perpetual', { defaultValue: 'Perpetual' })}
+                      {t('settings.accountingMode.options.perpetual', { defaultValue: 'Perpetual' })}
                     </option>
                   </select>
                   <div className="mt-1.5 flex items-start gap-1.5 text-xs text-gray-500">
@@ -178,10 +178,10 @@ const InventorySettingsPage: React.FC = () => {
                     <span>
                       {accountingModeLocked
                         ? (settings.accountingModeLockReason
-                          || t('inventory.settings.accountingMode.locked', {
+                          || t('settings.accountingMode.locked', {
                             defaultValue: 'Inventory accounting mode is locked after the first posted stock or accounting transaction.',
                           }))
-                        : t('inventory.settings.accountingMode.unlocked', {
+                        : t('settings.accountingMode.unlocked', {
                           defaultValue: 'You can still change the mode until the first posted stock or accounting transaction.',
                         })}
                     </span>
@@ -189,7 +189,7 @@ const InventorySettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Default Cost Currency</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.accounting.defaultCostCurrency', { defaultValue: 'Default Cost Currency' })}</label>
                   <input
                     type="text"
                     value={settings.defaultCostCurrency}
@@ -200,17 +200,17 @@ const InventorySettingsPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Costing Basis</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.accounting.costingBasis', { defaultValue: 'Costing Basis' })}</label>
                   <select
                     value={settings.costingBasis || 'WAREHOUSE'}
                     onChange={(e) => updateSetting('costingBasis', e.target.value as 'WAREHOUSE' | 'GLOBAL')}
                     className="w-full rounded-lg border border-gray-300 px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500 transition appearance-none bg-white font-medium"
                   >
-                    <option value="WAREHOUSE">Per Warehouse (moving average per item + warehouse)</option>
-                    <option value="GLOBAL">Global (one company-wide average per item)</option>
+                    <option value="WAREHOUSE">{t('settings.accounting.costingPerWarehouse', { defaultValue: 'Per Warehouse (moving average per item + warehouse)' })}</option>
+                    <option value="GLOBAL">{t('settings.accounting.costingGlobal', { defaultValue: 'Global (one company-wide average per item)' })}</option>
                   </select>
                   <p className="mt-1.5 text-xs text-gray-500 italic">
-                    Set once at setup — changing it after stock movements exist is not recommended. <strong>Per Warehouse</strong> keeps a separate moving average per location (default). <strong>Global</strong> keeps one company-wide average per item, so every location issues at the same cost. Both engines are live.
+                    {t('settings.accounting.costingBasisHint', { defaultValue: 'Set once during setup. Changing it after stock movements exist is not recommended.' })}
                   </p>
                 </div>
               </div>
@@ -218,65 +218,65 @@ const InventorySettingsPage: React.FC = () => {
               <div className="space-y-6">
                 <div className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Inventory Asset Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.accounting.inventoryAsset', { defaultValue: 'Default Inventory Asset Account' })}</label>
                     <AccountSelector
                       value={settings.defaultInventoryAssetAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryAssetAccountId', acc?.id || '')}
-                      placeholder="Select inventory asset account"
+                      placeholder={t('settings.accounting.selectInventoryAsset', { defaultValue: 'Select inventory asset account' })}
                       accounts={allAccounts.filter(a => a.accountRole === 'POSTING' && a.classification?.toUpperCase() === 'ASSET')}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
                       {accountingMode === 'PERPETUAL'
-                        ? 'Required for perpetual mode to post real-time inventory value.'
-                        : 'Recommended fallback for invoice-driven stock purchases and inventory recognition.'}
+                        ? t('settings.accounting.inventoryAssetRequired', { defaultValue: 'Required for perpetual mode to post real-time inventory value.' })
+                        : t('settings.accounting.inventoryAssetRecommended', { defaultValue: 'Recommended fallback for invoice-driven stock purchases and inventory recognition.' })}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default Opening Balance Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.accounting.openingBalance', { defaultValue: 'Default Opening Balance Account' })}</label>
                     <AccountSelector
                       value={settings.defaultOpeningBalanceAccountId}
                       onChange={(acc) => updateSetting('defaultOpeningBalanceAccountId', acc?.id || '')}
-                      placeholder="Select opening balance equity account"
+                      placeholder={t('settings.accounting.selectOpeningBalance', { defaultValue: 'Select opening balance equity account' })}
                       accounts={allAccounts.filter(a =>
                         a.accountRole === 'POSTING' &&
                         a.classification?.toUpperCase() === 'EQUITY'
                       )}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Prefills Opening Stock Documents. Users can override it per document, but posting still requires an active posting EQUITY account.
+                      {t('settings.accounting.openingBalanceHint', { defaultValue: 'Prefills Opening Stock Documents. Users can override it per document, but posting still requires an active posting equity account.' })}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Default COGS Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.accounting.cogs', { defaultValue: 'Default COGS Account' })}</label>
                     <AccountSelector
                       value={settings.defaultCOGSAccountId}
                       onChange={(acc) => updateSetting('defaultCOGSAccountId', acc?.id || '')}
-                      placeholder="Select COGS account"
+                      placeholder={t('settings.accounting.selectCogs', { defaultValue: 'Select COGS account' })}
                       accounts={allAccounts.filter(a => 
                         a.accountRole === 'POSTING' && 
                         ['EXPENSE', 'COGS'].includes(a.classification?.toUpperCase() || '')
                       )}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Optional fallback for stock cost recognition when the item or category has no own COGS account.
+                      {t('settings.accounting.cogsHint', { defaultValue: 'Optional fallback for stock cost recognition when the item or category has no own COGS account.' })}
                     </p>
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-1">Inventory Loss / Write-down Account</label>
+                    <label className="block text-sm font-medium text-gray-700 mb-1">{t('settings.accounting.lossAccount', { defaultValue: 'Inventory Loss / Write-down Account' })}</label>
                     <AccountSelector
                       value={settings.defaultInventoryLossAccountId}
                       onChange={(acc) => updateSetting('defaultInventoryLossAccountId', acc?.id || '')}
-                      placeholder="Select inventory loss account"
+                      placeholder={t('settings.accounting.selectLossAccount', { defaultValue: 'Select inventory loss account' })}
                       accounts={allAccounts.filter(a =>
                         a.accountRole === 'POSTING' &&
                         ['EXPENSE', 'COGS'].includes(a.classification?.toUpperCase() || '')
                       )}
                     />
                     <p className="mt-1.5 text-xs text-gray-500 italic">
-                      Debited when stock is written down (damage, shrinkage, expiry) on a negative stock adjustment. Falls back to COGS if unset.
+                      {t('settings.accounting.lossHint', { defaultValue: 'Debited when stock is written down on a negative stock adjustment. Falls back to COGS if unset.' })}
                     </p>
                   </div>
 

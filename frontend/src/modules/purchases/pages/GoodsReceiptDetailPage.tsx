@@ -147,7 +147,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
   const loadOpenLinesFromPO = async (poId?: string, silent = false, fallbackWarehouseId?: string) => {
     const targetPOId = (poId || form.purchaseOrderId || '').trim();
     if (!targetPOId) {
-      if (!silent) setError('Please enter a PO reference first.');
+      if (!silent) setError(t('goodsReceiptDetail.errors.poReferenceRequired', 'Please enter a PO reference first.'));
       return;
     }
 
@@ -170,16 +170,16 @@ const GoodsReceiptDetailPage: React.FC = () => {
       }));
 
       if (!mappedLines.length && !silent) {
-        setError('No open stock lines found on this PO.');
+        setError(t('goodsReceiptDetail.errors.noOpenStockLines', 'No open stock lines found on this PO.'));
       }
     } catch (err: any) {
       console.error('Failed to load PO lines', err);
       if (!silent) {
         setError(
-          err?.response?.data?.error?.message ||
+            err?.response?.data?.error?.message ||
             err?.response?.data?.message ||
             err?.message ||
-            'Failed to load lines from PO.'
+            t('goodsReceiptDetail.errors.loadPoLinesFailed', 'Failed to load lines from PO.')
         );
       }
     } finally {
@@ -270,10 +270,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to load goods receipt detail', err);
       setError(
-        err?.response?.data?.error?.message ||
+          err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to load goods receipt.'
+          t('goodsReceiptDetail.errors.loadFailed', 'Failed to load goods receipt.')
       );
     } finally {
       setLoading(false);
@@ -340,28 +340,28 @@ const GoodsReceiptDetailPage: React.FC = () => {
   };
 
   const validateBeforeSave = (): string | null => {
-    if (!form.receiptDate) return 'Receipt date is required.';
-    if (!form.warehouseId) return 'Warehouse is required.';
-    if (!form.purchaseOrderId && !form.vendorId) return 'Vendor is required when PO is not provided.';
+    if (!form.receiptDate) return t('goodsReceiptDetail.validation.receiptDateRequired', 'Receipt date is required.');
+    if (!form.warehouseId) return t('goodsReceiptDetail.validation.warehouseRequired', 'Warehouse is required.');
+    if (!form.purchaseOrderId && !form.vendorId) return t('goodsReceiptDetail.validation.vendorRequiredWithoutPo', 'Vendor is required when PO is not provided.');
 
     const activeLines = form.lines.filter((line) => line.itemId || line.poLineId);
 
     if (!form.purchaseOrderId) {
-      if (!activeLines.length) return 'At least one line is required for direct goods receipts.';
+      if (!activeLines.length) return t('goodsReceiptDetail.validation.directLinesRequired', 'At least one line is required for direct goods receipts.');
       for (let i = 0; i < form.lines.length; i += 1) {
         const line = form.lines[i];
-        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (!line.itemId) return t('goodsReceiptDetail.validation.lineItemRequired', 'Line {{lineNum}}: item is required.', { lineNum: i + 1 });
         if (Number.isNaN(line.receivedQty) || line.receivedQty <= 0) {
-          return `Line ${i + 1}: received quantity must be greater than 0.`;
+          return t('goodsReceiptDetail.validation.lineReceivedQtyPositive', 'Line {{lineNum}}: received quantity must be greater than 0.', { lineNum: i + 1 });
         }
       }
     } else if (activeLines.length > 0) {
       for (let i = 0; i < form.lines.length; i += 1) {
         const line = form.lines[i];
         if (!line.itemId && !line.poLineId) continue;
-        if (!line.itemId) return `Line ${i + 1}: item is required.`;
+        if (!line.itemId) return t('goodsReceiptDetail.validation.lineItemRequired', 'Line {{lineNum}}: item is required.', { lineNum: i + 1 });
         if (Number.isNaN(line.receivedQty) || line.receivedQty <= 0) {
-          return `Line ${i + 1}: received quantity must be greater than 0.`;
+          return t('goodsReceiptDetail.validation.lineReceivedQtyPositive', 'Line {{lineNum}}: received quantity must be greater than 0.', { lineNum: i + 1 });
         }
       }
     }
@@ -426,10 +426,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to save goods receipt', err);
       setError(
-        err?.response?.data?.error?.message ||
+          err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to save draft GRN.'
+          t('goodsReceiptDetail.errors.saveDraftFailed', 'Failed to save draft GRN.')
       );
     } finally {
       setBusy(false);
@@ -476,10 +476,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to post goods receipt', err);
       setError(
-        err?.response?.data?.error?.message ||
+          err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to post goods receipt.'
+          t('goodsReceiptDetail.errors.postFailed', 'Failed to post goods receipt.')
       );
     } finally {
       setBusy(false);
@@ -497,10 +497,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
     } catch (err: any) {
       console.error('Failed to unpost goods receipt', err);
       setError(
-        err?.response?.data?.error?.message ||
+          err?.response?.data?.error?.message ||
           err?.response?.data?.message ||
           err?.message ||
-          'Failed to unpost goods receipt.'
+          t('goodsReceiptDetail.errors.unpostFailed', 'Failed to unpost goods receipt.')
       );
     } finally {
       setBusy(false);
@@ -541,8 +541,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
     const receivedQtyTotal = form.lines.reduce((sum, line) => sum + (Number(line.receivedQty) || 0), 0);
     const draftRailSections: DocumentScaffoldRailSections = {
       info: {
-        title: 'Info',
-        action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
+        title: t('goodsReceiptDetail.rail.info', 'Info'),
+        action: <DocumentPill tone={form.purchaseOrderId ? 'blue' : 'slate'}>{form.purchaseOrderId ? t('goodsReceiptDetail.rail.po', 'PO') : t('goodsReceiptDetail.rail.direct', 'Direct')}</DocumentPill>,
         content: (
           <DocumentRailKeyValueList
             items={[
@@ -554,7 +554,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         ),
       },
       readiness: {
-        title: 'Document Status',
+        title: t('goodsReceiptDetail.rail.documentStatus', 'Document Status'),
         content: (
           <DocumentRailChecklist
             items={[
@@ -567,7 +567,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
         ),
       },
       totals: {
-        title: 'Totals',
+        title: t('goodsReceiptDetail.rail.totals', 'Totals'),
         content: (
           <DocumentRailTotals
             rows={[
@@ -582,17 +582,17 @@ const GoodsReceiptDetailPage: React.FC = () => {
 
     return (
       <DocumentDetailScaffold
-        title={isCreateMode ? 'New Goods Receipt' : `Edit ${grn?.grnNumber}`}
-        subtitle={t('goodsReceiptDetail.title', 'Warehouse receiving document. Posting records received stock through the existing Purchases flow.')}
+        title={isCreateMode ? t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt') : t('goodsReceiptDetail.labels.editGoodsReceipt', 'Edit {{number}}', { number: grn?.grnNumber })}
+        subtitle={t('goodsReceiptDetail.subtitle', 'Warehouse receiving document. Posting records received stock through the existing Purchases flow.')}
         icon={Truck}
-        backLabel={isEditMode ? 'Cancel edit' : 'Back to goods receipts'}
+        backLabel={isEditMode ? t('goodsReceiptDetail.labels.cancelEdit', 'Cancel edit') : t('goodsReceiptDetail.labels.backToGoodsReceipts', 'Back to goods receipts')}
         onBack={() => (isEditMode ? setIsEditMode(false) : navigate('/purchases/goods-receipts'))}
         badges={<DocumentPill tone="slate">{t("auto.GoodsReceiptDetailPage.draft", "Draft")}</DocumentPill>}
         railSections={draftRailSections}
-        railTitle="Goods receipt side rail"
+        railTitle={t('goodsReceiptDetail.rail.title', 'Goods receipt side rail')}
         newAction={{
           label: t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt'),
-          title: 'New Goods Receipt',
+          title: t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt'),
           hasUnsavedChanges: hasUnsavedDocumentChanges,
           onNew: openNewGoodsReceiptForm,
         }}
@@ -615,7 +615,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             onClick={saveDraft}
             disabled={busy}
           >
-            {busy ? 'Saving...' : (isCreateMode ? 'Create Draft GRN' : 'Update Draft')}
+            {busy ? t('common.saving', 'Saving...') : (isCreateMode ? t('goodsReceiptDetail.labels.createDraftGrn', 'Create Draft GRN') : t('goodsReceiptDetail.labels.updateDraft', 'Update Draft'))}
           </button>
             ),
           },
@@ -630,7 +630,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             content: (
         <Card className="overflow-visible p-0">
           <DocumentHeaderGrid>
-            <DocumentHeaderField label="PO Reference">
+            <DocumentHeaderField label={t('goodsReceiptDetail.labels.poReference', 'PO Reference')}>
               <input
                 type="text"
                 className={documentHeaderControlClass}
@@ -639,7 +639,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 placeholder={t("auto.GoodsReceiptDetailPage.purchaseOrderId", "purchaseOrderId")}
               />
             </DocumentHeaderField>
-            <DocumentHeaderField label="Vendor (standalone only)">
+            <DocumentHeaderField label={t('goodsReceiptDetail.labels.vendorStandaloneOnly', 'Vendor (standalone only)')}>
               <PartySelector 
                 className={documentHeaderSelectorClass}
                 value={form.vendorId}
@@ -652,7 +652,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 }}
               />
             </DocumentHeaderField>
-            <DocumentHeaderField label="Receipt Date">
+            <DocumentHeaderField label={t('goodsReceiptDetail.labels.receiptDate', 'Receipt Date')}>
               <DatePicker 
                 className="w-full"
                 inputClassName={documentHeaderControlClass}
@@ -660,7 +660,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 onChange={(val) => setForm((prev) => ({ ...prev, receiptDate: val }))}
               />
             </DocumentHeaderField>
-            <DocumentHeaderField label="Warehouse">
+            <DocumentHeaderField label={t('goodsReceiptDetail.labels.warehouse', 'Warehouse')}>
               <WarehouseSelector
                 className={documentHeaderSelectorClass}
                 value={form.warehouseId}
@@ -687,7 +687,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
             content: (
         <ClassicLineItemsTable<EditableLine>
           tableId="purchases.goodsReceipt.lines"
-          title={t('goodsReceiptDetail.title', 'Line Items')}
+          title={t('goodsReceiptDetail.labels.lineItems', 'Line Items')}
           headerAction={
             form.purchaseOrderId ? (
               <button
@@ -696,7 +696,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                 onClick={() => loadOpenLinesFromPO()}
                 disabled={busy || loadingPOLines}
               >
-                {loadingPOLines ? 'Loading...' : 'Load PO Lines'}
+                {loadingPOLines ? t('common.loading', 'Loading...') : t('goodsReceiptDetail.labels.loadPoLines', 'Load PO Lines')}
               </button>
             ) : undefined
           }
@@ -708,7 +708,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
           createEmptyRow={createEmptyLine}
           isRowFilled={(line) => Boolean(line.itemId || line.itemCode || line.itemName || line.description || line.warehouseId)}
           onRowAdd={!form.purchaseOrderId ? addLine : undefined}
-          addLabel="Add Item"
+          addLabel={t('goodsReceiptDetail.labels.addItem', 'Add Item')}
           minTableWidth="860px"
           columns={[
             {
@@ -802,8 +802,8 @@ const GoodsReceiptDetailPage: React.FC = () => {
   const viewReceivedQtyTotal = grn.lines.reduce((sum, line) => sum + (line.receivedQty || 0), 0);
   const viewRailSections: DocumentScaffoldRailSections = {
     info: {
-      title: 'Info',
-      action: <DocumentPill tone={grn.purchaseOrderId ? 'blue' : 'slate'}>{grn.purchaseOrderId ? 'PO' : 'Direct'}</DocumentPill>,
+      title: t('goodsReceiptDetail.rail.info', 'Info'),
+      action: <DocumentPill tone={grn.purchaseOrderId ? 'blue' : 'slate'}>{grn.purchaseOrderId ? t('goodsReceiptDetail.rail.po', 'PO') : t('goodsReceiptDetail.rail.direct', 'Direct')}</DocumentPill>,
       content: (
         <DocumentRailKeyValueList
           items={[
@@ -814,7 +814,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
       ),
     },
     totals: {
-      title: 'Totals',
+      title: t('goodsReceiptDetail.rail.totals', 'Totals'),
       content: (
         <DocumentRailTotals
           rows={[
@@ -831,9 +831,12 @@ const GoodsReceiptDetailPage: React.FC = () => {
     <>
     <DocumentDetailScaffold
       title={grn.grnNumber}
-      subtitle={`Vendor: ${grn.vendorName}${grn.purchaseOrderId ? ` | PO: ${linkedPO?.orderNumber || grn.purchaseOrderId}` : ''}`}
+      subtitle={t('goodsReceiptDetail.labels.viewSubtitle', 'Vendor: {{vendor}}{{poPart}}', {
+        vendor: grn.vendorName,
+        poPart: grn.purchaseOrderId ? t('goodsReceiptDetail.labels.viewSubtitlePoPart', ' | PO: {{po}}', { po: linkedPO?.orderNumber || grn.purchaseOrderId }) : '',
+      })}
       icon={Truck}
-      backLabel="Back to goods receipts"
+      backLabel={t('goodsReceiptDetail.labels.backToGoodsReceipts', 'Back to goods receipts')}
       onBack={() => navigate('/purchases/goods-receipts')}
       badges={
         <DocumentPill tone={grn.status === 'POSTED' ? 'green' : grn.status === 'CANCELLED' ? 'rose' : 'slate'}>
@@ -842,12 +845,12 @@ const GoodsReceiptDetailPage: React.FC = () => {
       }
       newAction={{
         label: t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt'),
-        title: 'New Goods Receipt',
+        title: t('goodsReceiptDetail.labels.newGoodsReceipt', 'New Goods Receipt'),
         hasUnsavedChanges: false,
         onNew: openNewGoodsReceiptForm,
       }}
       railSections={viewRailSections}
-      railTitle="Goods receipt side rail"
+      railTitle={t('goodsReceiptDetail.rail.title', 'Goods receipt side rail')}
       footerSections={{
         totals: {
           content: (
@@ -882,7 +885,7 @@ const GoodsReceiptDetailPage: React.FC = () => {
                   onClick={postDraft}
                   disabled={busy}
                 >
-                  {busy ? 'Posting...' : 'Post GRN'}
+                  {busy ? t('goodsReceiptDetail.labels.posting', 'Posting...') : t('goodsReceiptDetail.labels.postGrn', 'Post GRN')}
                 </button>
               )}
               {grn.status === 'POSTED' && (
@@ -899,9 +902,9 @@ const GoodsReceiptDetailPage: React.FC = () => {
                   className="rounded border border-amber-300 bg-amber-50 px-4 py-2 text-xs font-bold text-amber-700 transition-colors hover:bg-amber-100 disabled:opacity-50"
                   onClick={() => setUnpostConfirmOpen(true)}
                   disabled={busy || hasLinkedInvoiceLine}
-                  title={hasLinkedInvoiceLine ? "Cannot unpost because this GRN is linked to a PI" : ""}
+                  title={hasLinkedInvoiceLine ? t('goodsReceiptDetail.labels.cannotUnpostLinkedPi', 'Cannot unpost because this GRN is linked to a PI') : ""}
                 >
-                  {busy ? 'Unposting...' : 'Unpost GRN'}
+                  {busy ? t('goodsReceiptDetail.labels.unposting', 'Unposting...') : t('goodsReceiptDetail.labels.unpostGrn', 'Unpost GRN')}
                 </button>
               )}
             </>
@@ -974,10 +977,10 @@ const GoodsReceiptDetailPage: React.FC = () => {
 
       <ConfirmDialog
         isOpen={unpostConfirmOpen}
-        title={t('goodsReceiptDetail.title', 'Unpost Goods Receipt')}
-        message="This will reverse all inventory movements recorded for this goods receipt. The action is auditable but cannot be undone in place. Continue?"
-        confirmLabel="Unpost GRN"
-        cancelLabel="Cancel"
+        title={t('goodsReceiptDetail.unpost.confirmTitle', 'Unpost Goods Receipt')}
+        message={t('goodsReceiptDetail.unpost.confirmMessage', 'This will reverse all inventory movements recorded for this goods receipt. The action is auditable but cannot be undone in place. Continue?')}
+        confirmLabel={t('goodsReceiptDetail.labels.unpostGrn', 'Unpost GRN')}
+        cancelLabel={t('common.cancel', 'Cancel')}
         tone="danger"
         isConfirming={busy}
         onConfirm={unpostGRN}

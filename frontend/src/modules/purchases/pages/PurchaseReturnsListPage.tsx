@@ -57,7 +57,7 @@ const PurchaseReturnsListPage: React.FC = () => {
       setReturns(unwrap<PurchaseReturnDTO[]>(result) || []);
     } catch (err: any) {
       console.error('Failed to load purchase returns', err);
-      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || 'Failed to load purchase returns.');
+      setError(err?.response?.data?.error?.message || err?.response?.data?.message || err?.message || t('returnsList.errors.loadFailed', 'Failed to load purchase returns.'));
       setReturns([]);
     } finally {
       setLoading(false);
@@ -177,7 +177,7 @@ const PurchaseReturnsListPage: React.FC = () => {
             >
               {STATUS_OPTIONS.map((status) => (
                 <option key={status.value} value={status.value}>
-                  {status.value === 'ALL' ? 'Status' : status.label}
+                  {status.value === 'ALL' ? t('returnsList.filters.statusPlaceholder', 'Status') : t(`returnsList.status.${status.value}`, status.label)}
                 </option>
               ))}
             </select>
@@ -195,7 +195,7 @@ const PurchaseReturnsListPage: React.FC = () => {
             >
               {CONTEXT_OPTIONS.map((context) => (
                 <option key={context.value} value={context.value}>
-                  {context.value === 'ALL' ? 'Context' : context.label}
+                  {context.value === 'ALL' ? t('returnsList.filters.contextPlaceholder', 'Context') : t(`returnsList.context.${context.value}`, context.label)}
                 </option>
               ))}
             </select>
@@ -225,7 +225,11 @@ const PurchaseReturnsListPage: React.FC = () => {
       hasActiveFilters={hasActiveFilters}
       onClearFilters={handleClear}
       statusFilterConfig={{
-        options: STATUS_OPTIONS.map((option) => ({ value: option.value, label: option.label, color: option.color })),
+        options: STATUS_OPTIONS.map((option) => ({
+          value: option.value,
+          label: option.value === 'ALL' ? t('returnsList.status.ALL', option.label) : t(`returnsList.status.${option.value}`, option.label),
+          color: option.color,
+        })),
         activeValue: statusFilter,
         onChange: (value) => {
           setStatusFilter(value as PRStatus | 'ALL');
@@ -237,7 +241,7 @@ const PurchaseReturnsListPage: React.FC = () => {
       data={pagedReturns}
       rowActions={rowActions}
       onRowClick={(row) => navigate(`/purchases/returns/${row.id}`)}
-      emptyMessage="No purchase returns found."
+      emptyMessage={t('returnsList.emptyMessage', 'No purchase returns found.')}
       pagination={{
         page,
         pageSize,

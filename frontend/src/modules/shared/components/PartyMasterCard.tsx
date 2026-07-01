@@ -55,10 +55,10 @@ interface PartyMasterCardProps {
 }
 
 const PARTY_TABS: MasterCardTab[] = [
-  { id: 'GENERAL', label: 'Identity & Legal', icon: Building2 },
-  { id: 'CONTACT', label: 'Communication', icon: Phone },
-  { id: 'COMMERCIAL', label: 'Commercial Terms', icon: Coins },
-  { id: 'ACCOUNTING', label: 'Financial Settings', icon: ShieldCheck },
+  { id: 'GENERAL', label: 'parties.tabs.general', icon: Building2 },
+  { id: 'CONTACT', label: 'parties.tabs.contact', icon: Phone },
+  { id: 'COMMERCIAL', label: 'parties.tabs.commercial', icon: Coins },
+  { id: 'ACCOUNTING', label: 'parties.tabs.accounting', icon: ShieldCheck },
 ];
 
 const PartyMasterCard: React.FC<PartyMasterCardProps> = ({ 
@@ -207,7 +207,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       setForm(data);
       const existingAccountId = role === 'CUSTOMER' ? data.defaultARAccountId : data.defaultAPAccountId;
       setAccountStrategy(existingAccountId ? 'PICK_EXISTING' : '');
-    } catch (err) { setError('Failed to load party details'); }
+    } catch (err) { setError(t('parties.messages.loadFailed', 'Failed to load party details')); }
     finally { setLoading(false); }
   };
 
@@ -256,10 +256,10 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       // Auto-create may have just created the AR/AP sub-account; refresh the accounts
       // cache so the AccountSelector resolves it to "CODE — Name" instead of a raw id.
       refreshAccounts().catch(() => { /* non-blocking */ });
-      toast.success(isNew ? 'Created' : 'Updated');
+      toast.success(t(isNew ? 'parties.messages.created' : 'parties.messages.updated', isNew ? 'Created' : 'Updated'));
       onSaved?.(res);
     } catch (err: any) {
-      const msg = err.response?.data?.message || 'Failed to save';
+      const msg = err.response?.data?.message || t('parties.messages.saveFailed', 'Failed to save');
       setError(msg);
       toast.error(msg);
     } finally {
@@ -284,7 +284,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       const nextCode = generateNextCode(codes, pattern);
       setForm(p => ({ ...p, code: nextCode }));
     } catch (err) {
-      setError('Failed to suggest next code');
+      setError(t('parties.messages.suggestCodeFailed', 'Failed to suggest next code'));
     }
   };
 
@@ -304,7 +304,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     setError(null);
   };
 
-  if (loading) return <div className="p-20 text-center opacity-50 font-mono text-xs italic tracking-widest">Hydrating Master Table...</div>;
+  if (loading) return <div className="p-20 text-center opacity-50 font-mono text-xs italic tracking-widest">{t('parties.loading.hydratingMasterTable', 'Hydrating Master Table...')}</div>;
 
   return (
     <MasterCardLayout
@@ -312,7 +312,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       subtitle={isNew ? (role === 'CUSTOMER' ? t('parties.form.registeringNewCustomer', 'Registering New Customer') : t('parties.form.registeringNewVendor', 'Registering New Vendor')) : (role === 'CUSTOMER' ? t('parties.form.customerMasterRecord', 'Customer Master Record') : t('parties.form.vendorMasterRecord', 'Vendor Master Record'))}
       identifier={form.code}
       icon={role === 'VENDOR' ? Building2 : User}
-      tabs={PARTY_TABS.map(tab => ({ ...tab, label: t(`parties.tabs.${tab.id.toLowerCase()}`, tab.label) }))}
+      tabs={PARTY_TABS.map(tab => ({ ...tab, label: t(tab.label) }))}
       activeTab={activeTab}
       onTabChange={setActiveTab}
       isWindow={isWindow}
@@ -640,7 +640,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
               )}
 
               {(accountStrategy === 'PICK_EXISTING' || !isNew) && (
-                <Field label={role === 'CUSTOMER' ? 'Accounts Receivable (A/R) *' : 'Accounts Payable (A/P) *'}>
+                <Field label={role === 'CUSTOMER' ? t('parties.form.accounting.arAccountLabel', 'Accounts Receivable (A/R) *') : t('parties.form.accounting.apAccountLabel', 'Accounts Payable (A/P) *')}>
                   <AccountSelector
                     value={defaultLinkedAccountId}
                     onChange={(a: any) => {
@@ -648,7 +648,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                       syncCurrencyFromAccount(a);
                     }}
                     allowedClassifications={role === 'CUSTOMER' ? ['ASSET'] : ['LIABILITY']}
-                    contextLabel={role === 'CUSTOMER' ? 'Asset' : 'Liability'}
+                    contextLabel={role === 'CUSTOMER' ? t('parties.form.accounting.assetContext', 'Asset') : t('parties.form.accounting.liabilityContext', 'Liability')}
                     enforceClassification
                   />
                   <p className="text-[9px] text-slate-400 mt-1 italic uppercase tracking-tighter">

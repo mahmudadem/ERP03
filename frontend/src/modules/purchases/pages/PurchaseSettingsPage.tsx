@@ -180,14 +180,21 @@ const PurchaseSettingsPage: React.FC = () => {
       const result = await purchasesApi.backfillPartyAccounts();
       if (result.errors.length > 0) {
         toast(
-          `Backfill completed with issues. Created: ${result.created}, skipped: ${result.skipped}, errors: ${result.errors.length}`,
+          t('settings.apGeneration.backfillCompletedWithIssues', 'Backfill completed with issues. Created: {{created}}, skipped: {{skipped}}, errors: {{errors}}', {
+            created: result.created,
+            skipped: result.skipped,
+            errors: result.errors.length,
+          }),
           { icon: 'ℹ️' }
         );
       } else {
-        toast.success(`Backfill completed. Created: ${result.created}, skipped: ${result.skipped}.`);
+        toast.success(t('settings.apGeneration.backfillCompleted', 'Backfill completed. Created: {{created}}, skipped: {{skipped}}.', {
+          created: result.created,
+          skipped: result.skipped,
+        }));
       }
     } catch (err: any) {
-      toast.error(err?.response?.data?.error?.message || err?.message || 'Failed to backfill vendor AP sub-accounts.');
+      toast.error(err?.response?.data?.error?.message || err?.message || t('settings.apGeneration.backfillFailed', 'Failed to backfill vendor AP sub-accounts.'));
     } finally {
       setBackfilling(false);
       setShowBackfillConfirm(false);

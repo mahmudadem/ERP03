@@ -43,7 +43,7 @@ const CustomersListPage: React.FC = () => {
     if (uiMode === 'windows') {
       openWindow({
         type: 'party',
-        title: `Customer: ${customer.displayName}`,
+        title: t('sales.customersPage.window.customerTitle', { name: customer.displayName }),
         data: { partyId: customer.id, role: 'CUSTOMER' },
         size: { width: 950, height: 650 }
       });
@@ -56,7 +56,7 @@ const CustomersListPage: React.FC = () => {
     if (uiMode === 'windows') {
        openWindow({
          type: 'party',
-         title: 'New Customer',
+         title: t('sales.customersPage.window.newCustomer'),
          data: { partyId: 'new', role: 'CUSTOMER', onSaved: loadCustomers },
          size: { width: 950, height: 650 }
        });
@@ -137,9 +137,9 @@ const CustomersListPage: React.FC = () => {
         <div className="grid gap-3 border-b border-slate-200 p-4 dark:border-slate-800 lg:grid-cols-[2fr_1fr_auto_auto]">
           <label className="relative">
             <span className="sr-only">{t('sales.customersPage.search', 'Search customers')}</span>
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
+            <Search className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} aria-hidden="true" />
             <input
-              className="w-full rounded-lg border border-slate-300 py-2 pl-10 pr-3 text-sm"
+              className="w-full rounded-lg border border-slate-300 py-2 ps-10 pe-3 text-sm"
               placeholder={t('sales.customersPage.searchPlaceholder', 'Search code, name, email, phone…')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
@@ -178,19 +178,21 @@ const CustomersListPage: React.FC = () => {
         </div>
 
         {loading ? (
-          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse">Syncing Master Records...</div>
+          <div className="p-10 text-center text-sm text-slate-500 italic animate-pulse">
+            {t('sales.customersPage.loading', 'Syncing customer records...')}
+          </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="min-w-full text-xs">
               <thead className="bg-slate-50 dark:bg-slate-900 border-b dark:border-slate-800">
                 <tr>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.code', 'Code')}</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.name', 'Display Name')}</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.roles', 'Roles')}</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.phone', 'Phone')}</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.email', 'Email')}</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.credit', 'Credit Limit')}</th>
-                  <th className="px-6 py-3 text-left font-black text-slate-400 uppercase tracking-widest text-right">{t('sales.customersPage.columns.status', 'Status')}</th>
+                  <th className="px-6 py-3 text-start font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.code', 'Code')}</th>
+                  <th className="px-6 py-3 text-start font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.name', 'Display Name')}</th>
+                  <th className="px-6 py-3 text-start font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.roles', 'Roles')}</th>
+                  <th className="px-6 py-3 text-start font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.phone', 'Phone')}</th>
+                  <th className="px-6 py-3 text-start font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.email', 'Email')}</th>
+                  <th className="px-6 py-3 text-start font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.credit', 'Credit Limit')}</th>
+                  <th className="px-6 py-3 text-end font-black text-slate-400 uppercase tracking-widest">{t('sales.customersPage.columns.status', 'Status')}</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -200,7 +202,7 @@ const CustomersListPage: React.FC = () => {
                     className="cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900/50 transition-colors"
                     onClick={() => handleCustomerClick(customer)}
                   >
-                    <td className="px-6 py-4 font-mono font-bold text-blue-600">{customer.code}</td>
+                    <td className="px-6 py-4 font-mono font-bold text-blue-600" dir="ltr">{customer.code}</td>
                     <td className="px-6 py-4 font-medium text-slate-900 dark:text-slate-100">
                       {customer.displayName}
                       {customer.legalName && customer.legalName !== customer.displayName && (
@@ -214,7 +216,7 @@ const CustomersListPage: React.FC = () => {
                             key={role}
                             className="bg-slate-100 dark:bg-slate-800 text-slate-500 rounded px-2 py-0.5 text-[9px] font-black uppercase tracking-tighter"
                           >
-                            {role}
+                            {t(`sales.customersPage.roles.${role}`, role)}
                           </span>
                         ))}
                       </div>
@@ -226,7 +228,7 @@ const CustomersListPage: React.FC = () => {
                         ? customer.creditLimit.toLocaleString()
                         : '-'}
                     </td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-end">
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-widest ${customer.active ? 'bg-green-100 text-green-700' : 'bg-slate-100 text-slate-400'}`}>
                             {customer.active
                               ? t('sales.customersPage.status.active', 'Active')

@@ -39,6 +39,12 @@
     "managementNote": "Management report from historical profit facts. This does not recalculate inventory valuation or COGS.",
     "noData": "No gross profit facts match these filters."
   },
+  "salesAdminLists": {
+    "customerGroups": { "title": "Customer Groups", "subtitle": "Segmentation & Default Terms", "new": "New Group", "directory": "Group Directory", "emptyTitle": "No Customer Groups", "emptyDescription": "Create your first customer group to segment customers by default terms." },
+    "priceLists": { "title": "Price Lists", "subtitle": "Pricing Rules & Item Schedules", "new": "New Price List", "directory": "Price List Directory", "emptyTitle": "No Price Lists Found", "emptyDescription": "Create your first price list using the button above." },
+    "salespersons": { "title": "Salespersons", "subtitle": "Sales Team & Commission Rates", "new": "New Salesperson", "directory": "Sales Team Directory", "emptyTitle": "No Salespersons Registered", "emptyDescription": "Add salespersons to track commissions and assignments." },
+    "promotions": { "title": "Promotions", "subtitle": "Discount Rules & Promotional Campaigns", "new": "New Promotion", "directory": "Promotion Directory", "emptyTitle": "No Promotions Found", "emptyDescription": "Create your first promotion using the button above." }
+  },
   "language": {
     "label": "Language",
     "english": "English",
@@ -191,11 +197,15 @@
     "arAging": "AR Aging",
     "customerStatement": "Customer Statement",
     "salesAnalytics": "Sales Analytics",
+    "grossProfitByDocument": "Gross Profit by Document",
+    "grossProfitByItem": "Gross Profit by Item",
     "agedBacklog": "Aged Backlog",
     "customerGroups": "Customer Groups",
     "priceLists": "Price Lists",
     "salespersons": "Salespersons",
     "promotions": "Promotions",
+    "taxCodes": "Tax Codes",
+    "printLayoutDesigner": "Print Layout Designer",
     "goodsReceipts": "Goods Receipts",
     "purchaseInvoices": "Purchase Invoices",
     "purchaseReturns": "Purchase Returns",
@@ -209,9 +219,11 @@
     "transfers": "Transfers",
     "stockLevels": "Stock Levels",
     "movements": "Movements",
+    "itemMovement": "Item Movement",
     "lowStockAlerts": "Low Stock Alerts",
     "unsettledCosts": "Unsettled Costs",
     "inventoryValuation": "Inventory Valuation",
+    "inventoryGLReconciliation": "Inventory GL Reconciliation",
     "categories": "Categories",
     "uomMaster": "UOM Master",
     "tasks": "Tasks",
@@ -3168,6 +3180,7 @@
       "title": "Quotations",
       "subtitle": "Sales quotes and proposals.",
       "newQuote": "New Quote",
+      "searchPlaceholder": "Quote #, customer, status...",
       "allStatuses": "All Statuses",
       "allCustomers": "All Customers",
       "refresh": "Refresh",
@@ -3183,6 +3196,7 @@
       "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
       "loadError": "Failed to load quotations.",
       "statuses": {
+        "ALL": "All",
         "DRAFT": "Draft",
         "SENT": "Sent",
         "ACCEPTED": "Accepted",
@@ -3531,6 +3545,56 @@
       "empty": {
         "title": "No sales returns yet",
         "description": "Record customer returns posted before or after invoicing."
+      }
+    },
+    "customersPage": {
+      "title": "Customers",
+      "subtitle": "Manage customer master records and their receivable accounts.",
+      "addCustomer": "Add Customer",
+      "loading": "Syncing customer records...",
+      "window": {
+        "customerTitle": "Customer: {{name}}",
+        "newCustomer": "New Customer"
+      },
+      "kpi": {
+        "total": "Total customers",
+        "records": "records",
+        "active": "Active customers",
+        "operational": "operational",
+        "withEmail": "With email",
+        "contactable": "contactable",
+        "withCreditLimit": "With credit limit",
+        "creditLines": "credit lines"
+      },
+      "search": "Search customers",
+      "searchPlaceholder": "Search code, name, email, phone...",
+      "statusFilter": {
+        "all": "All statuses",
+        "active": "Active only",
+        "inactive": "Inactive only"
+      },
+      "columns": {
+        "code": "Code",
+        "name": "Display Name",
+        "roles": "Roles",
+        "phone": "Phone",
+        "email": "Email",
+        "credit": "Credit Limit",
+        "status": "Status"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "roles": {
+        "CUSTOMER": "Customer",
+        "VENDOR": "Vendor"
+      },
+      "emptyFiltered": "No customers match the current filters.",
+      "empty": "No customer records found.",
+      "footerCount": "Showing {{shown}} of {{total}} customers",
+      "messages": {
+        "loadFailed": "Failed to load customers"
       }
     },
     "invoiceDetail": {
@@ -4061,7 +4125,67 @@
     }
   },
   "parties": {
+    "tabs": {
+      "general": "Identity & Legal",
+      "contact": "Communication",
+      "commercial": "Commercial Terms",
+      "accounting": "Financial Settings"
+    },
+    "loading": {
+      "hydratingMasterTable": "Hydrating Master Table..."
+    },
+    "messages": {
+      "created": "Created",
+      "updated": "Updated",
+      "loadFailed": "Failed to load party details",
+      "saveFailed": "Failed to save",
+      "suggestCodeFailed": "Failed to suggest next code"
+    },
     "form": {
+      "supplierTitle": "Supplier",
+      "customerTitle": "Customer",
+      "registeringNewCustomer": "Registering New Customer",
+      "registeringNewVendor": "Registering New Vendor",
+      "customerMasterRecord": "Customer Master Record",
+      "vendorMasterRecord": "Vendor Master Record",
+      "saveNewVendor": "Save New Vendor",
+      "saveNewCustomer": "Save New Customer",
+      "updateVendor": "Update Vendor",
+      "updateCustomer": "Update Customer",
+      "legalIdentity": "Legal Identity",
+      "customerCodeLabel": "Customer Code",
+      "vendorCodeLabel": "Vendor Code",
+      "codePlaceholderCust": "e.g. CUST-0001",
+      "codePlaceholderVend": "e.g. SUP-0001",
+      "generateCode": "Generate Next Code",
+      "taxId": "Tax / VAT Registration ID",
+      "legalName": "Legal Entity Name (As per registration docs)",
+      "displayName": "Trading / Display Name",
+      "engagementDetails": "Engagement Details",
+      "contactPerson": "Contact Person",
+      "recordStatus": "Record Status",
+      "statusActive": "ACTIVE",
+      "statusSuspended": "SUSPENDED",
+      "communicationChannels": "Communication Channels",
+      "phoneNumber": "Phone/Mobile Number",
+      "email": "Electronic Mail",
+      "address": "Primary Address / HQ Location",
+      "agreedTerms": "Agreed Terms",
+      "paymentTerms": "Payment Terms (Days Credit)",
+      "currency": "Standard Currency",
+      "currencySelection": "(Currency Selection)",
+      "customerSegmentation": "Customer Segmentation & Credit",
+      "customerGroup": "Customer Group",
+      "noGroup": "(No Group)",
+      "defaultPriceList": "Default Price List",
+      "noPriceList": "(No Price List)",
+      "creditLimit": "Credit Limit",
+      "creditHoldPolicy": "Credit Hold Policy",
+      "policyNone": "NONE",
+      "policyWarn": "WARN",
+      "policyBlock": "BLOCK",
+      "taxExempt": "Tax Exempt",
+      "taxExemptHelp": "Customer is tax exempt",
       "accounting": {
         "title": "Accounting",
         "strategyLabel": "Account Strategy *",
@@ -4077,10 +4201,15 @@
         "previewNeedsCode": "Enter a party code to preview the generated account code.",
         "previewFormat": "Format: {{format}}",
         "previewUnavailable": "Preview unavailable",
+        "codeFormatManagedHint": "The account-code format is a company setting. Change it in {{where}} → Settings → Party account format.",
         "accountHelp": "Primary GL posting target for transactions associated with this party.",
         "strategyRequired": "Select an account strategy before saving.",
         "arRequired": "Linked AR account is required for customers when using Pick Existing.",
-        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
+        "apRequired": "Linked AP account is required for vendors when using Pick Existing.",
+        "arAccountLabel": "Accounts Receivable (A/R) *",
+        "apAccountLabel": "Accounts Payable (A/P) *",
+        "assetContext": "Asset",
+        "liabilityContext": "Liability"
       }
     }
   },
@@ -5179,6 +5308,12 @@
       "prefix": "By continuing, you agree to our",
       "terms": "Terms",
       "privacy": "Privacy"
+    },
+    "stats": {
+      "industryBundles": "Industry Bundles",
+      "activeOrgs": "Active Orgs",
+      "uptimeSla": "Uptime SLA",
+      "globalSupport": "Global Support"
     },
     "modules": {
       "availableNow": "Available Now",

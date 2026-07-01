@@ -318,8 +318,15 @@ const Editor: React.FC<EditorProps> = ({ initial, items, onClose, onSaved }) => 
                 <table className="w-full">
                   <thead>
                     <tr className="border-b border-slate-200 dark:border-slate-700">
-                      {['Item', 'Min Qty', 'Unit Price', 'Discount %', 'Comment', ''].map(h => (
-                        <th key={h} className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest pb-2 pr-2">{h}</th>
+                      {[
+                        t('priceLists.table.item', 'Item'),
+                        t('priceLists.table.minQty', 'Min Qty'),
+                        t('priceLists.table.unitPrice', 'Unit Price'),
+                        t('priceLists.table.discountPct', 'Discount %'),
+                        t('priceLists.table.comment', 'Comment'),
+                        '',
+                      ].map((h, idx) => (
+                        <th key={`${h || 'blank'}-${idx}`} className="text-left text-[10px] font-black text-slate-400 uppercase tracking-widest pb-2 pr-2">{h}</th>
                       ))}
                     </tr>
                   </thead>
@@ -364,8 +371,9 @@ const PurchasePriceListsPage: React.FC = () => {
       ]);
       setPriceLists(unwrap<PurchasePriceListDTO[]>(plResult) ?? []);
       setItems(unwrap<InventoryItemDTO[]>(itemsResult) ?? []);
-    } catch (err) {
-      console.error('Failed to load purchase price lists', err);
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.message ?? t('priceLists.messages.loadFailed', 'Failed to load purchase price lists');
+      toast.error(msg);
     } finally {
       setLoading(false);
     }
@@ -470,9 +478,9 @@ const PurchasePriceListsPage: React.FC = () => {
                             {pl.isDefault && <span className="text-[9px] font-black text-blue-600 uppercase tracking-widest pl-1">{t('common.default', 'DEFAULT')}</span>}
                           </div>
                           <div className="text-[11px] text-slate-400">
-                            {pl.lines.length} {pl.lines.length === 1 ? t('priceLists.line', 'line') : t('priceLists.linesPlural', 'lines')}
-                            {pl.validFrom && ` · from ${pl.validFrom}`}
-                            {pl.validTo && ` to ${pl.validTo}`}
+                          {pl.lines.length} {pl.lines.length === 1 ? t('priceLists.line', 'line') : t('priceLists.linesPlural', 'lines')}
+                            {pl.validFrom && ` · ${t('priceLists.validFromShort', 'from')} ${pl.validFrom}`}
+                            {pl.validTo && ` ${t('priceLists.validToShort', 'to')} ${pl.validTo}`}
                           </div>
                         </div>
                       </div>
@@ -483,7 +491,7 @@ const PurchasePriceListsPage: React.FC = () => {
                             ? 'border-green-200 text-green-600 bg-green-50'
                             : 'border-slate-200 text-slate-400 bg-slate-50'
                         )}>
-                          {pl.status}
+                          {pl.status === 'ACTIVE' ? t('common.active', 'Active') : t('common.inactive', 'Inactive')}
                         </div>
                         <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-all">
                           <button

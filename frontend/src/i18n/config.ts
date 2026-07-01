@@ -9,6 +9,8 @@ import enAiAssistant from '../locales/en/aiAssistant.json';
 import enPos from '../locales/en/pos.json';
 import enControls from '../locales/en/controls.json';
 import enPurchases from '../locales/en/purchases.json';
+import enInventory from '../locales/en/inventory.json';
+import enShared from '../locales/en/shared.json';
 import arCommon from '../locales/ar/common.json';
 import arDashboard from '../locales/ar/dashboard.json';
 import arAccounting from '../locales/ar/accounting.json';
@@ -16,6 +18,8 @@ import arAiAssistant from '../locales/ar/aiAssistant.json';
 import arPos from '../locales/ar/pos.json';
 import arControls from '../locales/ar/controls.json';
 import arPurchases from '../locales/ar/purchases.json';
+import arInventory from '../locales/ar/inventory.json';
+import arShared from '../locales/ar/shared.json';
 import trCommon from '../locales/tr/common.json';
 import trDashboard from '../locales/tr/dashboard.json';
 import trAccounting from '../locales/tr/accounting.json';
@@ -23,15 +27,17 @@ import trAiAssistant from '../locales/tr/aiAssistant.json';
 import trPos from '../locales/tr/pos.json';
 import trControls from '../locales/tr/controls.json';
 import trPurchases from '../locales/tr/purchases.json';
+import trInventory from '../locales/tr/inventory.json';
+import trShared from '../locales/tr/shared.json';
 
 const resources = {
-  en: { common: enCommon, dashboard: enDashboard, accounting: enAccounting, aiAssistant: enAiAssistant, pos: enPos, controls: enControls, purchases: enPurchases },
-  ar: { common: arCommon, dashboard: arDashboard, accounting: arAccounting, aiAssistant: arAiAssistant, pos: arPos, controls: arControls, purchases: arPurchases },
-  tr: { common: trCommon, dashboard: trDashboard, accounting: trAccounting, aiAssistant: trAiAssistant, pos: trPos, controls: trControls, purchases: trPurchases },
+  en: { common: enCommon, dashboard: enDashboard, accounting: enAccounting, aiAssistant: enAiAssistant, pos: enPos, controls: enControls, purchases: enPurchases, inventory: enInventory, shared: enShared },
+  ar: { common: arCommon, dashboard: arDashboard, accounting: arAccounting, aiAssistant: arAiAssistant, pos: arPos, controls: arControls, purchases: arPurchases, inventory: arInventory, shared: arShared },
+  tr: { common: trCommon, dashboard: trDashboard, accounting: trAccounting, aiAssistant: trAiAssistant, pos: trPos, controls: trControls, purchases: trPurchases, inventory: trInventory, shared: trShared },
 };
 
 const RTL_LANGS = ['ar'];
-const DEFAULT_LANGUAGE = 'en';
+const DEFAULT_LANGUAGE = 'ar';
 
 const getInitialLanguage = () => {
   if (typeof window === 'undefined') return DEFAULT_LANGUAGE;
@@ -61,7 +67,7 @@ i18n
     lng: getInitialLanguage(),
     fallbackLng: DEFAULT_LANGUAGE,
     supportedLngs: ['en', 'ar', 'tr'],
-    ns: ['common', 'dashboard', 'accounting', 'aiAssistant', 'pos', 'controls', 'purchases'],
+    ns: ['common', 'dashboard', 'accounting', 'aiAssistant', 'pos', 'controls', 'purchases', 'inventory', 'shared'],
     defaultNS: 'common',
     detection: {
       order: ['localStorage'],

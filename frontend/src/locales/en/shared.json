@@ -1,0 +1,16 @@
+{
+  "partySelector": {
+    "placeholder": "Select customer or vendor...",
+    "customerPlaceholder": "Select customer...",
+    "vendorPlaceholder": "Select vendor...",
+    "searchPlaceholder": "Search by name, code or email...",
+    "refresh": "Refresh parties",
+    "create": "Create new party",
+    "noResults": "No parties found matching \"{{query}}\"",
+    "createNewParty": "Create New Party",
+    "createRequired": "Code, display name, and currency are required.",
+    "createFailed": "Failed to create party.",
+    "roleCustomer": "Customer",
+    "roleVendor": "Vendor"
+  }
+}

@@ -14,30 +14,36 @@
     "end": "النهاية"
   },
   "salesGrossProfit": {
-    "titleByDocument": "Gross Profit by Document",
-    "titleByItem": "Gross Profit by Item",
-    "subtitle": "Historical gross profit facts by invoice currency and base currency",
-    "fromDate": "From Date",
-    "toDate": "To Date",
-    "documentScope": "Document Scope",
-    "scopeSales": "Sales invoices and returns",
-    "scopeSalesInvoices": "Sales invoices only",
-    "scopeSalesReturns": "Sales returns only",
-    "scopeAll": "All tracked document types",
-    "scopePurchaseInvoices": "Purchase invoices only",
-    "scopePurchaseReturns": "Purchase returns only",
-    "limit": "Row Limit",
-    "itemFilter": "Item Filter",
-    "allItems": "All items",
-    "docCurrency": "Document Currency",
-    "anyCurrency": "Any currency",
-    "generate": "Generate Report",
-    "netProfit": "Net Profit Base",
-    "profitIn": "Profit IN Base",
-    "profitOut": "Profit OUT Base",
-    "lines": "Fact Lines",
-    "managementNote": "Management report from historical profit facts. This does not recalculate inventory valuation or COGS.",
-    "noData": "No gross profit facts match these filters."
+    "titleByDocument": "إجمالي الربح حسب المستند",
+    "titleByItem": "إجمالي الربح حسب الصنف",
+    "subtitle": "حقائق إجمالي الربح التاريخية بعملة الفاتورة والعملة الأساسية",
+    "fromDate": "من تاريخ",
+    "toDate": "إلى تاريخ",
+    "documentScope": "نطاق المستندات",
+    "scopeSales": "فواتير ومردودات المبيعات",
+    "scopeSalesInvoices": "فواتير المبيعات فقط",
+    "scopeSalesReturns": "مردودات المبيعات فقط",
+    "scopeAll": "كل أنواع المستندات المتتبعة",
+    "scopePurchaseInvoices": "فواتير المشتريات فقط",
+    "scopePurchaseReturns": "مردودات المشتريات فقط",
+    "limit": "حد الصفوف",
+    "itemFilter": "فلتر الصنف",
+    "allItems": "كل الأصناف",
+    "docCurrency": "عملة المستند",
+    "anyCurrency": "أي عملة",
+    "generate": "إنشاء التقرير",
+    "netProfit": "صافي الربح بالعملة الأساسية",
+    "profitIn": "الربح الداخل بالعملة الأساسية",
+    "profitOut": "الربح الخارج بالعملة الأساسية",
+    "lines": "سطور الحقائق",
+    "managementNote": "تقرير إداري مبني على حقائق الربح التاريخية. لا يعيد احتساب تقييم المخزون أو تكلفة البضاعة المباعة.",
+    "noData": "لا توجد حقائق إجمالي ربح تطابق هذه الفلاتر."
+  },
+  "salesAdminLists": {
+    "customerGroups": { "title": "مجموعات العملاء", "subtitle": "التقسيم والشروط الافتراضية", "new": "مجموعة جديدة", "directory": "دليل المجموعات", "emptyTitle": "لا توجد مجموعات عملاء", "emptyDescription": "أنشئ أول مجموعة عملاء لتقسيم العملاء وتحديد شروطهم الافتراضية." },
+    "priceLists": { "title": "قوائم الأسعار", "subtitle": "قواعد التسعير وجداول الأصناف", "new": "قائمة أسعار جديدة", "directory": "دليل قوائم الأسعار", "emptyTitle": "لا توجد قوائم أسعار", "emptyDescription": "أنشئ أول قائمة أسعار باستخدام الزر أعلاه." },
+    "salespersons": { "title": "مندوبو المبيعات", "subtitle": "فريق المبيعات ونسب العمولات", "new": "مندوب مبيعات جديد", "directory": "دليل فريق المبيعات", "emptyTitle": "لا يوجد مندوبو مبيعات", "emptyDescription": "أضف مندوبي المبيعات لتتبع العمولات والتعيينات." },
+    "promotions": { "title": "العروض الترويجية", "subtitle": "قواعد الخصم والحملات الترويجية", "new": "عرض ترويجي جديد", "directory": "دليل العروض الترويجية", "emptyTitle": "لا توجد عروض ترويجية", "emptyDescription": "أنشئ أول عرض ترويجي باستخدام الزر أعلاه." }
   },
   "language": {
     "label": "اللغة",
@@ -192,11 +198,15 @@
     "arAging": "أعمار ذمم مدينين",
     "customerStatement": "كشف حساب عميل",
     "salesAnalytics": "تحليلات المبيعات",
-    "agedBacklog": "المتأخرات المعتقة",
+    "grossProfitByDocument": "إجمالي الربح حسب المستند",
+    "grossProfitByItem": "إجمالي الربح حسب الصنف",
+    "agedBacklog": "تقادم الطلبات المتأخرة",
     "customerGroups": "مجموعات العملاء",
     "priceLists": "قوائم الأسعار",
     "salespersons": "مندوبو المبيعات",
     "promotions": "العروض الترويجية",
+    "taxCodes": "الرموز الضريبية",
+    "printLayoutDesigner": "مصمم تخطيط الطباعة",
     "goodsReceipts": "إشعارات استلام بضائع",
     "purchaseInvoices": "فواتير المشتريات",
     "purchaseReturns": "مرتجع المشتريات",
@@ -210,9 +220,11 @@
     "transfers": "تحويلات المخزون",
     "stockLevels": "مستويات المخزون",
     "movements": "حركات المخزون",
+    "itemMovement": "حركة الصنف",
     "lowStockAlerts": "تنبيهات انخفاض المخزون",
     "unsettledCosts": "تكاليف غير مسواة",
     "inventoryValuation": "تقييم المخزون",
+    "inventoryGLReconciliation": "مطابقة المخزون مع الأستاذ العام",
     "categories": "الفئات",
     "uomMaster": "وحدات القياس",
     "tasks": "المهام",
@@ -2471,8 +2483,8 @@
           "desc": "عندما تتطلب القسيمة موافقتك."
         },
         "custody": {
-          "name": "تأكيدات الحضانة",
-          "desc": "عندما يتم تعيينك كأمين لحساب في إحدى المعاملات."
+          "name": "تأكيدات العهدة",
+          "desc": "عند تعيينك كمسؤول عهدة على حساب في إحدى المعاملات."
         },
         "system": {
           "name": "معلومات النظام",
@@ -2505,8 +2517,55 @@
   },
   "inventory": {
     "uom": {
+      "title": "وحدات القياس",
+      "subtitle": "عرّف وحدات القياس وعدد المنازل العشرية المستخدمة في المعاملات.",
+      "addHeading": "إضافة وحدة قياس جديدة",
+      "editHeading": "تعديل وحدة القياس",
       "fields": {
-        "localizedName": "الاسم المترجم"
+        "code": "الرمز",
+        "localizedName": "الاسم المترجم",
+        "name": "الاسم",
+        "dimension": "البُعد",
+        "decimals": "المنازل العشرية",
+        "active": "نشطة"
+      },
+      "placeholders": { "name": "كيلوغرام" },
+      "dimensions": {
+        "COUNT": "عدد",
+        "WEIGHT": "وزن",
+        "LENGTH": "طول",
+        "VOLUME": "حجم",
+        "AREA": "مساحة",
+        "TIME": "وقت",
+        "OTHER": "أخرى"
+      },
+      "decimalsHelp": "عدد المنازل العشرية المحفوظة عند التعامل بهذه الوحدة (0-6).",
+      "actions": {
+        "cancelEdit": "إلغاء التعديل",
+        "reset": "إعادة ضبط",
+        "saveChanges": "حفظ التغييرات",
+        "addUom": "إضافة وحدة قياس",
+        "edit": "تعديل"
+      },
+      "listHeading": "الوحدات المعرفة",
+      "count": "{{count}} وحدة",
+      "columns": {
+        "code": "الرمز",
+        "name": "الاسم",
+        "dimension": "البُعد",
+        "decimals": "المنازل العشرية",
+        "status": "الحالة",
+        "actions": "الإجراءات"
+      },
+      "loading": "جارٍ تحميل وحدات القياس...",
+      "empty": "لا توجد وحدات قياس معرفة بعد.",
+      "status": { "active": "نشطة", "inactive": "غير نشطة", "system": "نظامية" },
+      "errors": { "codeRequired": "رمز وحدة القياس مطلوب", "nameRequired": "اسم وحدة القياس مطلوب" },
+      "messages": {
+        "loadFailed": "فشل تحميل وحدات القياس",
+        "updated": "تم تحديث وحدة القياس",
+        "created": "تمت إضافة وحدة القياس",
+        "saveFailed": "فشل حفظ وحدة القياس"
       }
     },
     "settings": {
@@ -2995,9 +3054,9 @@
       "createOrder": "أمر بيع",
       "createReturn": "مرتجع مبيعات",
       "settings": "الإعدادات",
-      "title": "لوحة نظرة عامة على المبيعات",
+      "title": "لوحة المبيعات",
       "moduleDashboard": "لوحة الوحدة",
-      "subtitle": "متابعة الفواتير والذمم المدينة وإعداد مسارات أوامر البيع.",
+      "subtitle": "متابعة العملاء والمبيعات والمستندات والتحصيلات.",
       "salesSettings": "إعدادات المبيعات",
       "kpis": {
         "totalRevenue": "إجمالي الإيرادات",
@@ -3226,30 +3285,32 @@
       "actionFailed": "فشل الإجراء."
     },
     "quotesList": {
-      "title": "Quotations",
-      "subtitle": "Sales quotes and proposals.",
-      "newQuote": "New Quote",
-      "allStatuses": "All Statuses",
-      "allCustomers": "All Customers",
-      "refresh": "Refresh",
-      "clearFilters": "Clear Filters",
-      "quoteNumber": "Quote #",
-      "customer": "Customer",
-      "quoteDate": "Quote Date",
-      "validUntil": "Valid Until",
-      "grandTotal": "Grand Total",
-      "status": "Status",
-      "loading": "Loading...",
-      "emptyTitle": "No Quotations",
-      "emptyDescription": "No quotations match your filters. Create your first quotation or adjust filters.",
-      "loadError": "Failed to load quotations.",
+      "title": "عروض الأسعار",
+      "subtitle": "عروض أسعار ومقترحات المبيعات.",
+      "newQuote": "عرض سعر جديد",
+      "searchPlaceholder": "رقم العرض، العميل، الحالة...",
+      "allStatuses": "جميع الحالات",
+      "allCustomers": "جميع العملاء",
+      "refresh": "تحديث",
+      "clearFilters": "مسح الفلاتر",
+      "quoteNumber": "رقم العرض",
+      "customer": "العميل",
+      "quoteDate": "تاريخ العرض",
+      "validUntil": "صالح حتى",
+      "grandTotal": "الإجمالي",
+      "status": "الحالة",
+      "loading": "جارٍ التحميل...",
+      "emptyTitle": "لا توجد عروض أسعار",
+      "emptyDescription": "لا توجد عروض أسعار تطابق الفلاتر. أنشئ أول عرض سعر أو عدّل الفلاتر.",
+      "loadError": "فشل تحميل عروض الأسعار.",
       "statuses": {
-        "DRAFT": "Draft",
-        "SENT": "Sent",
-        "ACCEPTED": "Accepted",
-        "REJECTED": "Rejected",
-        "EXPIRED": "Expired",
-        "CONVERTED": "Converted"
+        "ALL": "الكل",
+        "DRAFT": "مسودة",
+        "SENT": "مرسل",
+        "ACCEPTED": "مقبول",
+        "REJECTED": "مرفوض",
+        "EXPIRED": "منتهي الصلاحية",
+        "CONVERTED": "محوّل"
       }
     },
     "invoicesList": {
@@ -3561,44 +3622,53 @@
       }
     },
     "returnsList": {
-      "title": "Sales Returns",
-      "subtitle": "Track sales return documents posted before or after invoicing.",
-      "newButton": "New Sales Return",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales returns...",
-      "loadError": "Failed to load sales returns.",
+      "title": "مردودات المبيعات",
+      "subtitle": "متابعة مستندات مردودات المبيعات قبل الفوترة أو بعدها.",
+      "newButton": "مردود مبيعات جديد",
+      "refresh": "تحديث",
+      "clearFilters": "مسح الفلاتر",
+      "open": "فتح",
+      "loading": "جارٍ تحميل مردودات المبيعات...",
+      "loadError": "فشل تحميل مردودات المبيعات.",
       "filters": {
-        "status": "Status",
-        "context": "Context",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
+        "status": "الحالة",
+        "statusPlaceholder": "الحالة",
+        "context": "السياق",
+        "contextPlaceholder": "السياق",
+        "customer": "العميل",
+        "allCustomers": "جميع العملاء",
+        "searchPlaceholder": "رقم المردود، العميل، السبب...",
+        "dateFrom": "من تاريخ",
+        "dateTo": "إلى تاريخ"
       },
       "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
+        "ALL": "الكل",
+        "DRAFT": "مسودة",
+        "POSTED": "مرحّل",
+        "CANCELLED": "ملغى"
       },
       "context": {
-        "ALL": "All",
-        "AFTER_INVOICE": "After Invoice",
-        "BEFORE_INVOICE": "Before Invoice"
+        "ALL": "الكل",
+        "AFTER_INVOICE": "بعد الفاتورة",
+        "BEFORE_INVOICE": "قبل الفاتورة",
+        "DIRECT": "مباشر"
       },
       "headers": {
-        "returnNumber": "Return #",
-        "customer": "Customer",
-        "returnDate": "Return Date",
-        "context": "Context",
-        "grandTotal": "Grand Total",
-        "status": "Status",
-        "actions": "Actions"
+        "returnNumber": "رقم المردود",
+        "customer": "العميل",
+        "returnDate": "تاريخ المردود",
+        "context": "السياق",
+        "grandTotal": "الإجمالي",
+        "reason": "السبب",
+        "postedAt": "تاريخ الترحيل",
+        "status": "الحالة",
+        "actions": "الإجراءات"
       },
       "empty": {
-        "title": "No sales returns yet",
-        "description": "Record customer returns posted before or after invoicing."
-      }
+        "title": "لا توجد مردودات مبيعات بعد",
+        "description": "سجّل مردودات العملاء قبل الفوترة أو بعدها."
+      },
+      "printQueued": "جارٍ طباعة مردود المبيعات {{number}}..."
     },
     "invoiceDetail": {
       "info": "معلومات",
@@ -4130,6 +4200,11 @@
       "title": "العملاء",
       "subtitle": "إدارة سجلات العملاء وحساباتهم",
       "addCustomer": "إضافة عميل",
+      "loading": "جارٍ تحميل سجلات العملاء...",
+      "window": {
+        "customerTitle": "العميل: {{name}}",
+        "newCustomer": "عميل جديد"
+      },
       "kpi": {
         "total": "إجمالي العملاء",
         "records": "سجلات",
@@ -4160,6 +4235,10 @@
         "active": "نشط",
         "inactive": "غير نشط"
       },
+      "roles": {
+        "CUSTOMER": "عميل",
+        "VENDOR": "مورد"
+      },
       "emptyFiltered": "لا يوجد عملاء يطابقون البحث.",
       "empty": "لا يوجد عملاء مسجلين.",
       "footerCount": "عرض {{shown}} من أصل {{total}} عملاء",
@@ -4169,6 +4248,16 @@
     }
   },
   "parties": {
+    "loading": {
+      "hydratingMasterTable": "جارٍ تحميل السجل الرئيسي..."
+    },
+    "messages": {
+      "created": "تم الإنشاء",
+      "updated": "تم التحديث",
+      "loadFailed": "فشل تحميل تفاصيل الطرف",
+      "saveFailed": "فشل الحفظ",
+      "suggestCodeFailed": "فشل اقتراح الرمز التالي"
+    },
     "form": {
       "supplierTitle": "مورد",
       "customerTitle": "عميل",
@@ -4230,7 +4319,11 @@
         "accountHelp": "الهدف الرئيسي للترحيل في دفتر الأستاذ العام للمعاملات المرتبطة بهذا الطرف.",
         "strategyRequired": "اختر استراتيجية الحساب قبل الحفظ.",
         "arRequired": "الحساب المرتبط للذمم المدينة مطلوب للعملاء عند استخدام اختيار حساب حالي.",
-        "apRequired": "الحساب المرتبط للذمم الدائنة مطلوب للموردين عند استخدام اختيار حساب حالي."
+        "apRequired": "الحساب المرتبط للذمم الدائنة مطلوب للموردين عند استخدام اختيار حساب حالي.",
+        "arAccountLabel": "حساب الذمم المدينة (A/R) *",
+        "apAccountLabel": "حساب الذمم الدائنة (A/P) *",
+        "assetContext": "أصل",
+        "liabilityContext": "التزام"
       },
       "customerCodeLabel": "رمز العميل",
       "vendorCodeLabel": "رمز المورد",
@@ -4773,6 +4866,22 @@
     }
   },
   "openingStockDocuments": {
+    "title": "مستندات رصيد أول المدة",
+    "newDocument": "مستند جديد",
+    "searchPlaceholder": "ابحث بالمستند أو المستودع أو القيد...",
+    "allWarehouses": "كل المستودعات",
+    "dateFrom": "من تاريخ",
+    "dateTo": "إلى تاريخ",
+    "apply": "تطبيق",
+    "clearFilters": "مسح الفلاتر",
+    "empty": "لا توجد مستندات رصيد أول المدة",
+    "accountingModes": {
+      "all": "كل الأنماط المحاسبية",
+      "withAccounting": "المخزون + المحاسبة",
+      "inventoryOnly": "المخزون فقط",
+      "withVoucher": "مع قيد",
+      "noVoucher": "دون قيد"
+    },
     "legacyOpeningMovementsTitle": "تم العثور على {{count}} حركة مخزون افتتاحية قديمة",
     "legacyOpeningMovementsBody": "تم تسجيل هذه الحركات من خلال مسار مخزون أول المدة المباشر القديم، لذلك لا تملك رؤوس مستندات بضاعة أول المدة. راجع حركات المخزون قبل إنشاء مستند افتتاحي جديد لتجنب تكرار المخزون.",
     "reviewStockMovements": "مراجعة حركات المخزون"
@@ -5365,6 +5474,12 @@
       "prefix": "بالمتابعة، أنت توافق على",
       "terms": "شروط الاستخدام",
       "privacy": "سياسة الخصوصية"
+    },
+    "stats": {
+      "industryBundles": "باقات القطاعات",
+      "activeOrgs": "منظمات نشطة",
+      "uptimeSla": "اتفاقية التوفر",
+      "globalSupport": "دعم عالمي"
     },
     "modules": {
       "availableNow": "متاح حالياً",

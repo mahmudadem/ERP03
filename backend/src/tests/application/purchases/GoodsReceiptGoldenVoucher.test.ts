@@ -141,6 +141,8 @@ const makeGRN = (item = makeItem()): GoodsReceipt =>
     vendorName: 'Vendor One',
     receiptDate: '2026-01-11',
     warehouseId: 'wh-1',
+    currency: 'USD',
+    exchangeRate: 1,
     lines: [
       {
         lineId: 'grn-line-1',

@@ -1,0 +1,29 @@
+{
+  "itemSelector": {
+    "placeholder": "Select item...",
+    "refresh": "Refresh items",
+    "create": "Create new item",
+    "searchPlaceholder": "Search items by name, code or barcode...",
+    "noLocalResults": "No items found in local cache",
+    "matching": "Matching \"{{query}}\"",
+    "searchEntireDatabase": "Search Entire Database",
+    "createNamed": "Create \"{{query}}\"",
+    "searchingServer": "Searching server...",
+    "scanningRegistry": "Scanning full item registry",
+    "scan": "Scan: {{barcode}}",
+    "unit": "Unit: {{uom}}",
+    "createRequired": "Code, name, base UoM, and cost currency are required.",
+    "createFailed": "Failed to create item."
+  },
+  "warehouseSelector": {
+    "placeholder": "Select warehouse...",
+    "searchPlaceholder": "Search warehouses...",
+    "refresh": "Refresh warehouses",
+    "create": "Create new warehouse",
+    "loading": "Loading warehouses...",
+    "noResults": "No warehouses found matching \"{{query}}\"",
+    "default": "Default",
+    "createRequired": "Warehouse code and name are required.",
+    "createFailed": "Failed to create warehouse."
+  }
+}
