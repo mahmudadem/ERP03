@@ -162,12 +162,13 @@
     "editDiscountAmount": "Edit discount amount",
     "edit": "Edit",
     "heldCancelled": "Held sale cancelled.",
-    "barcodeNotFound": "Barcode not found.",
     "barcodeError": "Failed to scan barcode.",
     "saleNotes": "Notes",
     "saleNotesPlaceholder": "Optional sale notes...",
     "creditSale": "Deferred Payment to Customer Account",
     "needCustomerForCredit": "Credit sale requires a selected customer.",
+    "creditSalesDisabled": "Enable POS credit sales in Settings before using deferred payment.",
+    "creditSaleNeedsNamedCustomer": "Select a named customer before using deferred payment.",
     "creditSaleNeedsApproval": "Manager approval is required for deferred payment.",
     "shortcuts": "Shortcuts",
     "keyboardShortcuts": "Keyboard shortcuts"
@@ -364,7 +365,13 @@
       "BANK_TRANSFER": "Counted bank transfer",
       "CUSTOM": "Counted custom"
     },
-    "close": "Close",
+    "close": "Close shift",
+    "viewCloseSummary": "View shift summary",
+    "closeSummaryTitle": "Shift close summary",
+    "cashVariance": "Cash variance",
+    "closeSummaryHelp": "Review the shift totals before ending the session. If there is a cash over/short amount, ERP03 will post the configured accounting effect during close.",
+    "editCount": "Edit count",
+    "confirmEndSession": "Confirm end session",
     "historyTitle": "Shift history",
     "historySubtitle": "Recent shifts for this company.",
     "empty": "No shifts yet.",
@@ -420,7 +427,7 @@
     }
   },
   "shortcuts": {
-    "title": "POS Shortcuts",
+    "title": "Keyboard Shortcuts",
     "subtitle": "Build terminal groups and bulk-assign items to each group.",
     "loading": "Loading...",
     "defaultLayoutName": "Default shortcuts",
@@ -462,7 +469,15 @@
       "disable": "Disable",
       "delete": "Delete",
       "save": "Save",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "searchItems": "Search Items",
+      "checkout": "Checkout / Pay",
+      "voidSale": "Void Sale",
+      "holdCart": "Hold Cart",
+      "addCustomItem": "Add Custom Item",
+      "applyDiscount": "Apply Global Discount",
+      "cashPayment": "Quick Cash Payment",
+      "cardPayment": "Quick Card Payment"
     },
     "errors": {
       "load": "Failed to load POS shortcuts.",
@@ -472,7 +487,11 @@
       "addItems": "Failed to add items.",
       "updateShortcut": "Failed to update shortcut.",
       "deleteShortcut": "Failed to delete shortcut."
-    }
+    },
+    "resetAll": "Reset All",
+    "listening": "Press key...",
+    "resetAction": "Reset to default",
+    "defaultPrefix": "Default: "
   },
   "report": {
     "dateFrom": "Date from",

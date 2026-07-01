@@ -58,6 +58,235 @@
   - `npm run smoke:companies` (forced SQL) → **PASS** — 2 companies end-to-end: 48-acct COA, 16 voucher types/forms, fiscal year, balanced journal posted, ledger balanced.
 - **Honest verdict:** the SQL *backend data layer* is genuinely far more ready than the experience suggested — the blocker was setup + 1 bug, not missing implementation. **Still unverified:** full running app on SQL (HTTP server boot + frontend/onboarding round-trip) — that's the next bar.
 - **Next:** boot the server in SQL mode and do a real round-trip; then 275f provisioning. Reproducible setup steps captured in `ACTIVE.md`.
+# 2026-06-30 — Telegram QA fix 278x localized default voucher/form names
+
+- Goal: show initialized default voucher/form names in the user's EN/AR/TR
+  interface language without changing accounting identity or overwriting custom
+  tenant names.
+- Added one stable-code display resolver and complete translations for all 16
+  seeded voucher templates plus built-in native form labels.
+- Wired the resolver into initialization catalogs, Forms Management, dynamic
+  sidebar entries, voucher/form hooks, document pages, and journal filters.
+- Added a frontend build guard that fails when a seeded voucher code lacks an
+  English, Arabic, or Turkish display name.
+- Accounting/data impact: none. Posting, numbering, document lookup, and
+  persistence continue to use stable codes; no tenant data migration occurred.
+- Worktree correction: the first pass was mistakenly made in `ERP03`; the
+  scoped patch was moved to `ERP03-unified` and the SQL worktree was restored
+  without touching its pre-existing `_sqlServer.ts`.
+- Verification: EN/AR/TR locale JSON passed; 16/16 template coverage, Arabic
+  resolution, and custom-name preservation checks passed; frontend typecheck
+  and production build passed; 31/31 focused backend template/System Core
+  tests passed. `graphify update .` was unavailable in this shell.
+- Actual time: ~2.1 hours. Not committed, pushed, or deployed.
+- Next: owner approval to commit 278x, then continue the remaining translation
+  audit.
+
+# 2026-06-30 — Production QA 278w Sales/Purchases Analytics report translation
+
+- **Goal:** Continue the Telegram all-report translation audit with the Sales Analytics and Purchases Analytics reports.
+- **Fix:** Localized Sales Analytics title/subtitle, grouping/date filters, mode labels, report action, mode chip, row-count text, loading/error fallback, section titles, empty states, table headers, and totals labels using `common:sales.analytics.*` keys in English/Arabic/Turkish. Completed Purchases Analytics i18n by localizing the remaining table headers, mode chip, fallback error, and row-count pluralization using `purchases:auto.PurchasesAnalyticsPage.*`.
+- **Accounting/ERP impact:** Presentation only. No report calculation, API contract, posting, AR/AP, tax, stock, settlement, permissions, tenant isolation, or audit behavior changed.
+- **Verification:** Locale JSON parse passed. Frontend typecheck passed. Frontend production build passed, with only existing browser-data/chunk-size/import warnings.
+- **Docs:** Added `planning/done/278w-sales-purchases-analytics-report-translation.md`.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278w after owner approval, then continue the remaining all-report translation audit with Sales Gross Profit or accounting report pages.
+
+### Session: 2026-06-30 (Production QA 278v — Sales Customer Statement report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with the Sales Customer Statement report.
+- **Fix:** Localized Customer Statement title/subtitle, view/customer/date filters, open-commitments help, ledger table headers, opening/closing rows, empty transaction state, line-type badges, source/voucher actions and tooltips, report chips, totals summary, loading/empty states, open-invoice table headers, and open-commitment table headers using `common:sales.customerStatement.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AR ledger source, opening/closing balance logic, debit/credit display, open-invoice selection, open-commitment exclusion, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278v, then continue remaining all-report translation audit.
+
+### Session: 2026-06-30 (Production QA 278u — Sales AR Aging report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with the Sales AR Aging report.
+- **Fix:** Localized AR Aging title/subtitle, as-of/customer filters, customer selector placeholder, generate button, expanded invoice-detail headers, unallocated credit/JV labels, load-error fallback, as-of chip, customer-count/total-AR summary, loading/empty states, aging table headers, and totals label using `common:sales.arAging.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AR aging bucket calculation, customer filter behavior, outstanding balance logic, credit/JV adjustment display, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278u, then continue remaining all-report translation audit with Sales Customer Statement.
+
+### Session: 2026-06-30 (Production QA 278t — Purchases Vendor Statement report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with the Purchases Vendor Statement report.
+- **Fix:** Localized remaining hardcoded Vendor Statement labels: ledger table headers, line-type badges, mode chip, date-range chip, report section titles, open-bill table headers, open-commitment table headers, and fallback load-error text using `purchases:auto.VendorStatementPage.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AP ledger source, opening/closing balance logic, debit/credit display, open-bill selection, open-commitment exclusion, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** purchases locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278t, then continue remaining all-report translation audit.
+
+### Session: 2026-06-30 (Production QA 278s — Purchases AP Aging report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit with Purchases reporting.
+- **Fix:** Localized the AP Aging report remaining hardcoded labels: aging table headers, expanded invoice-detail headers, as-of-date chip/empty state, vendor-count summary, debit-note/JV adjustment label, and unallocated-balance label using `purchases:auto.ApAgingReportPage.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No AP aging bucket calculation, vendor balance sign convention, unallocated debit/credit handling, invoice matching, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** purchases locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278s, then continue remaining all-report translation audit with Purchases Vendor Statement.
+
+### Session: 2026-06-30 (Production QA 278r — Inventory GL Reconciliation report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit for Inventory report pages, including the accounting-sensitive stock-to-GL reconciliation screen.
+- **Fix:** Localized the Inventory GL Reconciliation report title, subtitle, as-of date filter, explanatory help text, generate button, loading text, reconciled/drift banner, summary labels, table columns, matched/drift badges, and empty state using `common:inventory.glReconciliation.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock sub-ledger value, GL balance retrieval, drift calculation, mapping, tenant data, permissions, vouchers, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278r, then continue remaining all-report translation audit.
+
+### Session: 2026-06-30 (Production QA 278q — Inventory Item Movement report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit for Inventory report pages.
+- **Fix:** Localized the Item Movement report title, subtitle, item/warehouse/date/direction/movement/source filters, selector placeholders, direction/movement/source options, generate button, chips, movement count summary, loading text, empty state, table columns, and displayed movement/source type labels using `common:inventory.itemMovement.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock movement retrieval, filtering semantics, running quantity, running value, source routing, tenant data, permission, voucher, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278q, then continue remaining all-report translation audit.
+
+### Session: 2026-06-30 (Production QA 278p — Inventory Stock Levels report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit for Inventory report pages.
+- **Fix:** Localized the Stock Levels report title, subtitle, item/warehouse/view filters, selector placeholders, checkbox labels, generate button, view chips, negative-stock chips, summary labels, loading text, empty state, table columns, cost-basis labels, and stock-warning labels using `common:inventory.stockLevels.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock levels, quantities, valuation math, cost-basis selection, negative-stock exposure, tenant data, permission, voucher, or ledger behavior changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278p, then continue remaining all-report translation audit.
+
+### Session: 2026-06-29 (Production QA 278o — Inventory Valuation report translation)
+
+- **Goal:** Continue the Telegram all-report translation audit after Inventory reports showed English labels in Arabic.
+- **Fix:** Localized the Inventory Valuation report title, subtitle, filters, mode/pricing-policy options, generate button, chips, summary, loading text, empty state, table columns, and grand-total label using `common:inventory.valuation.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No stock valuation, average-cost, last-purchase-cost, as-of valuation, voucher, ledger, tenant data, permission, or report calculation logic changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed including report route guard, no-confirm guard, and SoD approve guard; `git diff --check` passed. Build emitted only existing browser-data / dynamic-import / chunk-size warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278o, then continue remaining all-report translation audit.
+
+### Session: 2026-06-29 (Production QA 278n — Inventory Unsettled Costs report translation)
+
+- **Goal:** Address Telegram photo 23 showing Inventory Unsettled Costs report English text in an Arabic session.
+- **Fix:** Localized the report title, subtitle, filters, cost-basis options, chips, summary totals, table columns, loading text, totals row, and empty state using `common:inventory.unsettledCosts.*` keys in English/Arabic/Turkish.
+- **Accounting impact:** Translation/presentation only. No inventory movement, costing, voucher, ledger, tenant data, permission, or report calculation logic changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278n, then continue remaining all-report translation audit.
+
+### Session: 2026-06-29 (Production QA 278m — POS report date range and DatePicker quick-select i18n)
+
+- **Goal:** Address Telegram screenshots 21–22 and note that POS report default dates looked reversed and DatePicker quick-select text was untranslated.
+- **Fix:** Forced the POS date-range initiator row to render Date from → Date to in a direction-stable order while keeping labels localized, and translated shared DatePicker quick-select labels under `common:datePicker.*`.
+- **Accounting impact:** Report filter UI only. No POS receipts, returns, shifts, vouchers, ledger, tenant data, or report calculations changed.
+- **Verification:** common locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278m, then continue all-report translation audit from Telegram photo 23.
+
+### Session: 2026-06-29 (Production QA 278l — POS shift close summary modal)
+
+- **Goal:** Address Telegram screenshot 20 and follow-up text asking for the POS close modal to show a shift summary first, use clear Arabic button text, and remove the extra generic close button.
+- **Fix:** Changed the POS close modal to a two-step flow: enter counted totals → view shift summary → confirm end session. Hid the shared modal footer for this flow and added English/Arabic/Turkish labels.
+- **Accounting impact:** UI confirmation/safety only. Backend close validation and cash over/short voucher posting remain unchanged.
+- **Verification:** POS locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278l, then continue Telegram report/date/translation QA.
+
+### Session: 2026-06-29 (Production QA 278k — Sales dashboard / Purchase Settings translations)
+
+- **Goal:** Address Telegram screenshots 14–15 showing Arabic sessions with English labels on Sales Dashboard and Purchase Settings AP-generation controls.
+- **Fix:** Moved Sales Dashboard visible labels to `common:sales.home.*`, translated them in English/Arabic/Turkish, translated Purchase Settings AP-generation/AP-parent/account-code-format labels, and made AP account-code preset labels translatable.
+- **Accounting impact:** Presentation only. No purchase settings values, AP parent accounts, vendors, invoices, vouchers, ledger, tenant data, or permissions changed.
+- **Verification:** locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. Build emitted only existing bundle/browser-data warnings. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278k, then continue the POS shift-close modal issue.
+
+### Session: 2026-06-29 (Production QA 278j — Opening Stock legacy movement warning)
+
+- **Goal:** Address Telegram report where Opening Stock Documents showed no records while Stock Movements contained opening-stock rows.
+- **Decision:** Added a warning instead of backfilling synthetic document headers. Old movement rows are real audit evidence, but generated headers would imply a document workflow that did not happen.
+- **Fix:** Opening Stock Documents list now detects legacy `OPENING_STOCK` movements when the document list is empty and shows an amber warning with a link to Stock Movements.
+- **Accounting impact:** Read-only display/reconciliation fix. No stock levels, costs, vouchers, ledger, tenant scope, or audit records changed.
+- **Verification:** locale JSON parse passed; frontend typecheck passed; frontend production build passed; `git diff --check` passed. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.5h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278j docs, then continue the next Telegram QA issue.
+
+### Session: 2026-06-29 (Production QA 278i — POS report date/time sort)
+
+- **Goal:** Address Telegram note: "all reports using report container must start default sort by date and time, time is important."
+- **Decision:** Applied the fix first to POS reports with dated row-level output. Did not force date order onto grouped/ranked summaries because that would make Payment Methods, Cashier Sales, and Top Selling Items less meaningful.
+- **Fix:** Added shared `sortReportRowsByDateTimeDesc()` helper and applied it to POS Daily Summary, Receipt History, Cancelled Receipts, Cash Over/Short, Override Audit, and Reprint Audit.
+- **Accounting impact:** Display order only. No POS receipts, returns, payments, shifts, vouchers, stock, revenue, tax, cash, ledger, tenant, or audit records changed.
+- **Verification:** frontend typecheck passed; frontend production build passed. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278i docs, then continue the next Telegram QA issue.
+
+### Session: 2026-06-29 (Production QA 278h — clear API error labels)
+
+- **Goal:** Fix Telegram photos 9–11 where Approval Center and Account Statement showed generic production errors such as "An unexpected error occurred" and "Request failed with status code 500".
+- **Root cause:** Genuine backend 500 responses were being surfaced through the shared modal without enough request context, so screenshots did not identify the failing accounting operation.
+- **Fix:** Enriched frontend API errors with HTTP status, method, and path; mapped key accounting endpoints to localized operation labels; and added a safe technical reference to the error modal.
+- **Accounting impact:** Diagnostics/presentation only. No approval, voucher, ledger, balance, statement, posting, tenant-scope, or audit behavior changed.
+- **Verification:** locale JSON parse passed; frontend typecheck passed; frontend production build passed. `graphify update .` could not run because the CLI is unavailable.
+- **Time spent:** ~0.6h.
+- **Deployment:** Deferred until the full Telegram QA fix queue is complete.
+- **Next:** Commit 278h docs, then continue the next Telegram QA issue.
+
+### Session: 2026-06-29 (Production QA 278d — POS shift-close validation)
+
+- **Goal:** Fix POS shift close showing a generic HTTP 500.
+- **Root cause:** Production correctly blocked a cash shortage because no Cash Short account was configured, but the use-case threw raw `Error`, which the API classified as an internal failure.
+- **Fix:** Emit structured `ValidationError` with field and POS Settings path while preserving the accounting block.
+- **Accounting impact:** No fallback posting. Failed close leaves shift OPEN and creates no voucher.
+- **Verification:** POS shift + System Core suites 41/41 passed; backend build passed.
+- **Time spent:** ~0.4h.
+- **Deployment:** Deferred until the full QA fix queue is complete.
+- **Next:** Commit 278d, then repair Approval Center's reported HTTP 500.
+
+### Session: 2026-06-29 (Production QA 278c — Purchase invoice query index)
+
+- **Goal:** Fix the Purchase dashboard/analytics HTTP 500 when loading posted invoices.
+- **Root cause:** `purchase_invoices` was queried by `status` ordered by `invoiceDate`, but only `sales_invoices` had that composite index.
+- **Fix:** Added the Purchase composite index and extended the production index-contract test.
+- **Accounting impact:** Retrieval-only; no PI, AP, tax, stock, ledger, or tenant data changed.
+- **Verification:** architecture suites 32/32 passed; backend build passed.
+- **Time spent:** ~0.3h.
+- **Deployment:** Deferred until all Telegram QA fixes finish, per owner instruction.
+- **Next:** Commit 278c, then investigate POS shift closing and remaining report failures.
+
+### Session: 2026-06-29 (Production QA 278b — Purchase item API route)
+
+- **Goal:** Fix Purchases -> Products & Services returning `Endpoint not found: GET /api/v1/tenant/purchases/items`.
+- **Root cause:** Reused item components treated the plural browser route as the API mount; the Purchase module API is singular.
+- **Fix:** Kept `/purchases/items` for navigation and mapped Purchase item API calls to `/tenant/purchase/items` in list and detail/save flows.
+- **Safety:** Existing Catalog Core controller, tenant context, and `purchase.items.*` permission guards remain authoritative.
+- **Verification:** frontend typecheck and full production build passed; Vite LAN process restored on port 5173.
+- **Time spent:** ~0.5h.
+- **Next:** Commit 278b, then continue with the remaining production 500 failures. Retry the combined Firebase deployment; the Firestore Rules API blocked three 278a attempts.
+
+### Session: 2026-06-29 (Production QA 278a — ledger statement indexes)
+
+- **Goal:** Fix production HTTP 500 failures in account-backed vendor/customer statements reported in the Telegram QA export.
+- **Root cause:** `FirestoreLedgerRepository.getAccountStatement` queries `ledger` by account, posted state, and date, but the deployed Firestore manifest had no matching composite indexes.
+- **Fix:** Added `accountId + isPosted + date` and `accountId + date` indexes plus an architecture regression test.
+- **Accounting impact:** Retrieval-only. No voucher, ledger entry, balance, posting rule, or tenant scope changed.
+- **Verification:** index contract 2/2 passed; backend build passed.
+- **Time spent:** ~0.5h.
+- **Next:** Commit/deploy 278a, verify index readiness, then fix the broken `/tenant/purchases/items` API contract as 278b.
 
 ### Session: 2026-06-29 (Production heal + live Firebase deploy — 503/500 fix reconciled into prod lane)
 
@@ -5544,3 +5773,95 @@ The initial build passed `tsc` and unit tests but had critical functional bugs. 
 - Verified with `npm run typecheck` and `npm run build` in `frontend/`.
 - Actual time: ~1.0h.
 - Next: continue the page-by-page Purchases sweep on the remaining detail pages.
+# 2026-06-29 — Emergency Firebase deploy QA fixes on unified worktree
+
+- Goal: clear owner-reported production QA blockers on Firebase/Vercel while staying on `D:\DEV2026\ERP03-unified`.
+- Deployed fixes already in the unified branch for POS item company context, Inventory UOM conversion query indexing, startup retry behavior, account-create notification blocking, and generic status-code error mapping.
+- Fixed Purchases Settings persistence for `exchangeGainLossAccountId`: the frontend already sent the field and the DTO could return it, but `UpdatePurchaseSettingsUseCase` and validator did not carry it through, causing a success toast followed by missing value after reload.
+- Added validation/account existence checks and a focused regression test proving the FX Gain/Loss account is saved and returned.
+- Verification: `npm test -- PurchaseSettingsUseCases.test.ts` PASS (9/9), `npm run build` PASS, `npx firebase deploy --only functions --project erp-03` PASS, recent live function logs show startup validation complete and 200 responses.
+- Accounting impact: preserves the configured purchase realized-FX account used by supplier exchange-difference posting; no posting math changed.
+- Time spent: ~0.7h on the Purchases settings persistence fix after earlier deploy fixes.
+- Next: owner retest `Purchases -> Settings`: select/save FX Gain/Loss account, navigate away/reopen, confirm the field persists.
+
+# 2026-06-29 — Emergency vendor/customer list 500 fix
+
+- Goal: clear owner-reported `Purchases -> Vendors` 500 after a vendor was successfully created.
+- Actual root cause from live logs: `GET /api/v1/tenant/shared/parties?active=true` and role-filtered party list calls hit Firestore `FAILED_PRECONDITION: The query requires an index` for party `active/displayName` and related role/active/displayName combinations.
+- Fix: changed `FirestorePartyRepository.list()` to use at most one server-side Firestore filter, then apply active filtering, display-name sorting, and offset/limit in memory. This avoids requiring undeployed Firestore composite indexes for Vendors, Customers, document party selectors, and shared `PartySelector` flows.
+- Added focused regression coverage in `FirestorePartyRepository.test.ts` proving role-filtered party lists do not call Firestore `orderBy`, `limit`, or `offset`.
+- Verification: `npm test -- FirestorePartyRepository.test.ts PurchaseSettingsUseCases.test.ts` PASS (10/10), backend `npm run build` PASS, `npx firebase deploy --only functions --project erp-03` PASS. Post-deploy logs show startup validation complete and no new 500s in the checked window.
+- Accounting impact: master-data read-path fix only. No vendor creation, AP sub-account, posting, settlement, voucher, tax, or ledger behavior changed.
+- Time spent: ~0.5h.
+- Next: owner hard-refresh and retest `Purchases -> Vendors`; also spot-check `Sales -> Customers` because it uses the same party list path.
+
+# 2026-06-29 — Sales Invoice startup bundle performance fix
+
+- Goal: explain and reduce owner-reported 20s+ `Sales -> Invoices -> New` form loading after hard refresh/deploy.
+- Root cause: the form opened by waiting on 11 independent startup API calls. On Firebase cold starts this fanned out into several slow function instances, so the UI waited for the slowest call while showing labels such as `Form settings`.
+- Fix: added read-only `/tenant/sales/invoices/startup-reference-data` and updated the Sales Invoice page to request the startup reference bundle first, with the existing 11-call path retained as fallback. Tax codes in the startup bundle use the master-data list directly because invoice open does not need posted-document lock metadata.
+- Accounting impact: read-only startup/reference-data optimization only. No invoice totals, tax calculation, posting, AR, COGS, stock, settlement, period lock, approval, voucher, or audit behavior changed.
+- Verification: backend clean build PASS, frontend production build PASS during Vercel deploy, Firebase functions deploy PASS/skipped unchanged package, deployed frontend bundle contains `startup-reference-data`, and unauthenticated live probe of the new endpoint returns 401 behind auth.
+- Deploy: Firebase project `erp-03`; Vercel production alias `https://erp-03.vercel.app`, deployment `dpl_8r3mzce1Ymg92UN8hfaWMfbgmoff`.
+- Time spent: ~0.8h.
+- Next: owner hard-refresh and open `Sales -> Invoices -> New`; Network should show one startup bundle call instead of the old 11-call fan-out, with later opens using the in-page cache.
+
+# 2026-06-29 — Telegram QA fix 278e default Arabic
+
+- Goal: make Arabic the first-run interface language for every user unless the
+  user has manually saved another language.
+- Approach: use `erp_language` as the explicit local choice, otherwise initialize
+  i18n and preference fallbacks in Arabic. Preserve authenticated backend
+  preferences as the final authority.
+- Removed navigator/HTML language selection from startup and prevented the
+  legacy IP detector from overriding the chosen value.
+- Accounting/security impact: none; UI language and document direction only.
+- Verification: frontend typecheck and production build passed; backend build
+  passed.
+- Actual time: approximately 25 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.
+
+# 2026-06-29 — Telegram QA fix 278f account form translation
+
+- Telegram photo 8 showed the Edit Account modal remaining mostly English in
+  Arabic mode.
+- Phase 1 added a complete Account form translation contract to English,
+  Arabic, and Turkish accounting locales.
+- Accounting impact: display text only; no account structure, validation,
+  posting, approval, currency, or audit behavior changed.
+- Phase 2 will replace all hardcoded component copy with the validated keys.
+- Phase 1 actual time: approximately 20 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.
+
+## 2026-06-29 — Telegram QA fix 278f phase 2
+
+- Wired every visible Account form label, option, hint, policy explanation,
+  validation warning, custody control, and submit state to the validated
+  English/Arabic/Turkish translation contract.
+- Kept stable enum values separate from translated labels so locale changes
+  cannot alter classification, role, balance, currency, cash-flow, or subgroup
+  payload values.
+- Accounting impact: presentation only; no account hierarchy rules, posting,
+  balances, currency enforcement, approval, tenant scope, or audit behavior changed.
+- Verification: locale JSON parsing passed, frontend typecheck passed, visible
+  hardcoded-English scan passed, and frontend production build passed.
+- Maintenance note: `graphify update .` could not run because the Graphify CLI
+  is not installed/available in this environment.
+- Phase 2 actual time: approximately 30 minutes; total task time approximately 50 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.
+
+## 2026-06-29 — Telegram QA fix 278g account tree controls
+
+- Telegram photo 7 requested correct RTL arrow direction, a larger precision
+  target for opening tree branches, and single-line top action buttons.
+- Added direction-aware collapsed chevrons, semantic translated tree buttons,
+  explicit 36 by 36 pixel hit targets, and non-wrapping toolbar controls.
+- Accounting impact: presentation/accessibility only; no hierarchy, account
+  values, posting, balances, permissions, tenant isolation, or audit behavior changed.
+- Verification: locale parsing, frontend typecheck, and production build passed.
+  Local Arabic/RTL browser QA confirmed the Assets branch collapses, children
+  disappear, the collapsed icon points left, and toolbar labels do not wrap.
+- Existing React Router future warnings were the only console warnings.
+- `graphify update .` could not run because the Graphify CLI is unavailable.
+- Actual time: approximately 40 minutes.
+- Deploy: deferred until the full Telegram QA queue is complete.

@@ -231,9 +231,9 @@ export class UpdateItemUseCase {
     private readonly uomRepo?: IUomRepository
   ) {}
 
-  async execute(id: string, data: Partial<Item>): Promise<Item> {
+  async execute(companyId: string, id: string, data: Partial<Item>): Promise<Item> {
     const current = await this.repo.getItem(id);
-    if (!current) {
+    if (!current || current.companyId !== companyId) {
       throw new Error(`Item not found: ${id}`);
     }
 
@@ -304,8 +304,9 @@ export class UpdateItemUseCase {
 export class GetItemUseCase {
   constructor(private readonly repo: IItemRepository) {}
 
-  async execute(id: string): Promise<Item | null> {
-    return this.repo.getItem(id);
+  async execute(companyId: string, id: string): Promise<Item | null> {
+    const item = await this.repo.getItem(id);
+    return item?.companyId === companyId ? item : null;
   }
 }
 
@@ -320,7 +321,11 @@ export class ListItemsUseCase {
 export class DeleteItemUseCase {
   constructor(private readonly repo: IItemRepository) {}
 
-  async execute(id: string): Promise<void> {
+  async execute(companyId: string, id: string): Promise<void> {
+    const item = await this.repo.getItem(id);
+    if (!item || item.companyId !== companyId) {
+      throw new Error(`Item not found: ${id}`);
+    }
     await this.repo.setItemActive(id, false);
   }
 }

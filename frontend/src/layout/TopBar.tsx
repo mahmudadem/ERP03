@@ -668,7 +668,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                       )}
                     >
                       <User className="w-4 h-4" />
-                      Your Profile
+                      {t('profile.dropdown.yourProfile', { defaultValue: 'Your Profile' })}
                     </button>
                   )}
                 </HeadlessMenu.Item>
@@ -685,7 +685,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                       )}
                     >
                       <Palette className="w-4 h-4" />
-                      Appearance
+                      {t('profile.dropdown.appearance', { defaultValue: 'Appearance' })}
                     </button>
                   )}
                 </HeadlessMenu.Item>
@@ -702,7 +702,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                       )}
                     >
                       <Building2 className="w-4 h-4" />
-                      Switch Company
+                      {t('profile.dropdown.switchCompany', { defaultValue: 'Switch Company' })}
                     </button>
                   )}
                 </HeadlessMenu.Item>
@@ -719,7 +719,7 @@ export const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
                       )}
                     >
                       <LogOut className="w-4 h-4" />
-                      Sign out
+                      {t('profile.dropdown.signOut', { defaultValue: 'Sign out' })}
                     </button>
                   )}
                 </HeadlessMenu.Item>

@@ -1075,6 +1075,14 @@ const PosTerminalPage: React.FC<Props> = () => {
       toast.error(t('pos:terminal.needCustomerForCredit', { defaultValue: 'Credit sale requires a selected customer.' }));
       return;
     }
+    if (creditSaleFlag && !settings?.allowCreditSales) {
+      toast.error(t('pos:terminal.creditSalesDisabled', { defaultValue: 'Enable POS credit sales in Settings before using deferred payment.' }));
+      return;
+    }
+    if (creditSaleFlag && settings?.walkInCustomerId && customerId === settings.walkInCustomerId) {
+      toast.error(t('pos:terminal.creditSaleNeedsNamedCustomer', { defaultValue: 'Select a named customer before using deferred payment.' }));
+      return;
+    }
     if (creditSaleFlag && settings?.creditSaleManagerOverride && !saleManagerOverride) {
       toast.error(t('pos:terminal.creditSaleNeedsApproval', { defaultValue: 'Manager approval is required for deferred payment.' }));
       setShowSaleManagerOverride(true);
@@ -1143,6 +1151,11 @@ const PosTerminalPage: React.FC<Props> = () => {
   const register = bootstrap?.register;
   const shift = bootstrap?.openShift;
   const settings = bootstrap?.settings;
+  const creditSaleBlockedReason = !settings?.allowCreditSales
+    ? t('pos:terminal.creditSalesDisabled', { defaultValue: 'Enable POS credit sales in Settings before using deferred payment.' })
+    : settings?.walkInCustomerId && customerId === settings.walkInCustomerId
+      ? t('pos:terminal.creditSaleNeedsNamedCustomer', { defaultValue: 'Select a named customer before using deferred payment.' })
+      : '';
 
   if (!register || !shift) {
     return (
@@ -1783,6 +1796,7 @@ const PosTerminalPage: React.FC<Props> = () => {
               <button
                 onClick={() => onCompleteSale(true)}
                 disabled={activeCart.length === 0}
+                title={creditSaleBlockedReason || undefined}
                 className="flex w-full items-center justify-center gap-2 rounded-xl bg-orange-600 px-3 py-2 text-sm font-bold text-white shadow-sm transition-colors hover:bg-orange-700 focus:outline-none disabled:cursor-not-allowed disabled:bg-slate-300 disabled:text-slate-500 lg:px-4 lg:py-3.5 lg:text-base cursor-pointer dark:disabled:bg-[var(--color-bg-tertiary)]"
               >
                 <CreditCard className="h-4 w-4 lg:h-5 lg:w-5" />
@@ -2038,7 +2052,7 @@ const PosTerminalPage: React.FC<Props> = () => {
           </div>
         }
         tone="info"
-        onConfirm={onCompleteSale}
+        onConfirm={() => onCompleteSale(false)}
         onCancel={() => setShowPayDialog(false)}
         confirmLabel={completing
           ? t('common.processing', { defaultValue: 'Processing…' })

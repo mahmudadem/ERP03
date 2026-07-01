@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { posApi } from '../../../api/posApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { sortReportRowsByDateTimeDesc } from '../../../components/reports/reportSorting';
 import { PosDateRangeInitiator, PosDateRangeParams } from './PosDateRangeInitiator';
 
 interface OverrideAuditRow {
@@ -55,7 +56,7 @@ const PosOverrideAuditReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow
       posApi.getOverrideAuditReport({ dateFrom: params.dateFrom, dateTo: params.dateTo })
         .then((data) => {
           if (!cancelled) {
-            const nextRows = (data || []) as OverrideAuditRow[];
+            const nextRows = sortReportRowsByDateTimeDesc((data || []) as OverrideAuditRow[], ['createdAt', 'voidedAt']);
             setRows(nextRows);
             setTotalItems?.(nextRows.length);
           }

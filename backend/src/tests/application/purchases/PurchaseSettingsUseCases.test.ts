@@ -185,17 +185,18 @@ describe('UpdatePurchaseSettingsUseCase — workflow transition guards', () => {
     const goodsReceiptRepo = {
       hasUnpostedGoodsReceipts: jest.fn(async () => opts.hasUnpostedGRNs),
     };
+    const accountRepo = { getById: jest.fn(async (companyId: string, id: string) => ({ companyId, id })) };
 
     const useCase = new UpdatePurchaseSettingsUseCase(
       settingsRepo as any,
-      { getById: jest.fn(async () => ({ id: 'ap-1' })) } as any,
+      accountRepo as any,
       { getVoucherType: jest.fn(), getSystemTemplates: jest.fn(async () => []), getByCode: jest.fn(), createVoucherType: jest.fn() } as any,
       { getByTypeId: jest.fn(async () => []), create: jest.fn() } as any,
       purchaseOrderRepo as any,
       goodsReceiptRepo as any
     );
 
-    return { useCase, settingsRepo, purchaseOrderRepo, goodsReceiptRepo, getSavedSettings: () => savedSettings };
+    return { useCase, settingsRepo, purchaseOrderRepo, goodsReceiptRepo, accountRepo, getSavedSettings: () => savedSettings };
   };
 
   it('blocks OPERATIONAL → SIMPLE transition when open POs exist', async () => {
@@ -276,6 +277,23 @@ describe('UpdatePurchaseSettingsUseCase — workflow transition guards', () => {
       action: 'allow',
       persona: 'direct',
     });
+  });
+
+  it('persists exchange gain/loss account changes', async () => {
+    const { useCase, accountRepo, getSavedSettings } = buildUseCase({
+      existingWorkflow: 'OPERATIONAL',
+      hasOpenPOs: false,
+      hasUnpostedGRNs: false,
+    });
+
+    const result = await useCase.execute({
+      companyId: COMPANY_ID,
+      exchangeGainLossAccountId: 'fx-1',
+    });
+
+    expect(result.exchangeGainLossAccountId).toBe('fx-1');
+    expect(getSavedSettings()?.exchangeGainLossAccountId).toBe('fx-1');
+    expect(accountRepo.getById).toHaveBeenCalledWith(COMPANY_ID, 'fx-1');
   });
 
   it('removes company-scope direct invoice rules when OPERATIONAL direct invoicing is disabled', async () => {

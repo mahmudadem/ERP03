@@ -15,6 +15,7 @@ import { IAccountRepository } from '../../../repository/interfaces/accounting/IA
 import { roundMoney } from '../../../domain/accounting/entities/VoucherLineEntity';
 import { PostingLockPolicy, VoucherType } from '../../../domain/accounting/types/VoucherTypes';
 import { IAccountingBridge } from '../../system-core';
+import { ValidationError } from '../../../errors/AppError';
 
 const round2 = (n: number): number => Math.round((n + Number.EPSILON) * 100) / 100;
 
@@ -77,20 +78,19 @@ export class OpenPosShiftUseCase {
     // A cash movement represents an actual cash event and must be > 0. Opening a
     // shift with a zero opening float is legitimate ("no cash counted in"), so we
     // only record an OPENING_FLOAT movement when there is actually cash to record.
-    const openingAmount = round2(input.openingFloat);
-    const openingMovement =
-      openingAmount > 0
-        ? new PosCashMovement({
-            id: `cm_${randomUUID()}`,
-            companyId: input.companyId,
-            shiftId: shift.id,
-            registerId: input.registerId,
-            type: 'OPENING_FLOAT',
-            amount: openingAmount,
-            createdBy: input.actor.userId,
-            createdAt: now,
-          })
-        : null;
+    const openingFloat = round2(input.openingFloat);
+    const openingMovement = openingFloat > 0
+      ? new PosCashMovement({
+          id: `cm_${randomUUID()}`,
+          companyId: input.companyId,
+          shiftId: shift.id,
+          registerId: input.registerId,
+          type: 'OPENING_FLOAT',
+          amount: openingFloat,
+          createdBy: input.actor.userId,
+          createdAt: now,
+        })
+      : null;
 
     await this.transactionManager.runTransaction(async (tx) => {
       await this.shiftRepo.create(shift, tx);
@@ -238,10 +238,12 @@ export class ClosePosShiftUseCase {
 
       const offsetAccountId = overShort > 0 ? settings.cashOverAccountId : settings.cashShortAccountId;
       if (!offsetAccountId) {
-        throw new Error(
+        throw new ValidationError(
           overShort > 0
             ? 'Configure a Cash Over account in POS Settings before closing a shift with a cash over.'
-            : 'Configure a Cash Short account in POS Settings before closing a shift with a cash short.'
+            : 'Configure a Cash Short account in POS Settings before closing a shift with a cash short.',
+          overShort > 0 ? 'cashOverAccountId' : 'cashShortAccountId',
+          { settingsPath: '/pos/settings', varianceType: overShort > 0 ? 'OVER' : 'SHORT' }
         );
       }
       await this.assertAccount(input.companyId, offsetAccountId, overShort > 0 ? 'cashOverAccountId' : 'cashShortAccountId');

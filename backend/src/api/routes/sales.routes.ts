@@ -86,6 +86,7 @@ router.post('/delivery-notes/:id/post', idempotencyMiddleware, SalesController.p
 
 router.post('/invoices', SalesController.createSI);
 router.post('/invoices/create-and-post', idempotencyMiddleware, SalesController.createAndPostSI);
+router.get('/invoices/startup-reference-data', SalesController.getInvoiceStartupReferenceData);
 router.get('/invoices', SalesController.listSIs);
 router.get('/invoices/:id', SalesController.getSI);
 router.put('/invoices/:id', SalesController.updateSI);

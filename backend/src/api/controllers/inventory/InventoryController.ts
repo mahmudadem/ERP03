@@ -473,7 +473,8 @@ export class InventoryController {
 
   static async getItem(req: Request, res: Response, next: NextFunction) {
     try {
-      const item = await diContainer.catalogCore.getItem((req as any).params.id);
+      const companyId = InventoryController.getCompanyId(req);
+      const item = await diContainer.catalogCore.getItem(companyId, (req as any).params.id);
       (res as any).json({
         success: true,
         data: item ? InventoryDTOMapper.toItemDTO(item) : null,
@@ -486,7 +487,8 @@ export class InventoryController {
   static async updateItem(req: Request, res: Response, next: NextFunction) {
     try {
       validateUpdateItemInput((req as any).body);
-      const item = await diContainer.catalogCore.updateItem((req as any).params.id, (req as any).body);
+      const companyId = InventoryController.getCompanyId(req);
+      const item = await diContainer.catalogCore.updateItem(companyId, (req as any).params.id, (req as any).body);
       (res as any).json({
         success: true,
         data: InventoryDTOMapper.toItemDTO(item),
@@ -498,7 +500,8 @@ export class InventoryController {
 
   static async deleteItem(req: Request, res: Response, next: NextFunction) {
     try {
-      await diContainer.catalogCore.deleteItem((req as any).params.id);
+      const companyId = InventoryController.getCompanyId(req);
+      await diContainer.catalogCore.deleteItem(companyId, (req as any).params.id);
       (res as any).json({ success: true });
     } catch (error) {
       next(error);

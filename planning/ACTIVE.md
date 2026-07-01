@@ -6,55 +6,55 @@
 
 ---
 
-## Current task
+## Current task — CONVERGING TO ONE BRANCH (2026-07-01)
 
-- Purchases translation audit, page by page.
-- Done this pass: `PurchaseOrderDetailPage.tsx` and `PurchaseInvoiceDetailPage.tsx` now keep their print/error/toast/selector fallback text in i18n, including the print-popup block message.
-- Verification: frontend `typecheck` and production `build` both passed.
-- Next: continue with the remaining Purchases detail screens, starting with `GoodsReceiptDetailPage.tsx` and `PurchaseReturnDetailPage.tsx`, then any list/settings pages still leaking English.
+**Decision (owner-approved):** stop the two-lane drift; collapse to a single DB-agnostic
+codebase on `main`. This SQL-readiness branch (`codex/sql-readiness-wip-20260628`) is being
+**merged up to current `main`** (which carries the production 278a–z fix queue) so that from now
+on every feature is written **once** and tested against either DB via the `DB_TYPE` toggle.
 
----
+- The architecture already supports "one codebase, any DB" (repository interfaces + DI +
+  `DB_TYPE`). Convergence is a **branch/workflow** fix, not an architecture change.
+- The SQL-lane fixes are low-risk to Firebase: they live in Prisma-only files or behind
+  `if (DB_TYPE === 'SQL')`, so Firebase mode doesn't execute most of them.
+- Next after merge lands: one working branch off `main`; retire the `ERP03-unified` worktree;
+  resume feature work (e.g. account-balance snapshots) on the unified branch, DB-agnostically.
 
-## ⚠️ Worktree map (read first)
+Backups / rollback: safety tag `backup/sql-before-main-merge-20260701` (pre-merge HEAD of the SQL
+branch); prod lane rollback tag `backup/unified-before-heal`; dirty-state backups in
+`D:\DEV2026\ERP03-worktree-backups\20260629-160718`.
 
-Two worktrees, one repo. **Do not mix their roles.**
-
-> 🔒 **SCOPE LOCK — read before any edit.**
-> - Working in **this** folder (`ERP03`, branch `codex/sql-readiness-wip-20260628`)? You are committed to **SQL / PostgreSQL readiness ONLY**. Do **not** make Firebase/Firestore production fixes or deploys here.
-> - Working in `ERP03-unified` (branch `codex/unified-firestore-deploy-20260628`)? You are committed to **Firebase production ONLY**. Do **not** do SQL/Postgres work there.
-> - If a task doesn't match the lane you're in, **STOP and switch folders** — never let SQL changes land on the Firebase deploy branch, or production changes land on the SQL branch.
-> - Lanes stay separate until a deliberate reconciliation through `main`.
-
-| Worktree | Branch | Role |
-|---|---|---|
-| `D:\DEV2026\ERP03` | `codex/sql-readiness-wip-20260628` | **SQL-readiness lane** — Supabase / PostgreSQL continuation. |
-| `D:\DEV2026\ERP03-unified` | `codex/unified-firestore-deploy-20260628` | **Production lane** — Firebase/Firestore live fixes + deploys. |
-
-- Production fix / retest / Firebase deploy → **`ERP03-unified`**.
-- SQL readiness / Supabase / PostgreSQL → **`ERP03`** (this folder).
-- Backups of both dirty states: `D:\DEV2026\ERP03-worktree-backups\20260629-160718`.
-- Rollback tag for the prod lane: `backup/unified-before-heal`.
+> 🔒 **Until the merge fully lands and is verified, keep lane discipline:** SQL/PostgreSQL work in
+> `D:\DEV2026\ERP03`; Firebase production deploys in `D:\DEV2026\ERP03-unified`. After convergence
+> this map is retired.
 
 ---
 
 ## ✅ Production — healed & LIVE (2026-06-29)
 
-The verified 503/500 storm fix (`9e5d0ac1`) was split across lanes; it is now complete in the
-production lane and **deployed live to `erp-03`** (functions + firestore indexes). Verified:
-server boots and serves (no more `503 Server not ready`). Details in `JOURNAL.md`.
+The verified 503/500 storm fix (`9e5d0ac1`) is complete in the production lane and **deployed live
+to `erp-03`** (functions + firestore indexes). Verified: server boots and serves (no more
+`503 Server not ready`). Details in `JOURNAL.md`.
+
+**Deploy how-to for this project** (no predeploy hook — build first):
+1. `cd backend && npm run build` (compiles to `lib/`; deploy uses the compiled output).
+2. `firebase deploy --only functions,firestore --project erp-03`.
+3. Skip `storage` / `database` targets — not provisioned on `erp-03`.
+4. Never put `DB_TYPE=SQL` in `backend/.env` or `.env.<project>` (bricks the deploy); SQL override lives only in gitignored `.env.local`.
 
 ---
 
-## ⏭️ Next: collapse to ONE canonical worktree
+## 🔄 Production QA fixes — Telegram export queue (278a–z, on `main`)
 
-Hold the two-lane model until production is confirmed stable under ~1 day of real use, **then**:
-
-1. Land the production work to `main` (route through `main`, never merge the two dirty branches directly).
-2. Rebase the SQL-readiness branch on top of the updated `main`; resolve conflicts here at leisure.
-3. Delete the `ERP03-unified` worktree/branch → single folder `D:\DEV2026\ERP03` remains.
-
-Firebase and SQL stay independent (same codebase, either DB stands alone) — reconciliation is folder
-tidy-up only, not an architecture change.
+278a ledger statement indexes (`7ef1917b`); 278b Purchase item API route (`26fa87ac`);
+278c Purchase invoice query index (`a3990984`); 278d POS shift-close validation (`300eab98`);
+278e Default Arabic language (`4090ccee`); 278f Account form translation (`e7a72724`, `798a92a4`);
+278g Account tree RTL controls (`c3d3ec33`, `12754d34`); 278h Clear API error labels
+(`ccd97a81`, `75a4f6f0`); 278i POS report date/time sort (`e52683c0`, `cbdbd133`); 278j Opening
+Stock legacy movement warning (`64117d93`, `d56d5832`); 278k Sales dashboard / Purchase Settings
+translations (`bfd636e0`); 278l POS shift-close summary modal (`f4917b14`); 278m POS report date
+range / DatePicker i18n (`37a2feb0`); 278n–278v inventory/purchases/sales report translations;
+278w–278z analytics/voucher-name/AP-selector/onboarding-RTL — all complete on `main`.
 
 ---
 

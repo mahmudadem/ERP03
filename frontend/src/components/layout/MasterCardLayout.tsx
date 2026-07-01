@@ -6,7 +6,8 @@ import {
   X, 
   Save, 
   History, 
-  LucideIcon 
+  LucideIcon,
+  Plus
 } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 
@@ -39,6 +40,7 @@ interface MasterCardLayoutProps {
    */
   saveNewLabel?: string;
   updateLabel?: string;
+  onNew?: () => void;
   children: React.ReactNode;
 }
 
@@ -60,6 +62,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
   error,
   saveNewLabel,
   updateLabel,
+  onNew,
   children
 }) => {
   const { t } = useTranslation();
@@ -78,7 +81,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
              <div>
                 <div className="flex items-center gap-2 mb-0.5">
                    <h1 className="text-2xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight">
-                     {isNew ? `${t('New', 'New')} ${title}` : title}
+                     {isNew ? t('masterCard.newTitle', 'New {{title}}', { title }) : title}
                    </h1>
                    {identifier && (
                      <span className="px-2 py-0.5 bg-slate-100 dark:bg-slate-800 text-[10px] font-mono font-bold text-slate-500 rounded border dark:border-slate-700 uppercase tracking-tighter">
@@ -106,7 +109,7 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
       <div className="flex flex-1 flex-col md:flex-row overflow-hidden relative">
         {/* Sidebar Navigation / Mobile Tab Bar */}
         <div className={clsx(
-            "flex-none bg-white dark:bg-slate-900 border-r md:border-r border-b md:border-b-0 dark:border-slate-800 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto z-10 custom-scroll",
+            "flex-none bg-slate-50 dark:bg-slate-900/50 border-r md:border-r border-b md:border-b-0 dark:border-slate-800 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto z-10 custom-scroll",
             isWindow ? "md:w-56" : "md:w-60"
         )}>
           <nav className="flex flex-row md:flex-col p-1.5 md:p-2 space-x-1 md:space-x-0 md:space-y-0.5 min-w-full md:min-w-0">
@@ -117,11 +120,11 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                 className={clsx(
                     "flex-none md:w-full flex items-center gap-2 md:gap-3 px-3 py-2 md:py-2.5 text-[10px] md:text-[11px] font-bold transition-all rounded-lg whitespace-nowrap",
                     activeTab === tab.id 
-                        ? "bg-blue-600 text-white" 
-                        : "text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+                        ? "bg-blue-50 text-blue-700 dark:bg-blue-500/10 dark:text-blue-400 shadow-sm ring-1 ring-blue-600/10" 
+                        : "text-slate-600 hover:bg-slate-100 dark:text-slate-400 dark:hover:bg-slate-800"
                 )}
             >
-                <span className={clsx("transition-all", activeTab === tab.id ? "text-white" : "text-slate-400")}>
+                <span className={clsx("transition-all", activeTab === tab.id ? "text-blue-600 dark:text-blue-400" : "text-slate-400")}>
                     <tab.icon size={16} />
                 </span>
                 <span className="md:inline">{tab.label}</span>
@@ -150,12 +153,22 @@ export const MasterCardLayout: React.FC<MasterCardLayoutProps> = ({
                 <History size={12} /> {isNew ? t('Master Entry', 'Master Entry') : `${t('Sync', 'Sync')}: ${updatedAt ? new Date(updatedAt).toLocaleDateString() : t('Active', 'Active')}`}
              </div>
              <div className="flex items-center gap-2 w-full sm:w-auto">
-                {onClose && (
+                 {onClose && (
                     <button 
                         onClick={onClose} 
                         className="flex-1 sm:flex-none px-4 py-2 text-[11px] font-bold text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 uppercase tracking-tight transition-colors"
                     >
                         {t('BACK', 'BACK')}
+                    </button>
+                )}
+                {onNew && (
+                    <button 
+                        onClick={onNew}
+                        disabled={saving}
+                        className="flex-1 sm:flex-none flex items-center justify-center gap-1.5 bg-emerald-50 text-emerald-700 dark:bg-emerald-500/10 dark:text-emerald-400 px-4 py-2 rounded-lg text-[11px] font-bold hover:bg-emerald-100 dark:hover:bg-emerald-500/20 active:scale-[0.98] transition-all uppercase tracking-normal border border-emerald-200 dark:border-emerald-800/30"
+                    >
+                        <Plus size={14} />
+                        {t('New', 'New')}
                     </button>
                 )}
                 <button

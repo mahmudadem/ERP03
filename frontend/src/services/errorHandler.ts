@@ -35,6 +35,34 @@ export interface ErrorHandlerOptions {
 class ErrorHandlerService {
   private modalCallback: ((error: ApiError, options?: ErrorHandlerOptions) => void) | null = null;
 
+  private isGenericMessage(message?: string) {
+    const normalized = String(message || '').trim().toLowerCase();
+    return !normalized ||
+      normalized === 'an unexpected error occurred' ||
+      normalized === 'an unexpected error occurred.' ||
+      normalized === 'request failed with status code 500' ||
+      normalized === 'network request failed';
+  }
+
+  private getOperationLabel(error: ApiError): string {
+    const path = String(error.context?.apiPath || '');
+
+    if (path.includes('/tenant/accounting/pending-approvals/source-documents')) {
+      return i18n.t('errorModal.operations.accountingSourceApprovals', 'Accounting source-document approvals');
+    }
+    if (path.includes('/tenant/accounting/vouchers/pending/approvals')) {
+      return i18n.t('errorModal.operations.financialApprovals', 'Financial approvals');
+    }
+    if (path.includes('/tenant/accounting/vouchers/pending/custody')) {
+      return i18n.t('errorModal.operations.custodyConfirmations', 'Custody confirmations');
+    }
+    if (path.includes('/tenant/accounting/reports/account-statement')) {
+      return i18n.t('errorModal.operations.accountStatement', 'Account statement');
+    }
+
+    return i18n.t('errorModal.operations.apiRequest', 'Server request');
+  }
+
   /**
    * Register modal handler (called from ErrorModal component)
    */
@@ -54,6 +82,13 @@ class ErrorHandlerService {
     // If it's a generic error code (INFRA_999) or translation is missing, 
     // we should prioritize the technical message if it exists and looks human-readable.
     if (error.code === 'INFRA_999' || !hasTranslation) {
+       if (this.isGenericMessage(error.message)) {
+        return i18n.t('errorModal.genericServerMessage', {
+          operation: this.getOperationLabel(error),
+          status: error.context?.httpStatus || 500,
+          defaultValue: '{{operation}} failed on the server (HTTP {{status}}). Please retry. If it repeats, send this error reference to support.',
+        });
+       }
        return error.message || i18n.t('errors.INFRA_999');
     }
 
@@ -82,6 +117,12 @@ class ErrorHandlerService {
           code: String(apiError.code).toUpperCase() as any,
           severity: apiError.severity || ErrorSeverity.ERROR,
           timestamp: apiError.timestamp || new Date().toISOString(),
+          context: {
+            ...(apiError as any).context,
+            httpStatus: error.response?.status,
+            apiPath: error.config?.url?.split('?')[0],
+            method: error.config?.method?.toUpperCase(),
+          },
         };
       }
 
@@ -100,7 +141,12 @@ class ErrorHandlerService {
         code: (error.response?.status === 404 ? 'VOUCH_003' : 'INFRA_999') as any,
         message: error.response?.data?.message || (typeof error.response?.data === 'string' ? error.response.data : null) || error.message || 'Network request failed',
         severity: ErrorSeverity.ERROR,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        context: {
+          httpStatus: error.response?.status,
+          apiPath: error.config?.url?.split('?')[0],
+          method: error.config?.method?.toUpperCase(),
+        }
       };
     }
 

@@ -1,5 +1,18 @@
 {
   "appName": "ERP03",
+  "datePicker": {
+    "quickSelect": "Quick Select",
+    "today": "Today",
+    "now": "Now",
+    "thisMonthFirst": "This Month First",
+    "fyBeginning": "FY Beginning",
+    "fyClose": "FY Close",
+    "yearEnd": "YEAR END",
+    "periodOpening": "Period Opening",
+    "periodClose": "Period Close",
+    "start": "START",
+    "end": "END"
+  },
   "salesGrossProfit": {
     "titleByDocument": "Gross Profit by Document",
     "titleByItem": "Gross Profit by Item",
@@ -87,6 +100,12 @@
           "desc": "Warnings and alert-style notifications."
         }
       }
+    },
+    "dropdown": {
+      "yourProfile": "Your Profile",
+      "appearance": "Appearance",
+      "switchCompany": "Switch Company",
+      "signOut": "Sign out"
     }
   },
   "sidebar": {
@@ -1907,6 +1926,20 @@
         "emailInUse": "Email is already registered.",
         "weakPassword": "Password is too weak.",
         "networkError": "Network error. Please check your connection."
+      },
+      "nav": {
+        "features": "Features",
+        "solutions": "Solutions",
+        "pricing": "Pricing",
+        "enterprise": "Enterprise",
+        "login": "Log in",
+        "getStarted": "Get Started"
+      },
+      "stats": {
+        "industryBundles": "Industry Bundles",
+        "activeOrgs": "Active Orgs",
+        "uptimeSla": "Uptime SLA",
+        "globalSupport": "Global Support"
       }
     }
   },
@@ -2472,6 +2505,253 @@
         "loadFailed": "Failed to load inventory items"
       }
     },
+    "itemMaster": {
+      "active": "Active",
+      "activeDesc": "Allow this item to be used in transactions"
+    },
+    "glReconciliation": {
+      "title": "Inventory ↔ GL Reconciliation",
+      "subtitle": "Stock sub-ledger value vs General Ledger inventory balances",
+      "help": "Compares the inventory sub-ledger (Σ qty × avg cost, grouped by each item's Inventory Asset account) against the General Ledger balance of those accounts. Any difference is costing/posting drift.",
+      "loadFailed": "Failed to load reconciliation",
+      "reconciling": "Reconciling…",
+      "empty": "No inventory asset accounts with stock value or GL balance.",
+      "filters": {
+        "asOfDate": "As Of Date"
+      },
+      "status": {
+        "ties": "Inventory ties to the GL",
+        "driftDetected": "Drift detected between stock and GL",
+        "matched": "Matched",
+        "drift": "Drift"
+      },
+      "summary": {
+        "asOf": "As of",
+        "stockValue": "Stock value",
+        "glBalance": "GL balance",
+        "difference": "Difference",
+        "unmappedStockValue": "Unmapped stock value"
+      },
+      "columns": {
+        "account": "Account",
+        "name": "Name",
+        "stockValueBase": "Stock Value (Base)",
+        "glBalanceBase": "GL Balance (Base)",
+        "difference": "Difference",
+        "status": "Status"
+      }
+    },
+    "itemMovement": {
+      "title": "Item Movement",
+      "subtitle": "Historical movement ledger with running quantity and value",
+      "loadFailed": "Failed to load item movement report",
+      "loading": "Loading item movement...",
+      "empty": "No item movements match the filters.",
+      "filters": {
+        "item": "Item",
+        "selectTrackedItem": "Select tracked item",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "from": "From",
+        "to": "To",
+        "direction": "Direction",
+        "movementType": "Movement Type",
+        "sourceType": "Source Type"
+      },
+      "direction": {
+        "all": "All",
+        "in": "In",
+        "out": "Out"
+      },
+      "movementType": {
+        "OPENING_STOCK": "Opening",
+        "PURCHASE_RECEIPT": "Purchase receipt",
+        "SALES_DELIVERY": "Sales delivery",
+        "ADJUSTMENT_IN": "Adjustment in",
+        "ADJUSTMENT_OUT": "Adjustment out",
+        "TRANSFER_IN": "Transfer in",
+        "TRANSFER_OUT": "Transfer out",
+        "RETURN_IN": "Return in",
+        "RETURN_OUT": "Return out"
+      },
+      "sourceType": {
+        "PURCHASE_INVOICE": "Purchase Invoice",
+        "GOODS_RECEIPT": "Goods Receipt",
+        "PURCHASE_RETURN": "Purchase Return",
+        "SALES_INVOICE": "Sales Invoice",
+        "DELIVERY_NOTE": "Delivery Note",
+        "SALES_RETURN": "Sales Return",
+        "STOCK_ADJUSTMENT": "Stock Adjustment",
+        "STOCK_TRANSFER": "Stock Transfer",
+        "OPENING": "Opening",
+        "POS_DIRECT_SALE": "POS Sale",
+        "POS_RETURN": "POS Return"
+      },
+      "chips": {
+        "item": "Item",
+        "warehouseShort": "WH"
+      },
+      "summary": {
+        "movements": "Movements"
+      },
+      "columns": {
+        "date": "Date",
+        "warehouse": "Warehouse",
+        "movement": "Movement",
+        "source": "Source",
+        "qtyIn": "Qty In",
+        "qtyOut": "Qty Out",
+        "runningQty": "Running Qty",
+        "unitCost": "Unit Cost",
+        "movementValue": "Movement Value",
+        "runningValue": "Running Value",
+        "createdBy": "Created By",
+        "notes": "Notes"
+      }
+    },
+    "stockLevels": {
+      "title": "Stock Levels",
+      "subtitle": "On-hand quantity and valuation by item or warehouse",
+      "loadFailed": "Failed to load stock levels",
+      "loading": "Loading stock levels...",
+      "empty": "No stock levels match the filters.",
+      "unvalued": "Unvalued",
+      "filters": {
+        "item": "Item",
+        "allTrackedItems": "All tracked items",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "view": "View",
+        "includeZero": "Include zero quantity",
+        "includeNegative": "Include negative stock"
+      },
+      "viewMode": {
+        "byItem": "By item",
+        "byWarehouse": "By warehouse"
+      },
+      "chips": {
+        "negativeLines": "Negative lines: {{count}}",
+        "unvaluedNegatives": "Unvalued negatives: {{count}}"
+      },
+      "summary": {
+        "lines": "Lines",
+        "value": "Value"
+      },
+      "columns": {
+        "item": "Item",
+        "warehouses": "Warehouses",
+        "totalQty": "Total Qty",
+        "blendedCost": "Blended Cost",
+        "totalValue": "Total Value",
+        "status": "Status",
+        "warehouse": "Warehouse",
+        "qty": "Qty",
+        "reportCost": "Report Cost",
+        "basis": "Basis",
+        "reportValue": "Report Value",
+        "warning": "Warning"
+      },
+      "costBasis": {
+        "average": "Average",
+        "lastKnown": "Last known",
+        "missing": "Missing"
+      },
+      "status": {
+        "unvaluedNegative": "Negative stock has no cost basis",
+        "negativeValued": "Negative valued stock",
+        "valued": "Valued"
+      }
+    },
+    "valuation": {
+      "title": "Inventory Valuation",
+      "subtitle": "Stock value by item, warehouse, and pricing policy",
+      "loadFailed": "Failed to load valuation",
+      "loading": "Loading valuation...",
+      "empty": "No stock lines to value",
+      "grandTotalServer": "Grand Total (server)",
+      "filters": {
+        "mode": "Mode",
+        "asOfDate": "As Of Date",
+        "pricingPolicy": "Pricing Policy",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "item": "Item",
+        "allItems": "All items"
+      },
+      "mode": {
+        "current": "Current (live)",
+        "asOf": "As of a date"
+      },
+      "pricingPolicy": {
+        "average": "Average Cost",
+        "lastPurchase": "Last Purchase Cost",
+        "averageShort": "Average",
+        "lastPurchaseShort": "Last Purchase"
+      },
+      "chips": {
+        "asOf": "As of {{date}}",
+        "policy": "Policy",
+        "basedOnSnapshot": "Based on snapshot {{snapshot}}",
+        "warehouseShort": "WH",
+        "item": "Item"
+      },
+      "summary": {
+        "totalLinesFullSet": "Total lines (full set)",
+        "totalValueBase": "Total value (base)"
+      },
+      "columns": {
+        "itemCode": "Item Code",
+        "itemName": "Item Name",
+        "warehouse": "Warehouse",
+        "qtyOnHand": "Qty on Hand",
+        "policyCostBase": "Policy Cost (Base)",
+        "avgCostBase": "Avg Cost (Base)",
+        "valueBase": "Value (Base)"
+      }
+    },
+    "unsettledCosts": {
+      "title": "Unsettled Costs",
+      "subtitle": "Stock-out movements awaiting cost settlement",
+      "loadFailed": "Failed to load report",
+      "empty": "No unsettled movements match your filters.",
+      "totals": "Totals",
+      "filters": {
+        "fromDate": "From Date",
+        "toDate": "To Date",
+        "item": "Item",
+        "allItems": "All items",
+        "warehouse": "Warehouse",
+        "allWarehouses": "All warehouses",
+        "costBasis": "Cost Basis"
+      },
+      "costBasis": {
+        "all": "All",
+        "avg": "Moving Average",
+        "lastKnown": "Last Known",
+        "missing": "Missing (no cost)"
+      },
+      "chips": {
+        "item": "Item",
+        "warehouseShort": "WH",
+        "basis": "Basis"
+      },
+      "summary": {
+        "rows": "{{count}} row",
+        "rows_other": "{{count}} rows",
+        "unsettledQty": "Unsettled qty",
+        "costBasisBase": "Cost basis (base)"
+      },
+      "columns": {
+        "date": "Date",
+        "item": "Item",
+        "warehouse": "Warehouse",
+        "movementType": "Movement Type",
+        "qty": "Qty",
+        "unsettledQty": "Unsettled Qty",
+        "costBasis": "Cost Basis",
+        "totalCostBase": "Total Cost (Base)"
+      }
+    },
     "transfers": {
       "title": "Stock Transfers",
       "newButton": "New Transfer",
@@ -2653,7 +2933,174 @@
       "createInvoice": "Invoice",
       "createOrder": "Sales Order",
       "createReturn": "Sales Return",
-      "settings": "Settings"
+      "settings": "Settings",
+      "title": "Sales Overview Module",
+      "moduleDashboard": "Module Dashboard",
+      "subtitle": "Track and publish invoices, monitor receivables, and configure sales order funnels.",
+      "salesSettings": "Sales Settings",
+      "kpis": {
+        "totalRevenue": "Total Revenue",
+        "realizedCashSettlements": "Realized cash settlements",
+        "outstandingAr": "Outstanding AR",
+        "dueCollectionLedgerStatus": "Due collection ledger status",
+        "overdueInvoices": "Overdue Invoices",
+        "activeItems": "Active items",
+        "requiringImmediateCreditClaims": "Requiring immediate credit claims",
+        "pendingApproval": "Pending Approval",
+        "invoicesPending": "Invoices pending",
+        "awaitingBankTransfers": "Awaiting bank transfers"
+      },
+      "recentSalesOrders": "Recent Sales Orders (SO)",
+      "fulfillmentQueue": "Fulfillment Queue",
+      "noRecentOrders": "No recent orders.",
+      "recentSalesInvoices": "Recent Sales Invoices (INV)",
+      "postingsRegister": "Postings Register",
+      "noRecentInvoices": "No recent invoices.",
+      "topClientAccounts": "Top Client Accounts",
+      "noClientData": "No client data available.",
+      "balance": "Balance",
+      "quickNavigation": "Quick Navigation",
+      "recentActivity": "Recent Activity",
+      "refreshActivity": "Refresh activity",
+      "noActivityYet": "No activity yet.",
+      "columns": {
+        "soNumber": "SO Number",
+        "invoiceId": "Invoice ID",
+        "date": "Date",
+        "customerClient": "Customer / Client",
+        "debtorCustomer": "Debtor Customer",
+        "currency": "Currency",
+        "rawTotal": "Raw Total",
+        "createdBy": "Created By",
+        "createdAt": "Created At",
+        "approvedAt": "Approved At",
+        "status": "Status"
+      },
+      "quickLinks": {
+        "invoices": "Invoices",
+        "orders": "Orders",
+        "deliveryNotes": "Delivery Notes",
+        "quotations": "Quotations",
+        "returns": "Returns"
+      }
+    },
+    "arAging": {
+      "title": "AR Aging",
+      "subtitle": "Accounts receivable by aging bucket",
+      "asOfDate": "As Of Date",
+      "customerOptional": "Customer (optional)",
+      "allCustomers": "All customers",
+      "generateReport": "Generate Report",
+      "invoiceNumber": "Invoice #",
+      "invoiceDate": "Invoice Date",
+      "dueDate": "Due Date",
+      "daysOverdue": "Days Overdue",
+      "bucket": "Bucket",
+      "outstanding": "Outstanding",
+      "creditNotesJVAdjustments": "Credit notes / JV adjustments",
+      "unallocatedBalance": "Unallocated balance",
+      "failedToLoadReport": "Failed to load report",
+      "asOfDateValue": "As of {{date}}",
+      "customerCount": "{{count}} customer",
+      "customerCount_other": "{{count}} customers",
+      "totalAR": "Total AR:",
+      "loadingAging": "Loading aging...",
+      "noOutstandingReceivablesAsOfDate": "No outstanding receivables as of {{date}}",
+      "customerHeader": "Customer",
+      "current": "Current",
+      "days1_30": "1–30 Days",
+      "days31_60": "31–60 Days",
+      "days61_90": "61–90 Days",
+      "days90Plus": "90+ Days",
+      "total": "Total",
+      "totals": "Totals"
+    },
+    "customerStatement": {
+      "title": "Customer Statement",
+      "subtitle": "Period statement or full ledger for a customer",
+      "date": "Date",
+      "type": "Type",
+      "reference": "Reference",
+      "debit": "Debit",
+      "credit": "Credit",
+      "balance": "Balance",
+      "actions": "Actions",
+      "openingBalance": "Opening Balance",
+      "closingBalance": "Closing Balance",
+      "noTransactionsInPeriod": "No transactions in this period.",
+      "source": "Source",
+      "voucher": "Voucher",
+      "openSourceDocument": "Open source document",
+      "openAccountingVoucher": "Open accounting voucher",
+      "lineTypeInvoice": "Invoice",
+      "lineTypePayment": "Payment",
+      "lineTypeCreditNote": "Credit Note",
+      "lineTypeRefund": "Refund",
+      "lineTypeAdjustment": "Adjustment",
+      "view": "View",
+      "statementPeriodSummary": "Statement (period summary)",
+      "fullLedgerAllEvents": "Full Ledger (all events)",
+      "customer": "Customer",
+      "selectCustomer": "Select a customer...",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "includeOpenCommitments": "Include open commitments",
+      "openCommitmentsHelp": "Shows open sales orders separately for commercial follow-up. These amounts do not affect the statement balance.",
+      "generateReport": "Generate Report",
+      "failedToLoadReport": "Failed to load report",
+      "invoiceNumber": "Invoice #",
+      "invoiceDate": "Invoice Date",
+      "dueDate": "Due Date",
+      "invoiceTotal": "Invoice Total",
+      "outstanding": "Outstanding",
+      "salesOrder": "Sales Order",
+      "expected": "Expected",
+      "status": "Status",
+      "total": "Total",
+      "open": "Open",
+      "statement": "Statement",
+      "fullLedger": "Full Ledger",
+      "dateRange": "{{fromDate}} → {{toDate}}",
+      "invoiced": "Invoiced:",
+      "paid": "Paid:",
+      "credits": "Credits:",
+      "closing": "Closing:",
+      "loadingReport": "Loading report...",
+      "transactions": "Transactions",
+      "fullLedgerForCustomer": "Full Ledger — {{customerName}}",
+      "openInvoicesCount": "Open Invoices ({{count}})",
+      "openCommitmentsCount": "Open Commitments ({{count}}) · Not included in balance",
+      "noData": "No data."
+    },
+    "analytics": {
+      "title": "Sales Analytics",
+      "subtitle": "Sales performance by customer, item, or salesperson",
+      "groupBy": "Group By",
+      "byCustomer": "By Customer",
+      "byItem": "By Item",
+      "bySalesperson": "By Salesperson",
+      "fromDate": "From Date",
+      "toDate": "To Date",
+      "generateReport": "Generate Report",
+      "failedToLoadReport": "Failed to load report",
+      "rowCount": "{{count}} row",
+      "rowCount_other": "{{count}} rows",
+      "loadingReport": "Loading report...",
+      "salesByCustomer": "Sales by Customer",
+      "salesByItem": "Sales by Item",
+      "salesBySalesperson": "Sales by Salesperson",
+      "noDataForThisPeriod": "No data for this period.",
+      "customer": "Customer",
+      "invoices": "Invoices",
+      "revenue": "Revenue",
+      "tax": "Tax",
+      "gross": "Gross",
+      "code": "Code",
+      "item": "Item",
+      "lines": "Lines",
+      "qtySold": "Qty Sold",
+      "salesperson": "Salesperson",
+      "totals": "Totals"
     },
     "quoteDetail": {
       "pageTitle": "Quotation",
@@ -4152,7 +4599,21 @@
       "critical": "Critical Error"
     },
     "ok": "OK",
-    "close": "Close"
+    "close": "Close",
+    "technicalReference": "Technical reference",
+    "genericServerMessage": "{{operation}} failed on the server (HTTP {{status}}). Please retry. If it repeats, send this error reference to support.",
+    "operations": {
+      "accountingSourceApprovals": "Accounting source-document approvals",
+      "financialApprovals": "Financial approvals",
+      "custodyConfirmations": "Custody confirmations",
+      "accountStatement": "Account statement",
+      "apiRequest": "Server request"
+    }
+  },
+  "openingStockDocuments": {
+    "legacyOpeningMovementsTitle": "{{count}} legacy opening stock movement(s) found",
+    "legacyOpeningMovementsBody": "These movements were recorded through the older direct opening-stock flow, so they do not have Opening Stock Document headers. Review Stock Movements before creating a new opening document to avoid duplicate stock.",
+    "reviewStockMovements": "Review Stock Movements"
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "Can’t issue {{itemLabel}} from warehouse {{warehouseLabel}} — only {{current}} in stock but {{requested}} requested (would leave {{resulting}}). Negative stock is turned off. Receive stock first, or enable negative stock in Inventory Settings."
@@ -4284,6 +4745,31 @@
       "selectedCount": "{{selected}} of {{total}} selected",
       "clear": "Clear"
     }
+  },
+  "defaultVoucherNames": {
+    "journalEntry": "Journal Entry",
+    "payment": "Payment Voucher",
+    "receipt": "Receipt Voucher",
+    "openingBalance": "Opening Balance",
+    "fxRevaluation": "FX Revaluation",
+    "deliveryNote": "Delivery Note",
+    "salesReturn": "Sales Return",
+    "salesInvoice": "Sales Invoice",
+    "salesInvoiceDirect": "Sales Invoice (Direct)",
+    "salesInvoiceLinked": "Sales Invoice (Linked)",
+    "salesInvoiceService": "Sales Invoice (Service)",
+    "purchaseOrder": "Purchase Order",
+    "purchaseInvoice": "Purchase Invoice",
+    "purchaseInvoiceDirect": "Purchase Invoice (Direct)",
+    "purchaseInvoiceLinked": "Purchase Invoice (Linked)",
+    "purchaseInvoiceService": "Purchase Invoice (Service)",
+    "goodsReceipt": "Goods Receipt",
+    "purchaseReturn": "Purchase Return",
+    "nativeVouchers": "Native Vouchers",
+    "nativeSalesInvoice": "Native Sales Invoice",
+    "nativeSalesOrder": "Native Sales Order",
+    "nativePurchaseInvoice": "Native Purchase Invoice",
+    "nativePurchaseOrder": "Native Purchase Order"
   },
   "formsManagement": {
     "title": "Forms Management — {{module}}",
@@ -4640,5 +5126,145 @@
   "Save the item and configure its units before assigning unit barcodes.": "Save the item and configure its units before assigning unit barcodes.",
   "Comma-separated barcodes": "Comma-separated barcodes",
   "saveChanges": "Save Changes",
-  "loading": "Loading..."
+  "loading": "Loading...",
+  "Primary Barcode": "Primary Barcode",
+  "Secondary Barcodes": "Secondary Barcodes",
+  "Add secondary barcode...": "Add secondary barcode...",
+  "Press Enter to add": "Press Enter to add",
+  "landing": {
+    "authFailed": "Authentication failed",
+    "nav": {
+      "features": "Features",
+      "solutions": "Solutions",
+      "pricing": "Pricing",
+      "enterprise": "Enterprise",
+      "login": "Log in",
+      "getStarted": "Get Started"
+    },
+    "badge": "New ERP System v3.0",
+    "hero": {
+      "titlePrefix": "Everything you need to",
+      "titleHighlight": "manage",
+      "titleSuffix": "your business.",
+      "subtitle": "The all-in-one platform built for modern enterprises. Seamlessly integrated accounting, operations, and HR tools.",
+      "freeTrial": "Free Trial",
+      "noCard": "No credit card required"
+    },
+    "authTabs": {
+      "createAccount": "CREATE ACCOUNT",
+      "signIn": "SIGN IN"
+    },
+    "auth": {
+      "joinTitle": "Join ERP03",
+      "welcomeTitle": "Welcome back",
+      "joinSubtitle": "Start your journey with us today.",
+      "welcomeSubtitle": "Please enter your credentials to continue."
+    },
+    "form": {
+      "firstName": "First Name",
+      "firstPlaceholder": "First",
+      "lastName": "Last Name",
+      "lastPlaceholder": "Last",
+      "email": "Email Address",
+      "emailPlaceholder": "email@company.com",
+      "password": "Password",
+      "submitCreate": "Create Account",
+      "submitSignIn": "Sign In"
+    },
+    "admin": {
+      "prefix": "System Admin?",
+      "portal": "Portal Access"
+    },
+    "legal": {
+      "prefix": "By continuing, you agree to our",
+      "terms": "Terms",
+      "privacy": "Privacy"
+    },
+    "modules": {
+      "availableNow": "Available Now",
+      "comingSoon": "Coming Soon",
+      "accounting": {
+        "title": "Accounting & Finance",
+        "desc": "Full ledger management, cost centers, and period closing."
+      },
+      "sales": {
+        "title": "Sales Management",
+        "desc": "Invoicing, quotations, and customer receivables tracking."
+      },
+      "purchases": {
+        "title": "Purchase Management",
+        "desc": "Purchase orders, vendor bills, and vendor management."
+      },
+      "inventory": {
+        "title": "Inventory Management",
+        "desc": "Stock movements, warehouses, and physical counts."
+      },
+      "pos": {
+        "title": "Point of Sale",
+        "desc": "Fast retail interface integrated with inventory and accounting."
+      },
+      "users": {
+        "title": "Users & Permissions",
+        "desc": "Advanced role-based access control system."
+      },
+      "reports": {
+        "title": "Reports & Forms",
+        "desc": "Comprehensive reporting with a custom print form designer."
+      },
+      "crm": {
+        "title": "CRM",
+        "desc": "Track leads, opportunities, and sales pipeline."
+      },
+      "hr": {
+        "title": "HR & Payroll",
+        "desc": "Employee management, payroll, and attendance."
+      },
+      "messaging": {
+        "title": "Internal Messaging",
+        "desc": "E-signatures, archiving, and document approval workflows."
+      },
+      "manufacturing": {
+        "title": "Manufacturing",
+        "desc": "Bill of materials and workstation tracking."
+      },
+      "projects": {
+        "title": "Projects & Tasks",
+        "desc": "Track tasks, timesheets, and project budgets."
+      },
+      "ai": {
+        "title": "AI Assistant",
+        "desc": "Intelligent assistant and automated rules (Pre-release)."
+      }
+    },
+    "features": {
+      "titlePrefix": "Everything you need to",
+      "titleHighlight": "scale",
+      "subtitle": "Modular, scalable, and easy to use. Choose the apps you need and add more as you grow."
+    },
+    "errors": {
+      "invalidCredential": "Invalid email or password.",
+      "wrongPassword": "Incorrect password.",
+      "emailInUse": "Email is already registered.",
+      "weakPassword": "Password is too weak.",
+      "networkError": "Network error. Please check your connection."
+    },
+    "allInOne": {
+      "title": "All in one place",
+      "desc": "Seamlessly integrated to eliminate data silos and double entry."
+    },
+    "mockups": {
+      "revenue": "Revenue",
+      "expenses": "Expenses",
+      "recentInvoices": "Recent Invoices",
+      "newInvoice": "New Invoice",
+      "paid": "Paid",
+      "aiPrompt": "Show me the net profit for Q2 compared to Q1.",
+      "aiResponse": "Net profit for Q2 was $42,400, which is a 15% increase from Q1.",
+      "aiPlaceholder": "Ask the AI assistant...",
+      "stockAlerts": "Stock Alerts",
+      "qty": "Qty",
+      "low": "Low",
+      "action": "Action"
+    }
+  }
 }

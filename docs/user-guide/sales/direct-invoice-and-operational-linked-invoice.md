@@ -77,7 +77,7 @@ When posted, the system:
 - Service-only lines do not need a warehouse.
 - The user chooses a payment method such as `Cash`, `Bank Transfer`, `Check`, or `Credit Card`.
 - The invoice totals are always visible in the bottom action bar, even when the side rail is hidden. If the side rail is open, it still shows the full totals card as well.
-- While the invoice form opens, the loading panel shows elapsed time, cache status, and API progress. This helps support staff identify whether startup data or a specific request is delaying the page.
+- While the invoice form opens, the loading panel shows elapsed time, cache status, and API progress. The first open after a hard refresh or deployment can still include one server cold start, but the form now loads its startup reference data through one bundled request instead of many separate requests; later opens in the same company use the in-page cache.
 - In standalone Sales, the user does not need to know accounting account IDs.
 
 ---

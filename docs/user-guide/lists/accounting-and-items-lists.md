@@ -18,6 +18,10 @@ Financial lifecycle actions remain controlled from the voucher table and voucher
 
 Open Inventory -> Items.
 
+The same company item catalog is also available from Sales, Purchases, and POS
+when the user has that module's item permission. In Purchases, open
+Purchases -> Products & Services.
+
 You can:
 
 - Create a new item from the page header.
@@ -28,6 +32,9 @@ You can:
 - Open an item from the row action.
 
 Item status is shown as a badge so active and inactive items are easier to scan.
+
+From Purchases, users can now list, search, open, create, edit, activate, and
+deactivate items without receiving an “Endpoint not found” message.
 
 ## Financial Note
 

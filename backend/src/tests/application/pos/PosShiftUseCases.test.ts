@@ -7,6 +7,7 @@ import { PosShift } from '../../../domain/pos/entities/PosShift';
 import { PosRegister } from '../../../domain/pos/entities/PosRegister';
 import { PosSettings } from '../../../domain/pos/entities/PosSettings';
 import { PosCashMovement } from '../../../domain/pos/entities/PosCashMovement';
+import { ValidationError } from '../../../errors/AppError';
 
 const makeRegister = (overrides: Partial<any> = {}): PosRegister =>
   PosRegister.fromJSON({
@@ -132,6 +133,37 @@ describe('PosShiftUseCases', () => {
       const openingArg = cashMovementRepo.create.mock.calls[0][0] as PosCashMovement;
       expect(openingArg.type).toBe('OPENING_FLOAT');
       expect(openingArg.amount).toBe(150.5);
+    });
+
+    it('opens a shift with zero opening float without creating a zero cash movement', async () => {
+      const register = makeRegister();
+      const settings = makeSettings();
+      const shiftRepo = {
+        getOpenShiftForRegister: jest.fn().mockResolvedValue(null),
+        getOpenShiftForCashier: jest.fn().mockResolvedValue(null),
+        create: jest.fn().mockResolvedValue(undefined),
+        update: jest.fn(),
+        getById: jest.fn(),
+        list: jest.fn(),
+      };
+      const registerRepo = { getById: jest.fn().mockResolvedValue(register), create: jest.fn(), update: jest.fn(), list: jest.fn() };
+      const posSettingsRepo = { getSettings: jest.fn().mockResolvedValue(settings), saveSettings: jest.fn() };
+      const cashMovementRepo = { create: jest.fn().mockResolvedValue(undefined), listByShift: jest.fn(), sumByShift: jest.fn() };
+      const tx = { runTransaction: async (fn: any) => fn({}) };
+      const useCase = new OpenPosShiftUseCase(shiftRepo as any, registerRepo as any, posSettingsRepo as any, cashMovementRepo as any, tx as any);
+
+      const shift = await useCase.execute({
+        companyId: 'cmp_test',
+        registerId: 'reg_1',
+        cashierUserId: 'cashier_1',
+        openingFloat: 0,
+        actor: { userId: 'cashier_1' },
+      });
+
+      expect(shift.status).toBe('OPEN');
+      expect(shift.openingFloat).toBe(0);
+      expect(shiftRepo.create).toHaveBeenCalled();
+      expect(cashMovementRepo.create).not.toHaveBeenCalled();
     });
 
     it('rejects an INACTIVE register', async () => {
@@ -377,9 +409,21 @@ describe('PosShiftUseCases', () => {
       const tx = { runTransaction: async (fn: any) => fn({}) };
       const useCase = new ClosePosShiftUseCase(shiftRepo as any, posSettingsRepo as any, registerRepo as any, cashMovementRepo as any, accountRepo as any, accountingBridge as any, tx as any);
 
-      await expect(
-        useCase.execute({ companyId: 'cmp_test', shiftId: 'shift_1', countedCash: 90, actor: { userId: 'cashier_1' } })
-      ).rejects.toThrow(/Cash Short account/);
+      const rejection = useCase.execute({
+        companyId: 'cmp_test',
+        shiftId: 'shift_1',
+        countedCash: 90,
+        actor: { userId: 'cashier_1' },
+      });
+      await expect(rejection).rejects.toBeInstanceOf(ValidationError);
+      await expect(rejection).rejects.toMatchObject({
+        message: expect.stringMatching(/Cash Short account/),
+        field: 'cashShortAccountId',
+        context: {
+          settingsPath: '/pos/settings',
+          varianceType: 'SHORT',
+        },
+      });
       expect(accountingBridge.recordFinancialEvent).not.toHaveBeenCalled();
       expect(shiftRepo.update).not.toHaveBeenCalled();
     });

@@ -29,7 +29,14 @@ const CURRENCIES = [
   { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', locale: 'ar-JO', decimalPlaces: 3 },
 ];
 
-import { StandardCOA, SimplifiedCOA, ComprehensiveCOA, PeriodicTradingCOA } from '../application/accounting/templates/COATemplates';
+import {
+  StandardCOA,
+  SimplifiedCOA,
+  ComprehensiveCOA,
+  PeriodicTradingCOA,
+  ArabicStandardCOA,
+  ArabicPeriodicTradingCOA,
+} from '../application/accounting/templates/COATemplates';
 import { ManufacturingCOA, ServicesCOA, RetailCOA } from '../application/accounting/templates/IndustryCOATemplates';
 
 const COA_TEMPLATES = [
@@ -72,6 +79,15 @@ const COA_TEMPLATES = [
     accounts: PeriodicTradingCOA
   },
   {
+    id: 'periodic_trading_ar',
+    name: 'شركة تجارية - نظام دوري',
+    description: 'دليل حسابات عربي لشركة تجارية بسيطة مع حسابات مشتريات ومبيعات ومخزون دوري',
+    recommended: 'مناسب للشركات التجارية الصغيرة التي تريد إدخالاً يومياً بسيطاً مع تقييم المخزون وقت التقارير',
+    accountCount: ArabicPeriodicTradingCOA.length,
+    complexity: 'medium',
+    accounts: ArabicPeriodicTradingCOA
+  },
+  {
     id: 'standard',
     name: 'Standard (Recommended)',
     description: 'Multi-level accounts covering wholesale, retail, inventory, and tax',
@@ -79,6 +95,15 @@ const COA_TEMPLATES = [
     accountCount: StandardCOA.length,
     complexity: 'medium',
     accounts: StandardCOA
+  },
+  {
+    id: 'standard_ar',
+    name: 'قياسي (موصى به)',
+    description: 'دليل حسابات عربي متعدد المستويات يغطي المبيعات والمشتريات والمخزون والضرائب',
+    recommended: 'مناسب للشركات التجارية والتوزيع والشركات الصغيرة والمتوسطة',
+    accountCount: ArabicStandardCOA.length,
+    complexity: 'medium',
+    accounts: ArabicStandardCOA
   },
   {
     id: 'manufacturing',

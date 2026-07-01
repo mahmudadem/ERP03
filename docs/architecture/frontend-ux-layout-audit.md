@@ -255,7 +255,11 @@ The app has i18n infrastructure and direction handling, but many module pages st
 Evidence:
 
 - `frontend/src/i18n/config.ts` changes `document.documentElement.dir` based on language.
-- Startup language is hardcoded to English.
+- Startup language defaults to Arabic when the user has no saved language
+  preference. `erp_language` remains the authoritative local preference, and a
+  saved backend preference overrides the startup default after authentication.
+  The legacy IP detector is prevented from replacing either value by seeding
+  its compatibility key during i18n initialization.
 - Source search found many module pages without `useTranslation`.
 - Many classes use explicit left/right terminology instead of logical direction-aware layout utilities.
 
@@ -265,6 +269,11 @@ Recommended direction:
 - Persist selected language and initialize i18n from that value before first render.
 - Replace left/right-specific layout assumptions with RTL-safe patterns where needed.
 - Require new user-facing strings to go through i18n.
+
+Account creation and editing now use a dedicated `accountForm` translation
+contract in every supported accounting locale. The contract covers tabs,
+fields, option labels, financial-policy explanations, custody controls, and
+submit states; the component must not retain English-only fallback copy.
 - Add Arabic visual QA for shell, sidebar, topbar, settings, lists, and reports.
 
 ### 7A. Entity cards must be UI-mode aware
@@ -543,6 +552,22 @@ A UX issue in an ERP is often also a control issue. The following are the highes
 4. Incorrect or inconsistent date entry if raw date inputs bypass company date/fiscal calendar rules.
 5. Inconsistent settings taxonomy can hide posting/accounting configuration in different places per module.
 6. Incomplete RTL/i18n creates adoption and training risk for Arabic users.
+
+### Chart-of-Accounts tree controls
+
+The account tree uses logical RTL behavior without changing its accounting
+hierarchy:
+
+- Expanded nodes use a downward chevron in every language.
+- Collapsed nodes use a right chevron in LTR and a left chevron in RTL.
+- Each expand/collapse control is a semantic button with a 36 by 36 pixel hit
+  target, translated accessible name, and `aria-expanded` state.
+- Toolbar actions use non-wrapping labels so Expand All, Collapse All, and New
+  Account remain one-line controls.
+
+These are presentation and accessibility rules only. The tree source,
+parent/child relationships, header/posting roles, account codes, and mutation
+behavior remain unchanged.
 
 ## Recommended Implementation Sequence
 

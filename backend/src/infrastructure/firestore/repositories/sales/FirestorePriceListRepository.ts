@@ -120,20 +120,26 @@ export class FirestorePriceListRepository implements IPriceListRepository {
     if (opts?.currency) {
       query = query.where('currency', '==', opts.currency);
     }
+    const requestedStatus = opts?.status ?? (!opts?.includeInactive ? 'ACTIVE' : undefined);
     if (opts?.status) {
       query = query.where('status', '==', opts.status);
-    } else if (!opts?.includeInactive) {
-      // Default: only ACTIVE lists
-      query = query.where('status', '==', 'ACTIVE');
     }
 
-    query = query.orderBy('name', 'asc');
-
-    if (opts?.offset) query = query.offset(opts.offset);
-    if (opts?.limit) query = query.limit(opts.limit);
-
     const snap = await query.get();
-    return snap.docs.map((doc) => PriceListMapper.toDomain(doc.data()));
+    const all = snap.docs.map((doc) => PriceListMapper.toDomain(doc.data()));
+    const filtered = requestedStatus
+      ? all.filter((list) => list.status === requestedStatus)
+      : all;
+
+    filtered.sort((a, b) => a.name.localeCompare(b.name));
+
+    const offset = Math.max(0, opts?.offset ?? 0);
+    const limit = opts?.limit;
+
+    if (typeof limit === 'number') {
+      return filtered.slice(offset, offset + limit);
+    }
+    return filtered.slice(offset);
   }
 
   async getDefaultForCurrency(companyId: string, currency: string): Promise<PriceList | null> {

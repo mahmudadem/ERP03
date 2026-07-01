@@ -1,5 +1,18 @@
 {
   "appName": "تخطيط موارد المؤسسات03",
+  "datePicker": {
+    "quickSelect": "اختيار سريع",
+    "today": "اليوم",
+    "now": "الآن",
+    "thisMonthFirst": "أول يوم في الشهر",
+    "fyBeginning": "بداية السنة المالية",
+    "fyClose": "إقفال السنة المالية",
+    "yearEnd": "نهاية السنة",
+    "periodOpening": "بداية الفترة",
+    "periodClose": "إقفال الفترة",
+    "start": "البداية",
+    "end": "النهاية"
+  },
   "salesGrossProfit": {
     "titleByDocument": "Gross Profit by Document",
     "titleByItem": "Gross Profit by Item",
@@ -87,6 +100,12 @@
           "desc": "تحذيرات وتنبيهات على مستوى النظام."
         }
       }
+    },
+    "dropdown": {
+      "yourProfile": "الملف الشخصي",
+      "appearance": "المظهر",
+      "switchCompany": "تبديل الشركة",
+      "signOut": "تسجيل الخروج"
     }
   },
   "sidebar": {
@@ -322,7 +341,9 @@
     "edit": "تعديل",
     "delete": "حذف",
     "cancel": "إلغاء",
-    "update": "تحديث"
+    "update": "تحديث",
+    "view": "عرض",
+    "print": "طباعة"
   },
   "notifications": {
     "title": "إشعارات",
@@ -1653,19 +1674,19 @@
     "landing": {
       "authFailed": "فشلت المصادقة",
       "nav": {
-        "features": "سمات",
+        "features": "المزايا",
         "solutions": "الحلول",
         "pricing": "التسعير",
-        "enterprise": "مَشرُوع",
+        "enterprise": "للشركات",
         "login": "تسجيل الدخول",
         "getStarted": "ابدأ"
       },
       "badge": "نظام تخطيط موارد المؤسسات الجديد v3.0",
       "hero": {
-        "titlePrefix": "كل ما تحتاج إليه",
-        "titleHighlight": "يدير",
-        "titleSuffix": "عملك.",
-        "subtitle": "منصة الكل في واحد مصممة للمؤسسات الحديثة. أدوات المحاسبة والعمليات والموارد البشرية المتكاملة بسلاسة.",
+        "titlePrefix": "كل ما تحتاجه",
+        "titleHighlight": "لإدارة",
+        "titleSuffix": "أعمالك",
+        "subtitle": "المنصة الشاملة المصممة للمؤسسات الحديثة. تكامل سلس بين أدوات المحاسبة، وإدارة العمليات، والموارد البشرية.",
         "freeTrial": "تجربة مجانية",
         "noCard": "لا حاجة لبطاقة الائتمان"
       },
@@ -1700,10 +1721,10 @@
         "privacy": "خصوصية"
       },
       "stats": {
-        "industryBundles": "حزم الصناعة",
-        "activeOrgs": "المنظمات النشطة",
-        "uptimeSla": "وقت التشغيل لاتفاقية مستوى الخدمة",
-        "globalSupport": "الدعم العالمي"
+        "industryBundles": "باقات مخصصة للقطاعات",
+        "activeOrgs": "مؤسسات نشطة",
+        "uptimeSla": "ضمان وقت التشغيل",
+        "globalSupport": "دعم فني عالمي"
       },
       "features": {
         "titlePrefix": "كل ما تحتاج إليه",
@@ -2545,6 +2566,253 @@
         "loadFailed": "فشل تحميل أصناف المخزون"
       }
     },
+    "itemMaster": {
+      "active": "نشط",
+      "activeDesc": "السماح باستخدام هذا الصنف في العمليات المالية والمخزنية"
+    },
+    "glReconciliation": {
+      "title": "مطابقة المخزون مع الأستاذ العام",
+      "subtitle": "قيمة دفتر المخزون الفرعي مقابل أرصدة مخزون الأستاذ العام",
+      "help": "يقارن دفتر المخزون الفرعي (Σ الكمية × متوسط التكلفة، مجمّعًا حسب حساب أصل المخزون لكل صنف) مع رصيد الأستاذ العام لتلك الحسابات. أي فرق يعني انحرافًا في التكلفة أو الترحيل.",
+      "loadFailed": "فشل تحميل المطابقة",
+      "reconciling": "جارٍ إجراء المطابقة…",
+      "empty": "لا توجد حسابات أصول مخزون لها قيمة مخزون أو رصيد أستاذ عام.",
+      "filters": {
+        "asOfDate": "كما في تاريخ"
+      },
+      "status": {
+        "ties": "المخزون مطابق للأستاذ العام",
+        "driftDetected": "تم اكتشاف فرق بين المخزون والأستاذ العام",
+        "matched": "مطابق",
+        "drift": "فرق"
+      },
+      "summary": {
+        "asOf": "كما في",
+        "stockValue": "قيمة المخزون",
+        "glBalance": "رصيد الأستاذ العام",
+        "difference": "الفرق",
+        "unmappedStockValue": "قيمة مخزون غير مربوطة"
+      },
+      "columns": {
+        "account": "الحساب",
+        "name": "الاسم",
+        "stockValueBase": "قيمة المخزون (أساسية)",
+        "glBalanceBase": "رصيد الأستاذ العام (أساسي)",
+        "difference": "الفرق",
+        "status": "الحالة"
+      }
+    },
+    "itemMovement": {
+      "title": "حركة الصنف",
+      "subtitle": "سجل تاريخي للحركات مع الرصيد الكمي والقيمة المتراكمة",
+      "loadFailed": "فشل تحميل تقرير حركة الصنف",
+      "loading": "جارٍ تحميل حركة الصنف...",
+      "empty": "لا توجد حركات صنف تطابق عوامل التصفية.",
+      "filters": {
+        "item": "الصنف",
+        "selectTrackedItem": "اختر صنفًا متتبعًا",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "from": "من",
+        "to": "إلى",
+        "direction": "الاتجاه",
+        "movementType": "نوع الحركة",
+        "sourceType": "نوع المصدر"
+      },
+      "direction": {
+        "all": "الكل",
+        "in": "داخل",
+        "out": "خارج"
+      },
+      "movementType": {
+        "OPENING_STOCK": "رصيد افتتاحي",
+        "PURCHASE_RECEIPT": "استلام شراء",
+        "SALES_DELIVERY": "تسليم مبيعات",
+        "ADJUSTMENT_IN": "تسوية زيادة",
+        "ADJUSTMENT_OUT": "تسوية نقصان",
+        "TRANSFER_IN": "تحويل وارد",
+        "TRANSFER_OUT": "تحويل صادر",
+        "RETURN_IN": "مرتجع وارد",
+        "RETURN_OUT": "مرتجع صادر"
+      },
+      "sourceType": {
+        "PURCHASE_INVOICE": "فاتورة شراء",
+        "GOODS_RECEIPT": "استلام بضاعة",
+        "PURCHASE_RETURN": "مرتجع شراء",
+        "SALES_INVOICE": "فاتورة مبيعات",
+        "DELIVERY_NOTE": "إشعار تسليم",
+        "SALES_RETURN": "مرتجع مبيعات",
+        "STOCK_ADJUSTMENT": "تسوية مخزون",
+        "STOCK_TRANSFER": "تحويل مخزون",
+        "OPENING": "افتتاحي",
+        "POS_DIRECT_SALE": "بيع نقاط البيع",
+        "POS_RETURN": "مرتجع نقاط البيع"
+      },
+      "chips": {
+        "item": "الصنف",
+        "warehouseShort": "مستودع"
+      },
+      "summary": {
+        "movements": "الحركات"
+      },
+      "columns": {
+        "date": "التاريخ",
+        "warehouse": "المستودع",
+        "movement": "الحركة",
+        "source": "المصدر",
+        "qtyIn": "كمية داخلة",
+        "qtyOut": "كمية خارجة",
+        "runningQty": "الرصيد الكمي",
+        "unitCost": "تكلفة الوحدة",
+        "movementValue": "قيمة الحركة",
+        "runningValue": "القيمة المتراكمة",
+        "createdBy": "أنشأها",
+        "notes": "ملاحظات"
+      }
+    },
+    "stockLevels": {
+      "title": "أرصدة المخزون",
+      "subtitle": "الكمية المتاحة والتقييم حسب الصنف أو المستودع",
+      "loadFailed": "فشل تحميل أرصدة المخزون",
+      "loading": "جارٍ تحميل أرصدة المخزون...",
+      "empty": "لا توجد أرصدة مخزون تطابق عوامل التصفية.",
+      "unvalued": "غير مقيّم",
+      "filters": {
+        "item": "الصنف",
+        "allTrackedItems": "كل الأصناف المتتبعة",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "view": "العرض",
+        "includeZero": "إظهار الكميات الصفرية",
+        "includeNegative": "إظهار المخزون السالب"
+      },
+      "viewMode": {
+        "byItem": "حسب الصنف",
+        "byWarehouse": "حسب المستودع"
+      },
+      "chips": {
+        "negativeLines": "سطور سالبة: {{count}}",
+        "unvaluedNegatives": "سوالب غير مقيّمة: {{count}}"
+      },
+      "summary": {
+        "lines": "السطور",
+        "value": "القيمة"
+      },
+      "columns": {
+        "item": "الصنف",
+        "warehouses": "المستودعات",
+        "totalQty": "إجمالي الكمية",
+        "blendedCost": "التكلفة الممزوجة",
+        "totalValue": "إجمالي القيمة",
+        "status": "الحالة",
+        "warehouse": "المستودع",
+        "qty": "الكمية",
+        "reportCost": "تكلفة التقرير",
+        "basis": "أساس التكلفة",
+        "reportValue": "قيمة التقرير",
+        "warning": "تحذير"
+      },
+      "costBasis": {
+        "average": "المتوسط",
+        "lastKnown": "آخر تكلفة معروفة",
+        "missing": "مفقود"
+      },
+      "status": {
+        "unvaluedNegative": "المخزون السالب لا يملك أساس تكلفة",
+        "negativeValued": "مخزون سالب مقيّم",
+        "valued": "مقيّم"
+      }
+    },
+    "valuation": {
+      "title": "تقييم المخزون",
+      "subtitle": "قيمة المخزون حسب الصنف والمستودع وسياسة التسعير",
+      "loadFailed": "فشل تحميل تقييم المخزون",
+      "loading": "جارٍ تحميل تقييم المخزون...",
+      "empty": "لا توجد أرصدة مخزون للتقييم",
+      "grandTotalServer": "الإجمالي العام (من الخادم)",
+      "filters": {
+        "mode": "الوضع",
+        "asOfDate": "كما في تاريخ",
+        "pricingPolicy": "سياسة التسعير",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "item": "الصنف",
+        "allItems": "كل الأصناف"
+      },
+      "mode": {
+        "current": "الحالي (مباشر)",
+        "asOf": "كما في تاريخ"
+      },
+      "pricingPolicy": {
+        "average": "متوسط التكلفة",
+        "lastPurchase": "آخر تكلفة شراء",
+        "averageShort": "المتوسط",
+        "lastPurchaseShort": "آخر شراء"
+      },
+      "chips": {
+        "asOf": "كما في {{date}}",
+        "policy": "السياسة",
+        "basedOnSnapshot": "بناءً على اللقطة {{snapshot}}",
+        "warehouseShort": "مستودع",
+        "item": "الصنف"
+      },
+      "summary": {
+        "totalLinesFullSet": "إجمالي السطور (كامل المجموعة)",
+        "totalValueBase": "إجمالي القيمة (بالعملة الأساسية)"
+      },
+      "columns": {
+        "itemCode": "كود الصنف",
+        "itemName": "اسم الصنف",
+        "warehouse": "المستودع",
+        "qtyOnHand": "الكمية المتاحة",
+        "policyCostBase": "تكلفة السياسة (أساسية)",
+        "avgCostBase": "متوسط التكلفة (أساسية)",
+        "valueBase": "القيمة (أساسية)"
+      }
+    },
+    "unsettledCosts": {
+      "title": "التكاليف غير المسواة",
+      "subtitle": "حركات إخراج مخزون بانتظار تسوية التكلفة",
+      "loadFailed": "فشل تحميل التقرير",
+      "empty": "لا توجد حركات غير مسواة تطابق الفلاتر.",
+      "totals": "الإجماليات",
+      "filters": {
+        "fromDate": "من تاريخ",
+        "toDate": "إلى تاريخ",
+        "item": "الصنف",
+        "allItems": "كل الأصناف",
+        "warehouse": "المستودع",
+        "allWarehouses": "كل المستودعات",
+        "costBasis": "أساس التكلفة"
+      },
+      "costBasis": {
+        "all": "الكل",
+        "avg": "المتوسط المتحرك",
+        "lastKnown": "آخر تكلفة معروفة",
+        "missing": "مفقودة (لا توجد تكلفة)"
+      },
+      "chips": {
+        "item": "الصنف",
+        "warehouseShort": "مستودع",
+        "basis": "الأساس"
+      },
+      "summary": {
+        "rows": "{{count}} صف",
+        "rows_other": "{{count}} صفوف",
+        "unsettledQty": "الكمية غير المسواة",
+        "costBasisBase": "أساس التكلفة (العملة الأساسية)"
+      },
+      "columns": {
+        "date": "التاريخ",
+        "item": "الصنف",
+        "warehouse": "المستودع",
+        "movementType": "نوع الحركة",
+        "qty": "الكمية",
+        "unsettledQty": "الكمية غير المسواة",
+        "costBasis": "أساس التكلفة",
+        "totalCostBase": "إجمالي التكلفة (الأساس)"
+      }
+    },
     "transfers": {
       "title": "تحويلات المخزون",
       "newButton": "تحويل جديد",
@@ -2726,7 +2994,174 @@
       "createInvoice": "فاتورة مبيعات",
       "createOrder": "أمر بيع",
       "createReturn": "مرتجع مبيعات",
-      "settings": "الإعدادات"
+      "settings": "الإعدادات",
+      "title": "لوحة نظرة عامة على المبيعات",
+      "moduleDashboard": "لوحة الوحدة",
+      "subtitle": "متابعة الفواتير والذمم المدينة وإعداد مسارات أوامر البيع.",
+      "salesSettings": "إعدادات المبيعات",
+      "kpis": {
+        "totalRevenue": "إجمالي الإيرادات",
+        "realizedCashSettlements": "تحصيلات نقدية محققة",
+        "outstandingAr": "الذمم المدينة المفتوحة",
+        "dueCollectionLedgerStatus": "حالة التحصيل المستحق",
+        "overdueInvoices": "فواتير متأخرة",
+        "activeItems": "بنود نشطة",
+        "requiringImmediateCreditClaims": "تحتاج متابعة ائتمانية فورية",
+        "pendingApproval": "بانتظار الموافقة",
+        "invoicesPending": "فواتير معلقة",
+        "awaitingBankTransfers": "بانتظار التحويلات البنكية"
+      },
+      "recentSalesOrders": "أحدث أوامر البيع",
+      "fulfillmentQueue": "طابور التنفيذ",
+      "noRecentOrders": "لا توجد أوامر حديثة.",
+      "recentSalesInvoices": "أحدث فواتير المبيعات",
+      "postingsRegister": "سجل الترحيلات",
+      "noRecentInvoices": "لا توجد فواتير حديثة.",
+      "topClientAccounts": "أهم حسابات العملاء",
+      "noClientData": "لا توجد بيانات عملاء.",
+      "balance": "الرصيد",
+      "quickNavigation": "تنقل سريع",
+      "recentActivity": "النشاط الأخير",
+      "refreshActivity": "تحديث النشاط",
+      "noActivityYet": "لا يوجد نشاط بعد.",
+      "columns": {
+        "soNumber": "رقم أمر البيع",
+        "invoiceId": "رقم الفاتورة",
+        "date": "التاريخ",
+        "customerClient": "العميل",
+        "debtorCustomer": "العميل المدين",
+        "currency": "العملة",
+        "rawTotal": "الإجمالي",
+        "createdBy": "أنشأه",
+        "createdAt": "وقت الإنشاء",
+        "approvedAt": "وقت الموافقة",
+        "status": "الحالة"
+      },
+      "quickLinks": {
+        "invoices": "الفواتير",
+        "orders": "الأوامر",
+        "deliveryNotes": "مذكرات التسليم",
+        "quotations": "عروض الأسعار",
+        "returns": "المرتجعات"
+      }
+    },
+    "arAging": {
+      "title": "أعمار الذمم المدينة",
+      "subtitle": "الذمم المدينة حسب فترات الأعمار",
+      "asOfDate": "كما في تاريخ",
+      "customerOptional": "العميل (اختياري)",
+      "allCustomers": "كل العملاء",
+      "generateReport": "إنشاء التقرير",
+      "invoiceNumber": "رقم الفاتورة",
+      "invoiceDate": "تاريخ الفاتورة",
+      "dueDate": "تاريخ الاستحقاق",
+      "daysOverdue": "أيام التأخير",
+      "bucket": "الفترة",
+      "outstanding": "المتبقي",
+      "creditNotesJVAdjustments": "إشعارات دائنة / تسويات قيد يومية",
+      "unallocatedBalance": "رصيد غير مخصص",
+      "failedToLoadReport": "فشل تحميل التقرير",
+      "asOfDateValue": "كما في {{date}}",
+      "customerCount": "{{count}} عميل",
+      "customerCount_other": "{{count}} عملاء",
+      "totalAR": "إجمالي الذمم المدينة:",
+      "loadingAging": "جارٍ تحميل الأعمار...",
+      "noOutstandingReceivablesAsOfDate": "لا توجد ذمم مدينة قائمة كما في {{date}}",
+      "customerHeader": "العميل",
+      "current": "حالي",
+      "days1_30": "1–30 يوم",
+      "days31_60": "31–60 يوم",
+      "days61_90": "61–90 يوم",
+      "days90Plus": "أكثر من 90 يوم",
+      "total": "الإجمالي",
+      "totals": "الإجماليات"
+    },
+    "customerStatement": {
+      "title": "كشف حساب العميل",
+      "subtitle": "كشف فترة أو دفتر أستاذ كامل لعميل",
+      "date": "التاريخ",
+      "type": "النوع",
+      "reference": "المرجع",
+      "debit": "مدين",
+      "credit": "دائن",
+      "balance": "الرصيد",
+      "actions": "الإجراءات",
+      "openingBalance": "الرصيد الافتتاحي",
+      "closingBalance": "الرصيد الختامي",
+      "noTransactionsInPeriod": "لا توجد حركات في هذه الفترة.",
+      "source": "المصدر",
+      "voucher": "القيد",
+      "openSourceDocument": "فتح مستند المصدر",
+      "openAccountingVoucher": "فتح القيد المحاسبي",
+      "lineTypeInvoice": "فاتورة",
+      "lineTypePayment": "دفعة",
+      "lineTypeCreditNote": "إشعار دائن",
+      "lineTypeRefund": "استرداد",
+      "lineTypeAdjustment": "تسوية",
+      "view": "العرض",
+      "statementPeriodSummary": "كشف الفترة (ملخص)",
+      "fullLedgerAllEvents": "دفتر الأستاذ الكامل (كل الحركات)",
+      "customer": "العميل",
+      "selectCustomer": "اختر عميلاً...",
+      "fromDate": "من تاريخ",
+      "toDate": "إلى تاريخ",
+      "includeOpenCommitments": "تضمين الالتزامات المفتوحة",
+      "openCommitmentsHelp": "يعرض أوامر البيع المفتوحة بشكل منفصل للمتابعة التجارية. هذه المبالغ لا تؤثر على رصيد الكشف.",
+      "generateReport": "إنشاء التقرير",
+      "failedToLoadReport": "فشل تحميل التقرير",
+      "invoiceNumber": "رقم الفاتورة",
+      "invoiceDate": "تاريخ الفاتورة",
+      "dueDate": "تاريخ الاستحقاق",
+      "invoiceTotal": "إجمالي الفاتورة",
+      "outstanding": "المتبقي",
+      "salesOrder": "أمر البيع",
+      "expected": "المتوقع",
+      "status": "الحالة",
+      "total": "الإجمالي",
+      "open": "المفتوح",
+      "statement": "الكشف",
+      "fullLedger": "دفتر الأستاذ الكامل",
+      "dateRange": "{{fromDate}} ← {{toDate}}",
+      "invoiced": "مفوتر:",
+      "paid": "مدفوع:",
+      "credits": "إشعارات دائنة:",
+      "closing": "الرصيد الختامي:",
+      "loadingReport": "جارٍ تحميل التقرير...",
+      "transactions": "الحركات",
+      "fullLedgerForCustomer": "دفتر الأستاذ الكامل — {{customerName}}",
+      "openInvoicesCount": "الفواتير المفتوحة ({{count}})",
+      "openCommitmentsCount": "الالتزامات المفتوحة ({{count}}) · غير مدرجة في الرصيد",
+      "noData": "لا توجد بيانات."
+    },
+    "analytics": {
+      "title": "تحليلات المبيعات",
+      "subtitle": "أداء المبيعات حسب العميل أو الصنف أو مندوب المبيعات",
+      "groupBy": "التجميع حسب",
+      "byCustomer": "حسب العميل",
+      "byItem": "حسب الصنف",
+      "bySalesperson": "حسب مندوب المبيعات",
+      "fromDate": "من تاريخ",
+      "toDate": "إلى تاريخ",
+      "generateReport": "إنشاء التقرير",
+      "failedToLoadReport": "فشل تحميل التقرير",
+      "rowCount": "{{count}} صف",
+      "rowCount_other": "{{count}} صفوف",
+      "loadingReport": "جارٍ تحميل التقرير...",
+      "salesByCustomer": "المبيعات حسب العميل",
+      "salesByItem": "المبيعات حسب الصنف",
+      "salesBySalesperson": "المبيعات حسب مندوب المبيعات",
+      "noDataForThisPeriod": "لا توجد بيانات لهذه الفترة.",
+      "customer": "العميل",
+      "invoices": "الفواتير",
+      "revenue": "الإيراد",
+      "tax": "الضريبة",
+      "gross": "الإجمالي",
+      "code": "الكود",
+      "item": "الصنف",
+      "lines": "السطور",
+      "qtySold": "الكمية المباعة",
+      "salesperson": "مندوب المبيعات",
+      "totals": "الإجماليات"
     },
     "quoteDetail": {
       "pageTitle": "عرض سعر",
@@ -2818,45 +3253,51 @@
       }
     },
     "invoicesList": {
-      "title": "Sales Invoices",
-      "subtitle": "Post invoices to recognize revenue and receivables.",
-      "newButton": "New Invoice",
-      "refresh": "Refresh",
-      "clearFilters": "Clear filters",
-      "open": "Open",
-      "loading": "Loading sales invoices...",
-      "loadError": "Failed to load sales invoices.",
+      "title": "فواتير المبيعات",
+      "newButton": "فاتورة جديدة",
+      "newWindowTitle": "فاتورة مبيعات جديدة",
       "filters": {
-        "status": "Status",
-        "payment": "Payment",
-        "customer": "Customer",
-        "allCustomers": "All Customers"
-      },
-      "status": {
-        "ALL": "All",
-        "DRAFT": "Draft",
-        "PENDING_APPROVAL": "في انتظار الموافقة",
-        "POSTED": "Posted",
-        "CANCELLED": "Cancelled"
+        "searchPlaceholder": "رقم الفاتورة، العميل، المستخدم...",
+        "allCustomers": "جميع العملاء",
+        "typePlaceholder": "النوع",
+        "direct": "مباشر",
+        "pos": "نقاط البيع",
+        "statusPlaceholder": "الحالة",
+        "paymentPlaceholder": "الدفع",
+        "dateFrom": "من تاريخ",
+        "dateTo": "إلى تاريخ",
+        "apply": "تطبيق",
+        "clear": "مسح الفلاتر"
       },
       "payment": {
-        "ALL": "All",
-        "UNPAID": "Unpaid",
-        "PARTIALLY_PAID": "Partially Paid",
-        "PAID": "Paid"
+        "PAID": "مدفوع",
+        "PARTIALLY_PAID": "مدفوع جزئياً",
+        "UNPAID": "غير مدفوع"
       },
-      "headers": {
-        "invoiceNumber": "Invoice #",
-        "customer": "Customer",
-        "invoiceDate": "Invoice Date",
-        "grandTotal": "Grand Total",
-        "payment": "Payment",
-        "status": "Status",
-        "actions": "Actions"
+      "status": {
+        "DRAFT": "مسودة",
+        "PENDING_APPROVAL": "في انتظار الموافقة",
+        "POSTED": "مُرحل",
+        "CANCELLED": "ملغى"
+      },
+      "columns": {
+        "invoiceNumber": "رقم الفاتورة",
+        "customer": "العميل/الجهة",
+        "date": "تاريخ ووقت الفاتورة",
+        "total": "الإجمالي",
+        "currency": "العملة",
+        "persona": "نوع الفاتورة",
+        "paymentStatus": "الدفعات",
+        "status": "الحالة",
+        "createdBy": "بواسطة",
+        "dueDate": "تاريخ الاستحقاق",
+        "postedAt": "تاريخ الترحيل"
       },
       "empty": {
-        "title": "No sales invoices yet",
-        "description": "Create your first invoice to recognize revenue and receivables."
+        "title": "لا توجد فواتير مبيعات حتى الآن"
+      },
+      "deleteConfirm": {
+        "title": "حذف الفاتورة"
       }
     },
     "governance": {
@@ -3684,30 +4125,125 @@
       "creditOverrideDisabled": "العميل تجاوز حده الائتماني. تم تعطيل التجاوزات بواسطة سياسة الشركة.",
       "creditOverrideNoPermission": "العميل تجاوز حده الائتماني. ليس لديك صلاحية للتجاوز.",
       "loadFailed": "فشل تحميل أمر البيع."
+    },
+    "customersPage": {
+      "title": "العملاء",
+      "subtitle": "إدارة سجلات العملاء وحساباتهم",
+      "addCustomer": "إضافة عميل",
+      "kpi": {
+        "total": "إجمالي العملاء",
+        "records": "سجلات",
+        "active": "العملاء النشطون",
+        "operational": "للتشغيل",
+        "withEmail": "لديهم بريد",
+        "contactable": "للتواصل",
+        "withCreditLimit": "بحد ائتماني",
+        "creditLines": "خطوط ائتمان"
+      },
+      "search": "البحث عن عملاء",
+      "searchPlaceholder": "بحث بالرمز، الاسم، البريد، الهاتف...",
+      "statusFilter": {
+        "all": "جميع الحالات",
+        "active": "النشط فقط",
+        "inactive": "غير النشط فقط"
+      },
+      "columns": {
+        "code": "الرمز",
+        "name": "الاسم",
+        "roles": "الأدوار",
+        "phone": "الهاتف",
+        "email": "البريد",
+        "credit": "الحد الائتماني",
+        "status": "الحالة"
+      },
+      "status": {
+        "active": "نشط",
+        "inactive": "غير نشط"
+      },
+      "emptyFiltered": "لا يوجد عملاء يطابقون البحث.",
+      "empty": "لا يوجد عملاء مسجلين.",
+      "footerCount": "عرض {{shown}} من أصل {{total}} عملاء",
+      "messages": {
+        "loadFailed": "فشل تحميل العملاء"
+      }
     }
   },
   "parties": {
     "form": {
+      "supplierTitle": "مورد",
+      "customerTitle": "عميل",
+      "registeringNew": "تسجيل جديد - {{role}}",
+      "masterRecord": "السجل الرئيسي: {{role}}",
+      "saveNewVendor": "حفظ المورد الجديد",
+      "saveNewCustomer": "حفظ العميل الجديد",
+      "updateVendor": "تحديث المورد",
+      "updateCustomer": "تحديث العميل",
+      "legalIdentity": "الهوية القانونية",
+      "roleCode": "رمز ال{{role}}",
+      "codePlaceholderCust": "مثال: CUST-0001",
+      "codePlaceholderVend": "مثال: SUP-0001",
+      "generateCode": "إنشاء الرمز التالي",
+      "taxId": "الرقم الضريبي / VAT",
+      "legalName": "اسم الكيان القانوني (كما في السجل التجاري)",
+      "displayName": "الاسم التجاري / اسم العرض",
+      "engagementDetails": "تفاصيل الارتباط",
+      "contactPerson": "الشخص المسؤول عن التواصل",
+      "recordStatus": "حالة السجل",
+      "statusActive": "نشط",
+      "statusSuspended": "موقوف",
+      "communicationChannels": "قنوات التواصل",
+      "phoneNumber": "رقم الهاتف / الجوال",
+      "email": "البريد الإلكتروني",
+      "address": "العنوان الأساسي / موقع المقر",
+      "agreedTerms": "الشروط المتفق عليها",
+      "paymentTerms": "شروط الدفع (أيام الائتمان)",
+      "currency": "العملة القياسية",
+      "currencySelection": "(اختر العملة)",
+      "customerSegmentation": "تصنيف العملاء والائتمان",
+      "customerGroup": "مجموعة العملاء",
+      "noGroup": "(بدون مجموعة)",
+      "defaultPriceList": "قائمة الأسعار الافتراضية",
+      "noPriceList": "(بدون قائمة أسعار)",
+      "creditLimit": "الحد الائتماني",
+      "creditHoldPolicy": "سياسة إيقاف الائتمان",
+      "policyNone": "لا يوجد",
+      "policyWarn": "تحذير",
+      "policyBlock": "حظر",
+      "taxExempt": "معفى من الضرائب",
+      "taxExemptHelp": "العميل معفى من الضرائب",
       "accounting": {
-        "title": "Accounting",
-        "strategyLabel": "Account Strategy *",
-        "autoCreate": "Auto-create sub-account",
-        "autoCreateHelp": "Creates a dedicated account from settings format and parent.",
-        "pickExisting": "Pick existing account",
-        "pickExistingHelp": "Manually bind this party to an existing AR/AP account.",
-        "strategyPrompt": "Choose one strategy before saving this party.",
-        "strategyEditNote": "Auto-create runs during new party creation. Existing parties can be remapped using Pick Existing.",
-        "previewTitle": "Generated account preview",
-        "missingArParent": "Sales Settings is missing AR Parent Account. Configure it first.",
-        "missingApParent": "Purchase Settings is missing AP Parent Account. Configure it first.",
-        "previewNeedsCode": "Enter a party code to preview the generated account code.",
-        "previewFormat": "Format: {{format}}",
-        "previewUnavailable": "Preview unavailable",
-        "accountHelp": "Primary GL posting target for transactions associated with this party.",
-        "strategyRequired": "Select an account strategy before saving.",
-        "arRequired": "Linked AR account is required for customers when using Pick Existing.",
-        "apRequired": "Linked AP account is required for vendors when using Pick Existing."
-      }
+        "title": "المحاسبة",
+        "strategyLabel": "استراتيجية الحساب *",
+        "autoCreate": "إنشاء حساب فرعي تلقائياً",
+        "autoCreateHelp": "يُنشئ حساباً مخصصاً بناءً على تنسيق الإعدادات والحساب الرئيسي.",
+        "pickExisting": "اختيار حساب حالي",
+        "pickExistingHelp": "ربط هذا الطرف يدوياً بحساب ذمم مدينة/موردين موجود.",
+        "strategyPrompt": "يرجى اختيار استراتيجية قبل حفظ هذا الطرف.",
+        "strategyEditNote": "يتم الإنشاء التلقائي أثناء تسجيل طرف جديد. يمكن إعادة تعيين الأطراف الحالية باستخدام خيار اختيار حساب حالي.",
+        "previewTitle": "معاينة الحساب المُنشأ",
+        "missingArParent": "إعدادات المبيعات تفتقد الحساب الرئيسي للذمم المدينة. قم بتهيئته أولاً.",
+        "missingApParent": "إعدادات المشتريات تفتقد الحساب الرئيسي للذمم الدائنة. قم بتهيئته أولاً.",
+        "previewNeedsCode": "أدخل رمز الطرف لمعاينة رمز الحساب المُنشأ.",
+        "previewFormat": "التنسيق: {{format}}",
+        "previewUnavailable": "المعاينة غير متاحة",
+        "codeFormatManagedHint": "تنسيق رمز الحساب هو أحد إعدادات الشركة. قم بتغييره من {{where}} ← الإعدادات ← تنسيق حساب الطرف.",
+        "accountHelp": "الهدف الرئيسي للترحيل في دفتر الأستاذ العام للمعاملات المرتبطة بهذا الطرف.",
+        "strategyRequired": "اختر استراتيجية الحساب قبل الحفظ.",
+        "arRequired": "الحساب المرتبط للذمم المدينة مطلوب للعملاء عند استخدام اختيار حساب حالي.",
+        "apRequired": "الحساب المرتبط للذمم الدائنة مطلوب للموردين عند استخدام اختيار حساب حالي."
+      },
+      "customerCodeLabel": "رمز العميل",
+      "vendorCodeLabel": "رمز المورد",
+      "registeringNewCustomer": "تسجيل عميل جديد",
+      "registeringNewVendor": "تسجيل مورد جديد",
+      "customerMasterRecord": "السجل الرئيسي: عميل",
+      "vendorMasterRecord": "السجل الرئيسي: مورد"
+    },
+    "tabs": {
+      "general": "الهوية والشؤون القانونية",
+      "contact": "قنوات التواصل",
+      "commercial": "الشروط التجارية",
+      "accounting": "الإعدادات المالية"
     }
   },
   "fulfillment": {
@@ -4225,7 +4761,21 @@
       "critical": "خطأ حرج"
     },
     "ok": "حسناً",
-    "close": "إغلاق"
+    "close": "إغلاق",
+    "technicalReference": "مرجع تقني",
+    "genericServerMessage": "فشل {{operation}} على الخادم (HTTP {{status}}). أعد المحاولة. إذا تكرر الخطأ، أرسل مرجع الخطأ هذا للدعم.",
+    "operations": {
+      "accountingSourceApprovals": "اعتمادات مستندات المصدر المحاسبية",
+      "financialApprovals": "الاعتمادات المالية",
+      "custodyConfirmations": "تأكيدات العهدة",
+      "accountStatement": "كشف الحساب",
+      "apiRequest": "طلب الخادم"
+    }
+  },
+  "openingStockDocuments": {
+    "legacyOpeningMovementsTitle": "تم العثور على {{count}} حركة مخزون افتتاحية قديمة",
+    "legacyOpeningMovementsBody": "تم تسجيل هذه الحركات من خلال مسار مخزون أول المدة المباشر القديم، لذلك لا تملك رؤوس مستندات بضاعة أول المدة. راجع حركات المخزون قبل إنشاء مستند افتتاحي جديد لتجنب تكرار المخزون.",
+    "reviewStockMovements": "مراجعة حركات المخزون"
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "لا يمكن صرف {{itemLabel}} من المستودع {{warehouseLabel}} — المتوفر {{current}} فقط بينما المطلوب {{requested}} (سيصبح الرصيد {{resulting}}). المخزون السالب غير مسموح. استلم المخزون أولاً أو فعّل المخزون السالب في إعدادات المخزون."
@@ -4252,7 +4802,7 @@
   "Master Record Details": "تفاصيل السجل الرئيسي",
   "Master Entry": "إدخال رئيسي",
   "Sync": "مزامنة",
-  "Active": "نشط",
+  "active": "نشط",
   "CLOSE": "إغلاق",
   "BACK": "رجوع",
   "Save": "حفظ",
@@ -4283,7 +4833,7 @@
   "From UOM": "من وحدة القياس",
   "To UOM": "إلى وحدة القياس",
   "Add Conversion": "إضافة تحويل",
-  "This From UOM and To UOM conversion already exists. Update the existing row factor instead.": "هذا التحويل موجود بالفعل. قم بتحديث معامل الصف الحالي بدلاً من ذلك.",
+  "This From UOM and To UOM conversion already exists. Update the existing row factor instead.": "هذا التحويل موجود مسبقاً. يرجى تحديث معامل الصف الحالي بدلاً من ذلك.",
   "From": "من",
   "To": "إلى",
   "Current Factor": "المعامل الحالي",
@@ -4323,7 +4873,7 @@
   "Module": "الوحدة",
   "Code": "الرمز",
   "e.g. ITM-0001": "مثال ITM-0001",
-  "Auto-sequence Item Code": "إنشاء رمز تسلسلي تلقائياً",
+  "Auto-sequence Item Code": "تسلسل تلقائي لرمز الصنف",
   "Loading Item Master...": "جاري تحميل بطاقة الصنف...",
   "Registers": "منافذ البيع",
   "registers": "منافذ البيع",
@@ -4360,6 +4910,31 @@
       "selectedCount": "تم تحديد {{selected}} من {{total}}",
       "clear": "مسح"
     }
+  },
+  "defaultVoucherNames": {
+    "journalEntry": "قيد يومية",
+    "payment": "سند صرف",
+    "receipt": "سند قبض",
+    "openingBalance": "الأرصدة الافتتاحية",
+    "fxRevaluation": "إعادة تقييم العملات الأجنبية",
+    "deliveryNote": "إشعار تسليم",
+    "salesReturn": "مردود مبيعات",
+    "salesInvoice": "فاتورة مبيعات",
+    "salesInvoiceDirect": "فاتورة مبيعات مباشرة",
+    "salesInvoiceLinked": "فاتورة مبيعات مرتبطة",
+    "salesInvoiceService": "فاتورة مبيعات خدمية",
+    "purchaseOrder": "أمر شراء",
+    "purchaseInvoice": "فاتورة مشتريات",
+    "purchaseInvoiceDirect": "فاتورة مشتريات مباشرة",
+    "purchaseInvoiceLinked": "فاتورة مشتريات مرتبطة",
+    "purchaseInvoiceService": "فاتورة مشتريات خدمية",
+    "goodsReceipt": "إشعار استلام بضائع",
+    "purchaseReturn": "مردود مشتريات",
+    "nativeVouchers": "السندات المحاسبية المدمجة",
+    "nativeSalesInvoice": "فاتورة المبيعات المدمجة",
+    "nativeSalesOrder": "طلب المبيعات المدمج",
+    "nativePurchaseInvoice": "فاتورة المشتريات المدمجة",
+    "nativePurchaseOrder": "أمر الشراء المدمج"
   },
   "formsManagement": {
     "title": "إدارة النماذج — {{module}}",
@@ -4716,5 +5291,166 @@
   "Save the item and configure its units before assigning unit barcodes.": "احفظ الصنف واضبط وحداته قبل تعيين باركودات الوحدات.",
   "Comma-separated barcodes": "باركودات مفصولة بفواصل",
   "saveChanges": "حفظ التغييرات",
-  "loading": "جارٍ التحميل..."
+  "loading": "جارٍ التحميل...",
+  "Primary Barcode": "الباركود الأساسي",
+  "Secondary Barcodes": "الباركودات الثانوية",
+  "Add secondary barcode...": "إضافة باركود ثانوي...",
+  "Press Enter to add": "اضغط Enter للإضافة",
+  "Secondary": "ثانوي",
+  "Barcodes": "باركودات",
+  "Manage Secondary Barcodes": "إدارة الباركودات الثانوية",
+  "No secondary barcodes defined": "لا توجد باركودات ثانوية محددة",
+  "Add": "إضافة",
+  "Close": "إغلاق",
+  "Auto Add on Enter": "إضافة تلقائية عند الضغط على Enter",
+  "Add New Barcode": "إضافة باركود جديد",
+  "Add details...": "إضافة تفاصيل...",
+  "Please fill the following required fields:": "يرجى ملء الحقول المطلوبة التالية:",
+  "Failed to load item": "فشل في تحميل الصنف",
+  "Save the item before adding conversions.": "يرجى حفظ الصنف قبل إضافة التحويلات.",
+  "Conversion requires from UOM, to UOM, and a positive factor.": "يتطلب التحويل وحدة قياس من وإلى، ومعامل إيجابي.",
+  "Failed to add conversion": "فشل في إضافة التحويل",
+  "New factor must be a positive number.": "يجب أن يكون المعامل الجديد رقماً إيجابياً.",
+  "Failed to analyze conversion impact": "فشل في تحليل تأثير التحويل",
+  "Failed to apply conversion correction": "فشل في تطبيق تصحيح التحويل",
+  "Could not predict next SKU": "تعذر التنبؤ برمز الـ SKU التالي",
+  "masterCard": {
+    "newTitle": "{{title}} جديد"
+  },
+  "landing": {
+    "authFailed": "فشلت المصادقة",
+    "nav": {
+      "features": "المزايا",
+      "solutions": "الحلول",
+      "pricing": "الأسعار",
+      "enterprise": "للشركات",
+      "login": "تسجيل الدخول",
+      "getStarted": "ابدأ الآن"
+    },
+    "badge": "نظام ERP الشامل v3.0",
+    "hero": {
+      "titlePrefix": "كل ما تحتاجه",
+      "titleHighlight": "لإدارة",
+      "titleSuffix": "أعمالك",
+      "subtitle": "المنصة الشاملة المصممة للمؤسسات الحديثة. تكامل سلس بين أدوات المحاسبة، وإدارة العمليات، والموارد البشرية.",
+      "freeTrial": "تجربة مجانية",
+      "noCard": "لا حاجة لبطاقة ائتمان"
+    },
+    "authTabs": {
+      "createAccount": "إنشاء حساب",
+      "signIn": "تسجيل الدخول"
+    },
+    "auth": {
+      "joinTitle": "انضم إلى ERP03",
+      "welcomeTitle": "مرحباً بعودتك",
+      "joinSubtitle": "ابدأ رحلتك معنا اليوم.",
+      "welcomeSubtitle": "الرجاء إدخال بيانات الاعتماد الخاصة بك للمتابعة."
+    },
+    "form": {
+      "firstName": "الاسم الأول",
+      "firstPlaceholder": "أولاً",
+      "lastName": "اسم العائلة",
+      "lastPlaceholder": "أخيراً",
+      "email": "البريد الإلكتروني",
+      "emailPlaceholder": "email@company.com",
+      "password": "كلمة المرور",
+      "submitCreate": "إنشاء حساب",
+      "submitSignIn": "تسجيل الدخول"
+    },
+    "admin": {
+      "prefix": "مسؤول النظام؟",
+      "portal": "بوابة الإدارة"
+    },
+    "legal": {
+      "prefix": "بالمتابعة، أنت توافق على",
+      "terms": "شروط الاستخدام",
+      "privacy": "سياسة الخصوصية"
+    },
+    "modules": {
+      "availableNow": "متاح حالياً",
+      "comingSoon": "قريباً",
+      "accounting": {
+        "title": "المحاسبة والمالية",
+        "desc": "إدارة كاملة للقيود، مراكز التكلفة، وإغلاق الفترات."
+      },
+      "sales": {
+        "title": "إدارة المبيعات",
+        "desc": "إصدار الفواتير، عروض الأسعار، وتتبع مستحقات العملاء."
+      },
+      "purchases": {
+        "title": "إدارة المشتريات",
+        "desc": "أوامر الشراء، فواتير الموردين، وإدارة الموردين."
+      },
+      "inventory": {
+        "title": "إدارة المخزون",
+        "desc": "حركات المخزون، المستودعات، والجرد."
+      },
+      "pos": {
+        "title": "نقاط البيع",
+        "desc": "واجهة بيع سريعة للمتاجر مدمجة مع المخزون والمحاسبة."
+      },
+      "users": {
+        "title": "إدارة المستخدمين والصلاحيات",
+        "desc": "نظام أدوار متقدم للتحكم في وصول المستخدمين."
+      },
+      "reports": {
+        "title": "التقارير والنماذج",
+        "desc": "تقارير شاملة مع مصمم نماذج طباعة مخصص."
+      },
+      "crm": {
+        "title": "إدارة علاقات العملاء CRM",
+        "desc": "متابعة العملاء المحتملين والمبيعات."
+      },
+      "hr": {
+        "title": "الموارد البشرية HR",
+        "desc": "إدارة شؤون الموظفين، الرواتب، والحضور."
+      },
+      "messaging": {
+        "title": "المراسلات الداخلية",
+        "desc": "توقيع إلكتروني، أرشفة، مسار اعتماد للوثائق."
+      },
+      "manufacturing": {
+        "title": "التصنيع وأوامر الإنتاج",
+        "desc": "قوائم المواد ومتابعة محطات العمل."
+      },
+      "projects": {
+        "title": "إدارة المشاريع والمهام",
+        "desc": "تتبع المهام، ساعات العمل، والميزانيات."
+      },
+      "ai": {
+        "title": "الذكاء الاصطناعي",
+        "desc": "مساعد ذكي وقواعد مؤتمتة (قيد التجهيز للإطلاق)."
+      }
+    },
+    "features": {
+      "titlePrefix": "كل ما تحتاجه لتوسيع",
+      "titleHighlight": "أعمالك",
+      "subtitle": "نظام مرن وسهل الاستخدام. اختر التطبيقات التي تناسب احتياجاتك، وأضف المزيد مع نمو أعمالك."
+    },
+    "errors": {
+      "invalidCredential": "البريد الإلكتروني أو كلمة المرور غير صحيحة.",
+      "wrongPassword": "كلمة المرور غير صحيحة.",
+      "emailInUse": "البريد الإلكتروني مسجل مسبقاً.",
+      "weakPassword": "كلمة المرور ضعيفة جداً.",
+      "networkError": "خطأ في الشبكة. يرجى التحقق من اتصالك."
+    },
+    "allInOne": {
+      "title": "كل ما تحتاجه لتوسيع أعمالك",
+      "desc": "تكامل سلس للقضاء على صوامع البيانات والإدخال المزدوج."
+    },
+    "mockups": {
+      "revenue": "الإيرادات",
+      "expenses": "المصروفات",
+      "recentInvoices": "أحدث الفواتير",
+      "newInvoice": "فاتورة جديدة",
+      "paid": "مدفوع",
+      "aiPrompt": "أرني صافي الربح للربع الثاني مقارنة بالربع الأول.",
+      "aiResponse": "كان صافي الربح للربع الثاني 42,400 دولار، بزيادة 15% عن الربع الأول.",
+      "aiPlaceholder": "اسأل المساعد الذكي...",
+      "stockAlerts": "تنبيهات المخزون",
+      "qty": "الكمية",
+      "low": "منخفض",
+      "action": "إجراء"
+    }
+  }
 }

@@ -689,6 +689,7 @@ export const inventoryApi = {
   getMovements: (filters?: {
     itemId?: string;
     warehouseId?: string;
+    movementType?: string;
     referenceType?: string;
     referenceId?: string;
     from?: string;

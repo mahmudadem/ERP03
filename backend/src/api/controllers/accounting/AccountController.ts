@@ -114,8 +114,10 @@ export class AccountController {
         createdBy: userId
       });
 
-      // Broaden Triggers: Send a notification when an account is created
-      await diContainer.notificationService.notify({
+      // Broaden Triggers: send a notification when an account is created.
+      // Notification delivery is not part of the accounting transaction and must
+      // not block account creation if realtime infrastructure is unavailable.
+      void diContainer.notificationService.notify({
         companyId,
         recipientUserIds: [userId],
         type: 'INFO',

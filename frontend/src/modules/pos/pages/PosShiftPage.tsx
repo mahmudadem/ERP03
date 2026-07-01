@@ -32,6 +32,7 @@ const PosShiftPage: React.FC<Props> = () => {
   const [loading, setLoading] = useState(true);
   const [showOpenForm, setShowOpenForm] = useState(false);
   const [showCloseForm, setShowCloseForm] = useState(false);
+  const [closeSummaryReviewed, setCloseSummaryReviewed] = useState(false);
   const [showMovementForm, setShowMovementForm] = useState(false);
   const [opening, setOpening] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -185,6 +186,10 @@ const PosShiftPage: React.FC<Props> = () => {
   ];
 
   const totals = xReport?.totals;
+  const countedCashNumber = Number(countedCash) || 0;
+  const expectedCashNumber = Number(totals?.expectedCash) || 0;
+  const closeVariance = countedCashNumber - expectedCashNumber;
+  const formatAmount = (amount: number) => amount.toFixed(2);
 
   return (
     <div className="p-6 space-y-4">
@@ -226,7 +231,10 @@ const PosShiftPage: React.FC<Props> = () => {
                 <Plus className="w-4 h-4" /> {t('pos:shift.addMovement', { defaultValue: 'Add cash movement' })}
               </button>
               <button
-                onClick={() => setShowCloseForm(true)}
+                onClick={() => {
+                  setCloseSummaryReviewed(false);
+                  setShowCloseForm(true);
+                }}
                 className="inline-flex items-center gap-1 px-3 py-1.5 rounded bg-indigo-600 text-white text-sm"
               >
                 <DollarSign className="w-4 h-4" /> {t('pos:shift.closeShift', { defaultValue: 'Close shift' })}
@@ -298,49 +306,95 @@ const PosShiftPage: React.FC<Props> = () => {
       </Modal>
 
       {/* Close shift modal */}
-      <Modal isOpen={showCloseForm} onClose={() => setShowCloseForm(false)} title={t('pos:shift.closeTitle', { defaultValue: 'Close shift' })}>
+      <Modal
+        isOpen={showCloseForm}
+        onClose={() => setShowCloseForm(false)}
+        title={t('pos:shift.closeTitle', { defaultValue: 'Close shift' })}
+        hideFooter
+      >
         <div className="space-y-3">
           <div className="text-sm bg-slate-50 p-3 rounded">
             <div className="flex justify-between">
               <span>{t('pos:shift.expected', { defaultValue: 'Expected cash' })}:</span>
-              <span className="font-mono">{totals?.expectedCash?.toFixed(2) ?? '0.00'}</span>
+              <span className="font-mono">{formatAmount(expectedCashNumber)}</span>
             </div>
           </div>
-          <div>
-            <label className="block text-sm font-medium mb-1">{t('pos:shift.counted', { defaultValue: 'Counted cash' })}</label>
-            <input
-              type="number"
-              value={countedCash}
-              onChange={(e) => {
-                setCountedCash(e.target.value);
-                setCountedPaymentTotals((prev) => ({ ...prev, CASH: e.target.value }));
-              }}
-              min="0"
-              step="0.01"
-              className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
-            />
-          </div>
-          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-            {PAYMENT_METHODS.filter((method) => method !== 'CASH').map((method) => (
-              <div key={method}>
-                <label className="block text-sm font-medium mb-1">
-                  {t(`pos:shift.countedPayment.${method}`, { defaultValue: `Counted ${method}` })}
-                </label>
+
+          {!closeSummaryReviewed ? (
+            <>
+              <div>
+                <label className="block text-sm font-medium mb-1">{t('pos:shift.counted', { defaultValue: 'Counted cash' })}</label>
                 <input
                   type="number"
-                  value={countedPaymentTotals[method]}
-                  onChange={(e) => setCountedPaymentTotals((prev) => ({ ...prev, [method]: e.target.value }))}
+                  value={countedCash}
+                  onChange={(e) => {
+                    setCountedCash(e.target.value);
+                    setCountedPaymentTotals((prev) => ({ ...prev, CASH: e.target.value }));
+                  }}
                   min="0"
                   step="0.01"
                   className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
                 />
               </div>
-            ))}
-          </div>
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {PAYMENT_METHODS.filter((method) => method !== 'CASH').map((method) => (
+                  <div key={method}>
+                    <label className="block text-sm font-medium mb-1">
+                      {t(`pos:shift.countedPayment.${method}`, { defaultValue: `Counted ${method}` })}
+                    </label>
+                    <input
+                      type="number"
+                      value={countedPaymentTotals[method]}
+                      onChange={(e) => setCountedPaymentTotals((prev) => ({ ...prev, [method]: e.target.value }))}
+                      min="0"
+                      step="0.01"
+                      className="w-full rounded border border-slate-300 px-2 py-1.5 text-sm"
+                    />
+                  </div>
+                ))}
+              </div>
+            </>
+          ) : (
+            <div className="space-y-3 rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950">
+              <div className="font-semibold">{t('pos:shift.closeSummaryTitle', { defaultValue: 'Shift close summary' })}</div>
+              <div className="grid gap-2 sm:grid-cols-3">
+                <div>
+                  <div className="text-xs text-amber-700">{t('pos:shift.expected', { defaultValue: 'Expected cash' })}</div>
+                  <div className="font-mono font-semibold">{formatAmount(expectedCashNumber)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-amber-700">{t('pos:shift.counted', { defaultValue: 'Counted cash' })}</div>
+                  <div className="font-mono font-semibold">{formatAmount(countedCashNumber)}</div>
+                </div>
+                <div>
+                  <div className="text-xs text-amber-700">{t('pos:shift.cashVariance', { defaultValue: 'Cash variance' })}</div>
+                  <div className="font-mono font-semibold">{formatAmount(closeVariance)}</div>
+                </div>
+              </div>
+              <p className="text-xs leading-5">
+                {t('pos:shift.closeSummaryHelp', {
+                  defaultValue: 'Review the shift totals before ending the session. If there is a cash over/short amount, ERP03 will post the configured accounting effect during close.',
+                })}
+              </p>
+            </div>
+          )}
           <div className="flex justify-end gap-2 pt-2">
             <button onClick={() => setShowCloseForm(false)} className="px-3 py-1.5 rounded border border-slate-300 text-sm">{t('common.cancel', { defaultValue: 'Cancel' })}</button>
-            <button onClick={() => onClose(false)} disabled={closing} className="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm disabled:opacity-50">
-              {closing ? <Spinner size="sm" variant="white" /> : t('pos:shift.close', { defaultValue: 'Close shift' })}
+            {closeSummaryReviewed && (
+              <button onClick={() => setCloseSummaryReviewed(false)} className="px-3 py-1.5 rounded border border-slate-300 text-sm">
+                {t('pos:shift.editCount', { defaultValue: 'Edit count' })}
+              </button>
+            )}
+            <button
+              onClick={() => closeSummaryReviewed ? onClose(false) : setCloseSummaryReviewed(true)}
+              disabled={closing}
+              className="px-3 py-1.5 rounded bg-indigo-600 text-white text-sm disabled:opacity-50"
+            >
+              {closing
+                ? <Spinner size="sm" variant="white" />
+                : closeSummaryReviewed
+                  ? t('pos:shift.confirmEndSession', { defaultValue: 'Confirm end session' })
+                  : t('pos:shift.viewCloseSummary', { defaultValue: 'View shift summary' })}
             </button>
           </div>
         </div>

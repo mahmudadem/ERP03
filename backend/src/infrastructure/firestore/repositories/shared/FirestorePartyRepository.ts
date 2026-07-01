@@ -20,11 +20,16 @@ export class FirestorePartyRepository implements IPartyRepository {
     return doc.ref;
   }
 
-  private applyListOptions(query: Query, opts?: PartyListOptions): Query {
-    let ref = query;
-    if (opts?.offset) ref = ref.offset(opts.offset);
-    if (opts?.limit) ref = ref.limit(opts.limit);
-    return ref;
+  private applyInMemoryListOptions(parties: Party[], opts?: PartyListOptions): Party[] {
+    const sorted = [...parties].sort((a, b) => {
+      const displayNameCompare = a.displayName.localeCompare(b.displayName, undefined, { sensitivity: 'base' });
+      if (displayNameCompare !== 0) return displayNameCompare;
+      return a.code.localeCompare(b.code, undefined, { sensitivity: 'base' });
+    });
+
+    const offset = opts?.offset && Number.isFinite(opts.offset) && opts.offset > 0 ? opts.offset : 0;
+    const limit = opts?.limit && Number.isFinite(opts.limit) && opts.limit > 0 ? opts.limit : undefined;
+    return limit ? sorted.slice(offset, offset + limit) : sorted.slice(offset);
   }
 
   async create(party: Party): Promise<void> {
@@ -52,14 +57,21 @@ export class FirestorePartyRepository implements IPartyRepository {
   async list(companyId: string, opts?: PartyListOptions): Promise<Party[]> {
     let query: Query = this.collection(companyId);
 
-    if (opts?.role) query = query.where('roles', 'array-contains', opts.role);
-    if (opts?.active !== undefined) query = query.where('active', '==', opts.active);
-
-    query = query.orderBy('displayName', 'asc');
-    query = this.applyListOptions(query, opts);
+    // Avoid Firestore composite-index requirements for role/active/displayName combinations.
+    // For party master lists, one indexed server-side filter plus in-memory final shaping is acceptable.
+    const filterActiveInMemory = !!opts?.role && opts.active !== undefined;
+    if (opts?.role) {
+      query = query.where('roles', 'array-contains', opts.role);
+    } else if (opts?.active !== undefined) {
+      query = query.where('active', '==', opts.active);
+    }
 
     const snap = await query.get();
-    return snap.docs.map((doc) => PartyMapper.toDomain(doc.data()));
+    const parties = snap.docs
+      .map((doc) => PartyMapper.toDomain(doc.data()))
+      .filter((party) => !filterActiveInMemory || party.active === opts?.active);
+
+    return this.applyInMemoryListOptions(parties, opts);
   }
 
   async delete(companyId: string, id: string): Promise<void> {

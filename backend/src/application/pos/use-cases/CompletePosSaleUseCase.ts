@@ -16,6 +16,7 @@ import { INumberingEngine } from '../../system-core/contracts/INumberingEngine';
 import { PostPosSaleUseCase } from './PostPosSaleUseCase';
 import { PosCashRounding, PosPaymentMethodConfig } from '../../../domain/pos/entities/PosSettings';
 import { IAuditEngine } from '../../system-core/contracts/IAuditEngine';
+import { ValidationError } from '../../../errors/AppError';
 
 
 export interface PosCartLine {
@@ -100,10 +101,10 @@ export class CompletePosSaleUseCase {
 
   async execute(input: CompletePosSaleInput): Promise<CompletePosSaleResult> {
     if (!input.lines?.length) {
-      throw new Error('Cart must have at least one line.');
+      throw new ValidationError('Cart must have at least one line.', 'lines');
     }
     if (input.isCreditSale && !input.customerId) {
-      throw new Error('Credit sale requires a selected customer.');
+      throw new ValidationError('Credit sale requires a selected customer.', 'customerId');
     }
     const activeLines = input.lines.filter((line) => line.status !== 'VOIDED');
     const voidedLines = input.lines.filter((line) => line.status === 'VOIDED');
@@ -147,10 +148,17 @@ export class CompletePosSaleUseCase {
 
     if (input.isCreditSale) {
       if (!settings.allowCreditSales) {
-        throw new Error('Credit sales are not allowed by POS settings.');
+        throw new ValidationError(
+          'Credit sales are not allowed by POS settings.',
+          'allowCreditSales',
+          { settingsPath: '/pos/settings' }
+        );
       }
       if (customerId === settings.walkInCustomerId) {
-        throw new Error('Credit sales cannot be made to the walk-in customer. Select a named customer.');
+        throw new ValidationError(
+          'Credit sales cannot be made to the walk-in customer. Select a named customer.',
+          'customerId'
+        );
       }
     }
 

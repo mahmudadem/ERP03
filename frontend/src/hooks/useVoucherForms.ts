@@ -6,14 +6,17 @@
  */
 
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useCompanyAccess } from '../context/CompanyAccessContext';
 import { voucherFormApi, VoucherFormResponse } from '../api/voucherFormApi';
+import { resolveVoucherDisplayName } from '../utils/voucherDisplayName';
 
 export interface VoucherFormConfig extends VoucherFormResponse {
   // Extended for UI usage
 }
 
 export function useVoucherForms() {
+  const { t, i18n } = useTranslation('common');
   const { companyId } = useCompanyAccess();
   const [forms, setForms] = useState<VoucherFormConfig[]>([]);
   const [loading, setLoading] = useState(true);
@@ -32,7 +35,12 @@ export function useVoucherForms() {
     try {
       const data = await voucherFormApi.list();
       // Filter only enabled forms
-      const enabledForms = data.filter(f => f.enabled !== false);
+      const enabledForms = data
+        .filter(f => f.enabled !== false)
+        .map((form) => ({
+          ...form,
+          name: resolveVoucherDisplayName(t, form),
+        }));
       setForms(enabledForms);
     } catch (err: any) {
       console.error('[useVoucherForms] Failed to load forms:', err);
@@ -41,7 +49,7 @@ export function useVoucherForms() {
     } finally {
       setLoading(false);
     }
-  }, [companyId]);
+  }, [companyId, i18n.resolvedLanguage, t]);
 
   useEffect(() => {
     loadForms();

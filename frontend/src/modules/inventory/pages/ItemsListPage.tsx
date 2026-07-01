@@ -41,6 +41,12 @@ const ItemsListPage: React.FC = () => {
       : pathname.startsWith('/pos/')
         ? '/pos/items'
         : '/inventory/items';
+  // The browser route is plural (`/purchases`) while the mounted Purchase
+  // module API is singular (`/tenant/purchase`). Keep navigation and API
+  // paths separate so the shared catalog page does not request a 404 route.
+  const itemsApiPath = pathname.startsWith('/purchases/')
+    ? '/purchase/items'
+    : itemsBasePath;
 
   const loadItems = async (targetPage = 0) => {
     try {
@@ -54,8 +60,8 @@ const ItemsListPage: React.FC = () => {
       if (activeFilter === 'ACTIVE') params.active = true;
       if (activeFilter === 'INACTIVE') params.active = false;
       const result = search
-        ? await client.get(`/tenant${itemsBasePath}/search`, { params: { q: search, ...params } })
-        : await client.get(`/tenant${itemsBasePath}`, { params });
+        ? await client.get(`/tenant${itemsApiPath}/search`, { params: { q: search, ...params } })
+        : await client.get(`/tenant${itemsApiPath}`, { params });
       const rows = unwrap<InventoryItemDTO[]>(result) || [];
       setItems(rows);
       setHasNext(rows.length === pageSize);
@@ -136,7 +142,7 @@ const ItemsListPage: React.FC = () => {
     if (!ok) return;
     try {
       setPendingToggleId(item.id);
-      await client.put(`/tenant${itemsBasePath}/${item.id}`, { active: nextActive });
+      await client.put(`/tenant${itemsApiPath}/${item.id}`, { active: nextActive });
       toast.success(
         nextActive
           ? t('inventory.itemsList.activated', 'Item activated')

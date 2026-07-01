@@ -91,16 +91,34 @@ export class FirestoreItemRepository implements IItemRepository {
   async getCompanyItems(companyId: string, opts?: ItemListOptions): Promise<Item[]> {
     let query: Query = this.collection(companyId);
 
-    if (opts?.type) query = query.where('type', '==', opts.type);
-    if (opts?.categoryId) query = query.where('categoryId', '==', opts.categoryId);
-    if (opts?.active !== undefined) query = query.where('active', '==', opts.active);
-    if (opts?.trackInventory !== undefined) query = query.where('trackInventory', '==', opts.trackInventory);
-
-    query = query.orderBy('code', 'asc');
-    query = this.applyListOptions(query, opts);
+    if (opts?.type) {
+      query = query.where('type', '==', opts.type);
+    } else if (opts?.categoryId) {
+      query = query.where('categoryId', '==', opts.categoryId);
+    } else if (opts?.active !== undefined) {
+      query = query.where('active', '==', opts.active);
+    } else if (opts?.trackInventory !== undefined) {
+      query = query.where('trackInventory', '==', opts.trackInventory);
+    }
 
     const snap = await query.get();
-    return snap.docs.map((doc) => ItemMapper.toDomain(doc.data()));
+    const all = snap.docs.map((doc) => ItemMapper.toDomain(doc.data()));
+    const filtered = all.filter((item) => {
+      if (opts?.type && item.type !== opts.type) return false;
+      if (opts?.categoryId && item.categoryId !== opts.categoryId) return false;
+      if (opts?.active !== undefined && item.active !== opts.active) return false;
+      if (opts?.trackInventory !== undefined && item.trackInventory !== opts.trackInventory) return false;
+      return true;
+    });
+
+    filtered.sort((a, b) => a.code.localeCompare(b.code));
+
+    const offset = Math.max(0, opts?.offset ?? 0);
+    const limit = opts?.limit;
+    if (typeof limit === 'number') {
+      return filtered.slice(offset, offset + limit);
+    }
+    return filtered.slice(offset);
   }
 
   async getItemByCode(companyId: string, code: string): Promise<Item | null> {

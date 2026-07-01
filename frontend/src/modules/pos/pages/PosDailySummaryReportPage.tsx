@@ -5,6 +5,7 @@ import React, { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { posApi } from '../../../api/posApi';
 import { ReportContainer } from '../../../components/reports/ReportContainer';
+import { sortReportRowsByDateTimeDesc } from '../../../components/reports/reportSorting';
 import { PosDateRangeInitiator, PosDateRangeParams } from './PosDateRangeInitiator';
 
 const PosDailySummaryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow }) => {
@@ -17,7 +18,13 @@ const PosDailySummaryReportPage: React.FC<{ isWindow?: boolean }> = ({ isWindow 
       let cancelled = false;
       setLoading(true);
       posApi.getDailySummary({ dateFrom: params.dateFrom, dateTo: params.dateTo })
-        .then((d) => { if (!cancelled) { setRows(d || []); setTotalItems?.((d || []).length); } })
+        .then((d) => {
+          if (!cancelled) {
+            const nextRows = sortReportRowsByDateTimeDesc(d || [], ['date']);
+            setRows(nextRows);
+            setTotalItems?.(nextRows.length);
+          }
+        })
         .finally(() => { if (!cancelled) setLoading(false); });
       return () => { cancelled = true; };
     }, [params.dateFrom, params.dateTo]);

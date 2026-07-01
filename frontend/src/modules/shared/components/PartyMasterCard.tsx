@@ -74,6 +74,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
   const [activeTab, setActiveTab] = useState('GENERAL');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [forceNew, setForceNew] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [currencies, setCurrencies] = useState<string[]>([]);
   const [customerGroups, setCustomerGroups] = useState<CustomerGroupDTO[]>([]);
@@ -96,8 +97,14 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     paymentTermsDays: 0
   });
 
-  const isNew = !partyId || partyId === 'new';
+  const isNew = (!partyId || partyId === 'new') || forceNew;
   const canEdit = hasPermission(role === 'CUSTOMER' ? 'sales.customers.manage' : 'purchases.suppliers.manage');
+
+  useEffect(() => {
+    if (partyId && partyId !== 'new') {
+      setForceNew(false);
+    }
+  }, [partyId]);
 
   useEffect(() => {
     loadCurrencies();
@@ -281,12 +288,28 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
     }
   };
 
+  const handleNewParty = () => {
+    setForm({
+      code: '',
+      legalName: '',
+      displayName: '',
+      taxId: '',
+      roles: [role],
+      active: true,
+      paymentTermsDays: 0
+    });
+    setAccountStrategy('');
+    setSubAccountParentId('');
+    setForceNew(true);
+    setError(null);
+  };
+
   if (loading) return <div className="p-20 text-center opacity-50 font-mono text-xs italic tracking-widest">Hydrating Master Table...</div>;
 
   return (
     <MasterCardLayout
       title={form.displayName || (role === 'VENDOR' ? t('parties.form.supplierTitle', 'Supplier') : t('parties.form.customerTitle', 'Customer'))}
-      subtitle={isNew ? t('parties.form.registeringNew', 'Registering New Part - {{role}}', { role }) : t('parties.form.masterRecord', '{{role}} Master Record', { role })}
+      subtitle={isNew ? (role === 'CUSTOMER' ? t('parties.form.registeringNewCustomer', 'Registering New Customer') : t('parties.form.registeringNewVendor', 'Registering New Vendor')) : (role === 'CUSTOMER' ? t('parties.form.customerMasterRecord', 'Customer Master Record') : t('parties.form.vendorMasterRecord', 'Vendor Master Record'))}
       identifier={form.code}
       icon={role === 'VENDOR' ? Building2 : User}
       tabs={PARTY_TABS.map(tab => ({ ...tab, label: t(`parties.tabs.${tab.id.toLowerCase()}`, tab.label) }))}
@@ -297,6 +320,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
       saving={saving}
       canEdit={canEdit}
       onSave={handleSave}
+      onNew={handleNewParty}
       onClose={onClose}
       updatedAt={form.updatedAt}
       error={error}
@@ -307,11 +331,11 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
         <div className="space-y-6 animate-in fade-in duration-300">
           <FormSection title={t('parties.form.legalIdentity', 'Legal Identity')}>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Field label={t('parties.form.roleCode', '{{role}} Code', { role })} required>
+              <Field label={role === 'CUSTOMER' ? t('parties.form.customerCodeLabel', 'Customer Code') : t('parties.form.vendorCodeLabel', 'Vendor Code')} required>
                 <div className="relative flex items-center gap-1 group">
                    <input 
                       disabled={!isNew}
-                      className="form-control font-bold pr-10" 
+                      className="form-control font-bold ltr:pr-10 rtl:pl-10" 
                       value={form.code} 
                       onChange={e => setForm(p => ({ ...p, code: e.target.value.toUpperCase() }))} 
                       placeholder={role === 'CUSTOMER' ? t('parties.form.codePlaceholderCust', 'e.g. CUST-0001') : t('parties.form.codePlaceholderVend', 'e.g. SUP-0001')}
@@ -320,7 +344,7 @@ const PartyMasterCard: React.FC<PartyMasterCardProps> = ({
                       <button 
                         type="button"
                         onClick={handleAutoGenerateCode}
-                        className="absolute right-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
+                        className="absolute ltr:right-2 rtl:left-2 p-1.5 text-blue-500 hover:bg-blue-50 dark:hover:bg-blue-900/40 rounded transition-all opacity-0 group-hover:opacity-100"
                         title={t('parties.form.generateCode', 'Generate Next Code')}
                       >
                          <Sparkles size={14} />

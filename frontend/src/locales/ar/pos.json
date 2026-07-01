@@ -162,12 +162,13 @@
     "editDiscountAmount": "تعديل مبلغ الخصم",
     "edit": "تعديل",
     "heldCancelled": "تم إلغاء البيع المعلق.",
-    "barcodeNotFound": "لم يتم العثور على الباركود.",
     "barcodeError": "فشل مسح الباركود.",
     "saleNotes": "ملاحظات",
     "saleNotesPlaceholder": "ملاحظات اختيارية على البيع...",
     "creditSale": "دفع آجل على حساب العميل",
     "needCustomerForCredit": "البيع الآجل يتطلب اختيار عميل محدد.",
+    "creditSalesDisabled": "فعّل البيع الآجل من إعدادات نقطة البيع قبل استخدام الدفع الآجل.",
+    "creditSaleNeedsNamedCustomer": "اختر عميلاً محدداً قبل استخدام الدفع الآجل.",
     "creditSaleNeedsApproval": "موافقة المدير مطلوبة للدفع الآجل.",
     "shortcuts": "الاختصارات",
     "keyboardShortcuts": "اختصارات لوحة المفاتيح"
@@ -364,7 +365,13 @@
       "BANK_TRANSFER": "التحويلات البنكية المعدودة",
       "CUSTOM": "المدفوعات المخصصة المعدودة"
     },
-    "close": "إغلاق",
+    "close": "إغلاق الوردية",
+    "viewCloseSummary": "عرض ملخص الوردية",
+    "closeSummaryTitle": "ملخص إغلاق الوردية",
+    "cashVariance": "فرق النقد",
+    "closeSummaryHelp": "راجع إجماليات الوردية قبل إنهاء الجلسة. إذا وجد فرق زيادة أو عجز نقدي، سيرحل ERP03 الأثر المحاسبي حسب إعدادات نقطة البيع أثناء الإغلاق.",
+    "editCount": "تعديل العد",
+    "confirmEndSession": "تأكيد إنهاء الجلسة",
     "historyTitle": "سجل الورديات",
     "historySubtitle": "الورديات الأخيرة لهذه الشركة.",
     "empty": "لا توجد ورديات بعد.",
@@ -420,7 +427,7 @@
     }
   },
   "shortcuts": {
-    "title": "اختصارات نقطة البيع",
+    "title": "اختصارات لوحة المفاتيح",
     "subtitle": "أنشئ مجموعات شاشة الكاشير وأضف عدة أصناف لكل مجموعة دفعة واحدة.",
     "loading": "جارٍ التحميل...",
     "defaultLayoutName": "اختصارات افتراضية",
@@ -462,7 +469,15 @@
       "disable": "تعطيل",
       "delete": "حذف",
       "save": "حفظ",
-      "cancel": "إلغاء"
+      "cancel": "إلغاء",
+      "searchItems": "البحث عن الأصناف",
+      "checkout": "الدفع / الحساب",
+      "voidSale": "إلغاء البيع",
+      "holdCart": "تعليق السلة",
+      "addCustomItem": "إضافة صنف مخصص",
+      "applyDiscount": "تطبيق خصم عام",
+      "cashPayment": "دفع نقدي سريع",
+      "cardPayment": "دفع ببطاقة سريع"
     },
     "errors": {
       "load": "فشل تحميل اختصارات نقطة البيع.",
@@ -472,7 +487,11 @@
       "addItems": "فشل إضافة الأصناف.",
       "updateShortcut": "فشل تحديث الاختصار.",
       "deleteShortcut": "فشل حذف الاختصار."
-    }
+    },
+    "resetAll": "إعادة تعيين الكل",
+    "listening": "اضغط مفتاح...",
+    "resetAction": "إعادة تعيين للوضع الافتراضي",
+    "defaultPrefix": "الافتراضي: "
   },
   "report": {
     "dateFrom": "من تاريخ",

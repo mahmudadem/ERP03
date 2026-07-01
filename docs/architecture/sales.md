@@ -94,11 +94,13 @@ Accounting boundary: this is a frontend workflow/layout change only. It does not
 
 ### Sales Invoice startup cache and diagnostic loader
 
-The native Sales Invoice detail page caches startup reference data in-memory per company for a short TTL. The cache covers selector/reference data only: Sales settings, customers, items, tax codes, warehouses, sales orders, salespersons, communications settings, accounting policy, and invoice templates. It does **not** cache invoice documents or posting state.
+The native Sales Invoice detail page caches startup reference data in-memory per company for a short TTL. The cache covers selector/reference data only: Sales settings, customers, items, tax codes, warehouses, sales orders, salespersons, communications settings, accounting policy, invoice templates, and form settings. It does **not** cache invoice documents or posting state.
+
+On a cache miss, the frontend first calls the read-only startup bundle endpoint `GET /tenant/sales/invoices/startup-reference-data`. The bundle prevents a cold browser session from opening the invoice form through 11 separate reference-data requests. If the bundle call fails, the page falls back to the previous individual API calls so the form can still open while the backend route is unavailable or being deployed.
 
 The loading skeleton remains in place while the page initializes, but it now shows elapsed time, startup cache status, current API phase, and completed/total API call count. This is intentionally diagnostic-friendly while the form-open latency is being tuned.
 
-Accounting boundary: this is a frontend performance optimization only. It does not alter invoice totals, tax calculation, settlement, approval, period-lock, posting, receivables, inventory movement, ledger writes, or audit behavior.
+Accounting boundary: this is a read-only startup/reference-data optimization only. It does not alter invoice totals, tax calculation, settlement, approval, period-lock, posting, receivables, inventory movement, ledger writes, or audit behavior.
 - **Sales Return (SR)** — reverses a delivery and/or invoice. Two contexts: `AFTER_INVOICE` (full reversal) and `BEFORE_INVOICE` (delivery-only reversal, COGS only).
 
 ## Workflow Modes and Product Modes

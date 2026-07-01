@@ -12,6 +12,7 @@ import { ReportContainer } from '../../../components/reports/ReportContainer';
 import { Button } from '../../../components/ui/Button';
 import { DatePicker } from '../../accounting/components/shared/DatePicker';
 import { Spinner } from '../../../components/ui/Spinner';
+import { useTranslation } from 'react-i18next';
 
 type Mode = 'CURRENT' | 'AS_OF';
 
@@ -50,6 +51,7 @@ const Initiator: React.FC<{
   onSubmit: (p: ValuationParams) => void;
   initialParams?: ValuationParams | null;
 }> = ({ onSubmit, initialParams }) => {
+  const { t } = useTranslation('common');
   const [items, setItems] = useState<InventoryItemDTO[]>([]);
   const [warehouses, setWarehouses] = useState<InventoryWarehouseDTO[]>([]);
 
@@ -89,15 +91,15 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-500" />
-            Mode
+            {t('inventory.valuation.filters.mode', { defaultValue: 'Mode' })}
           </label>
           <select
             value={mode}
             onChange={(e) => setMode(e.target.value as Mode)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-indigo-300 focus:bg-white focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10 outline-none transition-all"
           >
-            <option value="CURRENT">Current (live)</option>
-            <option value="AS_OF">As of a date</option>
+            <option value="CURRENT">{t('inventory.valuation.mode.current', { defaultValue: 'Current (live)' })}</option>
+            <option value="AS_OF">{t('inventory.valuation.mode.asOf', { defaultValue: 'As of a date' })}</option>
           </select>
         </div>
 
@@ -105,7 +107,7 @@ const Initiator: React.FC<{
           <div className="md:col-span-4 space-y-2">
             <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
               <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
-              As Of Date
+              {t('inventory.valuation.filters.asOfDate', { defaultValue: 'As Of Date' })}
             </label>
             <DatePicker value={asOfDate} onChange={setAsOfDate} className="w-full" />
           </div>
@@ -114,29 +116,29 @@ const Initiator: React.FC<{
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-fuchsia-500" />
-            Pricing Policy
+            {t('inventory.valuation.filters.pricingPolicy', { defaultValue: 'Pricing Policy' })}
           </label>
           <select
             value={pricingPolicy}
             onChange={(e) => setPricingPolicy(e.target.value as InventoryPricingPolicy)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-fuchsia-300 focus:bg-white focus:border-fuchsia-500 focus:ring-4 focus:ring-fuchsia-500/10 outline-none transition-all"
           >
-            <option value="AVERAGE">Average Cost</option>
-            <option value="LAST_PURCHASE">Last Purchase Cost</option>
+            <option value="AVERAGE">{t('inventory.valuation.pricingPolicy.average', { defaultValue: 'Average Cost' })}</option>
+            <option value="LAST_PURCHASE">{t('inventory.valuation.pricingPolicy.lastPurchase', { defaultValue: 'Last Purchase Cost' })}</option>
           </select>
         </div>
 
         <div className="md:col-span-4 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Warehouse
+            {t('inventory.valuation.filters.warehouse', { defaultValue: 'Warehouse' })}
           </label>
           <select
             value={warehouseId}
             onChange={(e) => setWarehouseId(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-emerald-300 focus:bg-white focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all"
           >
-            <option value="">All warehouses</option>
+            <option value="">{t('inventory.valuation.filters.allWarehouses', { defaultValue: 'All warehouses' })}</option>
             {warehouses.map(wh => (
               <option key={wh.id} value={wh.id}>{wh.name}</option>
             ))}
@@ -146,14 +148,14 @@ const Initiator: React.FC<{
         <div className="md:col-span-12 space-y-2">
           <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 flex items-center gap-1.5">
             <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-            Item
+            {t('inventory.valuation.filters.item', { defaultValue: 'Item' })}
           </label>
           <select
             value={itemId}
             onChange={(e) => setItemId(e.target.value)}
             className="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm font-semibold bg-slate-50/50 hover:bg-white hover:border-amber-300 focus:bg-white focus:border-amber-500 focus:ring-4 focus:ring-amber-500/10 outline-none transition-all"
           >
-            <option value="">All items</option>
+            <option value="">{t('inventory.valuation.filters.allItems', { defaultValue: 'All items' })}</option>
             {items.map(it => (
               <option key={it.id} value={it.id}>{it.code} — {it.name}</option>
             ))}
@@ -167,7 +169,7 @@ const Initiator: React.FC<{
           className="bg-slate-900 hover:bg-black text-white px-10 py-3 rounded-xl shadow-lg shadow-slate-900/10 hover:shadow-xl transition-all"
         >
           <span className="flex items-center gap-3 text-xs font-bold uppercase tracking-widest">
-            Generate Report
+            {t('common.generate', { defaultValue: 'Generate Report' })}
             <ChevronRight className="w-4 h-4" />
           </span>
         </Button>
@@ -190,6 +192,7 @@ const ReportContent: React.FC<{
   setTotalItems?: (total: number) => void;
   density?: 'compact' | 'comfortable';
 }> = ({ params, pagination, setTotalItems, density }) => {
+  const { t } = useTranslation('common');
   const [rows, setRows] = useState<UnifiedRow[]>([]);
   const [totalValueBase, setTotalValueBase] = useState(0);
   const [totalLines, setTotalLines] = useState(0);
@@ -234,7 +237,7 @@ const ReportContent: React.FC<{
       })
       .catch((err) => {
         if (cancelled) return;
-        setError(err?.message || 'Failed to load valuation');
+        setError(err?.message || t('inventory.valuation.loadFailed', { defaultValue: 'Failed to load valuation' }));
       })
       .finally(() => { if (!cancelled) setLoading(false); });
 
@@ -255,6 +258,12 @@ const ReportContent: React.FC<{
   }, [rows, pagination]);
 
   const cellPad = density === 'compact' ? 'py-1.5 px-3' : 'py-2.5 px-4';
+  const getModeLabel = () => params.mode === 'AS_OF'
+    ? t('inventory.valuation.chips.asOf', { date: params.asOfDate, defaultValue: 'As of {{date}}' })
+    : t('inventory.valuation.mode.current', { defaultValue: 'Current (live)' });
+  const getPricingPolicyLabel = () => params.pricingPolicy === 'LAST_PURCHASE'
+    ? t('inventory.valuation.pricingPolicy.lastPurchaseShort', { defaultValue: 'Last Purchase' })
+    : t('inventory.valuation.pricingPolicy.averageShort', { defaultValue: 'Average' });
 
   return (
     <div className="flex flex-col h-full bg-slate-50">
@@ -262,29 +271,30 @@ const ReportContent: React.FC<{
       <div className="shrink-0 bg-white border-b border-slate-200 px-6 py-4">
         <div className="flex flex-wrap items-center gap-3">
           <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-indigo-200 bg-indigo-50 text-xs font-semibold text-slate-800">
-            {params.mode === 'AS_OF' ? (<><CalendarDays className="w-3 h-3 text-indigo-600" /> As of {params.asOfDate}</>) : 'Current (live)'}
+            {params.mode === 'AS_OF' && <CalendarDays className="w-3 h-3 text-indigo-600" />}
+            {getModeLabel()}
           </span>
           <span className="text-xs font-semibold text-slate-700 border border-fuchsia-200 bg-fuchsia-50 rounded-full px-2 py-1">
-            Policy: {params.pricingPolicy === 'LAST_PURCHASE' ? 'Last Purchase' : 'Average'}
+            {t('inventory.valuation.chips.policy', { defaultValue: 'Policy' })}: {getPricingPolicyLabel()}
           </span>
           {snapshotPeriodKey && (
             <span className="text-xs font-semibold text-slate-600 border border-slate-200 bg-slate-50 rounded-full px-2 py-1">
-              Based on snapshot {snapshotPeriodKey}
+              {t('inventory.valuation.chips.basedOnSnapshot', { snapshot: snapshotPeriodKey, defaultValue: 'Based on snapshot {{snapshot}}' })}
             </span>
           )}
           {params.warehouseId && (
             <span className="text-xs font-semibold text-slate-700 border border-emerald-200 bg-emerald-50 rounded-full px-2 py-1">
-              WH: {warehouseMap.get(params.warehouseId)?.name ?? params.warehouseId}
+              {t('inventory.valuation.chips.warehouseShort', { defaultValue: 'WH' })}: {warehouseMap.get(params.warehouseId)?.name ?? params.warehouseId}
             </span>
           )}
           {params.itemId && (
             <span className="text-xs font-semibold text-slate-700 border border-amber-200 bg-amber-50 rounded-full px-2 py-1">
-              Item: {itemMap.get(params.itemId)?.code ?? params.itemId}
+              {t('inventory.valuation.chips.item', { defaultValue: 'Item' })}: {itemMap.get(params.itemId)?.code ?? params.itemId}
             </span>
           )}
           <span className="text-xs font-bold text-slate-500 ml-auto">
-            Total lines (full set): <span className="font-black text-slate-700">{totalLines}</span> ·
-            Total value (base): <span className="font-black text-emerald-700">{fmt(totalValueBase)}</span>
+            {t('inventory.valuation.summary.totalLinesFullSet', { defaultValue: 'Total lines (full set)' })}: <span className="font-black text-slate-700">{totalLines}</span> ·
+            {t('inventory.valuation.summary.totalValueBase', { defaultValue: 'Total value (base)' })}: <span className="font-black text-emerald-700">{fmt(totalValueBase)}</span>
           </span>
         </div>
       </div>
@@ -298,7 +308,7 @@ const ReportContent: React.FC<{
           <div className="bg-white border rounded-xl p-6 shadow-sm flex items-center justify-center min-h-[180px]">
             <div className="text-center">
               <Spinner size="lg" variant="slate" className="mx-auto mb-3" />
-              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">Loading valuation...</p>
+              <p className="text-xs text-slate-500 uppercase tracking-widest font-bold">{t('inventory.valuation.loading', { defaultValue: 'Loading valuation...' })}</p>
             </div>
           </div>
         ) : rows.length === 0 ? (
@@ -307,7 +317,7 @@ const ReportContent: React.FC<{
               <div className="inline-flex p-5 bg-slate-50 rounded-full text-slate-300">
                 <Layers className="w-10 h-10" />
               </div>
-              <p className="text-sm font-bold text-slate-600">No stock lines to value</p>
+              <p className="text-sm font-bold text-slate-600">{t('inventory.valuation.empty', { defaultValue: 'No stock lines to value' })}</p>
             </div>
           </div>
         ) : (
@@ -315,13 +325,13 @@ const ReportContent: React.FC<{
             <table className="min-w-full text-sm">
               <thead className="bg-slate-50/80 text-slate-500 uppercase text-[10px] font-black tracking-widest border-b border-slate-200">
                 <tr>
-                  <th className={`${cellPad} text-left`}>Item Code</th>
-                  <th className={`${cellPad} text-left`}>Item Name</th>
-                  <th className={`${cellPad} text-left`}>Warehouse</th>
-                  <th className={`${cellPad} text-right`}>Qty on Hand</th>
-                  <th className={`${cellPad} text-right`}>Policy Cost (Base)</th>
-                  <th className={`${cellPad} text-right`}>Avg Cost (Base)</th>
-                  <th className={`${cellPad} text-right`}>Value (Base)</th>
+                  <th className={`${cellPad} text-left`}>{t('inventory.valuation.columns.itemCode', { defaultValue: 'Item Code' })}</th>
+                  <th className={`${cellPad} text-left`}>{t('inventory.valuation.columns.itemName', { defaultValue: 'Item Name' })}</th>
+                  <th className={`${cellPad} text-left`}>{t('inventory.valuation.columns.warehouse', { defaultValue: 'Warehouse' })}</th>
+                  <th className={`${cellPad} text-right`}>{t('inventory.valuation.columns.qtyOnHand', { defaultValue: 'Qty on Hand' })}</th>
+                  <th className={`${cellPad} text-right`}>{t('inventory.valuation.columns.policyCostBase', { defaultValue: 'Policy Cost (Base)' })}</th>
+                  <th className={`${cellPad} text-right`}>{t('inventory.valuation.columns.avgCostBase', { defaultValue: 'Avg Cost (Base)' })}</th>
+                  <th className={`${cellPad} text-right`}>{t('inventory.valuation.columns.valueBase', { defaultValue: 'Value (Base)' })}</th>
                 </tr>
               </thead>
               <tbody>
@@ -343,7 +353,7 @@ const ReportContent: React.FC<{
               </tbody>
               <tfoot>
                 <tr className="bg-slate-100 font-bold text-slate-900">
-                  <td colSpan={6} className={`${cellPad} text-right`}>Grand Total (server)</td>
+                  <td colSpan={6} className={`${cellPad} text-right`}>{t('inventory.valuation.grandTotalServer', { defaultValue: 'Grand Total (server)' })}</td>
                   <td className={`${cellPad} text-right tabular-nums text-emerald-800`}>{fmt(totalValueBase)}</td>
                 </tr>
               </tfoot>
@@ -357,14 +367,17 @@ const ReportContent: React.FC<{
 
 // ─── Page ───────────────────────────────────────────────────────────────────
 
-const InventoryValuationPage: React.FC = () => (
-  <ReportContainer<ValuationParams>
-    title="Inventory Valuation"
-    subtitle="Stock value by item, warehouse, and pricing policy"
-    initiator={Initiator}
-    ReportContent={ReportContent}
-    config={{ paginated: true, defaultPageSize: 50 }}
-  />
-);
+const InventoryValuationPage: React.FC = () => {
+  const { t } = useTranslation('common');
+  return (
+    <ReportContainer<ValuationParams>
+      title={t('inventory.valuation.title', { defaultValue: 'Inventory Valuation' })}
+      subtitle={t('inventory.valuation.subtitle', { defaultValue: 'Stock value by item, warehouse, and pricing policy' })}
+      initiator={Initiator}
+      ReportContent={ReportContent}
+      config={{ paginated: true, defaultPageSize: 50 }}
+    />
+  );
+};
 
 export default InventoryValuationPage;
