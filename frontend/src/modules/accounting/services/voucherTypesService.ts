@@ -1,11 +1,16 @@
 /**
- * Load system voucher types from Firestore.
+ * Load system voucher types from the backend API (DB-agnostic).
  *
- * Data model note: each document in system_metadata/voucher_types/items is a
- * voucher *template* that conflates two concepts:
- *  - the canonical Voucher Type (carried by `voucherType` field, e.g. "purchase_invoice")
- *  - one default Form variant of that type (carried by `code` + `persona` fields,
- *    e.g. code="purchase_invoice_direct", persona="direct")
+ * Previously this read `system_metadata/voucher_types/items` directly from
+ * Firestore, which meant it returned nothing in SQL mode (empty init wizards →
+ * companies created with 0 voucher types). It now goes through
+ * `voucherTypeManagementApi.catalog(module)` → `/tenant/<module>/voucher-types/catalog`,
+ * which resolves the system templates through the DI container and therefore
+ * works on BOTH Postgres and Firestore.
+ *
+ * Data model note: each catalog template conflates two concepts:
+ *  - the canonical Voucher Type (carried by `voucherType`, e.g. "purchase_invoice")
+ *  - one default Form variant of that type (carried by `code` + `persona`).
  *
  * `loadSystemVoucherTypes` returns the flat template list.
  * `loadSystemVoucherTypeGroups` groups templates by canonical type so the
@@ -14,8 +19,7 @@
  */
 import i18n from '../../../i18n/config';
 import { resolveVoucherDisplayName } from '../../../utils/voucherDisplayName';
-import { db } from '../../../config/firebase';
-import { collection, getDocs } from 'firebase/firestore';
+import { voucherTypeManagementApi, VoucherTypeModule } from '../../../api/voucherTypeManagementApi';
 
 export interface SystemVoucherType {
   id: string;
@@ -49,67 +53,48 @@ const normalizeModule = (module?: string) => {
   return normalized;
 };
 
-const inferVoucherModule = (data: Record<string, any>, id: string): string => {
-  const explicitModule = normalizeModule(data.module);
-  if (explicitModule) return explicitModule;
+const CATALOG_MODULES: VoucherTypeModule[] = ['ACCOUNTING', 'SALES', 'PURCHASE'];
 
-  const token = [id, data.id, data.code, data.name]
-    .filter(Boolean)
-    .join(' ')
-    .toLowerCase();
-
-  if (/(sales[_\s-]*(order|invoice|return)|delivery[_\s-]*note)/.test(token)) {
-    return 'SALES';
-  }
-
-  if (/(purchase[_\s-]*(order|invoice|return)|goods[_\s-]*receipt)/.test(token)) {
-    return 'PURCHASE';
-  }
-
-  if (/(journal[_\s-]*entry|payment|receipt|opening[_\s-]*balance|fx[_\s-]*revaluation)/.test(token)) {
-    return 'ACCOUNTING';
-  }
-
-  return '';
-};
+const isCatalogModule = (m: string): m is VoucherTypeModule =>
+  (CATALOG_MODULES as string[]).includes(m);
 
 export async function loadSystemVoucherTypes(moduleFilter?: string): Promise<SystemVoucherType[]> {
+  const normalizedModuleFilter = moduleFilter ? normalizeModule(moduleFilter) : null;
+
+  // The catalog endpoint is per-module. When no module is given, merge all three
+  // (mirrors the old "load everything then filter" behaviour).
+  if (!normalizedModuleFilter) {
+    const perModule = await Promise.all(CATALOG_MODULES.map((m) => loadSystemVoucherTypes(m)));
+    return perModule.flat();
+  }
+
+  if (!isCatalogModule(normalizedModuleFilter)) {
+    console.warn(`[voucherTypesService] Unknown module "${moduleFilter}" — no system catalog to load.`);
+    return [];
+  }
+
   try {
-    const vouchersRef = collection(db, 'system_metadata', 'voucher_types', 'items');
-    const snapshot = await getDocs(vouchersRef);
-    const normalizedModuleFilter = moduleFilter ? normalizeModule(moduleFilter) : null;
-    let vouchers: SystemVoucherType[] = [];
-
-    snapshot.forEach(doc => {
-      const data = doc.data();
-      const module = inferVoucherModule(data, doc.id);
-      const code = data.code || doc.id.toUpperCase();
-
-      vouchers.push({
-        id: doc.id,
+    const { available } = await voucherTypeManagementApi.catalog(normalizedModuleFilter);
+    return (available || []).map((t) => {
+      const code = t.code || t.id.toUpperCase();
+      return {
+        id: t.id,
         name: resolveVoucherDisplayName(i18n.t.bind(i18n), {
-          name: data.name || doc.id,
+          name: t.name || t.id,
           code,
-          formType: data.formType,
-          voucherType: data.voucherType,
+          voucherType: t.voucherType,
           isSystemGenerated: true,
         }),
         code,
-        prefix: data.prefix || '',
-        module,
-        voucherType: data.voucherType || data.code || doc.id,
-        persona: data.persona || undefined,
-        description: data.description,
-        schemaVersion: data.schemaVersion || 2,
-        isRecommended: data.isRecommended || false,
-      });
+        prefix: '',
+        module: normalizeModule(t.module) || normalizedModuleFilter,
+        voucherType: t.voucherType || code,
+        persona: t.persona || undefined,
+        description: undefined,
+        schemaVersion: 2,
+        isRecommended: false,
+      } as SystemVoucherType;
     });
-
-    if (normalizedModuleFilter) {
-      vouchers = vouchers.filter(v => v.module === normalizedModuleFilter);
-    }
-
-    return vouchers;
   } catch (error) {
     console.error('Failed to load system voucher types:', error);
     return [];
