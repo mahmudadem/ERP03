@@ -2,6 +2,25 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-02 (later — CTO lifecycle readiness audit: signup→company→bundles→module-init on SQL)
+
+- **Trigger:** owner suspects lifecycle gaps because all development QA happened on Firebase.
+- **Method:** first-hand static sweep of every lifecycle code path (DI bindings diff, controller
+  wiring, whole-frontend Firebase-usage grep) + live runs of load-bearing claims.
+- **Verified live:** `npm run seed:sql` runs clean against the CURRENT post-275 schema — fresh SQL DB
+  provisioning is real (SYSTEM company, currencies, 20 bundles, 5 plans, 6 role templates, 10 COA
+  templates, 16 voucher types; idempotent). Old "seeders are Firestore-only" claim is obsolete.
+- **Structural verdict:** request path + DI are genuinely dual-DB end to end. Every non-AI repository
+  has a Prisma twin (the 134-vs-122 DI mismatch = 12 AI repos [module off for v1] + naming aliases,
+  each checked). OnboardingController fully DI-routed. DeploymentDiagnosticsController (shipped today)
+  properly DB-branched.
+- **NEW GAP found:** `NotificationBell.tsx` subscribes to Firebase RTDB directly → notification bell
+  permanently empty on SQL (data persists in Postgres; needs API-polling/SSE fallback).
+- **Honest unverified list:** browser click-through of full lifecycle from *signup* (Phase 1 S3 scope
+  extended), NotificationBell fix, cloud deploy (zero infra), AI-route guard check in SQL mode.
+- **Deliverable:** `planning/SQL-LIFECYCLE-AUDIT.md` (stage-by-stage evidence table);
+  `planning/PARITY-LEDGER.md` known-gaps updated (+4 items).
+
 ### Session: 2026-07-02 (CTO strategy session — platform decision: SQL leads, Firestore follows)
 
 - **Context:** first external tester lined up (POS user, Arabic speaker, ~1 week). Owner questioned
