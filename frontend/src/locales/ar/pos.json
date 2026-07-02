@@ -167,8 +167,6 @@
     "saleNotesPlaceholder": "ملاحظات اختيارية على البيع...",
     "creditSale": "دفع آجل على حساب العميل",
     "needCustomerForCredit": "البيع الآجل يتطلب اختيار عميل محدد.",
-    "creditSalesDisabled": "فعّل البيع الآجل من إعدادات نقطة البيع قبل استخدام الدفع الآجل.",
-    "creditSaleNeedsNamedCustomer": "اختر عميلاً محدداً قبل استخدام الدفع الآجل.",
     "creditSaleNeedsApproval": "موافقة المدير مطلوبة للدفع الآجل.",
     "shortcuts": "الاختصارات",
     "keyboardShortcuts": "اختصارات لوحة المفاتيح"

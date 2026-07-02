@@ -2,6 +2,29 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-02 (late night — collapsed stray frontend lanes into one canonical worktree)
+
+- **Trigger:** owner wanted the branch/worktree sprawl ended so deployment can be traced from one
+  line instead of `main` + `ERP03-unified` + `ERP03-vercel-fix`.
+- **Canonical lane created:** `D:\DEV2026\ERP03-consolidate` on
+  `codex/consolidate-worktrees-20260702`, branched from current `main`.
+- **Carried forward from `ERP03-vercel-fix`:** committed setup-wizard/i18n commits plus the dirty
+  local fixes from this session (DatePicker RTL/keyboard parsing, onboarding footer alignment,
+  inventory translation fixes, Stock Movements report container, UOM display translations, inventory
+  wizard finish behavior).
+- **Carried forward from `ERP03-unified`:** the remaining useful dirty frontend slice only
+  (presentation/i18n polish across Accounting, Inventory, Sales, POS, landing page, instructions
+  modal, and sidebar). Planning-file drift from that lane was intentionally not imported.
+- **Verification on the combined state:** locale JSON parse passed; `npm run typecheck` passed;
+  `git diff --check` passed after removing one trailing whitespace line in
+  `AccountDrilldownModal.tsx`; `npm run build` passed. Only normal Vite/Browserslist/chunk-size
+  warnings remained.
+- **Accounting/ERP impact:** no posting, voucher, inventory valuation, tax, or tenant-isolation
+  logic changed in this consolidation. This is frontend/runtime wording, navigation, setup UX, and
+  metadata display work. Backend changes are limited to seed/metadata support files and docs.
+- **Next:** commit the canonical consolidation branch, merge to `main`, push, and deploy the
+  frontend only. Old worktrees can be removed after the merge is safely on `main`.
+
 ### Session: 2026-07-02 (evening — first live owner QA on SQL: 3 lifecycle bugs found, fixed, detectors instituted)
 
 - **Setup:** full SQL stack stood up locally (Postgres 5432 + standalone Express `_sqlServer.ts` on 5101

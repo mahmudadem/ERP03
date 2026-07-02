@@ -72,11 +72,11 @@ const normalizeReferenceLabel = (value: string, fallbackPrefix: string) => {
   if (rawUuidMatch) return `${fallbackPrefix}-${rawUuidMatch[1].toUpperCase()}`;
   return trimmed;
 };
-const getErrorMessage = (error: any) =>
+const getErrorMessage = (error: any, fallback: string) =>
   error?.response?.data?.error?.message ||
   error?.response?.data?.message ||
   error?.message ||
-  'Failed to process Opening Stock Document.';
+  fallback;
 
 const OpeningStockPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -168,7 +168,7 @@ const OpeningStockPage: React.FC = () => {
       }));
     } catch (loadError: any) {
       console.error('Failed to load Opening Stock Documents', loadError);
-      setError(getErrorMessage(loadError));
+      setError(getErrorMessage(loadError, t('openingStockDocuments.detail.errors.processFailed')));
     } finally {
       setLoading(false);
     }
@@ -295,11 +295,11 @@ const OpeningStockPage: React.FC = () => {
   };
 
   const validateForm = (): string | null => {
-    if (!form.warehouseId) return 'Warehouse is required.';
-    if (!form.date) return 'Document date is required.';
-    if (validLines.length === 0) return 'Add at least one valid stock line with quantity greater than zero.';
+    if (!form.warehouseId) return t('openingStockDocuments.detail.validation.warehouseRequired');
+    if (!form.date) return t('openingStockDocuments.detail.validation.dateRequired');
+    if (validLines.length === 0) return t('openingStockDocuments.detail.validation.lineRequired');
     if (accountingEnabled && form.createAccountingEffect && !form.openingBalanceAccountId) {
-      return 'Opening Balance / Clearing account is required when accounting effect is enabled.';
+      return t('openingStockDocuments.detail.validation.accountRequired');
     }
     return null;
   };
@@ -338,7 +338,9 @@ const OpeningStockPage: React.FC = () => {
         ? unwrap<OpeningStockDocumentDTO>(await inventoryApi.updateOpeningStockDocument(selectedDocument.id, payload))
         : unwrap<OpeningStockDocumentDTO>(await inventoryApi.createOpeningStockDocument(payload));
       if (postAfterSave) await inventoryApi.postOpeningStockDocument(saved.id);
-      toast.success(postAfterSave ? 'Opening Stock Document posted.' : 'Opening Stock Document saved as draft.');
+      toast.success(postAfterSave
+        ? t('openingStockDocuments.detail.messages.posted')
+        : t('openingStockDocuments.detail.messages.savedDraft'));
       resetForm();
       await loadPageData();
       navigate(postAfterSave ? '/inventory/opening-stock' : `/inventory/opening-stock/${saved.id}`);
@@ -360,7 +362,7 @@ const OpeningStockPage: React.FC = () => {
     try {
       setPostingExistingId(documentId);
       await inventoryApi.postOpeningStockDocument(documentId);
-      toast.success('Opening Stock Document posted.');
+      toast.success(t('openingStockDocuments.detail.messages.posted'));
       await loadPageData();
       navigate('/inventory/opening-stock');
     } catch (postError) {
@@ -379,7 +381,7 @@ const OpeningStockPage: React.FC = () => {
     try {
       setDeletingDraftId(documentId);
       await inventoryApi.deleteOpeningStockDocument(documentId);
-      toast.success('Opening Stock Document draft deleted.');
+      toast.success(t('openingStockDocuments.detail.messages.deleted'));
       await loadPageData();
       navigate('/inventory/opening-stock');
     } catch (deleteError) {
@@ -402,7 +404,7 @@ const OpeningStockPage: React.FC = () => {
   const lineColumns: ColumnDef<OpeningStockLineDraft>[] = [
     {
       id: 'item',
-      label: 'Stock Item',
+      label: t('openingStockDocuments.detail.lines.stockItem'),
       kind: 'custom',
       width: '280px',
       render: (line, index) => (
@@ -411,50 +413,52 @@ const OpeningStockPage: React.FC = () => {
           trackInventoryOnly
           disabled={isReadOnly || savingDraft || postingNew}
           onChange={(item) => updateLine(index, { itemId: item?.id || '', itemCostCurrency: item?.costCurrency || '', unitCostBase: undefined })}
-          placeholder="Search stock item..."
+          placeholder={t('openingStockDocuments.detail.lines.searchItem')}
           noBorder
         />
       ),
     },
-    { id: 'quantity', label: 'Qty', kind: 'number', width: '110px', accessor: (line) => line.quantity, setter: (value) => ({ quantity: Number(value) }) },
-    { id: 'unitCost', label: 'Unit Cost', kind: 'number', width: '130px', accessor: (line) => line.unitCostInMoveCurrency, setter: (value) => ({ unitCostInMoveCurrency: Number(value) }) },
+    { id: 'quantity', label: t('openingStockDocuments.detail.lines.quantity'), kind: 'number', width: '110px', accessor: (line) => line.quantity, setter: (value) => ({ quantity: Number(value) }) },
+    { id: 'unitCost', label: t('openingStockDocuments.detail.lines.unitCost'), kind: 'number', width: '130px', accessor: (line) => line.unitCostInMoveCurrency, setter: (value) => ({ unitCostInMoveCurrency: Number(value) }) },
     {
       id: 'currency',
-      label: 'Currency',
+      label: t('openingStockDocuments.detail.lines.currency'),
       kind: 'custom',
       width: '130px',
       render: (line, index) => (
         <CurrencySelector value={line.moveCurrency} onChange={(currencyCode) => updateLine(index, { moveCurrency: currencyCode })} noBorder disabled={isReadOnly} />
       ),
     },
-    { id: 'docFx', label: 'Doc FX', kind: 'number', width: '110px', accessor: (line) => line.fxRateMovToBase, setter: (value) => ({ fxRateMovToBase: Number(value) }) },
-    { id: 'costFx', label: 'Cost FX', kind: 'number', width: '110px', accessor: (line) => line.fxRateCCYToBase, setter: (value) => ({ fxRateCCYToBase: Number(value) }) },
-    { id: 'value', label: `Value (${baseCurrency})`, kind: 'computed', width: '140px', compute: (line) => line.quantity * getLineUnitCostBase(line) },
+    { id: 'docFx', label: t('openingStockDocuments.detail.lines.documentFx'), kind: 'number', width: '110px', accessor: (line) => line.fxRateMovToBase, setter: (value) => ({ fxRateMovToBase: Number(value) }) },
+    { id: 'costFx', label: t('openingStockDocuments.detail.lines.costFx'), kind: 'number', width: '110px', accessor: (line) => line.fxRateCCYToBase, setter: (value) => ({ fxRateCCYToBase: Number(value) }) },
+    { id: 'value', label: t('openingStockDocuments.detail.lines.value', { currency: baseCurrency }), kind: 'computed', width: '140px', compute: (line) => line.quantity * getLineUnitCostBase(line) },
   ];
 
   const confirmDialogConfig = useMemo(() => {
     if (!confirmState) return null;
     if (confirmState.kind === 'delete-draft') {
       return {
-        title: 'Delete Draft?',
-        message: <>Delete <span className="font-black">{getOpeningStockDocumentRef(confirmState.documentId)}</span>? This removes the draft only.</>,
-        confirmLabel: 'Delete Draft',
-        cancelLabel: 'Keep Draft',
+        title: t('openingStockDocuments.detail.confirm.deleteTitle'),
+        message: t('openingStockDocuments.detail.confirm.deleteMessage', { reference: getOpeningStockDocumentRef(confirmState.documentId) }),
+        confirmLabel: t('openingStockDocuments.detail.actions.deleteDraft'),
+        cancelLabel: t('openingStockDocuments.detail.actions.keepDraft'),
         tone: 'danger' as const,
         icon: <Trash2 className="h-5 w-5" />,
         isConfirming: deletingDraftId === confirmState.documentId,
       };
     }
     return {
-      title: 'Post as Inventory Only?',
-      message: 'Accounting is enabled, but this document is set to inventory-only. Posting will change stock quantities and inventory values without creating any accounting entry.',
-      confirmLabel: 'Continue Posting',
-      cancelLabel: confirmState.kind === 'inventory-only-post-new' ? 'Keep Editing' : 'Cancel',
+      title: t('openingStockDocuments.detail.confirm.inventoryOnlyTitle'),
+      message: t('openingStockDocuments.detail.confirm.inventoryOnlyMessage'),
+      confirmLabel: t('openingStockDocuments.detail.actions.continuePosting'),
+      cancelLabel: confirmState.kind === 'inventory-only-post-new'
+        ? t('openingStockDocuments.detail.actions.keepEditing')
+        : t('openingStockDocuments.detail.actions.cancel'),
       tone: 'warning' as const,
       icon: <AlertCircle className="h-5 w-5" />,
       isConfirming: confirmState.kind === 'inventory-only-post-new' ? postingNew : postingExistingId === confirmState.documentId,
     };
-  }, [confirmState, deletingDraftId, postingExistingId, postingNew]);
+  }, [confirmState, deletingDraftId, postingExistingId, postingNew, t]);
 
   const filteredData = useMemo(() => {
     const query = searchFilter.trim().toLowerCase();
@@ -503,18 +507,20 @@ const OpeningStockPage: React.FC = () => {
     const notFound = Boolean(id && !loading && !selectedDocument && !isNewRoute);
     const accountingControlTone = accountingEnabled && form.createAccountingEffect ? 'blue' : 'amber';
     const accountingControlMessage = !accountingEnabled
-      ? 'Accounting is disabled. This operation will affect stock quantities only and will not create any accounting entry.'
+      ? t('openingStockDocuments.detail.accounting.disabled')
       : !form.createAccountingEffect
-        ? 'Accounting is enabled, but this document is currently set to inventory-only. Posting will change stock quantities and inventory values without creating any accounting entry.'
-        : `Opening Balance / Clearing Account is prefilled from Inventory Settings${
-            defaultOpeningBalanceAccountId ? `: ${getAccountLabel(defaultOpeningBalanceAccountId)}` : ' when configured'
-          }. You can override it for this document.`;
+        ? t('openingStockDocuments.detail.accounting.inventoryOnly')
+        : t('openingStockDocuments.detail.accounting.accountSelected', {
+            account: defaultOpeningBalanceAccountId
+              ? getAccountLabel(defaultOpeningBalanceAccountId)
+              : t('openingStockDocuments.detail.accounting.whenConfigured'),
+          });
     const railReady: Array<{ state: 'ok' | 'warn' | 'info'; label: React.ReactNode }> = [
-      { state: form.warehouseId ? 'ok' : 'info', label: 'Warehouse selected' },
-      { state: form.date ? 'ok' : 'info', label: 'Document date set' },
-      { state: validLines.length > 0 ? 'ok' : 'info', label: 'At least one stock line' },
-      { state: !accountingEnabled || !form.createAccountingEffect || form.openingBalanceAccountId ? 'ok' : 'warn', label: 'Opening balance account selected' },
-      { state: duplicateWarnings.length > 0 ? 'warn' : 'ok', label: duplicateWarnings.length > 0 ? 'Possible duplicate opening entry' : 'No duplicate warning' },
+      { state: form.warehouseId ? 'ok' : 'info', label: t('openingStockDocuments.detail.readiness.warehouse') },
+      { state: form.date ? 'ok' : 'info', label: t('openingStockDocuments.detail.readiness.date') },
+      { state: validLines.length > 0 ? 'ok' : 'info', label: t('openingStockDocuments.detail.readiness.lines') },
+      { state: !accountingEnabled || !form.createAccountingEffect || form.openingBalanceAccountId ? 'ok' : 'warn', label: t('openingStockDocuments.detail.readiness.account') },
+      { state: duplicateWarnings.length > 0 ? 'warn' : 'ok', label: t(duplicateWarnings.length > 0 ? 'openingStockDocuments.detail.readiness.duplicate' : 'openingStockDocuments.detail.readiness.noDuplicate') },
     ];
 
     return (
@@ -534,21 +540,21 @@ const OpeningStockPage: React.FC = () => {
           />
         )}
         <DocumentDetailScaffold
-          title={isNewRoute ? 'New Opening Stock Document' : selectedDocument ? getOpeningStockDocumentRef(selectedDocument.id) : 'Opening Stock Document'}
-          subtitle="Record stock that already exists at go-live or migration"
+          title={isNewRoute ? t('openingStockDocuments.detail.newTitle') : selectedDocument ? getOpeningStockDocumentRef(selectedDocument.id) : t('openingStockDocuments.detail.title')}
+          subtitle={t('openingStockDocuments.detail.subtitle')}
           icon={Package}
-          backLabel="Back to opening stock"
+          backLabel={t('openingStockDocuments.detail.backToList')}
           onBack={() => navigate('/inventory/opening-stock')}
-          badges={<DocumentPill tone={selectedDocument?.status === 'POSTED' ? 'green' : 'amber'}>{selectedDocument?.status || 'DRAFT'}</DocumentPill>}
+          badges={<DocumentPill tone={selectedDocument?.status === 'POSTED' ? 'green' : 'amber'}>{t(`openingStockDocuments.statuses.${(selectedDocument?.status || 'DRAFT').toLowerCase()}`)}</DocumentPill>}
           forceRailDrawer={isWindowsMode}
           sections={{
             banner: {
               show: notFound || duplicateWarnings.length > 0,
               content: notFound ? (
-                <DocumentNoticeBanner tone="amber">Opening Stock Document not found.</DocumentNoticeBanner>
+                <DocumentNoticeBanner tone="amber">{t('openingStockDocuments.detail.notFound')}</DocumentNoticeBanner>
               ) : (
                 <DocumentNoticeBanner tone="amber">
-                  Existing documents contain overlapping items for the same warehouse/date. Review before saving or posting.
+                  {t('openingStockDocuments.detail.duplicateWarning')}
                 </DocumentNoticeBanner>
               ),
             },
@@ -558,13 +564,13 @@ const OpeningStockPage: React.FC = () => {
                   <div className="grid gap-2 xl:grid-cols-[minmax(0,1fr)_auto]">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-[10px] font-black uppercase tracking-wide text-slate-500">
-                        Create Accounting Effect
+                        {t('openingStockDocuments.detail.createAccountingEffect')}
                       </span>
                       <DocumentSegmentedGroup>
                         <DocumentSegmentButton
                           active={!form.createAccountingEffect}
                           disabled={isReadOnly}
-                          label="No"
+                          label={t('openingStockDocuments.detail.no')}
                           onClick={() => {
                             setShowAccountingControlMessage(false);
                             setForm((prev) => ({ ...prev, createAccountingEffect: false, openingBalanceAccountId: '' }));
@@ -573,7 +579,7 @@ const OpeningStockPage: React.FC = () => {
                         <DocumentSegmentButton
                           active={form.createAccountingEffect && accountingEnabled}
                           disabled={isReadOnly || !accountingEnabled}
-                          label="Yes"
+                          label={t('openingStockDocuments.detail.yes')}
                           onClick={() => {
                             if (!accountingEnabled) return;
                             setShowAccountingControlMessage(false);
@@ -582,7 +588,7 @@ const OpeningStockPage: React.FC = () => {
                         />
                       </DocumentSegmentedGroup>
                       <DocumentIconButton
-                        title={showAccountingControlMessage ? 'Hide accounting control message' : accountingControlMessage}
+                        title={showAccountingControlMessage ? t('openingStockDocuments.detail.hideAccountingMessage') : accountingControlMessage}
                         onClick={() => setShowAccountingControlMessage((prev) => !prev)}
                       >
                         <AlertCircle className={clsx('h-3.5 w-3.5', accountingControlTone === 'amber' ? 'text-amber-600 dark:text-amber-300' : 'text-blue-600 dark:text-blue-300')} />
@@ -592,12 +598,12 @@ const OpeningStockPage: React.FC = () => {
                     {accountingEnabled && form.createAccountingEffect && (
                       <div className="min-w-[260px] max-w-xl">
                         <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">
-                          Opening Balance / Clearing Account
+                          {t('openingStockDocuments.detail.openingBalanceAccount')}
                         </label>
                         <AccountSelector
                           value={form.openingBalanceAccountId}
                           onChange={(account) => setForm((prev) => ({ ...prev, openingBalanceAccountId: account?.id || '' }))}
-                          placeholder="Search opening balance equity account..."
+                          placeholder={t('openingStockDocuments.detail.searchOpeningAccount')}
                           accounts={allAccounts.filter((account) => account.accountRole === 'POSTING' && account.classification?.toUpperCase() === 'EQUITY')}
                           disabled={isReadOnly}
                         />
@@ -615,11 +621,11 @@ const OpeningStockPage: React.FC = () => {
               ),
             },
             header: {
-              title: 'Document Details',
+              title: t('openingStockDocuments.detail.documentDetails'),
               cardClassName: 'overflow-visible',
               content: (
                 <DocumentHeaderGrid>
-                  <DocumentHeaderField label="Warehouse">
+                  <DocumentHeaderField label={t('openingStockDocuments.detail.warehouse')}>
                     <WarehouseSelector
                       className={documentHeaderSelectorClass}
                       value={form.warehouseId}
@@ -628,15 +634,15 @@ const OpeningStockPage: React.FC = () => {
                       disabled={isReadOnly}
                     />
                   </DocumentHeaderField>
-                  <DocumentHeaderField label="Document Date">
+                  <DocumentHeaderField label={t('openingStockDocuments.detail.documentDate')}>
                     <DatePicker className="w-full" inputClassName={documentHeaderControlClass} value={form.date} onChange={(value) => setForm((prev) => ({ ...prev, date: value }))} disabled={isReadOnly} />
                   </DocumentHeaderField>
-                  <DocumentHeaderField label="Notes">
+                  <DocumentHeaderField label={t('openingStockDocuments.detail.notes')}>
                     <input
                       className={documentHeaderControlClass}
                       value={form.notes}
                       onChange={(event) => setForm((prev) => ({ ...prev, notes: event.target.value }))}
-                      placeholder="Optional migration batch or cutover note"
+                      placeholder={t('openingStockDocuments.detail.notesPlaceholder')}
                       disabled={isReadOnly}
                     />
                   </DocumentHeaderField>
@@ -647,7 +653,7 @@ const OpeningStockPage: React.FC = () => {
               content: (
                 <ClassicLineItemsTable<OpeningStockLineDraft>
                   tableId="inventory.opening-stock.lines"
-                  title="Document Lines"
+                  title={t('openingStockDocuments.detail.documentLines')}
                   columns={lineColumns}
                   rows={lines}
                   disabled={isReadOnly || savingDraft || postingNew}
@@ -658,7 +664,7 @@ const OpeningStockPage: React.FC = () => {
                   getRowKey={(line) => line.id}
                   isRowFilled={(line) => Boolean(line.itemId)}
                   onRowAdd={() => setLines((prev) => [...prev, { id: makeId(), itemId: '', quantity: 0, unitCostInMoveCurrency: 0, moveCurrency: baseCurrency, fxRateMovToBase: 1, fxRateCCYToBase: 1, unitCostBase: 0 }])}
-                  addLabel="Add Line"
+                  addLabel={t('openingStockDocuments.detail.addLine')}
                   minTableWidth="980px"
                 />
               ),
@@ -666,28 +672,28 @@ const OpeningStockPage: React.FC = () => {
           }}
           railSections={{
             info: {
-              title: 'Document',
+              title: t('openingStockDocuments.detail.document'),
               content: (
                 <DocumentRailKeyValueList
                   items={[
-                    { label: 'Reference', value: selectedDocument ? getOpeningStockDocumentRef(selectedDocument.id) : 'New' },
-                    { label: 'Warehouse', value: warehouseNameById.get(form.warehouseId) || '—' },
-                    { label: 'Accounting', value: form.createAccountingEffect ? 'Inventory + Accounting' : 'Inventory only' },
-                    { label: 'Voucher', value: selectedDocument?.voucherId ? voucherLabelById[selectedDocument.voucherId] || selectedDocument.voucherId : 'No voucher' },
+                    { label: t('openingStockDocuments.detail.reference'), value: selectedDocument ? getOpeningStockDocumentRef(selectedDocument.id) : t('openingStockDocuments.detail.new') },
+                    { label: t('openingStockDocuments.detail.warehouse'), value: warehouseNameById.get(form.warehouseId) || '—' },
+                    { label: t('openingStockDocuments.detail.accountingLabel'), value: form.createAccountingEffect ? t('openingStockDocuments.accountingModes.withAccounting') : t('openingStockDocuments.accountingModes.inventoryOnly') },
+                    { label: t('openingStockDocuments.detail.voucher'), value: selectedDocument?.voucherId ? voucherLabelById[selectedDocument.voucherId] || selectedDocument.voucherId : t('openingStockDocuments.accountingModes.noVoucher') },
                   ]}
                 />
               ),
             },
-            readiness: { title: 'Readiness', content: <DocumentRailChecklist items={railReady} /> },
+            readiness: { title: t('openingStockDocuments.detail.readinessTitle'), content: <DocumentRailChecklist items={railReady} /> },
             totals: {
-              title: 'Totals',
+              title: t('openingStockDocuments.detail.totals'),
               content: (
                 <DocumentRailTotals
                   rows={[
-                    { label: 'Lines', value: String(validLines.length) },
-                    { label: 'Base Currency', value: baseCurrency },
+                    { label: t('openingStockDocuments.detail.linesLabel'), value: String(validLines.length) },
+                    { label: t('openingStockDocuments.detail.baseCurrency'), value: baseCurrency },
                   ]}
-                  grand={{ label: 'Opening Value', value: documentValueBase.toFixed(2) }}
+                  grand={{ label: t('openingStockDocuments.detail.openingValue'), value: documentValueBase.toFixed(2) }}
                 />
               ),
             },
@@ -695,23 +701,23 @@ const OpeningStockPage: React.FC = () => {
           footerActions={
             <>
               <button type="button" onClick={() => navigate('/inventory/opening-stock')} className="rounded border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
-                Back
+                {t('openingStockDocuments.detail.actions.back')}
               </button>
               {selectedDocument?.status === 'DRAFT' && (
                 <button type="button" onClick={() => void deleteDraft(selectedDocument.id)} disabled={deletingDraftId === selectedDocument.id} className="inline-flex items-center gap-2 rounded border border-rose-200 px-5 py-2 text-sm font-medium text-rose-700 hover:bg-rose-50 disabled:opacity-50">
                   <Trash2 className="h-4 w-4" />
-                  Delete Draft
+                  {t('openingStockDocuments.detail.actions.deleteDraft')}
                 </button>
               )}
               {!isReadOnly && (
                 <button type="button" onClick={() => void saveDocument(false)} disabled={savingDraft || postingNew} className="rounded border border-slate-300 px-5 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50 disabled:opacity-50 dark:border-slate-600 dark:text-slate-200 dark:hover:bg-slate-800">
-                  {savingDraft ? 'Saving...' : selectedDocument ? 'Update Draft' : 'Save Draft'}
+                  {savingDraft ? t('openingStockDocuments.detail.actions.saving') : selectedDocument ? t('openingStockDocuments.detail.actions.updateDraft') : t('openingStockDocuments.detail.actions.saveDraft')}
                 </button>
               )}
               {!isReadOnly && (
                 <button type="button" onClick={() => void saveDocument(true)} disabled={savingDraft || postingNew} className="inline-flex items-center gap-2 rounded bg-slate-900 px-5 py-2 text-sm font-medium text-white hover:bg-slate-800 disabled:opacity-50">
                   {postingNew ? <Spinner size="sm" /> : <Check className="h-4 w-4" />}
-                  {selectedDocument ? 'Update & Post' : 'Create & Post'}
+                  {selectedDocument ? t('openingStockDocuments.detail.actions.updateAndPost') : t('openingStockDocuments.detail.actions.createAndPost')}
                 </button>
               )}
             </>
@@ -733,9 +739,9 @@ const OpeningStockPage: React.FC = () => {
       POSTED: documents.filter((document) => document.status === 'POSTED').length,
     },
     options: [
-      { value: 'ALL', label: 'All', color: 'slate' },
-      { value: 'DRAFT', label: 'Draft', color: 'amber' },
-      { value: 'POSTED', label: 'Posted', color: 'emerald' },
+      { value: 'ALL', label: t('openingStockDocuments.statuses.all'), color: 'slate' },
+      { value: 'DRAFT', label: t('openingStockDocuments.statuses.draft'), color: 'amber' },
+      { value: 'POSTED', label: t('openingStockDocuments.statuses.posted'), color: 'emerald' },
     ],
   };
 
@@ -762,12 +768,12 @@ const OpeningStockPage: React.FC = () => {
   };
 
   const listColumns: ColumnDefinition<OpeningStockDocumentDTO>[] = [
-    { key: 'id', label: 'Document', width: '150px', priority: 1, sortable: true, accessor: 'id', render: (value: string) => <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{getOpeningStockDocumentRef(value)}</span> },
-    { key: 'date', label: 'Date', width: '130px', priority: 1, sortable: true, accessor: 'date' },
-    { key: 'warehouseId', label: 'Warehouse', width: '230px', priority: 1, sortable: true, accessor: 'warehouseId', render: (value: string) => warehouseNameById.get(value) || value },
+    { key: 'id', label: t('openingStockDocuments.detail.document'), width: '150px', priority: 1, sortable: true, accessor: 'id', render: (value: string) => <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{getOpeningStockDocumentRef(value)}</span> },
+    { key: 'date', label: t('openingStockDocuments.detail.date'), width: '130px', priority: 1, sortable: true, accessor: 'date' },
+    { key: 'warehouseId', label: t('openingStockDocuments.detail.warehouse'), width: '230px', priority: 1, sortable: true, accessor: 'warehouseId', render: (value: string) => warehouseNameById.get(value) || value },
     {
       key: 'status',
-      label: 'Status',
+      label: t('openingStockDocuments.detail.status'),
       width: '120px',
       priority: 1,
       sortable: true,
@@ -775,26 +781,26 @@ const OpeningStockPage: React.FC = () => {
       align: 'center',
       render: (value: string) => (
         <span className={clsx('inline-flex rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase ring-1 ring-inset', value === 'POSTED' ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/10' : 'bg-amber-50 text-amber-700 ring-amber-600/10')}>
-          {value}
+          {t(`openingStockDocuments.statuses.${value.toLowerCase()}`)}
         </span>
       ),
     },
-    { key: 'createAccountingEffect', label: 'Accounting', width: '180px', priority: 1, accessor: 'createAccountingEffect', render: (value: boolean) => value ? 'Inventory + Accounting' : 'Inventory only' },
-    { key: 'totalValueBase', label: `Value (${baseCurrency})`, width: '150px', priority: 1, sortable: true, accessor: 'totalValueBase', align: 'right', render: (value: number) => Number(value || 0).toFixed(2) },
+    { key: 'createAccountingEffect', label: t('openingStockDocuments.detail.accountingLabel'), width: '180px', priority: 1, accessor: 'createAccountingEffect', render: (value: boolean) => value ? t('openingStockDocuments.accountingModes.withAccounting') : t('openingStockDocuments.accountingModes.inventoryOnly') },
+    { key: 'totalValueBase', label: t('openingStockDocuments.detail.lines.value', { currency: baseCurrency }), width: '150px', priority: 1, sortable: true, accessor: 'totalValueBase', align: 'right', render: (value: number) => Number(value || 0).toFixed(2) },
     {
       key: 'voucherId',
-      label: 'Voucher',
+      label: t('openingStockDocuments.detail.voucher'),
       width: '140px',
       priority: 2,
       accessor: 'voucherId',
-      render: (value: string, row) => value ? <Link className="font-bold text-indigo-700 hover:underline" to={`/accounting/vouchers/${value}/view`}>{voucherLabelById[value] || normalizeReferenceLabel(value, 'VCH')}</Link> : 'No voucher',
+      render: (value: string, row) => value ? <Link className="font-bold text-indigo-700 hover:underline" to={`/accounting/vouchers/${value}/view`}>{voucherLabelById[value] || normalizeReferenceLabel(value, 'VCH')}</Link> : t('openingStockDocuments.accountingModes.noVoucher'),
     },
   ];
 
   const rowActions: RowAction<OpeningStockDocumentDTO>[] = [
-    { key: 'view', label: 'View', icon: Eye, onClick: (row) => navigate(`/inventory/opening-stock/${row.id}`), primary: false },
-    { key: 'post', label: 'Post', icon: Check, variant: 'success', isEnabled: (row) => row.status === 'DRAFT', onClick: (row) => void postExistingDraft(row.id), primary: false },
-    { key: 'delete', label: 'Delete', icon: Trash2, variant: 'danger', isEnabled: (row) => row.status === 'DRAFT', onClick: (row) => void deleteDraft(row.id), primary: false },
+    { key: 'view', label: t('openingStockDocuments.detail.actions.view'), icon: Eye, onClick: (row) => navigate(`/inventory/opening-stock/${row.id}`), primary: false },
+    { key: 'post', label: t('openingStockDocuments.detail.actions.post'), icon: Check, variant: 'success', isEnabled: (row) => row.status === 'DRAFT', onClick: (row) => void postExistingDraft(row.id), primary: false },
+    { key: 'delete', label: t('openingStockDocuments.detail.actions.delete'), icon: Trash2, variant: 'danger', isEnabled: (row) => row.status === 'DRAFT', onClick: (row) => void deleteDraft(row.id), primary: false },
   ];
 
   if (formView) {
@@ -938,7 +944,7 @@ const OpeningStockPage: React.FC = () => {
                 setValueMinFilter(event.target.value);
                 setPage(1);
               }}
-              placeholder={`Min ${baseCurrency}`}
+              placeholder={t('openingStockDocuments.minimumValue', { currency: baseCurrency })}
               className="w-[120px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
             <input
@@ -950,7 +956,7 @@ const OpeningStockPage: React.FC = () => {
                 setValueMaxFilter(event.target.value);
                 setPage(1);
               }}
-              placeholder={`Max ${baseCurrency}`}
+              placeholder={t('openingStockDocuments.maximumValue', { currency: baseCurrency })}
               className="w-[120px] rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-primary-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-100"
             />
             <button type="button" onClick={() => { setSearchFilter(localSearch); setPage(1); }} className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-700">

@@ -2007,6 +2007,22 @@
         },
         "language": {
           "field": "Language"
+        },
+        "advanced": {
+          "toggle": "Customize starter policies (COA, costing, workflow)",
+          "coaLabel": "Chart of Accounts",
+          "coaPeriodic": "Periodic trading COA - minimal periodic-trading accounts",
+          "coaStandard": "Standard COA - full asset, COGS, GRNI, and discount accounts",
+          "costingBasisLabel": "Costing basis",
+          "costingBasisGlobal": "Global - one average cost per item across the company",
+          "costingBasisWarehouse": "Warehouse - separate average cost per warehouse",
+          "warehouseCodeLabel": "Default warehouse code",
+          "warehouseNameLabel": "Default warehouse name",
+          "salesWorkflowLabel": "Sales workflow",
+          "purchaseWorkflowLabel": "Purchase workflow",
+          "workflowSimple": "Simple - direct invoicing",
+          "workflowOperational": "Operational - orders, receipts or deliveries, and linked invoicing",
+          "help": "Each field uses the recommended value for the selected mode. Changing the mode resets fields you have not edited."
         }
       }
     },
@@ -2537,6 +2553,27 @@
     "uom": {
       "fields": {
         "localizedName": "Localized name"
+      },
+      "dimensions": {
+        "COUNT": "Count",
+        "WEIGHT": "Weight",
+        "LENGTH": "Length",
+        "VOLUME": "Volume",
+        "AREA": "Area",
+        "TIME": "Time",
+        "OTHER": "Other"
+      },
+      "defaultNames": {
+        "EA": "Each",
+        "PCS": "Pieces",
+        "BOX": "Box",
+        "PACK": "Pack",
+        "KG": "Kilogram",
+        "G": "Gram",
+        "L": "Litre",
+        "ML": "Millilitre",
+        "M": "Meter",
+        "CM": "Centimeter"
       }
     },
     "settings": {
@@ -4819,9 +4856,98 @@
     }
   },
   "openingStockDocuments": {
+    "title": "Opening Stock Documents",
+    "newDocument": "New Document",
+    "searchPlaceholder": "Search document, warehouse, voucher...",
+    "allWarehouses": "All warehouses",
+    "dateFrom": "Date From",
+    "dateTo": "Date To",
+    "apply": "Apply",
+    "clearFilters": "Clear Filters",
+    "empty": "No Opening Stock Documents found",
+    "minimumValue": "Min {{currency}}",
+    "maximumValue": "Max {{currency}}",
+    "statuses": { "all": "All", "draft": "Draft", "posted": "Posted" },
+    "accountingModes": {
+      "all": "All accounting modes",
+      "withAccounting": "Inventory + Accounting",
+      "inventoryOnly": "Inventory only",
+      "withVoucher": "With voucher",
+      "noVoucher": "No voucher"
+    },
     "legacyOpeningMovementsTitle": "{{count}} legacy opening stock movement(s) found",
     "legacyOpeningMovementsBody": "These movements were recorded through the older direct opening-stock flow, so they do not have Opening Stock Document headers. Review Stock Movements before creating a new opening document to avoid duplicate stock.",
-    "reviewStockMovements": "Review Stock Movements"
+    "reviewStockMovements": "Review Stock Movements",
+    "detail": {
+      "newTitle": "New Opening Stock Document",
+      "title": "Opening Stock Document",
+      "subtitle": "Record stock that already exists at go-live or migration",
+      "backToList": "Back to opening stock",
+      "notFound": "Opening Stock Document not found.",
+      "duplicateWarning": "Existing documents contain overlapping items for the same warehouse and date. Review before saving or posting.",
+      "createAccountingEffect": "Create Accounting Effect",
+      "no": "No",
+      "yes": "Yes",
+      "hideAccountingMessage": "Hide accounting control message",
+      "openingBalanceAccount": "Opening Balance / Clearing Account",
+      "searchOpeningAccount": "Search opening balance equity account...",
+      "documentDetails": "Document Details",
+      "warehouse": "Warehouse",
+      "documentDate": "Document Date",
+      "date": "Date",
+      "notes": "Notes",
+      "notesPlaceholder": "Optional migration batch or cutover note",
+      "documentLines": "Document Lines",
+      "addLine": "Add Line",
+      "document": "Document",
+      "reference": "Reference",
+      "new": "New",
+      "status": "Status",
+      "accountingLabel": "Accounting",
+      "voucher": "Voucher",
+      "readinessTitle": "Readiness",
+      "totals": "Totals",
+      "linesLabel": "Lines",
+      "baseCurrency": "Base Currency",
+      "openingValue": "Opening Value",
+      "lines": {
+        "stockItem": "Stock Item", "searchItem": "Search stock item...", "quantity": "Qty",
+        "unitCost": "Unit Cost", "currency": "Currency", "documentFx": "Doc FX",
+        "costFx": "Cost FX", "value": "Value ({{currency}})"
+      },
+      "validation": {
+        "warehouseRequired": "Warehouse is required.", "dateRequired": "Document date is required.",
+        "lineRequired": "Add at least one valid stock line with quantity greater than zero.",
+        "accountRequired": "Opening Balance / Clearing account is required when accounting effect is enabled."
+      },
+      "messages": {
+        "posted": "Opening Stock Document posted.", "savedDraft": "Opening Stock Document saved as draft.",
+        "deleted": "Opening Stock Document draft deleted."
+      },
+      "errors": { "processFailed": "Failed to process Opening Stock Document." },
+      "confirm": {
+        "deleteTitle": "Delete Draft?", "deleteMessage": "Delete {{reference}}? This removes the draft only.",
+        "inventoryOnlyTitle": "Post as Inventory Only?",
+        "inventoryOnlyMessage": "Accounting is enabled, but this document is set to inventory-only. Posting will change stock quantities and inventory values without creating an accounting entry."
+      },
+      "accounting": {
+        "disabled": "Accounting is disabled. This operation affects stock quantities only and does not create an accounting entry.",
+        "inventoryOnly": "Accounting is enabled, but this document is currently inventory-only. Posting changes stock quantities and values without creating an accounting entry.",
+        "accountSelected": "The Opening Balance / Clearing Account is prefilled from Inventory Settings: {{account}}. You can override it for this document.",
+        "whenConfigured": "when configured"
+      },
+      "readiness": {
+        "warehouse": "Warehouse selected", "date": "Document date set", "lines": "At least one stock line",
+        "account": "Opening balance account selected", "duplicate": "Possible duplicate opening entry",
+        "noDuplicate": "No duplicate warning"
+      },
+      "actions": {
+        "back": "Back", "deleteDraft": "Delete Draft", "keepDraft": "Keep Draft", "saving": "Saving...",
+        "updateDraft": "Update Draft", "saveDraft": "Save Draft", "updateAndPost": "Update & Post",
+        "createAndPost": "Create & Post", "continuePosting": "Continue Posting", "keepEditing": "Keep Editing",
+        "cancel": "Cancel", "view": "View", "post": "Post", "delete": "Delete"
+      }
+    }
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "Can’t issue {{itemLabel}} from warehouse {{warehouseLabel}} — only {{current}} in stock but {{requested}} requested (would leave {{resulting}}). Negative stock is turned off. Receive stock first, or enable negative stock in Inventory Settings."
@@ -5479,6 +5605,111 @@
       "qty": "Qty",
       "low": "Low",
       "action": "Action"
+    }
+  },
+  "systemMetadata": {
+    "countries": {
+      "AE": "United Arab Emirates",
+      "SA": "Saudi Arabia",
+      "QA": "Qatar",
+      "KW": "Kuwait",
+      "BH": "Bahrain",
+      "OM": "Oman",
+      "JO": "Jordan",
+      "LB": "Lebanon",
+      "PS": "Palestine",
+      "SY": "Syria",
+      "IQ": "Iraq",
+      "EG": "Egypt",
+      "DZ": "Algeria",
+      "MA": "Morocco",
+      "TN": "Tunisia",
+      "LY": "Libya",
+      "SD": "Sudan",
+      "YE": "Yemen",
+      "TR": "Turkey",
+      "US": "United States",
+      "GB": "United Kingdom",
+      "DE": "Germany",
+      "FR": "France",
+      "IT": "Italy",
+      "ES": "Spain",
+      "NL": "Netherlands",
+      "BE": "Belgium",
+      "CH": "Switzerland",
+      "AT": "Austria",
+      "SE": "Sweden",
+      "NO": "Norway",
+      "DK": "Denmark",
+      "IE": "Ireland",
+      "PL": "Poland",
+      "GR": "Greece",
+      "CY": "Cyprus"
+    },
+    "businessDomains": {
+      "trading": { "name": "Trading", "description": "General trading and wholesale" },
+      "retail": { "name": "Retail", "description": "Retail shops and POS" },
+      "services": { "name": "Services", "description": "IT, consulting, and maintenance services" },
+      "hospitality": { "name": "Hospitality", "description": "Restaurants, hotels, and cafes" },
+      "manufacturing": { "name": "Manufacturing", "description": "Factories and production" },
+      "construction": { "name": "Construction", "description": "Contractors and builders" },
+      "real-estate": { "name": "Real Estate", "description": "Property brokers and agencies" },
+      "education": { "name": "Education", "description": "Training centers and schools" },
+      "healthcare": { "name": "Healthcare", "description": "Clinics and medical practices" },
+      "logistics": { "name": "Logistics", "description": "Transportation and delivery" },
+      "ecommerce": { "name": "E-Commerce", "description": "Online sellers" },
+      "nonprofit": { "name": "Non-Profit", "description": "NGOs and charities" },
+      "distribution": { "name": "Distribution", "description": "Wholesale distribution" }
+    },
+    "bundles": {
+      "trading-basic": { "name": "General Trading", "description": "Suitable for general trading companies." },
+      "trading-plus": { "name": "General Trading +", "description": "Trading company with HR support." },
+      "retail-pos": { "name": "Retail / POS", "description": "For retail shops and supermarkets." },
+      "wholesale": { "name": "Wholesale Trading", "description": "For wholesalers and distribution companies." },
+      "services": { "name": "Services Company", "description": "For IT, consulting, maintenance, and similar services." },
+      "restaurant": { "name": "Restaurant", "description": "POS, Inventory, and HR for restaurants." },
+      "bakery": { "name": "Bakery / Food Production", "description": "Suitable for bakeries and food factories." },
+      "maintenance": { "name": "Maintenance Workshop", "description": "For workshops handling repairs and service orders." },
+      "manufacturing-basic": { "name": "Manufacturing - Basic", "description": "For small manufacturers." },
+      "manufacturing-advanced": { "name": "Manufacturing - Advanced", "description": "For medium and large factories." },
+      "construction": { "name": "Construction / Contracting", "description": "For contractors, builders, and project companies." },
+      "real-estate": { "name": "Real Estate Agency", "description": "For real estate brokers and agencies." },
+      "education": { "name": "Education / Training Center", "description": "For training institutes and educational centers." },
+      "clinic": { "name": "Clinic / Medical Office", "description": "For small medical practices." },
+      "logistics": { "name": "Logistics & Transportation", "description": "For transport, delivery, and logistics services." },
+      "ecommerce": { "name": "E-Commerce Seller", "description": "For online sellers and marketplace merchants." },
+      "freelancer": { "name": "Freelancer / Solo Entrepreneur", "description": "For individual freelancers." },
+      "nonprofit": { "name": "Non-Profit Organization", "description": "For NGOs and non-profit entities." },
+      "salon": { "name": "Beauty Salon & Spa", "description": "For salons, spas, and beauty centers." },
+      "empty-company": { "name": "Empty Company", "description": "Start with no modules and configure manually." }
+    },
+    "currencies": {
+      "USD": { "name": "US Dollar" }, "EUR": { "name": "Euro" }, "GBP": { "name": "British Pound" },
+      "JPY": { "name": "Japanese Yen" }, "CHF": { "name": "Swiss Franc" }, "CAD": { "name": "Canadian Dollar" },
+      "AUD": { "name": "Australian Dollar" }, "CNY": { "name": "Chinese Yuan" }, "AED": { "name": "UAE Dirham" },
+      "SAR": { "name": "Saudi Riyal" }, "QAR": { "name": "Qatari Riyal" }, "KWD": { "name": "Kuwaiti Dinar" },
+      "BHD": { "name": "Bahraini Dinar" }, "OMR": { "name": "Omani Rial" }, "JOD": { "name": "Jordanian Dinar" },
+      "EGP": { "name": "Egyptian Pound" }, "LBP": { "name": "Lebanese Pound" }, "ILS": { "name": "Israeli New Shekel" },
+      "SYP": { "name": "Syrian Pound" }, "IQD": { "name": "Iraqi Dinar" }, "DZD": { "name": "Algerian Dinar" },
+      "MAD": { "name": "Moroccan Dirham" }, "TND": { "name": "Tunisian Dinar" }, "LYD": { "name": "Libyan Dinar" },
+      "SDG": { "name": "Sudanese Pound" }, "YER": { "name": "Yemeni Rial" }, "TRY": { "name": "Turkish Lira" },
+      "INR": { "name": "Indian Rupee" }, "KRW": { "name": "South Korean Won" }, "SGD": { "name": "Singapore Dollar" },
+      "HKD": { "name": "Hong Kong Dollar" }, "NZD": { "name": "New Zealand Dollar" }, "SEK": { "name": "Swedish Krona" },
+      "NOK": { "name": "Norwegian Krone" }, "DKK": { "name": "Danish Krone" }, "PLN": { "name": "Polish Zloty" },
+      "CZK": { "name": "Czech Koruna" }, "HUF": { "name": "Hungarian Forint" }, "RUB": { "name": "Russian Ruble" },
+      "ZAR": { "name": "South African Rand" }, "BRL": { "name": "Brazilian Real" }, "MXN": { "name": "Mexican Peso" }
+    },
+    "coaTemplates": {
+      "empty": { "name": "Empty - Start from Scratch", "description": "Blank chart; add only the accounts you need.", "recommended": "Best for accountants migrating an existing chart from another system." },
+      "simplified": { "name": "Simplified", "description": "Flat, minimal accounts with one level and no subaccounts.", "recommended": "Best for freelancers, sole traders, and micro-businesses with simple books." },
+      "services": { "name": "Professional Services", "description": "Consulting fees, project revenue, contractor costs, and client deposits.", "recommended": "Best for agencies, consultants, law firms, IT services, and project businesses." },
+      "periodic_trading": { "name": "Trading Company - Periodic", "description": "Simple trading books with purchase and sales accounts and periodic inventory.", "recommended": "Best for small trading companies using report-time inventory valuation." },
+      "periodic_trading_ar": { "name": "Trading Company - Periodic (Arabic Accounts)", "description": "Arabic chart for simple trading with purchases, sales, and periodic inventory.", "recommended": "Best for small trading companies that require Arabic account names." },
+      "standard": { "name": "Standard (Recommended)", "description": "Multi-level accounts covering wholesale, retail, inventory, and tax.", "recommended": "Best for trading companies, distributors, and general small and medium businesses." },
+      "standard_ar": { "name": "Standard (Arabic Accounts)", "description": "Arabic multi-level chart covering sales, purchases, inventory, and tax.", "recommended": "Best for trading and distribution companies that require Arabic account names." },
+      "manufacturing": { "name": "Manufacturing", "description": "Raw materials, work in progress, finished goods, overhead, and direct labor.", "recommended": "Best for factories, workshops, food production, and assembly businesses." },
+      "retail": { "name": "Retail and E-Commerce", "description": "POS registers, online sales, shrinkage tracking, and store expenses.", "recommended": "Best for shops, supermarkets, online stores, and multi-location retail." },
+      "full": { "name": "Comprehensive", "description": "Enterprise chart with fixed assets, depreciation, reserves, and finance costs.", "recommended": "Best for established, multi-department, and audit-ready businesses." }
     }
   }
 }

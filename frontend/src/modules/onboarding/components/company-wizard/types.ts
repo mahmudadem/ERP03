@@ -55,20 +55,3 @@ export interface WizardStepProps {
   bundles?: Bundle[];
   loading?: boolean;
 }
-
-
-export const COUNTRIES = [
-  "United States",
-  "United Kingdom",
-  "Canada",
-  "Germany",
-  "France",
-  "Australia",
-  "United Arab Emirates",
-  "Saudi Arabia",
-  "India",
-  "Singapore",
-  "Japan"
-];
-
-// End of types

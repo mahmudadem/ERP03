@@ -55,8 +55,8 @@ export const WizardLayout: React.FC<WizardLayoutProps> = ({
                  }} 
                  className="text-gray-500 hover:text-red-600 hover:bg-red-50"
                >
-                 <LogOut className="h-4 w-4 mr-2" />
-                 {t('common.actions.signOut', { defaultValue: 'Sign Out' })}
+                 <LogOut className="h-4 w-4 me-2" />
+                 {t('companySelector.signOut', { defaultValue: 'Sign Out' })}
                </Button>
             </div>
         </div>

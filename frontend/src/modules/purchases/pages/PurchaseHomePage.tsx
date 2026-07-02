@@ -67,7 +67,7 @@ const PurchaseHomePage: React.FC = () => {
       if (companyId) {
         const modules = await companyModulesApi.list(companyId);
         const purchaseModule = modules.find((module) => module.moduleCode === 'purchase');
-        if (purchaseModule && !purchaseModule.initialized) {
+        if (!purchaseModule || !purchaseModule.initialized) {
           setInitialized(false);
           setSettings(null);
           setOrders([]);

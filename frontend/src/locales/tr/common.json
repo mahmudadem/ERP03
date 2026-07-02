@@ -2088,6 +2088,22 @@
         },
         "language": {
           "field": "Dil"
+        },
+        "advanced": {
+          "toggle": "Başlangıç politikalarını özelleştir (hesap planı, maliyet, iş akışı)",
+          "coaLabel": "Hesap Planı",
+          "coaPeriodic": "Dönemsel ticaret hesap planı - sade dönemsel stok hesapları",
+          "coaStandard": "Standart hesap planı - tam stok, SMM, GRNI ve indirim hesapları",
+          "costingBasisLabel": "Maliyet esası",
+          "costingBasisGlobal": "Genel - şirket genelinde ürün başına tek ortalama maliyet",
+          "costingBasisWarehouse": "Depo bazlı - her depo için ayrı ortalama maliyet",
+          "warehouseCodeLabel": "Varsayılan depo kodu",
+          "warehouseNameLabel": "Varsayılan depo adı",
+          "salesWorkflowLabel": "Satış iş akışı",
+          "purchaseWorkflowLabel": "Satın alma iş akışı",
+          "workflowSimple": "Basit - doğrudan faturalama",
+          "workflowOperational": "Operasyonel - sipariş, kabul veya teslimat ve bağlı faturalama",
+          "help": "Her alan seçilen mod için önerilen değeri kullanır. Mod değiştirildiğinde düzenlemediğiniz alanlar yeni varsayılanlara döner."
         }
       }
     }
@@ -2297,21 +2313,21 @@
     }
   },
   "companySelector": {
-    "title": "Sirketleriniz",
-    "subtitle": "Devam etmek icin bir calisma alani secin",
+    "title": "Şirketleriniz",
+    "subtitle": "Devam etmek için bir çalışma alanı seçin",
     "refresh": "Yenile",
-    "signOut": "Cikis Yap",
-    "unableToLoad": "Sirketler yuklenemedi",
+    "signOut": "Çıkış Yap",
+    "unableToLoad": "Şirketler yüklenemedi",
     "tryAgain": "Tekrar Dene",
-    "welcomeTitle": "ERP Sistemine Hos Geldiniz",
-    "welcomeDescription": "Henuz sirketiniz yok. Baslamak icin ilk sirketinizi olusturun.",
-    "createNewCompany": "Yeni Sirket Olustur",
+    "welcomeTitle": "ERP Sistemine Hoş Geldiniz",
+    "welcomeDescription": "Henüz şirketiniz yok. Başlamak için ilk şirketinizi oluşturun.",
+    "createNewCompany": "Yeni Şirket Oluştur",
     "card": {
-      "member": "Uye",
-      "business": "Isletme",
-      "created": "Olusturma",
+      "member": "Üye",
+      "business": "İşletme",
+      "created": "Oluşturuldu",
       "lastActive": "Son aktif",
-      "enterWorkspace": "Calisma Alanina Gir"
+      "enterWorkspace": "Çalışma Alanına Gir"
     }
   },
   "moduleSetupCard": {
@@ -2595,6 +2611,27 @@
     "uom": {
       "fields": {
         "localizedName": "Yerelleştirilmiş ad"
+      },
+      "dimensions": {
+        "COUNT": "Adet",
+        "WEIGHT": "Ağırlık",
+        "LENGTH": "Uzunluk",
+        "VOLUME": "Hacim",
+        "AREA": "Alan",
+        "TIME": "Zaman",
+        "OTHER": "Diğer"
+      },
+      "defaultNames": {
+        "EA": "Adet",
+        "PCS": "Parça",
+        "BOX": "Kutu",
+        "PACK": "Paket",
+        "KG": "Kilogram",
+        "G": "Gram",
+        "L": "Litre",
+        "ML": "Mililitre",
+        "M": "Metre",
+        "CM": "Santimetre"
       }
     },
     "settings": {
@@ -4886,9 +4923,98 @@
     }
   },
   "openingStockDocuments": {
+    "title": "Açılış Stok Belgeleri",
+    "newDocument": "Yeni Belge",
+    "searchPlaceholder": "Belge, depo veya fiş ara...",
+    "allWarehouses": "Tüm depolar",
+    "dateFrom": "Başlangıç Tarihi",
+    "dateTo": "Bitiş Tarihi",
+    "apply": "Uygula",
+    "clearFilters": "Filtreleri Temizle",
+    "empty": "Açılış stok belgesi bulunamadı",
+    "minimumValue": "Min {{currency}}",
+    "maximumValue": "Maks {{currency}}",
+    "statuses": { "all": "Tümü", "draft": "Taslak", "posted": "Kaydedildi" },
+    "accountingModes": {
+      "all": "Tüm muhasebe modları",
+      "withAccounting": "Stok + Muhasebe",
+      "inventoryOnly": "Yalnızca stok",
+      "withVoucher": "Fişli",
+      "noVoucher": "Fiş yok"
+    },
     "legacyOpeningMovementsTitle": "{{count}} eski açılış stok hareketi bulundu",
     "legacyOpeningMovementsBody": "Bu hareketler eski doğrudan açılış stoku akışıyla kaydedildiği için Açılış Stok Belgesi başlığına sahip değildir. Çift stok oluşmasını önlemek için yeni açılış belgesi oluşturmadan önce Stok Hareketlerini inceleyin.",
-    "reviewStockMovements": "Stok Hareketlerini incele"
+    "reviewStockMovements": "Stok Hareketlerini incele",
+    "detail": {
+      "newTitle": "Yeni Açılış Stok Belgesi",
+      "title": "Açılış Stok Belgesi",
+      "subtitle": "Canlıya geçişte veya veri aktarımında mevcut olan stoğu kaydedin",
+      "backToList": "Açılış stoğuna dön",
+      "notFound": "Açılış Stok Belgesi bulunamadı.",
+      "duplicateWarning": "Aynı depo ve tarih için çakışan ürünler içeren belgeler var. Kaydetmeden veya işlemeden önce inceleyin.",
+      "createAccountingEffect": "Muhasebe Etkisi Oluştur",
+      "no": "Hayır",
+      "yes": "Evet",
+      "hideAccountingMessage": "Muhasebe kontrol mesajını gizle",
+      "openingBalanceAccount": "Açılış Bakiyesi / Denkleştirme Hesabı",
+      "searchOpeningAccount": "Açılış bakiyesi özkaynak hesabı ara...",
+      "documentDetails": "Belge Ayrıntıları",
+      "warehouse": "Depo",
+      "documentDate": "Belge Tarihi",
+      "date": "Tarih",
+      "notes": "Notlar",
+      "notesPlaceholder": "Aktarım veya geçiş için isteğe bağlı not",
+      "documentLines": "Belge Satırları",
+      "addLine": "Satır Ekle",
+      "document": "Belge",
+      "reference": "Referans",
+      "new": "Yeni",
+      "status": "Durum",
+      "accountingLabel": "Muhasebe",
+      "voucher": "Fiş",
+      "readinessTitle": "Hazırlık",
+      "totals": "Toplamlar",
+      "linesLabel": "Satırlar",
+      "baseCurrency": "Ana Para Birimi",
+      "openingValue": "Açılış Değeri",
+      "lines": {
+        "stockItem": "Stok Ürünü", "searchItem": "Stok ürünü ara...", "quantity": "Miktar",
+        "unitCost": "Birim Maliyet", "currency": "Para Birimi", "documentFx": "Belge Kuru",
+        "costFx": "Maliyet Kuru", "value": "Değer ({{currency}})"
+      },
+      "validation": {
+        "warehouseRequired": "Depo zorunludur.", "dateRequired": "Belge tarihi zorunludur.",
+        "lineRequired": "Sıfırdan büyük miktarlı en az bir geçerli stok satırı ekleyin.",
+        "accountRequired": "Muhasebe etkisi etkin olduğunda Açılış Bakiyesi / Denkleştirme hesabı zorunludur."
+      },
+      "messages": {
+        "posted": "Açılış Stok Belgesi kaydedildi.", "savedDraft": "Açılış Stok Belgesi taslak olarak kaydedildi.",
+        "deleted": "Açılış Stok Belgesi taslağı silindi."
+      },
+      "errors": { "processFailed": "Açılış Stok Belgesi işlenemedi." },
+      "confirm": {
+        "deleteTitle": "Taslak Silinsin mi?", "deleteMessage": "{{reference}} silinsin mi? Yalnızca taslak kaldırılır.",
+        "inventoryOnlyTitle": "Yalnızca Stok Olarak Kaydedilsin mi?",
+        "inventoryOnlyMessage": "Muhasebe etkin, ancak belge yalnızca stok olarak ayarlı. İşleme, muhasebe fişi oluşturmadan stok miktarlarını ve değerlerini değiştirir."
+      },
+      "accounting": {
+        "disabled": "Muhasebe devre dışı. Bu işlem yalnızca stok miktarlarını etkiler ve muhasebe fişi oluşturmaz.",
+        "inventoryOnly": "Muhasebe etkin, ancak belge şu anda yalnızca stok olarak ayarlı. İşleme, muhasebe fişi oluşturmadan stok miktarlarını ve değerlerini değiştirir.",
+        "accountSelected": "Açılış Bakiyesi / Denkleştirme Hesabı Stok Ayarlarından dolduruldu: {{account}}. Bu belge için değiştirebilirsiniz.",
+        "whenConfigured": "yapılandırıldığında"
+      },
+      "readiness": {
+        "warehouse": "Depo seçildi", "date": "Belge tarihi ayarlandı", "lines": "En az bir stok satırı var",
+        "account": "Açılış bakiyesi hesabı seçildi", "duplicate": "Olası mükerrer açılış kaydı",
+        "noDuplicate": "Mükerrer uyarısı yok"
+      },
+      "actions": {
+        "back": "Geri", "deleteDraft": "Taslağı Sil", "keepDraft": "Taslağı Koru", "saving": "Kaydediliyor...",
+        "updateDraft": "Taslağı Güncelle", "saveDraft": "Taslağı Kaydet", "updateAndPost": "Güncelle ve Kaydet",
+        "createAndPost": "Oluştur ve Kaydet", "continuePosting": "Kaydetmeye Devam Et", "keepEditing": "Düzenlemeye Devam Et",
+        "cancel": "İptal", "view": "Görüntüle", "post": "Kaydet", "delete": "Sil"
+      }
+    }
   },
   "errors": {
     "NEGATIVE_STOCK_BLOCKED": "{{itemLabel}} ürünü {{warehouseLabel}} deposundan çıkışı yapılamıyor — stokta yalnızca {{current}} var ancak {{requested}} istendi (kalan {{resulting}} olurdu). Negatif stok kapalı. Önce stok girişi yapın veya Envanter Ayarları’ndan negatif stoğu etkinleştirin."
@@ -5475,6 +5601,111 @@
       "emailInUse": "Bu e-posta zaten kayıtlı.",
       "weakPassword": "Şifre çok zayıf.",
       "networkError": "Ağ hatası. Bağlantınızı kontrol edin."
+    }
+  },
+  "systemMetadata": {
+    "countries": {
+      "AE": "Birleşik Arap Emirlikleri",
+      "SA": "Suudi Arabistan",
+      "QA": "Katar",
+      "KW": "Kuveyt",
+      "BH": "Bahreyn",
+      "OM": "Umman",
+      "JO": "Ürdün",
+      "LB": "Lübnan",
+      "PS": "Filistin",
+      "SY": "Suriye",
+      "IQ": "Irak",
+      "EG": "Mısır",
+      "DZ": "Cezayir",
+      "MA": "Fas",
+      "TN": "Tunus",
+      "LY": "Libya",
+      "SD": "Sudan",
+      "YE": "Yemen",
+      "TR": "Türkiye",
+      "US": "Amerika Birleşik Devletleri",
+      "GB": "Birleşik Krallık",
+      "DE": "Almanya",
+      "FR": "Fransa",
+      "IT": "İtalya",
+      "ES": "İspanya",
+      "NL": "Hollanda",
+      "BE": "Belçika",
+      "CH": "İsviçre",
+      "AT": "Avusturya",
+      "SE": "İsveç",
+      "NO": "Norveç",
+      "DK": "Danimarka",
+      "IE": "İrlanda",
+      "PL": "Polonya",
+      "GR": "Yunanistan",
+      "CY": "Kıbrıs"
+    },
+    "businessDomains": {
+      "trading": { "name": "Ticaret", "description": "Genel ticaret ve toptan satış" },
+      "retail": { "name": "Perakende", "description": "Perakende mağazaları ve POS" },
+      "services": { "name": "Hizmetler", "description": "BT, danışmanlık ve bakım hizmetleri" },
+      "hospitality": { "name": "Konaklama", "description": "Restoranlar, oteller ve kafeler" },
+      "manufacturing": { "name": "Üretim", "description": "Fabrikalar ve üretim" },
+      "construction": { "name": "İnşaat", "description": "Müteahhitler ve inşaat şirketleri" },
+      "real-estate": { "name": "Gayrimenkul", "description": "Emlak komisyoncuları ve acenteleri" },
+      "education": { "name": "Eğitim", "description": "Eğitim merkezleri ve okullar" },
+      "healthcare": { "name": "Sağlık", "description": "Klinikler ve tıbbi uygulamalar" },
+      "logistics": { "name": "Lojistik", "description": "Taşımacılık ve teslimat" },
+      "ecommerce": { "name": "E-Ticaret", "description": "Çevrim içi satıcılar" },
+      "nonprofit": { "name": "Kâr Amacı Gütmeyen", "description": "STK'lar ve yardım kuruluşları" },
+      "distribution": { "name": "Dağıtım", "description": "Toptan dağıtım" }
+    },
+    "bundles": {
+      "trading-basic": { "name": "Genel Ticaret", "description": "Genel ticaret şirketleri için uygundur." },
+      "trading-plus": { "name": "Genel Ticaret +", "description": "İnsan kaynakları desteğine sahip ticaret şirketi." },
+      "retail-pos": { "name": "Perakende / POS", "description": "Perakende mağazaları ve süpermarketler için." },
+      "wholesale": { "name": "Toptan Ticaret", "description": "Toptancılar ve dağıtım şirketleri için." },
+      "services": { "name": "Hizmet Şirketi", "description": "BT, danışmanlık, bakım ve benzeri hizmetler için." },
+      "restaurant": { "name": "Restoran", "description": "Restoranlar için POS, Stok ve İK." },
+      "bakery": { "name": "Fırın / Gıda Üretimi", "description": "Fırınlar ve gıda fabrikaları için uygundur." },
+      "maintenance": { "name": "Bakım Atölyesi", "description": "Onarım ve servis emirlerini yöneten atölyeler için." },
+      "manufacturing-basic": { "name": "Üretim - Temel", "description": "Küçük üreticiler için." },
+      "manufacturing-advanced": { "name": "Üretim - Gelişmiş", "description": "Orta ve büyük fabrikalar için." },
+      "construction": { "name": "İnşaat / Taahhüt", "description": "Müteahhitler, inşaatçılar ve proje şirketleri için." },
+      "real-estate": { "name": "Emlak Ofisi", "description": "Emlak komisyoncuları ve acenteleri için." },
+      "education": { "name": "Eğitim / Eğitim Merkezi", "description": "Eğitim kurumları ve merkezleri için." },
+      "clinic": { "name": "Klinik / Muayenehane", "description": "Küçük tıbbi uygulamalar için." },
+      "logistics": { "name": "Lojistik ve Taşımacılık", "description": "Taşımacılık, teslimat ve lojistik hizmetleri için." },
+      "ecommerce": { "name": "E-Ticaret Satıcısı", "description": "Çevrim içi satıcılar ve pazar yeri mağazaları için." },
+      "freelancer": { "name": "Serbest Çalışan / Bireysel Girişimci", "description": "Bireysel serbest çalışanlar için." },
+      "nonprofit": { "name": "Kâr Amacı Gütmeyen Kuruluş", "description": "STK'lar ve kâr amacı gütmeyen kuruluşlar için." },
+      "salon": { "name": "Güzellik Salonu ve Spa", "description": "Salonlar, spa merkezleri ve güzellik merkezleri için." },
+      "empty-company": { "name": "Boş Şirket", "description": "Modül olmadan başlayın ve manuel olarak yapılandırın." }
+    },
+    "currencies": {
+      "USD": { "name": "ABD Doları" }, "EUR": { "name": "Euro" }, "GBP": { "name": "İngiliz Sterlini" },
+      "JPY": { "name": "Japon Yeni" }, "CHF": { "name": "İsviçre Frangı" }, "CAD": { "name": "Kanada Doları" },
+      "AUD": { "name": "Avustralya Doları" }, "CNY": { "name": "Çin Yuanı" }, "AED": { "name": "BAE Dirhemi" },
+      "SAR": { "name": "Suudi Arabistan Riyali" }, "QAR": { "name": "Katar Riyali" }, "KWD": { "name": "Kuveyt Dinarı" },
+      "BHD": { "name": "Bahreyn Dinarı" }, "OMR": { "name": "Umman Riyali" }, "JOD": { "name": "Ürdün Dinarı" },
+      "EGP": { "name": "Mısır Lirası" }, "LBP": { "name": "Lübnan Lirası" }, "ILS": { "name": "Yeni İsrail Şekeli" },
+      "SYP": { "name": "Suriye Lirası" }, "IQD": { "name": "Irak Dinarı" }, "DZD": { "name": "Cezayir Dinarı" },
+      "MAD": { "name": "Fas Dirhemi" }, "TND": { "name": "Tunus Dinarı" }, "LYD": { "name": "Libya Dinarı" },
+      "SDG": { "name": "Sudan Lirası" }, "YER": { "name": "Yemen Riyali" }, "TRY": { "name": "Türk Lirası" },
+      "INR": { "name": "Hindistan Rupisi" }, "KRW": { "name": "Güney Kore Wonu" }, "SGD": { "name": "Singapur Doları" },
+      "HKD": { "name": "Hong Kong Doları" }, "NZD": { "name": "Yeni Zelanda Doları" }, "SEK": { "name": "İsveç Kronu" },
+      "NOK": { "name": "Norveç Kronu" }, "DKK": { "name": "Danimarka Kronu" }, "PLN": { "name": "Polonya Zlotisi" },
+      "CZK": { "name": "Çek Korunası" }, "HUF": { "name": "Macar Forinti" }, "RUB": { "name": "Rus Rublesi" },
+      "ZAR": { "name": "Güney Afrika Randı" }, "BRL": { "name": "Brezilya Reali" }, "MXN": { "name": "Meksika Pesosu" }
+    },
+    "coaTemplates": {
+      "empty": { "name": "Boş - Sıfırdan Başla", "description": "Boş hesap planı; yalnızca ihtiyacınız olan hesapları ekleyin.", "recommended": "Başka bir sistemdeki mevcut planı taşıyan muhasebeciler için uygundur." },
+      "simplified": { "name": "Basitleştirilmiş", "description": "Tek seviyeli, az sayıda ve alt hesapsız hesap yapısı.", "recommended": "Serbest çalışanlar, şahıs işletmeleri ve mikro işletmeler için uygundur." },
+      "services": { "name": "Profesyonel Hizmetler", "description": "Danışmanlık ücretleri, proje gelirleri, yüklenici giderleri ve müşteri avansları.", "recommended": "Ajanslar, danışmanlar, hukuk büroları, BT hizmetleri ve proje işletmeleri için uygundur." },
+      "periodic_trading": { "name": "Ticaret Şirketi - Dönemsel", "description": "Alış ve satış hesapları ile dönemsel stok kullanan basit ticari plan.", "recommended": "Stok değerlemesini raporlama döneminde yapan küçük ticaret şirketleri için uygundur." },
+      "periodic_trading_ar": { "name": "Ticaret Şirketi - Dönemsel (Arapça Hesaplar)", "description": "Alış, satış ve dönemsel stok için Arapça hesap adları içeren plan.", "recommended": "Arapça hesap adlarına ihtiyaç duyan küçük ticaret şirketleri için uygundur." },
+      "standard": { "name": "Standart (Önerilen)", "description": "Toptan, perakende, stok ve vergiyi kapsayan çok seviyeli hesap planı.", "recommended": "Ticaret şirketleri, distribütörler ve genel KOBİ'ler için uygundur." },
+      "standard_ar": { "name": "Standart (Arapça Hesaplar)", "description": "Satış, alış, stok ve vergiyi kapsayan Arapça çok seviyeli hesap planı.", "recommended": "Arapça hesap adlarına ihtiyaç duyan ticaret ve dağıtım şirketleri için uygundur." },
+      "manufacturing": { "name": "Üretim", "description": "Hammadde, yarı mamul, mamul, fabrika genel giderleri ve doğrudan işçilik.", "recommended": "Fabrikalar, atölyeler, gıda üretimi ve montaj işletmeleri için uygundur." },
+      "retail": { "name": "Perakende ve E-Ticaret", "description": "POS kasaları, çevrimiçi satışlar, stok kaybı ve mağaza giderleri.", "recommended": "Mağazalar, marketler, e-ticaret ve çok şubeli perakende için uygundur." },
+      "full": { "name": "Kapsamlı", "description": "Sabit kıymetler, amortisman, yedekler ve finansman giderlerini içeren kurumsal plan.", "recommended": "Yerleşik, çok departmanlı ve denetime hazırlanan işletmeler için uygundur." }
     }
   }
 }

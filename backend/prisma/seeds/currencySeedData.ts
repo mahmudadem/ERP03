@@ -34,6 +34,16 @@ export const CURRENCY_SEED_DATA: CurrencySeedData[] = [
   { code: 'OMR', name: 'Omani Rial', symbol: 'ر.ع.', decimalPlaces: 3 },
   { code: 'JOD', name: 'Jordanian Dinar', symbol: 'د.ا', decimalPlaces: 3 },
   { code: 'EGP', name: 'Egyptian Pound', symbol: 'ج.م', decimalPlaces: 2 },
+  { code: 'LBP', name: 'Lebanese Pound', symbol: 'ل.ل', decimalPlaces: 2 },
+  { code: 'ILS', name: 'Israeli New Shekel', symbol: '₪', decimalPlaces: 2 },
+  { code: 'SYP', name: 'Syrian Pound', symbol: 'ل.س', decimalPlaces: 2 },
+  { code: 'IQD', name: 'Iraqi Dinar', symbol: 'ع.د', decimalPlaces: 3 },
+  { code: 'DZD', name: 'Algerian Dinar', symbol: 'د.ج', decimalPlaces: 2 },
+  { code: 'MAD', name: 'Moroccan Dirham', symbol: 'د.م.', decimalPlaces: 2 },
+  { code: 'TND', name: 'Tunisian Dinar', symbol: 'د.ت', decimalPlaces: 3 },
+  { code: 'LYD', name: 'Libyan Dinar', symbol: 'ل.د', decimalPlaces: 3 },
+  { code: 'SDG', name: 'Sudanese Pound', symbol: 'ج.س', decimalPlaces: 2 },
+  { code: 'YER', name: 'Yemeni Rial', symbol: 'ر.ي', decimalPlaces: 2 },
   
   // Turkish Lira
   { code: 'TRY', name: 'Turkish Lira', symbol: '₺', decimalPlaces: 2 },

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { superAdminApi, Bundle, BusinessDomain, Module } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
@@ -19,6 +19,11 @@ import {
   SortIcon,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import {
+  getLocalizedBundleName,
+  getLocalizedBusinessDomainName,
+  getLocalizedMetadataSearchText,
+} from '../../../utils/localizedSystemMetadata';
 
 export const BundlesManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -41,6 +46,15 @@ export const BundlesManagerPage: React.FC = () => {
     loadData();
   }, []);
 
+  const searchableBundles = useMemo(
+    () =>
+      bundles.map((bundle) => ({
+        ...bundle,
+        localizedSearchText: getLocalizedMetadataSearchText(bundle, 'bundles', t),
+      })),
+    [bundles, t]
+  );
+
   const {
     data: filteredBundles,
     searchQuery,
@@ -48,8 +62,8 @@ export const BundlesManagerPage: React.FC = () => {
     sortConfig,
     handleSort,
   } = useSuperAdminTable({
-    data: bundles,
-    searchFields: ['name', 'id', 'description'],
+    data: searchableBundles,
+    searchFields: ['name', 'id', 'description', 'localizedSearchText'],
     initialSort: { field: 'name', direction: 'asc' },
   });
 
@@ -221,7 +235,9 @@ export const BundlesManagerPage: React.FC = () => {
                 filteredBundles.map((bundle) => (
                   <tr key={bundle.id} className={tableRowClass}>
                     <td className={`${tableCellClass} font-mono text-xs`}>{bundle.id}</td>
-                    <td className={`${tableCellClass} font-medium text-slate-950`}>{bundle.name}</td>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>
+                      {getLocalizedBundleName(bundle, t)}
+                    </td>
                     <td className={tableCellClass}>
                       <SuperAdminBadge tone={bundle.lifecycleStatus === 'ready' ? 'green' : 'amber'}>
                         {bundle.lifecycleStatus || 'draft'}
@@ -233,7 +249,7 @@ export const BundlesManagerPage: React.FC = () => {
                           const domain = businessDomains.find(d => d.id === domainId);
                           return (
                             <SuperAdminBadge key={domainId} tone="slate">
-                              {domain?.name || domainId}
+                              {domain ? getLocalizedBusinessDomainName(domain, t) : domainId}
                             </SuperAdminBadge>
                           );
                         })}
@@ -338,7 +354,9 @@ export const BundlesManagerPage: React.FC = () => {
                           })}
                           className="mr-2"
                         />
-                        <span className="font-medium">{domain.name}</span>
+                        <span className="font-medium">
+                          {getLocalizedBusinessDomainName(domain, t)}
+                        </span>
                         <span className="text-gray-500 text-sm ml-2">({domain.id})</span>
                       </label>
                     ))

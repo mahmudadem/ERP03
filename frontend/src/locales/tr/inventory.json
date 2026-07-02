@@ -1,4 +1,121 @@
 {
+  "initializationWizard": {
+    "steps": {
+      "welcome": "Hoş Geldiniz",
+      "accountingMode": "Muhasebe Yöntemi",
+      "warehouse": "Varsayılan Depo",
+      "settings": "Stok Ayarları",
+      "confirm": "Onayla ve Başlat"
+    },
+    "common": {
+      "yes": "Evet",
+      "no": "Hayır",
+      "stepProgress": "Adım {{current}} / {{total}}",
+      "back": "Geri",
+      "next": "Sonraki Adım",
+      "initializing": "Başlatılıyor...",
+      "startInventory": "Stok Modülünü Başlat"
+    },
+    "errors": {
+      "warehouseNameRequired": "Depo adı zorunludur.",
+      "warehouseCodeRequired": "Depo kodu zorunludur.",
+      "inventoryAssetRequired": "Varsayılan Stok Varlık Hesabı zorunludur.",
+      "startingNumber": "Başlangıç numarası 0'dan büyük olmalıdır.",
+      "initialize": "Başlatma başarısız oldu. Lütfen tekrar deneyin."
+    },
+    "messages": {
+      "success": "Stok kurulumu başarıyla tamamlandı."
+    },
+    "welcome": {
+      "title": "Stok Kurulumuna Hoş Geldiniz",
+      "description": "İlk deponuzu oluşturmak ve temel stok ayarlarını belirlemek için bu sihirbazı tamamlayın.",
+      "warehouseTitle": "Depo",
+      "warehouseDescription": "Stok işlemleri için varsayılan deponuzu tanımlayın.",
+      "settingsTitle": "Stok Ayarları",
+      "settingsDescription": "Maliyet para birimini ve eksi stok politikasını belirleyin.",
+      "itemCodesTitle": "Stok Kartı Kod Kuralları",
+      "itemCodesDescription": "Stok kartı kodlarını isteğe bağlı olarak otomatik oluşturun."
+    },
+    "accounting": {
+      "integrationTitle": "Muhasebe Entegrasyonu",
+      "notEnabledTitle": "Muhasebe Etkin Değil",
+      "notEnabledDescription": "Stok işlemleri miktarları ve maliyetleri izler, ancak mali kayıt veya genel muhasebe fişi oluşturmaz.",
+      "enableInstructions": "Mali etkiyi etkinleştirmek için Şirket Yönetimi → Modüller bölümünden Muhasebeyi etkinleştirin ve Muhasebe kurulumunu tamamlayın.",
+      "availableLater": "Muhasebe yöntemi, Muhasebe etkinleştirildikten sonra kullanılabilir. Daha sonra Stok Ayarları'ndan yapılandırabilirsiniz.",
+      "modeTitle": "Stok Muhasebesi Yöntemi",
+      "modeDescription": "Stokla ilgili muhasebe etkisinin ne zaman kaydedileceğini seçin.",
+      "modes": {
+        "periodic": {
+          "title": "Aralıklı Envanter",
+          "description": "Yalnızca Satış ve Alış Faturaları muhasebeleşir. Stok miktarları hareket eder; ancak stok ve satılan malın maliyeti raporlama zamanına kadar deftere yansımaz."
+        },
+        "invoiceDriven": {
+          "title": "Fatura Esaslı",
+          "description": "Operasyonel stok belgeleri mali kayıt oluşturmaz. Muhasebe etkisini Satış ve Alış Faturaları oluşturur."
+        },
+        "perpetual": {
+          "title": "Sürekli Envanter",
+          "description": "Sevk ve kabul kayıtları stok ile satılan malın maliyetini gerçek zamanlı olarak muhasebeleştirebilir."
+        }
+      }
+    },
+    "warehouse": {
+      "title": "Varsayılan Depo",
+      "description": "Açılış stoku ve stok hareketleri için kullanılacak varsayılan depoyu oluşturun.",
+      "name": "Ad",
+      "defaultName": "Ana Depo",
+      "code": "Kod",
+      "address": "Adres (İsteğe Bağlı)",
+      "addressPlaceholder": "Depo adresi"
+    },
+    "settings": {
+      "title": "Stok Ayarları",
+      "costCurrency": "Varsayılan Maliyet Para Birimi",
+      "costCurrencyPlaceholder": "Şirketin ana para birimini kullanmak için boş bırakın",
+      "accountMapping": "Hesap Eşleştirme",
+      "accountMappingLater": "Hesap eşleştirme, Muhasebe etkinleştirildiğinde yapılandırılır. Stok Varlık ve Satılan Malın Maliyeti hesaplarını daha sonra Stok Ayarları'ndan belirleyebilirsiniz.",
+      "inventoryAssetAccount": "Varsayılan Stok Varlık Hesabı",
+      "selectInventoryAsset": "Stok varlık hesabını seçin",
+      "inventoryAssetHelp": {
+        "perpetual": "Sürekli envanter için zorunludur. Bu bilanço hesabı eldeki stokun değerini tutar.",
+        "periodic": "Aralıklı envanter açılış stoku ve raporlama zamanı stokları için önerilir. Aralıklı belgeler stok veya satılan malın maliyetini anlık kaydetmez.",
+        "invoiceDriven": "Fatura esaslı stok alışları ve stok kaydı için önerilen yedek hesaptır."
+      },
+      "selectorHelp": "Hesap kodunu veya adını yazın, ardından aramak için Enter ya da Alt+Down tuşlarına basın. Eşleşme yoksa seçim penceresinden yeni hesap oluşturabilirsiniz.",
+      "cogsAccount": "Varsayılan Satılan Malın Maliyeti Hesabı",
+      "selectCogs": "Satılan malın maliyeti hesabını seçin",
+      "cogsHelp": "Satılan stok için maliyet kaydı gerektiğinde ve stok kartı veya kategoride özel bir maliyet hesabı bulunmadığında kullanılan isteğe bağlı yedek hesaptır.",
+      "cogsSelectorHelp": "Burada da aynı seçim yöntemini kullanın: yazın, Enter veya Alt+Down ile arayın ve hesap yoksa oluşturun.",
+      "allowNegativeStock": "Eksi Stoka İzin Ver",
+      "allowNegativeStockHelp": "Etkinleştirildiğinde stok miktarı sıfırın altına düşebilir.",
+      "autoGenerateCodes": "Stok Kartı Kodlarını Otomatik Oluştur",
+      "autoGenerateCodesHelp": "Kodları ön ek ve sıra numarasına göre oluşturun.",
+      "prefix": "Ön Ek",
+      "startingNumber": "Başlangıç Numarası"
+    },
+    "confirm": {
+      "title": "Onayla ve Başlat",
+      "description": "Varsayılan stok kayıtlarını oluşturmadan önce ayarlarınızı gözden geçirin.",
+      "noAccountingWarning": "Muhasebe etkin değil. Bu başlatma yalnızca stok işlemlerini kurar; mali kayıt veya genel muhasebe fişi oluşturulmaz.",
+      "accountingMethod": "Muhasebe Yöntemi",
+      "warehouse": "Depo",
+      "address": "Adres",
+      "notProvided": "Belirtilmedi",
+      "costCurrency": "Varsayılan Maliyet Para Birimi",
+      "companyBaseCurrency": "Şirket ana para birimi",
+      "inventoryAssetAccount": "Varsayılan Stok Varlık Hesabı",
+      "notSelected": "Seçilmedi",
+      "notSelectedRecommended": "Seçilmedi (önerilen)",
+      "cogsAccount": "Varsayılan Satılan Malın Maliyeti Hesabı",
+      "notSelectedOptional": "Seçilmedi (isteğe bağlı)",
+      "allowNegativeStock": "Eksi Stoka İzin Ver",
+      "autoGenerateCodes": "Stok Kartı Kodlarını Otomatik Oluştur",
+      "itemCodeRule": "Stok Kartı Kod Kuralı",
+      "itemCodeRuleValue": "{{prefix}} / sonraki #{{next}}",
+      "noPrefix": "ön ek yok",
+      "onceNotice": "Başlatma bir kez çalışır; ardından Stok panosu canlı verilerle açılır."
+    }
+  },
   "itemSelector": {
     "placeholder": "Kalem sec...",
     "refresh": "Kalemleri yenile",
@@ -25,5 +142,86 @@
     "default": "Varsayilan",
     "createRequired": "Depo kodu ve adi zorunludur.",
     "createFailed": "Depo olusturulamadi."
+  },
+  "movements": {
+    "title": "Stok Hareketleri",
+    "subtitle": "Tüm ürün ve depolardaki stok hareketlerinin kronolojik denetimi",
+    "generate": "Rapor oluştur",
+    "loading": "Stok hareketleri yükleniyor...",
+    "loadFailed": "Stok hareketleri yüklenemedi.",
+    "empty": "Seçilen tarihlerde stok hareketi yok.",
+    "filters": { "from": "Başlangıç tarihi", "to": "Bitiş tarihi" },
+    "columns": {
+      "date": "Tarih", "item": "Ürün", "warehouse": "Depo", "type": "Tür",
+      "direction": "Yön", "quantity": "Miktar", "costBase": "Ana para birimi maliyeti"
+    },
+    "directions": { "IN": "Giriş", "OUT": "Çıkış" },
+    "types": {
+      "OPENING_STOCK": "Açılış stoku", "PURCHASE_RECEIPT": "Satın alma girişi",
+      "SALES_DELIVERY": "Satış teslimatı", "ADJUSTMENT_IN": "Artış düzeltmesi",
+      "ADJUSTMENT_OUT": "Azalış düzeltmesi", "TRANSFER_IN": "Transfer girişi",
+      "TRANSFER_OUT": "Transfer çıkışı", "RETURN_IN": "İade girişi", "RETURN_OUT": "İade çıkışı"
+    }
+  },
+  "adjustments": {
+    "title": "Stok Düzeltmeleri",
+    "new": "Yeni Düzeltme",
+    "searchPlaceholder": "Düzeltme, depo veya neden ara...",
+    "empty": "Stok düzeltmesi bulunamadı",
+    "apply": "Uygula",
+    "clearFilters": "Filtreleri Temizle",
+    "statuses": { "all": "Tümü", "draft": "Taslak", "posted": "Kaydedildi" },
+    "reasons": {
+      "correction": "Düzeltme", "loss": "Kayıp", "damage": "Hasar",
+      "found": "Bulunan stok", "expired": "Son kullanma tarihi geçmiş", "other": "Diğer"
+    },
+    "detail": {
+      "newTitle": "Yeni Stok Düzeltmesi",
+      "title": "Stok Düzeltmesi",
+      "subtitle": "Sayılan stok miktarlarını kontrollü kayıt ile düzeltin",
+      "backToList": "Düzeltmelere dön",
+      "notFound": "Stok düzeltmesi bulunamadı.",
+      "reason": "Neden",
+      "postingControl": "Kayıt Kontrolü",
+      "postingNotice": "Taslak düzeltmeler inceleme sonrası kaydedilebilir. Kaydedilmiş düzeltmeler kilitlidir ve düzeltme için yeni belge gerekir.",
+      "details": "Düzeltme Ayrıntıları",
+      "warehouse": "Depo",
+      "selectWarehouse": "Depo seçin",
+      "date": "Düzeltme Tarihi",
+      "notes": "Notlar",
+      "optional": "İsteğe bağlı",
+      "adjustmentLines": "Düzeltme Satırları",
+      "addItem": "Ürün Ekle",
+      "document": "Belge",
+      "reference": "Referans",
+      "new": "Yeni",
+      "status": "Durum",
+      "readinessTitle": "Hazırlık",
+      "totals": "Toplamlar",
+      "linesLabel": "Satırlar",
+      "qtyChange": "Miktar Değişimi",
+      "adjustmentValue": "Düzeltme Değeri",
+      "adjustment": "Düzeltme",
+      "valueBase": "Ana Para Birimi Değeri",
+      "lines": {
+        "item": "Ürün", "selectItem": "Ürün seçin", "currentQty": "Mevcut Miktar",
+        "newQty": "Yeni Miktar", "adjustmentQty": "Düzeltme Miktarı", "unitCostBase": "Birim Maliyet (Ana)",
+        "adjustmentValue": "Düzeltme Değeri"
+      },
+      "readiness": {
+        "warehouse": "Depo seçildi", "date": "Düzeltme tarihi ayarlandı",
+        "lines": "En az bir miktar değişimi var", "value": "Düzeltme değeri hesaplandı"
+      },
+      "validation": {
+        "warehouseDateRequired": "Depo ve tarih zorunludur.",
+        "noChange": "Düzeltilecek stok miktarı değişimi yok."
+      },
+      "messages": { "created": "Stok düzeltmesi oluşturuldu.", "posted": "Stok düzeltmesi kaydedildi." },
+      "errors": { "loadFailed": "Stok düzeltmeleri yüklenemedi." },
+      "actions": {
+        "back": "Geri", "saving": "Kaydediliyor...", "create": "Düzeltme Oluştur",
+        "post": "Kaydet", "view": "Görüntüle"
+      }
+    }
   }
 }

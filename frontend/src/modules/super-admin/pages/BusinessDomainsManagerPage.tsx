@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { superAdminApi, BusinessDomain } from '../../../api/superAdmin';
 import { errorHandler } from '../../../services/errorHandler';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,11 @@ import {
   SortIcon,
 } from '../components/SuperAdminPage';
 import { useSuperAdminTable } from '../hooks/useSuperAdminTable';
+import {
+  getLocalizedBusinessDomainDescription,
+  getLocalizedBusinessDomainName,
+  getLocalizedMetadataSearchText,
+} from '../../../utils/localizedSystemMetadata';
 
 export const BusinessDomainsManagerPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -31,6 +36,15 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     loadDomains();
   }, []);
 
+  const searchableDomains = useMemo(
+    () =>
+      domains.map((domain) => ({
+        ...domain,
+        localizedSearchText: getLocalizedMetadataSearchText(domain, 'businessDomains', t),
+      })),
+    [domains, t]
+  );
+
   const {
     data: filteredDomains,
     searchQuery,
@@ -38,8 +52,8 @@ export const BusinessDomainsManagerPage: React.FC = () => {
     sortConfig,
     handleSort,
   } = useSuperAdminTable({
-    data: domains,
-    searchFields: ['name', 'id', 'description'],
+    data: searchableDomains,
+    searchFields: ['name', 'id', 'description', 'localizedSearchText'],
     initialSort: { field: 'name', direction: 'asc' },
   });
 
@@ -177,8 +191,12 @@ export const BusinessDomainsManagerPage: React.FC = () => {
                 filteredDomains.map((domain) => (
                   <tr key={domain.id} className={tableRowClass}>
                     <td className={`${tableCellClass} font-mono text-xs`}>{domain.id}</td>
-                    <td className={`${tableCellClass} font-medium text-slate-950`}>{domain.name}</td>
-                    <td className={tableCellClass}>{domain.description}</td>
+                    <td className={`${tableCellClass} font-medium text-slate-950`}>
+                      {getLocalizedBusinessDomainName(domain, t)}
+                    </td>
+                    <td className={tableCellClass}>
+                      {getLocalizedBusinessDomainDescription(domain, t)}
+                    </td>
                     <td className={tableCellClass}>
                       <button onClick={() => handleEdit(domain)} className="mr-4 text-sm font-medium text-slate-700 hover:text-slate-950">
                         {t('superAdmin.businessDomains.actions.edit')}

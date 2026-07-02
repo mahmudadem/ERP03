@@ -447,7 +447,9 @@ const InventoryRevaluationPage: React.FC = () => {
             onBack={() => navigate('/inventory/revaluations')}
             badges={
               <DocumentPill tone={selectedRevaluation?.status === 'POSTED' ? 'green' : 'amber'}>
-                {selectedRevaluation?.status || 'DRAFT'}
+                {selectedRevaluation?.status === 'POSTED'
+                  ? t('common.posted', 'Posted')
+                  : t('common.draft', 'Draft')}
               </DocumentPill>
             }
             forceRailDrawer={isWindowsMode}
@@ -551,7 +553,12 @@ const InventoryRevaluationPage: React.FC = () => {
                   <DocumentRailKeyValueList
                     items={[
                       { label: t('inventory.revaluations.rail.reference', 'Reference'), value: selectedRevaluation ? getRevaluationRef(selectedRevaluation.id) : t('common.new', 'New') },
-                      { label: t('inventory.revaluations.rail.status', 'Status'), value: selectedRevaluation?.status || t('common.draft', 'Draft') },
+                      {
+                        label: t('inventory.revaluations.rail.status', 'Status'),
+                        value: selectedRevaluation?.status === 'POSTED'
+                          ? t('common.posted', 'Posted')
+                          : t('common.draft', 'Draft'),
+                      },
                       { label: t('inventory.revaluations.rail.reason', 'Reason'), value: reasonLabels[reason] },
                       { label: t('inventory.revaluations.rail.date', 'Date'), value: date },
                       ...(selectedRevaluation?.voucherId

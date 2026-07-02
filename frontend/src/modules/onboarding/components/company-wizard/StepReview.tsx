@@ -6,11 +6,20 @@ import { Spinner } from '../../../../components/ui/Spinner';
 import { onboardingApi } from '../../api/onboardingApi';
 import { useTranslation } from 'react-i18next';
 import { getStarterModeOption } from './starterModeOptions';
+import { findSupportedCountry, getCountryLabel } from './countries';
+import { getLocalizedBundleName } from '../../../../utils/localizedSystemMetadata';
 
 export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack, bundles = [] }) => {
   const { t } = useTranslation('common');
   
   const selectedBundle = bundles.find(b => b.id === data.selectedBundleId);
+  const selectedBundleName = selectedBundle
+    ? getLocalizedBundleName(selectedBundle, t)
+    : '';
+  const selectedCountry = findSupportedCountry(data.country);
+  const selectedCountryLabel = selectedCountry
+    ? getCountryLabel(selectedCountry, t)
+    : data.country;
   const isStarterEnabled = data.autoInitializeModules !== false;
   const selectedMode = getStarterModeOption(data.accountingMode);
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -172,7 +181,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                </div>
                <div className="min-w-0">
                  <dt className="text-xs md:text-sm font-medium text-slate-500">{t('onboarding.companyWizard.review.location')}</dt>
-                 <dd className="text-sm md:text-base font-medium text-slate-900 truncate">{data.country}</dd>
+                 <dd className="text-sm md:text-base font-medium text-slate-900 truncate">{selectedCountryLabel}</dd>
                </div>
             </div>
 
@@ -192,7 +201,7 @@ export const StepReview: React.FC<WizardStepProps> = ({ data, updateData, onNext
                </div>
                <div className="w-full">
                  <dt className="text-xs md:text-sm font-medium text-slate-500">{t('onboarding.companyWizard.review.selectedBundle')}</dt>
-                 <dd className="text-sm md:text-base font-medium text-slate-900">{selectedBundle?.name}</dd>
+                 <dd className="text-sm md:text-base font-medium text-slate-900">{selectedBundleName}</dd>
                  <dd className="text-[10px] md:text-xs text-slate-500">{t('onboarding.companyWizard.review.modulesIncluded', { count: selectedBundle?.modules.length || 0 })}</dd>
                </div>
             </div>

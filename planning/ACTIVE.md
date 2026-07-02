@@ -6,6 +6,24 @@
 
 ---
 
+## Current task — Canonical worktree consolidation + frontend deploy (2026-07-02)
+
+**Goal:** collapse the leftover frontend/i18n/setup-wizard work from `ERP03-vercel-fix` and the
+useful dirty frontend polish from `ERP03-unified` into one canonical line, then merge/push/deploy
+from that single traceable lane.
+
+**Status:** consolidated into `D:\DEV2026\ERP03-consolidate` on
+`codex/consolidate-worktrees-20260702`. Frontend verification passed on the combined state:
+`npm run typecheck`, locale JSON parse, `git diff --check`, and `npm run build`.
+
+**Deploy scope:** frontend only. No runtime backend/function code changed in this consolidation;
+backend edits are seed/metadata support and docs, so a Firebase Functions deploy is not required.
+
+**Next:** commit the canonical consolidation branch, merge it to `main`, push, and deploy the
+frontend so future production tracing comes from one git-backed line.
+
+---
+
 ## 🧭 PLATFORM POLICY (owner decision 2026-07-02): **SQL leads, Firestore follows**
 
 SQL/PostgreSQL is the primary platform for all forward development; Firebase/Firestore stays

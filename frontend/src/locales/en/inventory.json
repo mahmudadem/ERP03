@@ -1,4 +1,121 @@
 {
+  "initializationWizard": {
+    "steps": {
+      "welcome": "Welcome",
+      "accountingMode": "Accounting Mode",
+      "warehouse": "Default Warehouse",
+      "settings": "Inventory Settings",
+      "confirm": "Confirm & Initialize"
+    },
+    "common": {
+      "yes": "Yes",
+      "no": "No",
+      "stepProgress": "Step {{current}} of {{total}}",
+      "back": "Back",
+      "next": "Next Step",
+      "initializing": "Initializing...",
+      "startInventory": "Start Inventory"
+    },
+    "errors": {
+      "warehouseNameRequired": "Warehouse name is required.",
+      "warehouseCodeRequired": "Warehouse code is required.",
+      "inventoryAssetRequired": "Default Inventory Asset Account is required.",
+      "startingNumber": "Starting number must be greater than 0.",
+      "initialize": "Initialization failed. Please try again."
+    },
+    "messages": {
+      "success": "Inventory setup completed successfully."
+    },
+    "welcome": {
+      "title": "Welcome to Inventory Setup",
+      "description": "Complete this guided wizard to create your first warehouse and baseline inventory settings.",
+      "warehouseTitle": "Warehouse",
+      "warehouseDescription": "Define your default warehouse for stock operations.",
+      "settingsTitle": "Inventory Settings",
+      "settingsDescription": "Set cost currency and negative stock policy.",
+      "itemCodesTitle": "Item Code Rules",
+      "itemCodesDescription": "Optionally auto-generate item codes."
+    },
+    "accounting": {
+      "integrationTitle": "Accounting Integration",
+      "notEnabledTitle": "Accounting Not Enabled",
+      "notEnabledDescription": "Inventory operations will track quantities and costs but will not create financial or general-ledger postings.",
+      "enableInstructions": "To enable financial impact, activate Accounting from Company Admin → Modules, then complete Accounting setup.",
+      "availableLater": "Accounting mode becomes available after Accounting is enabled. You can configure it later from Inventory Settings.",
+      "modeTitle": "Inventory Accounting Mode",
+      "modeDescription": "Choose when stock-related accounting should be recognized.",
+      "modes": {
+        "periodic": {
+          "title": "Periodic",
+          "description": "Invoices post Sales and Purchases only. Stock quantities still move, but Inventory and COGS stay out of the ledger until reporting time."
+        },
+        "invoiceDriven": {
+          "title": "Invoice-driven",
+          "description": "Operational stock documents remain non-financial. Sales and Purchase Invoices create the accounting effect."
+        },
+        "perpetual": {
+          "title": "Perpetual",
+          "description": "Delivery and receipt posting can create real-time Inventory and COGS accounting."
+        }
+      }
+    },
+    "warehouse": {
+      "title": "Default Warehouse",
+      "description": "Create the default warehouse used for opening stock and movements.",
+      "name": "Name",
+      "defaultName": "Main Warehouse",
+      "code": "Code",
+      "address": "Address (Optional)",
+      "addressPlaceholder": "Warehouse address"
+    },
+    "settings": {
+      "title": "Inventory Settings",
+      "costCurrency": "Default Cost Currency",
+      "costCurrencyPlaceholder": "Leave blank to use company base currency",
+      "accountMapping": "Account Mapping",
+      "accountMappingLater": "Account mapping will be configured when Accounting is enabled. You can set Inventory Asset and COGS accounts later from Inventory Settings.",
+      "inventoryAssetAccount": "Default Inventory Asset Account",
+      "selectInventoryAsset": "Select inventory asset account",
+      "inventoryAssetHelp": {
+        "perpetual": "Required for perpetual inventory. This balance-sheet account holds the value of stock on hand.",
+        "periodic": "Recommended for periodic opening stock and report-time goods inventory. Periodic documents do not post live Inventory or COGS.",
+        "invoiceDriven": "Recommended fallback for invoice-driven stock purchases and inventory recognition."
+      },
+      "selectorHelp": "Type an account code or name, then press Enter or Alt+Down to search. If no match exists, create a new account from the selector dialog.",
+      "cogsAccount": "Default COGS Account",
+      "selectCogs": "Select COGS account",
+      "cogsHelp": "Optional fallback used when sold stock needs a cost posting and the item or category has no COGS account.",
+      "cogsSelectorHelp": "Use the same selector behavior here: type, press Enter or Alt+Down to search, and create the account if it does not exist.",
+      "allowNegativeStock": "Allow Negative Stock",
+      "allowNegativeStockHelp": "When enabled, stock can go below zero.",
+      "autoGenerateCodes": "Auto-generate Item Codes",
+      "autoGenerateCodesHelp": "Generate item codes from a prefix and sequence.",
+      "prefix": "Prefix",
+      "startingNumber": "Starting Number"
+    },
+    "confirm": {
+      "title": "Confirm & Initialize",
+      "description": "Review your setup before creating inventory defaults.",
+      "noAccountingWarning": "Accounting is not enabled. This initialization will set up Inventory operations only; no financial or general-ledger postings will be created.",
+      "accountingMethod": "Accounting Method",
+      "warehouse": "Warehouse",
+      "address": "Address",
+      "notProvided": "Not provided",
+      "costCurrency": "Default Cost Currency",
+      "companyBaseCurrency": "Company base currency",
+      "inventoryAssetAccount": "Default Inventory Asset Account",
+      "notSelected": "Not selected",
+      "notSelectedRecommended": "Not selected (recommended)",
+      "cogsAccount": "Default COGS Account",
+      "notSelectedOptional": "Not selected (optional)",
+      "allowNegativeStock": "Allow Negative Stock",
+      "autoGenerateCodes": "Auto-generate Item Codes",
+      "itemCodeRule": "Item Code Rule",
+      "itemCodeRuleValue": "{{prefix}} / next #{{next}}",
+      "noPrefix": "no prefix",
+      "onceNotice": "Initialization runs once, then the Inventory dashboard loads with live data."
+    }
+  },
   "itemSelector": {
     "placeholder": "Select item...",
     "refresh": "Refresh items",
@@ -25,5 +142,86 @@
     "default": "Default",
     "createRequired": "Warehouse code and name are required.",
     "createFailed": "Failed to create warehouse."
+  },
+  "movements": {
+    "title": "Stock Movements",
+    "subtitle": "Chronological stock movement audit across all items and warehouses",
+    "generate": "Generate report",
+    "loading": "Loading stock movements...",
+    "loadFailed": "Failed to load stock movements.",
+    "empty": "No stock movements match the selected dates.",
+    "filters": { "from": "From date", "to": "To date" },
+    "columns": {
+      "date": "Date", "item": "Item", "warehouse": "Warehouse", "type": "Type",
+      "direction": "Direction", "quantity": "Qty", "costBase": "Cost Base"
+    },
+    "directions": { "IN": "In", "OUT": "Out" },
+    "types": {
+      "OPENING_STOCK": "Opening stock", "PURCHASE_RECEIPT": "Purchase receipt",
+      "SALES_DELIVERY": "Sales delivery", "ADJUSTMENT_IN": "Adjustment in",
+      "ADJUSTMENT_OUT": "Adjustment out", "TRANSFER_IN": "Transfer in",
+      "TRANSFER_OUT": "Transfer out", "RETURN_IN": "Return in", "RETURN_OUT": "Return out"
+    }
+  },
+  "adjustments": {
+    "title": "Stock Adjustments",
+    "new": "New Adjustment",
+    "searchPlaceholder": "Search adjustment, warehouse, reason...",
+    "empty": "No stock adjustments found",
+    "apply": "Apply",
+    "clearFilters": "Clear Filters",
+    "statuses": { "all": "All", "draft": "Draft", "posted": "Posted" },
+    "reasons": {
+      "correction": "Correction", "loss": "Loss", "damage": "Damage",
+      "found": "Found stock", "expired": "Expired", "other": "Other"
+    },
+    "detail": {
+      "newTitle": "New Stock Adjustment",
+      "title": "Stock Adjustment",
+      "subtitle": "Adjust counted inventory quantities with controlled posting",
+      "backToList": "Back to adjustments",
+      "notFound": "Stock adjustment not found.",
+      "reason": "Reason",
+      "postingControl": "Posting Control",
+      "postingNotice": "Draft adjustments can be posted after review. Posted adjustments are locked and corrections require a new adjustment.",
+      "details": "Adjustment Details",
+      "warehouse": "Warehouse",
+      "selectWarehouse": "Select warehouse",
+      "date": "Adjustment Date",
+      "notes": "Notes",
+      "optional": "Optional",
+      "adjustmentLines": "Adjustment Lines",
+      "addItem": "Add Item",
+      "document": "Document",
+      "reference": "Reference",
+      "new": "New",
+      "status": "Status",
+      "readinessTitle": "Readiness",
+      "totals": "Totals",
+      "linesLabel": "Lines",
+      "qtyChange": "Qty Change",
+      "adjustmentValue": "Adjustment Value",
+      "adjustment": "Adjustment",
+      "valueBase": "Value Base",
+      "lines": {
+        "item": "Item", "selectItem": "Select item", "currentQty": "Current Qty",
+        "newQty": "New Qty", "adjustmentQty": "Adj Qty", "unitCostBase": "Unit Cost (Base)",
+        "adjustmentValue": "Adj Value"
+      },
+      "readiness": {
+        "warehouse": "Warehouse selected", "date": "Adjustment date set",
+        "lines": "At least one quantity change", "value": "Adjustment value resolved"
+      },
+      "validation": {
+        "warehouseDateRequired": "Warehouse and date are required.",
+        "noChange": "No stock quantity change to adjust."
+      },
+      "messages": { "created": "Stock adjustment created.", "posted": "Stock adjustment posted." },
+      "errors": { "loadFailed": "Failed to load stock adjustments." },
+      "actions": {
+        "back": "Back", "saving": "Saving...", "create": "Create Adjustment",
+        "post": "Post", "view": "View"
+      }
+    }
   }
 }

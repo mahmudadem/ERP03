@@ -172,15 +172,22 @@ export const parseCompanyDate = (
     }
 
     // Basic numerical validation
-    const nYear = Number(year);
+    const normalizedYear = String(year).length === 2 ? 2000 + Number(year) : Number(year);
+    const nYear = normalizedYear;
     const nMonth = Number(month);
     const nDay = Number(day);
 
     if (isNaN(nYear) || isNaN(nMonth) || isNaN(nDay)) return null;
+    if (nYear < 1000 || nMonth < 1 || nMonth > 12 || nDay < 1 || nDay > 31) return null;
 
     // Create date for validation
     const d = new Date(nYear, nMonth - 1, nDay);
-    if (isNaN(d.getTime())) return null;
+    if (
+      isNaN(d.getTime()) ||
+      d.getFullYear() !== nYear ||
+      d.getMonth() !== nMonth - 1 ||
+      d.getDate() !== nDay
+    ) return null;
 
     // Return as YYYY-MM-DD
     return `${String(nYear).padStart(4, '0')}-${String(nMonth).padStart(2, '0')}-${String(nDay).padStart(2, '0')}`;

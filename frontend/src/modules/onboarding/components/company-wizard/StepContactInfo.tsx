@@ -69,7 +69,7 @@ export const StepContactInfo: React.FC<WizardStepProps> = ({ data, updateData, o
       </div>
 
       {/* Navigation Footer */}
-      <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-slate-100 w-full flex-shrink-0 bg-white">
+      <div className="flex justify-between gap-3 mt-4 pt-4 border-t border-slate-100 w-full flex-shrink-0 bg-white">
         <button
           type="button"
           onClick={onBack}

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, ChevronLeft, ChevronRight, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
-import { Spinner } from '../../../components/ui/Spinner';
+import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
+import { ModuleSetupWizardShell } from '../../../components/shared/ModuleSetupWizardShell';
 import { useAccounts } from '../../../context/AccountsContext';
 import { useCompanyAccess } from '../../../context/CompanyAccessContext';
 import { inventoryApi } from '../../../api/inventoryApi';
@@ -654,91 +654,21 @@ const SalesInitializationWizard: React.FC<SalesInitializationWizardProps> = ({ o
   })();
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      <div className="w-full max-w-5xl h-[750px] flex flex-col bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-        <div className="px-8 pt-6 pb-4 bg-gradient-to-r from-primary-500 to-primary-600 flex-shrink-0">
-          <div className="flex items-center justify-between gap-2">
-            {stepTitles.map((_, index) => {
-              const isCompleted = index < currentStep;
-              const isCurrent = index === currentStep;
-
-              return (
-                <div key={index} className="flex items-center flex-1">
-                  <div
-                    className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                      isCompleted ? 'bg-white' : isCurrent ? 'bg-white ring-2 ring-white/50' : 'bg-white/30'
-                    }`}
-                  />
-                  {index < stepTitles.length - 1 && (
-                    <div className="flex-1 h-0.5 mx-2">
-                      <div className={`h-full transition-all duration-300 ${index < currentStep ? 'bg-white' : 'bg-white/30'}`} />
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div className="mt-3 flex items-center justify-between">
-            <span className="text-xs font-medium text-white/90">
-              Step {currentStep + 1} of {stepTitles.length}
-            </span>
-            <span className="text-xs font-semibold text-white">{Math.round(((currentStep + 1) / stepTitles.length) * 100)}%</span>
-          </div>
-        </div>
-
-        <div className="flex-1 overflow-y-auto p-8 min-h-0">{content}</div>
-
-        {error && (
-          <div className="px-8 pb-4">
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">{error}</div>
-          </div>
-        )}
-
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-          <button
-            type="button"
-            onClick={goBack}
-            disabled={currentStep === 0 || submitting}
-            className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <ChevronLeft className="w-4 h-4" />
-            Back
-          </button>
-
-          {currentStep < stepTitles.length - 1 ? (
-            <button
-              type="button"
-              onClick={goNext}
-              disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              Next
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          ) : (
-            <button
-              type="button"
-              onClick={initialize}
-              disabled={submitting}
-              className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-            >
-              {submitting ? (
-                <>
-                  <Spinner size="sm" />
-                  Initializing...
-                </>
-              ) : (
-                <>
-                  <CheckCircle className="w-4 h-4" />
-                  Complete Setup
-                </>
-              )}
-            </button>
-          )}
-        </div>
-      </div>
-    </div>
+    <ModuleSetupWizardShell
+      steps={stepTitles}
+      currentStep={currentStep}
+      error={error}
+      submitting={submitting}
+      backLabel="Back"
+      nextLabel="Next"
+      completeLabel="Complete Setup"
+      submittingLabel="Initializing..."
+      onBack={goBack}
+      onNext={goNext}
+      onComplete={initialize}
+    >
+      {content}
+    </ModuleSetupWizardShell>
   );
 };
 

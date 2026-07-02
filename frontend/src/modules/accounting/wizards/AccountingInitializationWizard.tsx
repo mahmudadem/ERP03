@@ -1,12 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom'; import { useQueryClient } from '@tanstack/react-query'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { companyModulesApi } from '../../../api/companyModules'; import { systemMetadataApi } from '../../../api/systemMetadata'; import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents'; import { Calculator, Calendar, DollarSign, BookOpen, ChevronRight, ChevronLeft, CheckCircle, Search, Badge, AlertTriangle, FileCheck} from 'lucide-react';
+import { useTranslation } from 'react-i18next';
+import { useNavigate } from 'react-router-dom'; import { useQueryClient } from '@tanstack/react-query'; import { useCompanyAccess } from '../../../context/CompanyAccessContext'; import { companyModulesApi } from '../../../api/companyModules'; import { systemMetadataApi } from '../../../api/systemMetadata'; import { emitCompanyModulesRefresh } from '../../../utils/companyModulesEvents'; import { Calculator, Calendar, DollarSign, BookOpen, ChevronRight, CheckCircle, Search, Badge, AlertTriangle, FileCheck} from 'lucide-react';
 import { Spinner } from '../../../components/ui/Spinner';
+import { ModuleSetupWizardShell } from '../../../components/shared/ModuleSetupWizardShell';
 import { COATreePreview } from '../components/COATreePreview';
 import {
   loadSystemVoucherTypeGroups,
   SystemVoucherTypeGroup,
 } from '../services/voucherTypesService';
 import { getCountryDefaults } from '../utils/countryDefaults';
+import {
+  getLocalizedCoaTemplateSearchText,
+  getLocalizedCoaTemplateText,
+  getLocalizedCurrencyName,
+  getLocalizedCurrencySearchText,
+} from '../../../utils/localizedSystemMetadata';
 
 interface AccountingSetupData {
   fiscalYearStart: string; // MM-DD format
@@ -49,6 +57,8 @@ interface CoaTemplate {
  * Multi-step wizard to configure accounting module
  */
 export const AccountingInitializationWizard: React.FC = () => {
+  const { t } = useTranslation('accounting');
+  const { t: tCommon } = useTranslation('common');
   const { companyId, company, refreshCompany } = useCompanyAccess();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
@@ -135,7 +145,7 @@ export const AccountingInitializationWizard: React.FC = () => {
         }));
       } catch (err) {
         console.error('Failed to load metadata:', err);
-        setError('Failed to load wizard data. Please refresh the page.');
+        setError(t('initializationWizard.errors.loadData'));
       } finally {
         setIsLoadingData(false);
       }
@@ -164,7 +174,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       setError(null);
 
       if (!setupData.baseCurrency) {
-        setError('Please select a base currency before completing setup.');
+        setError(t('initializationWizard.errors.baseCurrencyRequired'));
         return;
       }
 
@@ -189,7 +199,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       navigate('/accounting', { replace: true });
     } catch (err: any) {
       console.error('Failed to initialize accounting module:', err);
-      setError(err.response?.data?.message || 'Failed to complete setup. Please try again.');
+      setError(err.response?.data?.message || t('initializationWizard.errors.complete'));
     } finally {
       setIsCompleting(false);
     }
@@ -198,17 +208,17 @@ export const AccountingInitializationWizard: React.FC = () => {
   // Helper function for complexity badges
   const getComplexityBadge = (complexity: string) => {
     const badges = {
-      custom: { color: 'bg-purple-100 text-purple-700', label: 'Custom' },
-      low: { color: 'bg-green-100 text-green-700', label: 'Simple' },
-      medium: { color: 'bg-yellow-100 text-yellow-700', label: 'Medium' },
-      high: { color: 'bg-red-100 text-red-700', label: 'Advanced' },
+      custom: { color: 'bg-purple-100 text-purple-700', label: t('initializationWizard.complexity.custom') },
+      low: { color: 'bg-green-100 text-green-700', label: t('initializationWizard.complexity.low') },
+      medium: { color: 'bg-yellow-100 text-yellow-700', label: t('initializationWizard.complexity.medium') },
+      high: { color: 'bg-red-100 text-red-700', label: t('initializationWizard.complexity.high') },
     };
     return badges[complexity as keyof typeof badges] || badges.medium;
   };
 
   const steps = [
     {
-      title: 'Welcome',
+      title: t('initializationWizard.steps.welcome'),
       icon: Calculator,
       content: (
         <div className="text-center py-8">
@@ -216,92 +226,92 @@ export const AccountingInitializationWizard: React.FC = () => {
             <Calculator className="w-10 h-10 text-primary-600" />
           </div>
           <h2 className="text-3xl font-bold text-gray-900 mb-4">
-            Welcome to Accounting Setup
+            {t('initializationWizard.welcome.title')}
           </h2>
           <p className="text-lg text-gray-600 mb-8 max-w-2xl mx-auto">
-            Let's configure your accounting foundation. This wizard will help you set up:
+            {t('initializationWizard.welcome.description')}
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-left">
+          <div className="grid md:grid-cols-3 gap-6 max-w-3xl mx-auto text-start">
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <Calendar className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Fiscal Year</h3>
-              <p className="text-sm text-gray-600">Define your accounting period</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t('initializationWizard.welcome.fiscalYearTitle')}</h3>
+              <p className="text-sm text-gray-600">{t('initializationWizard.welcome.fiscalYearDescription')}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <DollarSign className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Base Currency</h3>
-              <p className="text-sm text-gray-600">Set your default currency</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t('initializationWizard.welcome.baseCurrencyTitle')}</h3>
+              <p className="text-sm text-gray-600">{t('initializationWizard.welcome.baseCurrencyDescription')}</p>
             </div>
             <div className="p-4 bg-gray-50 rounded-lg border border-gray-200">
               <BookOpen className="w-8 h-8 text-primary-600 mb-3" />
-              <h3 className="font-semibold text-gray-900 mb-1">Chart of Accounts</h3>
-              <p className="text-sm text-gray-600">Choose your account template</p>
+              <h3 className="font-semibold text-gray-900 mb-1">{t('initializationWizard.welcome.coaTitle')}</h3>
+              <p className="text-sm text-gray-600">{t('initializationWizard.welcome.coaDescription')}</p>
             </div>
           </div>
         </div>
       ),
     },
     {
-      title: 'Fiscal Year',
+      title: t('initializationWizard.steps.fiscalYear'),
       icon: Calendar,
       content: (
         <div className="py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Set Your Fiscal Year</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t('initializationWizard.fiscalYear.title')}</h2>
           <p className="text-gray-600 mb-8 text-center">
-            Choose the start and end dates for your accounting year
+            {t('initializationWizard.fiscalYear.description')}
           </p>
           
           <div className="max-w-md mx-auto space-y-6">
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Fiscal Year Start (Month-Day)
+                {t('initializationWizard.fiscalYear.startLabel')}
               </label>
               <input
                 type="text"
                 value={setupData.fiscalYearStart}
                 onChange={(e) => setSetupData({ ...setupData, fiscalYearStart: e.target.value })}
-                placeholder="MM-DD (e.g., 01-01)"
+                placeholder={t('initializationWizard.fiscalYear.startPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Format: MM-DD (e.g., 01-01 for January 1st)</p>
+              <p className="text-xs text-gray-500 mt-1">{t('initializationWizard.fiscalYear.startHelp')}</p>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Fiscal Year End (Month-Day)
+                {t('initializationWizard.fiscalYear.endLabel')}
               </label>
               <input
                 type="text"
                 value={setupData.fiscalYearEnd}
                 onChange={(e) => setSetupData({ ...setupData, fiscalYearEnd: e.target.value })}
-                placeholder="MM-DD (e.g., 12-31)"
+                placeholder={t('initializationWizard.fiscalYear.endPlaceholder')}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               />
-              <p className="text-xs text-gray-500 mt-1">Format: MM-DD (e.g., 12-31 for December 31st)</p>
+              <p className="text-xs text-gray-500 mt-1">{t('initializationWizard.fiscalYear.endHelp')}</p>
             </div>
 
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">
-                Reporting Period Scheme
+                {t('initializationWizard.fiscalYear.periodSchemeLabel')}
               </label>
               <select
                 value={setupData.periodScheme}
                 onChange={(e) => setSetupData({ ...setupData, periodScheme: e.target.value as any })}
                 className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
               >
-                <option value="MONTHLY">Monthly (12 periods)</option>
-                <option value="QUARTERLY">Quarterly (4 periods)</option>
-                <option value="SEMI_ANNUAL">Semi-Annual (2 periods)</option>
+                <option value="MONTHLY">{t('initializationWizard.periodSchemes.monthlyWithCount')}</option>
+                <option value="QUARTERLY">{t('initializationWizard.periodSchemes.quarterlyWithCount')}</option>
+                <option value="SEMI_ANNUAL">{t('initializationWizard.periodSchemes.semiAnnualWithCount')}</option>
               </select>
-              <p className="text-xs text-gray-500 mt-1">Defines how your accounting periods will be generated</p>
+              <p className="text-xs text-gray-500 mt-1">{t('initializationWizard.fiscalYear.periodSchemeHelp')}</p>
             </div>
 
             <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <p className="text-sm text-blue-800">
-                <strong>Common Options:</strong><br />
-                • Calendar Year: 01-01 to 12-31<br />
-                • Fiscal Year (US): 10-01 to 09-30<br />
-                • Fiscal Year (UK): 04-01 to 03-31
+                <strong>{t('initializationWizard.fiscalYear.commonOptions')}</strong><br />
+                {t('initializationWizard.fiscalYear.calendarYear')}<br />
+                {t('initializationWizard.fiscalYear.usFiscalYear')}<br />
+                {t('initializationWizard.fiscalYear.ukFiscalYear')}
               </p>
             </div>
           </div>
@@ -309,33 +319,33 @@ export const AccountingInitializationWizard: React.FC = () => {
       ),
     },
     {
-      title: 'Base Currency',
+      title: t('initializationWizard.steps.baseCurrency'),
       icon: DollarSign,
       content: (
         <div className="py-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">Select Base Currency</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">{t('initializationWizard.currency.title')}</h2>
           <p className="text-gray-600 mb-8 text-center">
-            This will be your primary currency for all transactions
+            {t('initializationWizard.currency.description')}
           </p>
           
           
           <div className="max-w-4xl mx-auto space-y-4">
             {/* Search Bar */}
             <div className="relative max-w-md mx-auto">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+              <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
               <input
                 type="text"
-                placeholder="Search currencies..."
+                placeholder={t('initializationWizard.currency.searchPlaceholder')}
                 value={currencySearch}
                 onChange={(e) => setCurrencySearch(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="w-full ps-10 pe-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
             {isLoadingData ? (
               <div className="flex items-center justify-center py-12">
                 <Spinner size="lg" />
-                <span className="ml-3 text-gray-600">Loading currencies...</span>
+                <span className="ms-3 text-gray-600">{t('initializationWizard.currency.loading')}</span>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-[400px] overflow-y-auto pr-2 p-1">
@@ -343,9 +353,10 @@ export const AccountingInitializationWizard: React.FC = () => {
                   const companyCurrency = company?.country ? getCountryDefaults(company.country).currency : '';
                   
                   return currencies
-                    .filter(c => 
-                      c.code.toLowerCase().includes(currencySearch.toLowerCase()) || 
-                      c.name.toLowerCase().includes(currencySearch.toLowerCase())
+                    .filter(c =>
+                      getLocalizedCurrencySearchText(c, tCommon).includes(
+                        currencySearch.toLocaleLowerCase()
+                      )
                     )
                     .sort((a, b) => {
                       if (a.code === companyCurrency) return -1;
@@ -358,7 +369,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                       <button
                         key={currency.code}
                         onClick={() => setSetupData({ ...setupData, baseCurrency: currency.code })}
-                        className={`p-3 rounded-lg border-2 transition-all text-left hover:border-primary-500 flex flex-col items-center justify-center gap-1 ${
+                        className={`p-3 rounded-lg border-2 transition-all text-start hover:border-primary-500 flex flex-col items-center justify-center gap-1 ${
                           setupData.baseCurrency === currency.code
                             ? 'border-primary-500 bg-primary-50 shadow-sm'
                             : 'border-gray-200 bg-white'
@@ -368,9 +379,11 @@ export const AccountingInitializationWizard: React.FC = () => {
                           <span className="text-xl font-bold">{currency.symbol}</span>
                           <span className="font-bold text-gray-900">{currency.code}</span>
                         </div>
-                        <p className="text-xs text-center text-gray-600 truncate w-full">{currency.name}</p>
+                        <p className="text-xs text-center text-gray-600 truncate w-full">
+                          {getLocalizedCurrencyName(currency, tCommon)}
+                        </p>
                         {currency.code === companyCurrency && (
-                          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 rounded-full mt-1">Recommended</span>
+                          <span className="text-[10px] bg-blue-100 text-blue-700 font-bold px-1.5 rounded-full mt-1">{t('initializationWizard.common.recommended')}</span>
                         )}
                       </button>
                     ));
@@ -382,7 +395,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       ),
     },
     {
-      title: 'Chart of Accounts',
+      title: t('initializationWizard.steps.chartOfAccounts'),
       icon: BookOpen,
       content: (() => {
         const selectedTemplate = coaTemplates.find(t => t.id === setupData.coaTemplate);
@@ -391,20 +404,16 @@ export const AccountingInitializationWizard: React.FC = () => {
         const filteredTemplates = coaTemplates.filter(template => {
           if (!templateSearch) return true;
           const searchLower = templateSearch.toLowerCase();
-          return (
-            template.name.toLowerCase().includes(searchLower) ||
-            template.description.toLowerCase().includes(searchLower) ||
-            template.recommended.toLowerCase().includes(searchLower)
-          );
+          return getLocalizedCoaTemplateSearchText(template, tCommon).includes(searchLower);
         });
         
         return (
           <div className="py-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-              Choose Chart of Accounts Template
+              {t('initializationWizard.coa.title')}
             </h2>
             <p className="text-gray-600 mb-6 text-center">
-              Select a template that matches your business complexity
+              {t('initializationWizard.coa.description')}
             </p>
             
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 max-w-6xl mx-auto">
@@ -413,13 +422,13 @@ export const AccountingInitializationWizard: React.FC = () => {
                 {/* Search Bar */}
                 <div className="mb-4">
                   <div className="relative">
-                    <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <Search className="absolute start-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
                       type="text"
-                      placeholder="Search templates..."
+                      placeholder={t('initializationWizard.coa.searchPlaceholder')}
                       value={templateSearch}
                       onChange={(e) => setTemplateSearch(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                      className="w-full ps-10 pe-4 py-2.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
                     />
                   </div>
                 </div>
@@ -429,14 +438,14 @@ export const AccountingInitializationWizard: React.FC = () => {
                 {isLoadingData ? (
                   <div className="flex items-center justify-center py-12">
                     <Spinner size="lg" />
-                    <span className="ml-3 text-gray-600">Loading templates...</span>
+                    <span className="ms-3 text-gray-600">{t('initializationWizard.coa.loading')}</span>
                   </div>
                 ) : filteredTemplates.length === 0 ? (
                   <div className="text-center py-12">
                     <Search className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 font-medium">No templates found</p>
+                    <p className="text-gray-600 font-medium">{t('initializationWizard.coa.noTemplates')}</p>
                     <p className="text-sm text-gray-500 mt-1">
-                      Try adjusting your search criteria
+                      {t('initializationWizard.coa.adjustSearch')}
                     </p>
                   </div>
                 ) : (
@@ -450,7 +459,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                     <button
                       key={template.id}
                       onClick={() => setSetupData({ ...setupData, coaTemplate: template.id })}
-                      className={`w-full p-6 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
+                      className={`w-full p-6 rounded-lg border-2 transition-all text-start hover:border-primary-500 ${
                         setupData.coaTemplate === template.id
                           ? 'border-primary-500 bg-primary-50'
                           : 'border-gray-200 bg-white'
@@ -458,8 +467,12 @@ export const AccountingInitializationWizard: React.FC = () => {
                     >
                       <div className="flex items-start justify-between mb-3">
                         <div>
-                          <h3 className="text-lg font-bold text-gray-900 mb-1">{template.name}</h3>
-                          <p className="text-sm text-gray-600">{template.description}</p>
+                          <h3 className="text-lg font-bold text-gray-900 mb-1">
+                            {getLocalizedCoaTemplateText(template, 'name', tCommon)}
+                          </h3>
+                          <p className="text-sm text-gray-600">
+                            {getLocalizedCoaTemplateText(template, 'description', tCommon)}
+                          </p>
                         </div>
                         {setupData.coaTemplate === template.id && (
                           <CheckCircle className="w-6 h-6 text-primary-600 flex-shrink-0" />
@@ -467,13 +480,13 @@ export const AccountingInitializationWizard: React.FC = () => {
                       </div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <div className="inline-flex items-center px-3 py-1 bg-blue-100 text-blue-700 text-xs font-medium rounded-full">
-                          {template.recommended}
+                          {getLocalizedCoaTemplateText(template, 'recommended', tCommon)}
                         </div>
                         <div className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getComplexityBadge(template.complexity).color}`}>
                           {getComplexityBadge(template.complexity).label}
                         </div>
                         <div className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                          {template.accountCount} {template.accountCount === 1 ? 'account' : 'accounts'}
+                          {t('initializationWizard.coa.accountCount', { total: template.accountCount })}
                         </div>
                       </div>
                     </button>
@@ -489,9 +502,9 @@ export const AccountingInitializationWizard: React.FC = () => {
                 ) : (
                   <div className="bg-gray-50 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
                     <BookOpen className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                    <p className="text-gray-600 font-medium">Select a template to preview</p>
+                    <p className="text-gray-600 font-medium">{t('initializationWizard.coa.selectToPreview')}</p>
                     <p className="text-sm text-gray-500 mt-1">
-                      You'll see the account structure here
+                      {t('initializationWizard.coa.previewHelp')}
                     </p>
                   </div>
                 )}
@@ -502,7 +515,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       })(),
     },
     {
-      title: 'Voucher Types',
+      title: t('initializationWizard.steps.voucherTypes'),
       icon: FileCheck,
       content: (() => {
         const toggleType = (typeKey: string) => {
@@ -536,29 +549,32 @@ export const AccountingInitializationWizard: React.FC = () => {
         return (
           <div className="py-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-              Select Voucher Types
+              {t('initializationWizard.voucherTypes.title')}
             </h2>
             <p className="text-gray-600 mb-6 text-center">
-              Pick which accounting document types to install. Each type comes with one or more default form variants &mdash; you&apos;ll activate or customize them next.
+              {t('initializationWizard.voucherTypes.description')}
             </p>
 
             {/* Selection Controls */}
             <div className="flex justify-between items-center mb-6 max-w-4xl mx-auto">
               <p className="text-sm text-gray-600">
-                {setupData.selectedTypeKeys?.length || 0} of {voucherTypeGroups.length} types selected
+                {t('initializationWizard.voucherTypes.selectedCount', {
+                  selected: setupData.selectedTypeKeys?.length || 0,
+                  total: voucherTypeGroups.length,
+                })}
               </p>
               <div className="flex gap-2">
                 <button
                   onClick={selectAll}
                   className="px-3 py-1.5 text-sm text-primary-600 hover:bg-primary-50 rounded transition"
                 >
-                  Select All
+                  {t('initializationWizard.voucherTypes.selectAll')}
                 </button>
                 <button
                   onClick={selectNone}
                   className="px-3 py-1.5 text-sm text-gray-600 hover:bg-gray-50 rounded transition"
                 >
-                  Clear All
+                  {t('initializationWizard.voucherTypes.clearAll')}
                 </button>
               </div>
             </div>
@@ -568,14 +584,14 @@ export const AccountingInitializationWizard: React.FC = () => {
               {isLoadingData ? (
                 <div className="col-span-2 flex items-center justify-center py-12">
                   <Spinner size="lg" />
-                  <span className="ml-3 text-gray-600">Loading voucher types...</span>
+                  <span className="ms-3 text-gray-600">{t('initializationWizard.voucherTypes.loading')}</span>
                 </div>
               ) : voucherTypeGroups.length === 0 ? (
                 <div className="col-span-2 text-center py-12">
                   <FileCheck className="w-12 h-12 text-gray-400 mx-auto mb-3" />
-                  <p className="text-gray-600 font-medium">No voucher types available</p>
+                  <p className="text-gray-600 font-medium">{t('initializationWizard.voucherTypes.noneAvailable')}</p>
                   <p className="text-sm text-gray-500 mt-1">
-                    Contact your system administrator to configure voucher types
+                    {t('initializationWizard.voucherTypes.contactAdmin')}
                   </p>
                 </div>
               ) : (
@@ -594,7 +610,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                     <button
                       key={group.typeKey}
                       onClick={() => toggleType(group.typeKey)}
-                      className={`p-5 rounded-lg border-2 transition-all text-left hover:border-primary-500 ${
+                      className={`p-5 rounded-lg border-2 transition-all text-start hover:border-primary-500 ${
                         isSelected
                           ? 'border-primary-500 bg-primary-50'
                           : 'border-gray-200 bg-white'
@@ -603,24 +619,26 @@ export const AccountingInitializationWizard: React.FC = () => {
                       <div className="flex items-start justify-between mb-2">
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1 flex-wrap">
-                            <h3 className="text-lg font-bold text-gray-900">{group.name}</h3>
+                            <h3 className="text-lg font-bold text-gray-900">
+                              {t(`initializationWizard.voucherTypes.names.${group.typeKey}`, { defaultValue: group.name })}
+                            </h3>
                             {group.isRecommended && (
                               <span className="inline-flex items-center px-2 py-0.5 bg-blue-100 text-blue-700 text-xs font-medium rounded">
-                                Recommended
+                                {t('initializationWizard.common.recommended')}
                               </span>
                             )}
                             <span className="inline-flex items-center px-2 py-0.5 bg-slate-100 text-slate-700 text-xs font-medium rounded">
-                              {formCount} default form{formCount !== 1 ? 's' : ''}
+                              {t('initializationWizard.voucherTypes.defaultFormCount', { total: formCount })}
                             </span>
                           </div>
                           {variantLabels.length > 0 && (
                             <p className="text-xs text-gray-500 mt-1">
-                              Variants: {variantLabels.join(' · ')}
+                              {t('initializationWizard.voucherTypes.variants', { variants: variantLabels.join(' · ') })}
                             </p>
                           )}
                         </div>
                         {isSelected && (
-                          <CheckCircle className="w-6 h-6 text-primary-600 flex-shrink-0 ml-2" />
+                          <CheckCircle className="w-6 h-6 text-primary-600 flex-shrink-0 ms-2" />
                         )}
                       </div>
                     </button>
@@ -634,14 +652,11 @@ export const AccountingInitializationWizard: React.FC = () => {
               <div className="flex items-start gap-2">
                 <FileCheck className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-amber-800 space-y-1">
-                  <p className="font-semibold">These install as locked, inactive default templates.</p>
-                  <p>
-                    The schemas are available immediately, but no sidebar entries appear until you open
-                    <span className="font-semibold"> Tools &rarr; Forms Designer</span> and either:
-                  </p>
+                  <p className="font-semibold">{t('initializationWizard.voucherTypes.installNoticeTitle')}</p>
+                  <p>{t('initializationWizard.voucherTypes.installNoticeDescription')}</p>
                   <ul className="list-disc list-inside ml-1 space-y-0.5">
-                    <li><span className="font-semibold">Activate</span> a default form to use it as-is, or</li>
-                    <li><span className="font-semibold">Clone</span> it to create an editable variant.</li>
+                    <li>{t('initializationWizard.voucherTypes.activateInstruction')}</li>
+                    <li>{t('initializationWizard.voucherTypes.cloneInstruction')}</li>
                   </ul>
                 </div>
               </div>
@@ -651,7 +666,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       })(),
     },
     {
-      title: 'Review & Confirm',
+      title: t('initializationWizard.steps.review'),
       icon: CheckCircle,
       content: (() => {
         const selectedTemplate = coaTemplates.find(t => t.id === setupData.coaTemplate);
@@ -660,24 +675,24 @@ export const AccountingInitializationWizard: React.FC = () => {
         return (
           <div className="py-8 max-w-3xl mx-auto">
             <h2 className="text-2xl font-bold text-gray-900 mb-2 text-center">
-              Review Your Configuration
+              {t('initializationWizard.review.title')}
             </h2>
             <p className="text-gray-600 mb-8 text-center">
-              Please review your selections before initializing the accounting module
+              {t('initializationWizard.review.description')}
             </p>
 
             {/* Warning Banner */}
             <div className="mb-8 p-4 bg-yellow-50 border-l-4 border-yellow-400 rounded-r-lg">
               <div className="flex">
                 <AlertTriangle className="w-5 h-5 text-yellow-600 flex-shrink-0 mt-0.5" />
-                <div className="ml-3">
-                  <h3 className="text-sm font-semibold text-yellow-800">Important Notice</h3>
+                <div className="ms-3">
+                  <h3 className="text-sm font-semibold text-yellow-800">{t('initializationWizard.review.noticeTitle')}</h3>
                   <div className="mt-2 text-sm text-yellow-700">
                     <p className="mb-2">
-                      <strong>Initialization is permanent:</strong> Once completed, you cannot run this wizard again.
+                      {t('initializationWizard.review.permanentNotice')}
                     </p>
                     <p>
-                      <strong>Changes allowed:</strong> You can modify these settings later from the Accounting Settings page.
+                      {t('initializationWizard.review.changesNotice')}
                     </p>
                   </div>
                 </div>
@@ -689,23 +704,26 @@ export const AccountingInitializationWizard: React.FC = () => {
               {/* Fiscal Year */}
               <div className="bg-white border border-gray-200 rounded-lg p-6">
                 <div className="flex items-start">
-                  <Calendar className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
+                  <Calendar className="w-6 h-6 text-primary-600 me-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
                     <div className="grid grid-cols-2 gap-4 mb-4">
                       <div>
-                        <p className="text-sm text-gray-600">Start Date</p>
+                        <p className="text-sm text-gray-600">{t('initializationWizard.review.startDate')}</p>
                         <p className="text-base font-medium text-gray-900">{setupData.fiscalYearStart}</p>
                       </div>
                       <div>
-                        <p className="text-sm text-gray-600">End Date</p>
+                        <p className="text-sm text-gray-600">{t('initializationWizard.review.endDate')}</p>
                         <p className="text-base font-medium text-gray-900">{setupData.fiscalYearEnd}</p>
                       </div>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Period Scheme</p>
+                      <p className="text-sm text-gray-600">{t('initializationWizard.review.periodScheme')}</p>
                       <p className="text-base font-medium text-gray-900">
-                        {setupData.periodScheme === 'MONTHLY' ? 'Monthly' : 
-                         setupData.periodScheme === 'QUARTERLY' ? 'Quarterly' : 'Semi-Annual'}
+                        {setupData.periodScheme === 'MONTHLY'
+                          ? t('initializationWizard.periodSchemes.monthly')
+                          : setupData.periodScheme === 'QUARTERLY'
+                            ? t('initializationWizard.periodSchemes.quarterly')
+                            : t('initializationWizard.periodSchemes.semiAnnual')}
                       </p>
                     </div>
                   </div>
@@ -715,16 +733,16 @@ export const AccountingInitializationWizard: React.FC = () => {
               {/* Base Currency */}
               <div className="bg-white border border-gray-200 rounded-lg p-6">
                 <div className="flex items-start">
-                  <DollarSign className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
+                  <DollarSign className="w-6 h-6 text-primary-600 me-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Base Currency</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('initializationWizard.steps.baseCurrency')}</h3>
                     {selectedCurrency && (
                       <div>
                         <p className="text-base font-medium text-gray-900">
-                          {selectedCurrency.name} ({selectedCurrency.code})
+                          {getLocalizedCurrencyName(selectedCurrency, tCommon)} ({selectedCurrency.code})
                         </p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Symbol: {selectedCurrency.symbol}
+                          {t('initializationWizard.review.symbol', { symbol: selectedCurrency.symbol })}
                         </p>
                       </div>
                     )}
@@ -735,19 +753,23 @@ export const AccountingInitializationWizard: React.FC = () => {
               {/* COA Template */}
               <div className="bg-white border border-gray-200 rounded-lg p-6">
                 <div className="flex items-start">
-                  <BookOpen className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
+                  <BookOpen className="w-6 h-6 text-primary-600 me-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Chart of Accounts Template</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('initializationWizard.review.coaTemplate')}</h3>
                     {selectedTemplate && (
                       <div>
-                        <p className="text-base font-medium text-gray-900 mb-1">{selectedTemplate.name}</p>
-                        <p className="text-sm text-gray-600 mb-3">{selectedTemplate.description}</p>
+                        <p className="text-base font-medium text-gray-900 mb-1">
+                          {getLocalizedCoaTemplateText(selectedTemplate, 'name', tCommon)}
+                        </p>
+                        <p className="text-sm text-gray-600 mb-3">
+                          {getLocalizedCoaTemplateText(selectedTemplate, 'description', tCommon)}
+                        </p>
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className={`inline-flex items-center px-3 py-1 text-xs font-medium rounded-full ${getComplexityBadge(selectedTemplate.complexity).color}`}>
                             {getComplexityBadge(selectedTemplate.complexity).label}
                           </span>
                           <span className="inline-flex items-center px-3 py-1 bg-gray-100 text-gray-700 text-xs font-medium rounded-full">
-                            {selectedTemplate.accountCount} {selectedTemplate.accountCount === 1 ? 'account' : 'accounts'}
+                            {t('initializationWizard.coa.accountCount', { total: selectedTemplate.accountCount })}
                           </span>
                         </div>
                       </div>
@@ -759,9 +781,9 @@ export const AccountingInitializationWizard: React.FC = () => {
               {/* Voucher Types */}
               <div className="bg-white border border-gray-200 rounded-lg p-6">
                 <div className="flex items-start">
-                  <FileCheck className="w-6 h-6 text-primary-600 mr-3 flex-shrink-0 mt-1" />
+                  <FileCheck className="w-6 h-6 text-primary-600 me-3 flex-shrink-0 mt-1" />
                   <div className="flex-1">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Selected Voucher Types</h3>
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">{t('initializationWizard.review.selectedVoucherTypes')}</h3>
                     {setupData.selectedTypeKeys && setupData.selectedTypeKeys.length > 0 ? (
                       <div className="space-y-2">
                         {setupData.selectedTypeKeys.map(typeKey => {
@@ -769,24 +791,26 @@ export const AccountingInitializationWizard: React.FC = () => {
                           return group ? (
                             <div key={typeKey} className="flex items-center gap-2">
                               <CheckCircle className="w-4 h-4 text-primary-600" />
-                              <span className="font-medium">{group.name}</span>
+                              <span className="font-medium">
+                                {t(`initializationWizard.voucherTypes.names.${group.typeKey}`, { defaultValue: group.name })}
+                              </span>
                               <span className="text-sm text-gray-500">
-                                ({group.forms.length} default form{group.forms.length !== 1 ? 's' : ''})
+                                ({t('initializationWizard.voucherTypes.defaultFormCount', { total: group.forms.length })})
                               </span>
                             </div>
                           ) : null;
                         })}
                         <p className="text-sm text-gray-600 mt-3">
-                          Total: {setupData.selectedTypeKeys.length} type
-                          {setupData.selectedTypeKeys.length !== 1 ? 's' : ''},{' '}
-                          {voucherTypeGroups
-                            .filter(g => setupData.selectedTypeKeys?.includes(g.typeKey))
-                            .reduce((sum, g) => sum + g.forms.length, 0)}{' '}
-                          form variants will install as locked defaults.
+                          {t('initializationWizard.review.voucherSummary', {
+                            typeCount: setupData.selectedTypeKeys.length,
+                            formCount: voucherTypeGroups
+                              .filter(g => setupData.selectedTypeKeys?.includes(g.typeKey))
+                              .reduce((sum, g) => sum + g.forms.length, 0),
+                          })}
                         </p>
                       </div>
                     ) : (
-                      <p className="text-sm text-gray-600">No voucher types selected</p>
+                      <p className="text-sm text-gray-600">{t('initializationWizard.review.noVoucherTypes')}</p>
                     )}
                   </div>
                 </div>
@@ -797,9 +821,9 @@ export const AccountingInitializationWizard: React.FC = () => {
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <div className="flex">
                 <CheckCircle className="w-5 h-5 text-blue-600 flex-shrink-0 mt-0.5" />
-                <div className="ml-3">
+                <div className="ms-3">
                   <p className="text-sm text-blue-700">
-                    Ready to proceed? Click <strong>"Complete Setup"</strong> below to initialize your accounting module with these settings.
+                    {t('initializationWizard.review.ready')}
                   </p>
                 </div>
               </div>
@@ -811,7 +835,6 @@ export const AccountingInitializationWizard: React.FC = () => {
   ];
 
   const currentStepData = steps[currentStep];
-  const StepIcon = currentStepData.icon;
 
   // Show loading while checking if module is already initialized
   if (isCheckingInitialization || isLoadingData) {
@@ -819,7 +842,7 @@ export const AccountingInitializationWizard: React.FC = () => {
       <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center">
         <div className="text-center">
           <Spinner size="xl" className="mx-auto mb-4" />
-          <p className="text-gray-600">Loading wizard...</p>
+          <p className="text-gray-600">{t('initializationWizard.common.loadingWizard')}</p>
         </div>
       </div>
     );
@@ -837,8 +860,8 @@ export const AccountingInitializationWizard: React.FC = () => {
                 <CheckCircle className="w-7 h-7" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">Already Configured</h1>
-                <p className="text-primary-100 text-sm">Accounting module is ready to use</p>
+                <h1 className="text-2xl font-bold">{t('initializationWizard.alreadyConfigured.title')}</h1>
+                <p className="text-primary-100 text-sm">{t('initializationWizard.alreadyConfigured.subtitle')}</p>
               </div>
             </div>
           </div>
@@ -850,22 +873,20 @@ export const AccountingInitializationWizard: React.FC = () => {
             </div>
             
             <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Your accounting module has already been set up
+              {t('initializationWizard.alreadyConfigured.heading')}
             </h2>
             
             <p className="text-gray-600 mb-6 max-w-md mx-auto">
-              The accounting module wizard can only be run once. Your chart of accounts, 
-              fiscal year, and base currency have already been configured.
+              {t('initializationWizard.alreadyConfigured.description')}
             </p>
 
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-left max-w-md mx-auto">
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6 text-start max-w-md mx-auto">
               <h3 className="font-semibold text-blue-900 mb-2 flex items-center gap-2">
                 <Calculator className="w-5 h-5" />
-                Need to make changes?
+                {t('initializationWizard.alreadyConfigured.changesTitle')}
               </h3>
               <p className="text-sm text-blue-700">
-                To modify your accounting configuration, please go to the Accounting Settings page 
-                or contact your system administrator.
+                {t('initializationWizard.alreadyConfigured.changesDescription')}
               </p>
             </div>
 
@@ -879,7 +900,7 @@ export const AccountingInitializationWizard: React.FC = () => {
                        text-white font-semibold rounded-lg hover:from-primary-600 hover:to-primary-700
                        transition-all duration-200 shadow-lg hover:shadow-xl"
             >
-              Go to Accounting Module
+              {t('initializationWizard.alreadyConfigured.goToModule')}
               <ChevronRight className="w-5 h-5" />
             </button>
           </div>
@@ -889,110 +910,21 @@ export const AccountingInitializationWizard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex items-center justify-center p-4">
-      {/* Content */}
-      <div className="w-full max-w-5xl h-[750px] flex flex-col bg-white rounded-2xl shadow-xl border border-gray-200 overflow-hidden">
-        {/* Compact Progress Dots - Inside Card */}
-        <div className="px-8 pt-6 pb-4 bg-gradient-to-r from-primary-500 to-primary-600 flex-shrink-0">
-          <div className="flex items-center justify-between gap-2">
-              {steps.map((_, index) => {
-                const isCompleted = index < currentStep;
-                const isCurrent = index === currentStep;
-                
-                return (
-                  <div key={index} className="flex items-center flex-1">
-                    {/* Progress Dot */}
-                    <div
-                      className={`w-2.5 h-2.5 rounded-full transition-all duration-300 ${
-                        isCompleted
-                          ? 'bg-white'
-                          : isCurrent
-                          ? 'bg-white ring-2 ring-white/50'
-                          : 'bg-white/30'
-                      }`}
-                    />
-                    
-                    {/* Connector Line */}
-                    {index < steps.length - 1 && (
-                      <div className="flex-1 h-0.5 mx-2">
-                        <div
-                          className={`h-full transition-all duration-300 ${
-                            index < currentStep ? 'bg-white' : 'bg-white/30'
-                          }`}
-                        />
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-            
-            {/* Step Info */}
-            <div className="mt-3 flex items-center justify-between">
-              <span className="text-xs font-medium text-white/90">
-                Step {currentStep + 1} of {steps.length}
-              </span>
-              <span className="text-xs font-semibold text-white">
-                {Math.round(((currentStep + 1) / steps.length) * 100)}%
-              </span>
-            </div>
-          </div>
-
-        {/* Step Content */}
-        <div className="flex-1 overflow-y-auto p-8 min-h-0">
-          {currentStepData.content}
-        </div>
-
-          {/* Error */}
-          {error && (
-            <div className="px-8 pb-4">
-              <div className="p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
-                {error}
-              </div>
-            </div>
-          )}
-
-        {/* Navigation */}
-        <div className="px-8 py-6 bg-gray-50 border-t border-gray-200 flex items-center justify-between flex-shrink-0">
-          <button
-              onClick={handleBack}
-              disabled={currentStep === 0}
-              className="flex items-center gap-2 px-4 py-2 text-gray-700 hover:text-gray-900 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-            >
-              <ChevronLeft className="w-4 h-4" />
-              Back
-            </button>
-
-            {currentStep < steps.length - 1 ? (
-              <button
-                onClick={handleNext}
-                className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors"
-              >
-                Next
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            ) : (
-              <button
-                onClick={handleComplete}
-                disabled={isCompleting}
-                className="flex items-center gap-2 px-6 py-2.5 bg-primary-600 hover:bg-primary-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50"
-              >
-                {isCompleting ? (
-                  <>
-                    <Spinner size="sm" />
-                    Completing...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="w-4 h-4" />
-                    Complete Setup
-                  </>
-                )}
-              </button>
-            )}
-        </div>
-      </div>
-    </div>
+    <ModuleSetupWizardShell
+      steps={steps.map((step) => step.title)}
+      currentStep={currentStep}
+      error={error}
+      submitting={isCompleting}
+      backLabel={t('initializationWizard.common.back')}
+      nextLabel={t('initializationWizard.common.next')}
+      completeLabel={t('initializationWizard.common.completeSetup')}
+      submittingLabel={t('initializationWizard.common.completing')}
+      onBack={handleBack}
+      onNext={handleNext}
+      onComplete={handleComplete}
+    >
+      {currentStepData.content}
+    </ModuleSetupWizardShell>
   );
 };
 

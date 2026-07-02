@@ -2,7 +2,12 @@
 import React, { useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { WizardStepProps } from './types';
-import { COUNTRIES } from './countries';
+import {
+  SUPPORTED_COUNTRIES,
+  findSupportedCountry,
+  getCountryLabel,
+  getCountrySearchText,
+} from './countries';
 import { Upload, X, Building2, Globe, Search, Check, Info } from 'lucide-react';
 import { Spinner } from '../../../../components/ui/Spinner';
 import { cn } from '../../../../lib/utils';
@@ -13,7 +18,7 @@ const MAX_LOGO_SIZE = 5 * 1024 * 1024; // 5MB (original limit for selection)
 const ALLOWED_TYPES = ['image/png', 'image/jpeg', 'image/jpg', 'image/webp', 'image/x-icon'];
 
 export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack }) => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const [errors, setErrors] = React.useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = React.useState(false);
   const [countrySearch, setCountrySearch] = React.useState('');
@@ -21,6 +26,10 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
   const [showDefaultInfo, setShowDefaultInfo] = React.useState(false);
   const countryInputRef = useRef<HTMLInputElement>(null);
   const countryDropdownRef = useRef<HTMLDivElement>(null);
+  const selectedCountry = findSupportedCountry(data.country);
+  const selectedCountryLabel = selectedCountry
+    ? getCountryLabel(selectedCountry, t)
+    : data.country || '';
 
   // Show defaults info when country is selected (Permanent until closed)
   React.useEffect(() => {
@@ -33,10 +42,18 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
 
   // Filter countries based on search
   const filteredCountries = React.useMemo(() => {
-    if (!countrySearch) return COUNTRIES;
-    const lowerSearch = countrySearch.toLowerCase();
-    return COUNTRIES.filter(c => c.toLowerCase().includes(lowerSearch));
-  }, [countrySearch]);
+    const lowerSearch = countrySearch.trim().toLocaleLowerCase();
+    const matches = lowerSearch
+      ? SUPPORTED_COUNTRIES.filter((country) =>
+          getCountrySearchText(country, t).includes(lowerSearch)
+        )
+      : [...SUPPORTED_COUNTRIES];
+
+    const collator = new Intl.Collator(i18n.resolvedLanguage || i18n.language);
+    return matches.sort((left, right) =>
+      collator.compare(getCountryLabel(left, t), getCountryLabel(right, t))
+    );
+  }, [countrySearch, i18n.language, i18n.resolvedLanguage, t]);
 
   // Close dropdown when clicking outside
   React.useEffect(() => {
@@ -112,6 +129,22 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
     }
   };
 
+  const selectCountry = (country: (typeof SUPPORTED_COUNTRIES)[number]) => {
+    const defaults = getCountryDefaults(country.value);
+    updateData({
+      country: country.value,
+      currency: defaults.currency,
+      timezone: defaults.timezone,
+      language: defaults.language,
+      dateFormat: defaults.dateFormat,
+    });
+    setCountrySearch('');
+    setIsCountryDropdownOpen(false);
+    if (errors.country) {
+      setErrors((current) => ({ ...current, country: '' }));
+    }
+  };
+
   return (
     <form onSubmit={handleSubmit} className="flex flex-col h-full w-full animate-in fade-in slide-in-from-right-4 duration-300">
       
@@ -150,13 +183,13 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                 {t('onboarding.companyWizard.basic.fields.country', { defaultValue: 'Country / Region' })} <span className="text-red-500">*</span>
             </label>
             <div className="relative">
-                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
+                <Search className="absolute start-3 top-2.5 h-4 w-4 text-slate-400 pointer-events-none" />
                 <input
                   ref={countryInputRef}
                   id="country"
                   type="text"
                   placeholder={t('onboarding.companyWizard.basic.placeholders.searchCountries', { defaultValue: 'Search countries...' })}
-                  value={isCountryDropdownOpen ? countrySearch : data.country || ''}
+                  value={isCountryDropdownOpen ? countrySearch : selectedCountryLabel}
                   onChange={(e) => {
                     setCountrySearch(e.target.value);
                     if (!isCountryDropdownOpen) setIsCountryDropdownOpen(true);
@@ -165,44 +198,47 @@ export const StepBasicInfo: React.FC<WizardStepProps> = ({ data, updateData, onN
                     setIsCountryDropdownOpen(true);
                     setCountrySearch('');
                   }}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' && isCountryDropdownOpen && filteredCountries[0]) {
+                      event.preventDefault();
+                      selectCountry(filteredCountries[0]);
+                    } else if (event.key === 'Escape') {
+                      event.preventDefault();
+                      setIsCountryDropdownOpen(false);
+                    }
+                  }}
                   className={cn(
-                      "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 pl-9 text-sm focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-0 transition-colors",
+                      "flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 ps-9 text-sm text-start focus-visible:outline-none focus-visible:border-blue-500 focus-visible:ring-0 transition-colors",
                       errors.country ? "border-red-500 focus-visible:border-red-500" : ""
                   )}
                   autoComplete="off"
+                  aria-expanded={isCountryDropdownOpen}
+                  aria-controls="country-options"
                 />
 
                 {/* Dropdown */}
                 {isCountryDropdownOpen && (
                   <div
                     ref={countryDropdownRef}
+                    id="country-options"
+                    role="listbox"
                     className="absolute z-50 mt-1 w-full max-h-60 overflow-auto rounded-md border border-slate-200 bg-white shadow-lg"
                   >
                     {filteredCountries.length > 0 ? (
-                      filteredCountries.map((c) => (
+                      filteredCountries.map((country) => (
                         <button
-                          key={c}
+                          key={country.code}
                           type="button"
-                          onClick={() => {
-                            const defaults = getCountryDefaults(c);
-                            updateData({ 
-                              country: c,
-                              currency: defaults.currency,
-                              timezone: defaults.timezone,
-                              language: defaults.language,
-                              dateFormat: defaults.dateFormat
-                            });
-                            setCountrySearch('');
-                            setIsCountryDropdownOpen(false);
-                            if (errors.country) setErrors({ ...errors, country: '' });
-                          }}
+                          role="option"
+                          aria-selected={data.country === country.value}
+                          onClick={() => selectCountry(country)}
                           className={cn(
-                            "flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-slate-100 transition-colors text-left",
-                            data.country === c ? "bg-primary-50 text-primary-700 font-medium" : "text-slate-700"
+                            "flex w-full items-center justify-between px-3 py-2 text-sm hover:bg-slate-100 transition-colors text-start",
+                            data.country === country.value ? "bg-primary-50 text-primary-700 font-medium" : "text-slate-700"
                           )}
                         >
-                          <span>{c}</span>
-                          {data.country === c && <Check className="h-4 w-4 text-primary-600" />}
+                          <span>{getCountryLabel(country, t)}</span>
+                          {data.country === country.value && <Check className="h-4 w-4 text-primary-600" />}
                         </button>
                       ))
                     ) : (

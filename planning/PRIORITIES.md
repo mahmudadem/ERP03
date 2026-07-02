@@ -106,6 +106,7 @@ If you are starting work on a priority item, record it here so other agents don'
 
 | Agent | Task | Started | Status |
 |-------|------|---------|--------|
+| Codex | Setup wizard EN/AR/TR localization + shared Accounting/Inventory/Sales/Purchases UI | 2026-07-02 | ✅ Locally complete; manual owner QA and commit/deploy approval pending |
 | Codex | Production QA fixes — Telegram export, sequential commits | 2026-06-29 | 🔄 278a–278w committed; 278x verified locally, commit/deploy pending |
 | Codex | Phase F - PI Attachments | 2026-05-28 | ✅ Done |
 | Codex | Phase F - Vendor Groups | 2026-05-28 | ✅ Done |

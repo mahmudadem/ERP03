@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, ChevronLeft, ChevronRight, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
-import { Spinner } from '../../../components/ui/Spinner';
+import { useQueryClient } from '@tanstack/react-query'; import { AlertTriangle, Calculator, CheckCircle, DollarSign, FileCheck, Info, Settings, ShoppingCart} from 'lucide-react';
+import { ModuleSetupWizardShell } from '../../../components/shared/ModuleSetupWizardShell';
 import { inventoryApi } from '../../../api/inventoryApi';
 import { InitializePurchasesPayload, purchasesApi } from '../../../api/purchasesApi';
 import { WorkflowMode } from '../../../api/salesApi';
@@ -25,10 +25,16 @@ interface PurchaseInitializationWizardProps {
 }
 
 const unwrap = <T,>(payload: any): T => (payload?.data ?? payload) as T;
-const stepTitles = ['Welcome', 'Workflow Mode', 'Default Accounts', 'Defaults & Numbering', 'Voucher Types', 'Review'];
-
 const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> = ({ onComplete }) => { 
   const { t } = useTranslation(['purchases', 'common']);
+  const stepTitles = [
+    t('auto.PurchaseInitializationWizard.welcomeToPurchasesSetup', 'Welcome'),
+    t('auto.PurchaseInitializationWizard.workflow', 'Workflow'),
+    t('auto.PurchaseInitializationWizard.defaultAccounts', 'Default Accounts'),
+    t('auto.PurchaseInitializationWizard.defaultsAndNumbering', 'Defaults & Numbering'),
+    t('auto.PurchaseInitializationWizard.selectVoucherTypes', 'Voucher Types'),
+    t('auto.PurchaseInitializationWizard.reviewAndInitialize', 'Review'),
+  ];
   const queryClient = useQueryClient();
   const { companyId } = useCompanyAccess();
   const [currentStep, setCurrentStep] = useState(0);
@@ -650,93 +656,25 @@ const PurchaseInitializationWizard: React.FC<PurchaseInitializationWizardProps> 
   })();
 
   return (
-    <div className="min-h-screen bg-gray-50 py-10">
-      <div className="mx-auto max-w-5xl px-4">
-        <div className="mb-8 text-center">
-          <h1 className="mb-2 text-4xl font-bold text-gray-900">{t("auto.PurchaseInitializationWizard.purchasesModuleInitialization", "Purchases Module Initialization")}</h1>
-          <p className="text-lg text-gray-600">{t("auto.PurchaseInitializationWizard.setWorkflowAccountingDefaultsAndNumberingForProcurement", "Set workflow, accounting defaults, and numbering for procurement.")}</p>
-        </div>
-
-        <div className="mb-8 flex items-center justify-center">
-          {stepTitles.map((title, index) => (
-            <React.Fragment key={title}>
-              <div className="flex items-center">
-                <div
-                  className={`flex h-10 w-10 items-center justify-center rounded-full text-sm font-semibold ${
-                    index <= currentStep ? 'bg-primary-600 text-white' : 'bg-gray-200 text-gray-500'
-                  }`}
-                >
-                  {index + 1}
-                </div>
-                <div className="ml-3 hidden text-sm font-medium text-gray-700 md:block">{title}</div>
-              </div>
-              {index < stepTitles.length - 1 && (
-                <div className={`mx-4 h-0.5 w-16 ${index < currentStep ? 'bg-primary-600' : 'bg-gray-200'}`} />
-              )}
-            </React.Fragment>
-          ))}
-        </div>
-
-        <div className="overflow-hidden rounded-2xl bg-white shadow-xl">
-          <div className="min-h-[540px] px-8 py-10">
-            {isLoading ? (
-              <div className="flex h-96 items-center justify-center">
-                <Spinner size="lg" />
-              </div>
-            ) : (
-              content
-            )}
-          </div>
-
-          {error && (
-            <div className="border-t border-red-200 bg-red-50 px-8 py-4">
-              <p className="text-sm text-red-700">{error}</p>
-            </div>
-          )}
-
-          <div className="border-t border-gray-100 bg-gray-50 px-8 py-6">
-            <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={goBack}
-                disabled={currentStep === 0 || submitting}
-                className="inline-flex items-center rounded-lg border border-gray-300 px-6 py-3 font-medium text-gray-700 transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <ChevronLeft className="mr-2 h-5 w-5" />{t("auto.PurchaseInitializationWizard.previous", "Previous")}</button>
-
-              {currentStep < stepTitles.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={goNext}
-                  disabled={submitting || isLoading}
-                  className="inline-flex items-center rounded-lg bg-primary-600 px-6 py-3 font-medium text-white transition-colors hover:bg-primary-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >{t("auto.PurchaseInitializationWizard.next", "Next")}<ChevronRight className="ml-2 h-5 w-5" />
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  onClick={initialize}
-                  disabled={submitting || isLoading}
-                  className="inline-flex items-center rounded-lg bg-green-600 px-8 py-3 font-medium text-white transition-colors hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  {submitting ? (
-                    <>
-                      <Spinner className="mr-2" />
-                      {t("auto.PurchaseInitializationWizard.initializing", "Initializing...")}
-                    </>
-                  ) : (
-                    <>
-                      <CheckCircle className="mr-2 h-5 w-5" />
-                      {t("auto.PurchaseInitializationWizard.initializePurchasesModule", "Initialize Purchases Module")}
-                    </>
-                  )}
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
+    <ModuleSetupWizardShell
+      steps={stepTitles}
+      currentStep={currentStep}
+      error={error}
+      loading={isLoading}
+      submitting={submitting}
+      backLabel={t('auto.PurchaseInitializationWizard.previous', 'Previous')}
+      nextLabel={t('auto.PurchaseInitializationWizard.next', 'Next')}
+      completeLabel={t(
+        'auto.PurchaseInitializationWizard.initializePurchasesModule',
+        'Initialize Purchases Module'
+      )}
+      submittingLabel={t('auto.PurchaseInitializationWizard.initializing', 'Initializing...')}
+      onBack={goBack}
+      onNext={goNext}
+      onComplete={initialize}
+    >
+      {content}
+    </ModuleSetupWizardShell>
   );
 };
 

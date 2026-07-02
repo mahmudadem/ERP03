@@ -1,10 +1,16 @@
 
 import React, { useEffect, useState } from 'react';
+import type { TFunction } from 'i18next';
 import { WizardStepProps, Bundle } from './types';
 import { CheckCircle2, ShieldAlert, Search } from 'lucide-react';
 import { Spinner } from '../../../../components/ui/Spinner';
 import { cn } from '../../../../lib/utils';
 import { useTranslation } from 'react-i18next';
+import {
+  getLocalizedBundleDescription,
+  getLocalizedBundleName,
+  getLocalizedMetadataSearchText,
+} from '../../../../utils/localizedSystemMetadata';
 
 export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack, bundles = [], loading = false }) => {
   const { t } = useTranslation('common');
@@ -37,8 +43,7 @@ export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateDat
     if (searchQuery.trim()) {
       const lowerQuery = searchQuery.toLowerCase();
       result = result.filter(b => 
-        b.name.toLowerCase().includes(lowerQuery) || 
-        b.description.toLowerCase().includes(lowerQuery)
+        getLocalizedMetadataSearchText(b, 'bundles', t).includes(lowerQuery)
       );
     }
     return result.sort((a, b) => {
@@ -47,7 +52,7 @@ export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateDat
       // Sort by number of modules ascending (simplest to most complex)
       return a.modules.length - b.modules.length;
     });
-  }, [searchQuery, bundles]);
+  }, [searchQuery, bundles, t]);
 
   return (
     <div className="flex flex-col h-full w-full animate-in fade-in slide-in-from-right-4 duration-300">
@@ -106,10 +111,10 @@ export const StepBundleSelection: React.FC<WizardStepProps> = ({ data, updateDat
 
       {/* Footer - Fixed */}
       <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-100 bg-white flex-shrink-0">
-        <div className="hidden sm:block text-xs text-slate-400">
+        <div className="hidden sm:block text-xs text-slate-400 me-auto">
           {t('onboarding.companyWizard.bundle.bundleCount', { count: filteredBundles.length, defaultValue: '{{count}} bundles available' })}
         </div>
-        <div className="flex gap-3 ml-auto">
+        <div className="flex gap-3">
           <button
             onClick={onBack}
             className="inline-flex items-center justify-center rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 border border-input bg-background hover:bg-slate-100 hover:text-accent-foreground h-10 px-4 py-2"
@@ -133,10 +138,13 @@ interface BundleCardProps {
   bundle: Bundle;
   isSelected: boolean;
   onSelect: () => void;
-  t: (key: string, options?: any) => string;
+  t: TFunction;
 }
 
 const BundleCard: React.FC<BundleCardProps> = ({ bundle, isSelected, onSelect, t }) => {
+  const bundleName = getLocalizedBundleName(bundle, t);
+  const bundleDescription = getLocalizedBundleDescription(bundle, t);
+
   return (
     <div
       onClick={onSelect}
@@ -148,7 +156,7 @@ const BundleCard: React.FC<BundleCardProps> = ({ bundle, isSelected, onSelect, t
       {/* Header */}
       <div className="mb-2 pr-6">
         <div className="flex items-center gap-2">
-             <h4 className="font-bold text-lg md:text-xl text-slate-900 line-clamp-1">{bundle.name}</h4>
+             <h4 className="font-bold text-lg md:text-xl text-slate-900 line-clamp-1">{bundleName}</h4>
              {bundle.recommended && (
                 <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-primary-100 text-primary-700 uppercase tracking-wide">
                   {t('onboarding.companyWizard.bundle.recommended', { defaultValue: 'Recommended' })}
@@ -156,7 +164,7 @@ const BundleCard: React.FC<BundleCardProps> = ({ bundle, isSelected, onSelect, t
              )}
              {isSelected && <CheckCircle2 className="h-5 w-5 text-primary-600 flex-shrink-0" />}
         </div>
-        <p className="text-slate-600 text-sm md:text-base mt-1 leading-normal line-clamp-2 min-h-[2.5rem]">{bundle.description}</p>
+        <p className="text-slate-600 text-sm md:text-base mt-1 leading-normal line-clamp-2 min-h-[2.5rem]">{bundleDescription}</p>
       </div>
 
       <div className="w-full h-px bg-slate-100 my-2"></div>

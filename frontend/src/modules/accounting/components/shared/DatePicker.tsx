@@ -36,7 +36,7 @@ const getSharedFiscalYears = async () => {
  * Includes a custom popover calendar for selecting dates format agnostically.
  */
 export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', inputClassName, disabled = false, placeholder }) => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const { settings } = useCompanySettings();
   const containerRef = useRef<HTMLDivElement>(null);
   const calendarRef = useRef<HTMLDivElement>(null);
@@ -120,16 +120,36 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [isOpen, contextMenu]);
 
-  const handleBlur = () => {
-    const parsed = parseCompanyDate(inputValue, settings);
-    if (parsed) {
-      onChange(parsed);
-      setInputValue(getDisplayValue(parsed));
-      
-      const parts = parsed.split('-');
-      if (parts.length === 3) {
-        setViewDate(new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2])));
+  const parseInputValue = (rawValue: string): string | null => {
+    const trimmed = rawValue.trim();
+    if (/^\d{1,2}$/.test(trimmed)) {
+      const baseIso = value?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] || getCompanyToday(settings);
+      const [year, month] = baseIso.split('-').map(Number);
+      const day = Number(trimmed);
+      const candidate = new Date(year, month - 1, day);
+      if (
+        candidate.getFullYear() === year &&
+        candidate.getMonth() === month - 1 &&
+        candidate.getDate() === day
+      ) {
+        return `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
       }
+      return null;
+    }
+    return parseCompanyDate(trimmed, settings);
+  };
+
+  const commitDate = (iso: string) => {
+    onChange(iso);
+    setInputValue(getDisplayValue(iso));
+    const [year, month, day] = iso.split('-').map(Number);
+    setViewDate(new Date(year, month - 1, day));
+  };
+
+  const handleBlur = () => {
+    const parsed = parseInputValue(inputValue);
+    if (parsed) {
+      commitDate(parsed);
     } else {
       // Revert to original if invalid
       setInputValue(getDisplayValue(value));
@@ -137,7 +157,22 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      const baseIso =
+        parseInputValue(inputValue) ||
+        value?.match(/^\d{4}-\d{2}-\d{2}/)?.[0] ||
+        getCompanyToday(settings);
+      const [year, month, day] = baseIso.split('-').map(Number);
+      const target = new Date(year, month - 1, day);
+      target.setDate(target.getDate() + (e.key === 'ArrowUp' ? 1 : -1));
+      commitDate(
+        `${target.getFullYear()}-${String(target.getMonth() + 1).padStart(2, '0')}-${String(target.getDate()).padStart(2, '0')}`
+      );
+      return;
+    }
     if (e.key === 'Enter') {
+        e.preventDefault();
         handleBlur();
         setIsOpen(false);
     }
@@ -157,7 +192,7 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
 
   const selectDate = (year: number, month: number, day: number) => {
     const iso = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-    onChange(iso);
+    commitDate(iso);
     setIsOpen(false);
   };
 
@@ -359,15 +394,15 @@ export const DatePicker: React.FC<Props> = ({ value, onChange, className = '', i
         disabled={disabled}
         onClick={() => !disabled && !isOpen && setIsOpen(true)}
         placeholder={placeholder || settings?.dateFormat || 'YYYY-MM-DD'}
-        className={inputClassName || `w-full h-[36px] px-3 pr-8 border border-[var(--color-border)] rounded text-sm focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
+        className={`${inputClassName || `w-full h-[36px] px-3 border border-[var(--color-border)] rounded text-sm focus:ring-1 focus:ring-primary-500 outline-none shadow-sm transition-colors duration-200 text-[var(--color-text-primary)] placeholder:text-[var(--color-text-muted)] ${
           disabled ? 'bg-[var(--color-bg-secondary)] text-[var(--color-text-muted)] cursor-not-allowed' : 'bg-[var(--color-bg-primary)]'
-        }`}
+        }`} ${i18n.dir() === 'rtl' ? 'pl-8' : 'pr-8'}`}
       />
       <button
         type="button"
         onClick={handleIconClick}
         disabled={disabled}
-        className={`absolute right-2 top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-primary-600 dark:hover:text-primary-400 transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
+        className={`absolute ${i18n.dir() === 'rtl' ? 'left-2' : 'right-2'} top-1/2 -translate-y-1/2 text-[var(--color-text-muted)] hover:text-primary-600 dark:hover:text-primary-400 transition-colors ${disabled ? 'opacity-30 cursor-not-allowed' : 'cursor-pointer'}`}
       >
         <CalendarIcon size={14} />
       </button>

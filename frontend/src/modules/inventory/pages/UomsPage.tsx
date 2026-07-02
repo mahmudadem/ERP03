@@ -46,6 +46,11 @@ const UomsPage: React.FC = () => {
     () => [...uoms].sort((a, b) => a.code.localeCompare(b.code)),
     [uoms]
   );
+  const language = (i18n.resolvedLanguage || i18n.language || 'en').split('-')[0];
+
+  const getDisplayName = (uom: InventoryUomDTO) =>
+    uom.translations?.[language]
+    || t(`inventory.uom.defaultNames.${uom.code}`, { defaultValue: uom.name });
 
   const resetForm = () => {
     setDraft(createDraft());
@@ -289,12 +294,10 @@ const UomsPage: React.FC = () => {
             sorted.map((uom) => (
               <div key={uom.id} className={`grid grid-cols-12 items-center border-b border-slate-100 py-2 text-sm ${editingId === uom.id ? 'bg-amber-50/40' : ''}`}>
                 <div className="col-span-2 font-mono font-semibold">{uom.code}</div>
-                <div className="col-span-3">
-                  {uom.translations?.[i18n.resolvedLanguage || i18n.language]
-                    || uom.translations?.[(i18n.resolvedLanguage || i18n.language).split('-')[0]]
-                    || uom.name}
+                <div className="col-span-3">{getDisplayName(uom)}</div>
+                <div className="col-span-2">
+                  {t(`inventory.uom.dimensions.${uom.dimension}`, { defaultValue: uom.dimension })}
                 </div>
-                <div className="col-span-2">{uom.dimension}</div>
                 <div className="col-span-2">{uom.decimalPlaces}</div>
                 <div className="col-span-2">
                   {uom.active

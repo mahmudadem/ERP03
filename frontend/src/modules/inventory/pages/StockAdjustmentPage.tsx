@@ -63,6 +63,10 @@ const StockAdjustmentPage: React.FC = () => {
   const isWindowsMode = uiMode === 'windows';
   const isNewRoute = window.location.hash.includes('/inventory/adjustments/new') || window.location.pathname.includes('/inventory/adjustments/new');
   const isFormRoute = isNewRoute || Boolean(id);
+  const reasonLabel = (value: string) =>
+    t(`adjustments.reasons.${value.toLowerCase()}`, { defaultValue: value });
+  const statusLabel = (value: string) =>
+    t(`adjustments.statuses.${value.toLowerCase()}`, { defaultValue: value });
 
   const [adjustments, setAdjustments] = useState<StockAdjustmentDTO[]>([]);
   const [warehouseId, setWarehouseId] = useState('');
@@ -95,7 +99,7 @@ const StockAdjustmentPage: React.FC = () => {
       setAdjustments(unwrap<StockAdjustmentDTO[]>(result) || []);
     } catch (loadError: any) {
       console.error('Failed to load adjustments', loadError);
-      setError(loadError?.message || 'Failed to load stock adjustments.');
+      setError(loadError?.message || t('adjustments.detail.errors.loadFailed'));
     } finally {
       setLoading(false);
     }
@@ -179,11 +183,11 @@ const StockAdjustmentPage: React.FC = () => {
 
   const handleCreate = async () => {
     if (!warehouseId || !date) {
-      toast.error('Warehouse and date are required.');
+      toast.error(t('adjustments.detail.validation.warehouseDateRequired'));
       return;
     }
     if (filledLines.length === 0) {
-      toast('No stock quantity change to adjust.', { icon: 'ℹ️' });
+      toast(t('adjustments.detail.validation.noChange'), { icon: 'ℹ️' });
       return;
     }
     try {
@@ -201,7 +205,7 @@ const StockAdjustmentPage: React.FC = () => {
           unitCostCCY: Number(line.unitCostCCY),
         })),
       }));
-      toast.success('Stock adjustment created.');
+      toast.success(t('adjustments.detail.messages.created'));
       resetForm();
       await load();
       navigate(`/inventory/adjustments/${adjustment.id}`);
@@ -217,7 +221,7 @@ const StockAdjustmentPage: React.FC = () => {
     try {
       setPostingId(adjustmentId);
       await inventoryApi.postAdjustment(adjustmentId);
-      toast.success('Stock adjustment posted.');
+      toast.success(t('adjustments.detail.messages.posted'));
       await load();
     } catch (postError) {
       console.error('Failed to post adjustment', postError);
@@ -230,14 +234,14 @@ const StockAdjustmentPage: React.FC = () => {
   const lineColumns: ColumnDef<AdjLine>[] = [
     {
       id: 'item',
-      label: 'Item',
+      label: t('adjustments.detail.lines.item'),
       kind: 'custom',
       width: '300px',
       render: (line, index) => (
         <ItemSelector
           value={line.itemId}
           noBorder
-          placeholder="Select item"
+          placeholder={t('adjustments.detail.lines.selectItem')}
           trackInventoryOnly
           disabled={saving || isReadOnly}
           onChange={(item) => {
@@ -251,12 +255,12 @@ const StockAdjustmentPage: React.FC = () => {
         />
       ),
     },
-    { id: 'currentQty', label: 'Current Qty', kind: 'number', width: '120px', accessor: (line) => line.currentQty, setter: (value) => ({ currentQty: Number(value) }) },
-    { id: 'newQty', label: 'New Qty', kind: 'number', width: '120px', accessor: (line) => line.newQty, setter: (value) => ({ newQty: Number(value) }) },
-    { id: 'adjQty', label: 'Adj Qty', kind: 'computed', width: '110px', compute: (line) => Number(line.newQty) - Number(line.currentQty) },
+    { id: 'currentQty', label: t('adjustments.detail.lines.currentQty'), kind: 'number', width: '120px', accessor: (line) => line.currentQty, setter: (value) => ({ currentQty: Number(value) }) },
+    { id: 'newQty', label: t('adjustments.detail.lines.newQty'), kind: 'number', width: '120px', accessor: (line) => line.newQty, setter: (value) => ({ newQty: Number(value) }) },
+    { id: 'adjQty', label: t('adjustments.detail.lines.adjustmentQty'), kind: 'computed', width: '110px', compute: (line) => Number(line.newQty) - Number(line.currentQty) },
     {
       id: 'unitCost',
-      label: 'Unit Cost (Base)',
+      label: t('adjustments.detail.lines.unitCostBase'),
       kind: 'custom',
       width: '140px',
       align: 'right',
@@ -277,55 +281,55 @@ const StockAdjustmentPage: React.FC = () => {
         />
       ),
     },
-    { id: 'adjValue', label: 'Adj Value', kind: 'computed', width: '130px', compute: (line) => Math.abs(Number(line.newQty) - Number(line.currentQty)) * Number(line.unitCostBase) },
+    { id: 'adjValue', label: t('adjustments.detail.lines.adjustmentValue'), kind: 'computed', width: '130px', compute: (line) => Math.abs(Number(line.newQty) - Number(line.currentQty)) * Number(line.unitCostBase) },
   ];
 
   const formView = isFormRoute ? (() => {
     const notFound = Boolean(id && !loading && !selectedAdjustment && !isNewRoute);
     const railReady: Array<{ state: 'ok' | 'warn' | 'info'; label: React.ReactNode }> = [
-      { state: warehouseId ? 'ok' : 'info', label: 'Warehouse selected' },
-      { state: date ? 'ok' : 'info', label: 'Adjustment date set' },
-      { state: filledLines.length > 0 || isReadOnly ? 'ok' : 'info', label: 'At least one quantity change' },
-      { state: totalValue > 0 || isReadOnly ? 'ok' : 'warn', label: 'Adjustment value resolved' },
+      { state: warehouseId ? 'ok' : 'info', label: t('adjustments.detail.readiness.warehouse') },
+      { state: date ? 'ok' : 'info', label: t('adjustments.detail.readiness.date') },
+      { state: filledLines.length > 0 || isReadOnly ? 'ok' : 'info', label: t('adjustments.detail.readiness.lines') },
+      { state: totalValue > 0 || isReadOnly ? 'ok' : 'warn', label: t('adjustments.detail.readiness.value') },
     ];
 
     return (
       <DocumentDetailScaffold
-        title={isNewRoute ? 'New Stock Adjustment' : selectedAdjustment ? getAdjustmentRef(selectedAdjustment.id) : 'Stock Adjustment'}
-        subtitle="Adjust counted inventory quantities with controlled posting"
+        title={isNewRoute ? t('adjustments.detail.newTitle') : selectedAdjustment ? getAdjustmentRef(selectedAdjustment.id) : t('adjustments.detail.title')}
+        subtitle={t('adjustments.detail.subtitle')}
         icon={ClipboardList}
-        backLabel="Back to adjustments"
+        backLabel={t('adjustments.detail.backToList')}
         onBack={() => navigate('/inventory/adjustments')}
         badges={
           <DocumentPill tone={selectedAdjustment?.status === 'POSTED' ? 'green' : 'amber'}>
-            {selectedAdjustment?.status || 'DRAFT'}
+            {statusLabel(selectedAdjustment?.status || 'DRAFT')}
           </DocumentPill>
         }
         forceRailDrawer={isWindowsMode}
         sections={{
           banner: {
             show: notFound,
-            content: <DocumentNoticeBanner tone="amber">Stock adjustment not found.</DocumentNoticeBanner>,
+            content: <DocumentNoticeBanner tone="amber">{t('adjustments.detail.notFound')}</DocumentNoticeBanner>,
           },
           control: {
             content: (
               <DocumentControlPanel>
                 <div className="grid gap-2 md:grid-cols-[220px_1fr]">
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Reason</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('adjustments.detail.reason')}</label>
                     <select
                       className={documentHeaderControlClass}
                       value={reason}
                       onChange={(event) => setReason(event.target.value)}
                       disabled={saving || isReadOnly}
                     >
-                      {REASONS.map((entry) => <option key={entry} value={entry}>{entry}</option>)}
+                      {REASONS.map((entry) => <option key={entry} value={entry}>{reasonLabel(entry)}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">Posting control</label>
+                    <label className="mb-1 block text-[10px] font-bold uppercase text-slate-500">{t('adjustments.detail.postingControl')}</label>
                     <DocumentNoticeBanner tone="blue">
-                      Draft adjustments can be posted after review. Posted adjustments are locked by the current API and should be corrected through a new adjustment.
+                      {t('adjustments.detail.postingNotice')}
                     </DocumentNoticeBanner>
                   </div>
                 </div>
@@ -333,20 +337,20 @@ const StockAdjustmentPage: React.FC = () => {
             ),
           },
           header: {
-            title: 'Adjustment Details',
+            title: t('adjustments.detail.details'),
             cardClassName: 'overflow-visible',
             content: (
               <DocumentHeaderGrid>
-                <DocumentHeaderField label="Warehouse">
+                <DocumentHeaderField label={t('adjustments.detail.warehouse')}>
                   <WarehouseSelector
                     className={documentHeaderSelectorClass}
                     value={warehouseId}
                     onChange={(warehouse) => void onWarehouseChange(warehouse?.id || '')}
-                    placeholder="Select warehouse"
+                    placeholder={t('adjustments.detail.selectWarehouse')}
                     disabled={saving || isReadOnly}
                   />
                 </DocumentHeaderField>
-                <DocumentHeaderField label="Adjustment Date">
+                <DocumentHeaderField label={t('adjustments.detail.date')}>
                   <DatePicker
                     className="w-full"
                     inputClassName={documentHeaderControlClass}
@@ -355,12 +359,12 @@ const StockAdjustmentPage: React.FC = () => {
                     disabled={saving || isReadOnly}
                   />
                 </DocumentHeaderField>
-                <DocumentHeaderField label="Notes">
+                <DocumentHeaderField label={t('adjustments.detail.notes')}>
                   <input
                     className={documentHeaderControlClass}
                     value={notes}
                     onChange={(event) => setNotes(event.target.value)}
-                    placeholder="Optional"
+                    placeholder={t('adjustments.detail.optional')}
                     disabled={saving || isReadOnly}
                   />
                 </DocumentHeaderField>
@@ -371,7 +375,7 @@ const StockAdjustmentPage: React.FC = () => {
             content: (
               <ClassicLineItemsTable<AdjLine>
                 tableId="inventory.adjustment.lines"
-                title="Adjustment Lines"
+                title={t('adjustments.detail.adjustmentLines')}
                 columns={lineColumns}
                 rows={lines}
                 disabled={saving || isReadOnly}
@@ -382,7 +386,7 @@ const StockAdjustmentPage: React.FC = () => {
                 getRowKey={(line) => line._key}
                 isRowFilled={(line) => Boolean(line.itemId)}
                 onRowAdd={() => setLines((prev) => [...prev, emptyLine()])}
-                addLabel="Add Item"
+                addLabel={t('adjustments.detail.addItem')}
                 minTableWidth="900px"
               />
             ),
@@ -390,27 +394,27 @@ const StockAdjustmentPage: React.FC = () => {
         }}
         railSections={{
           info: {
-            title: 'Document',
+            title: t('adjustments.detail.document'),
             content: (
               <DocumentRailKeyValueList
                 items={[
-                  { label: 'Reference', value: selectedAdjustment ? getAdjustmentRef(selectedAdjustment.id) : 'New' },
-                  { label: 'Status', value: selectedAdjustment?.status || 'Draft' },
-                  { label: 'Reason', value: reason },
+                  { label: t('adjustments.detail.reference'), value: selectedAdjustment ? getAdjustmentRef(selectedAdjustment.id) : t('adjustments.detail.new') },
+                  { label: t('adjustments.detail.status'), value: statusLabel(selectedAdjustment?.status || 'DRAFT') },
+                  { label: t('adjustments.detail.reason'), value: reasonLabel(reason) },
                 ]}
               />
             ),
           },
-          readiness: { title: 'Readiness', content: <DocumentRailChecklist items={railReady} /> },
+          readiness: { title: t('adjustments.detail.readinessTitle'), content: <DocumentRailChecklist items={railReady} /> },
           totals: {
-            title: 'Totals',
+            title: t('adjustments.detail.totals'),
             content: (
               <DocumentRailTotals
                 rows={[
-                  { label: 'Lines', value: String(filledLines.length || selectedAdjustment?.lines.length || 0) },
-                  { label: 'Qty Change', value: totalQtyChange.toFixed(2) },
+                  { label: t('adjustments.detail.linesLabel'), value: String(filledLines.length || selectedAdjustment?.lines.length || 0) },
+                  { label: t('adjustments.detail.qtyChange'), value: totalQtyChange.toFixed(2) },
                 ]}
-                grand={{ label: 'Adjustment Value', value: totalValue.toFixed(2) }}
+                grand={{ label: t('adjustments.detail.adjustmentValue'), value: totalValue.toFixed(2) }}
               />
             ),
           },
@@ -423,7 +427,7 @@ const StockAdjustmentPage: React.FC = () => {
               onClick={() => navigate('/inventory/adjustments')}
               disabled={saving || !!postingId}
             >
-              Back
+              {t('adjustments.detail.actions.back')}
             </button>
             {isNewRoute && (
               <button
@@ -432,7 +436,7 @@ const StockAdjustmentPage: React.FC = () => {
                 onClick={handleCreate}
                 disabled={saving}
               >
-                {saving ? 'Saving...' : 'Create Adjustment'}
+                {saving ? t('adjustments.detail.actions.saving') : t('adjustments.detail.actions.create')}
               </button>
             )}
             {selectedAdjustment?.status === 'DRAFT' && (
@@ -443,7 +447,7 @@ const StockAdjustmentPage: React.FC = () => {
                 disabled={postingId === selectedAdjustment.id}
               >
                 {postingId === selectedAdjustment.id ? <Spinner size="sm" /> : <Check className="h-4 w-4" />}
-                Post
+                {t('adjustments.detail.actions.post')}
               </button>
             )}
           </>
@@ -464,9 +468,9 @@ const StockAdjustmentPage: React.FC = () => {
       POSTED: adjustments.filter((adjustment) => adjustment.status === 'POSTED').length,
     },
     options: [
-      { value: 'ALL', label: 'All', color: 'slate' },
-      { value: 'DRAFT', label: 'Draft', color: 'amber' },
-      { value: 'POSTED', label: 'Posted', color: 'emerald' },
+      { value: 'ALL', label: t('adjustments.statuses.all'), color: 'slate' },
+      { value: 'DRAFT', label: t('adjustments.statuses.draft'), color: 'amber' },
+      { value: 'POSTED', label: t('adjustments.statuses.posted'), color: 'emerald' },
     ],
   };
 
@@ -518,19 +522,19 @@ const StockAdjustmentPage: React.FC = () => {
   const listColumns: ColumnDefinition<StockAdjustmentDTO>[] = [
     {
       key: 'id',
-      label: 'Adjustment',
+      label: t('adjustments.detail.adjustment'),
       width: '150px',
       priority: 1,
       sortable: true,
       accessor: 'id',
       render: (value: string) => <span className="font-mono font-bold text-slate-800 dark:text-slate-200">{getAdjustmentRef(value)}</span>,
     },
-    { key: 'date', label: 'Date', width: '130px', priority: 1, sortable: true, accessor: 'date' },
-    { key: 'warehouseId', label: 'Warehouse', width: '210px', priority: 1, sortable: true, accessor: 'warehouseId', truncate: true },
-    { key: 'reason', label: 'Reason', width: '140px', priority: 1, sortable: true, accessor: 'reason' },
+    { key: 'date', label: t('adjustments.detail.date'), width: '130px', priority: 1, sortable: true, accessor: 'date' },
+    { key: 'warehouseId', label: t('adjustments.detail.warehouse'), width: '210px', priority: 1, sortable: true, accessor: 'warehouseId', truncate: true },
+    { key: 'reason', label: t('adjustments.detail.reason'), width: '140px', priority: 1, sortable: true, accessor: 'reason', render: (value: string) => reasonLabel(value) },
     {
       key: 'status',
-      label: 'Status',
+      label: t('adjustments.detail.status'),
       width: '120px',
       priority: 1,
       sortable: true,
@@ -543,13 +547,13 @@ const StockAdjustmentPage: React.FC = () => {
             ? 'bg-emerald-50 text-emerald-700 ring-emerald-600/10 dark:bg-emerald-950/35 dark:text-emerald-300'
             : 'bg-amber-50 text-amber-700 ring-amber-600/10 dark:bg-amber-950/35 dark:text-amber-300',
         )}>
-          {value}
+          {statusLabel(value)}
         </span>
       ),
     },
     {
       key: 'adjustmentValueBase',
-      label: 'Value Base',
+      label: t('adjustments.detail.valueBase'),
       width: '140px',
       priority: 1,
       sortable: true,
@@ -560,10 +564,10 @@ const StockAdjustmentPage: React.FC = () => {
   ];
 
   const rowActions: RowAction<StockAdjustmentDTO>[] = [
-    { key: 'view', label: 'View', icon: Eye, onClick: (row) => navigate(`/inventory/adjustments/${row.id}`), primary: false },
+    { key: 'view', label: t('adjustments.detail.actions.view'), icon: Eye, onClick: (row) => navigate(`/inventory/adjustments/${row.id}`), primary: false },
     {
       key: 'post',
-      label: 'Post',
+      label: t('adjustments.detail.actions.post'),
       icon: Check,
       variant: 'success',
       isEnabled: (row) => row.status === 'DRAFT',
@@ -620,7 +624,7 @@ const StockAdjustmentPage: React.FC = () => {
             className="inline-flex items-center justify-center gap-1.5 rounded-lg bg-primary-600 px-4 py-2 text-sm font-semibold text-white transition-all hover:bg-primary-700"
           >
             <Filter size={16} />
-            {t('common.applyFilters', { defaultValue: 'Apply' })}
+            {t('adjustments.apply', { defaultValue: 'Apply' })}
           </button>
           <button
             type="button"
@@ -631,7 +635,7 @@ const StockAdjustmentPage: React.FC = () => {
               setPage(1);
             }}
             className="inline-flex items-center justify-center rounded-lg border border-slate-200 bg-white p-2 text-slate-600 transition-all hover:bg-slate-50 hover:text-rose-600 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-400 dark:hover:bg-slate-800"
-            title={t('common.clearFilters', { defaultValue: 'Clear Filters' })}
+            title={t('adjustments.clearFilters', { defaultValue: 'Clear Filters' })}
           >
             <RotateCcw size={16} />
           </button>

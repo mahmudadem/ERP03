@@ -36,10 +36,15 @@ const TIMEZONE_OPTIONS = [
 
 const DATE_FORMAT_OPTIONS = ['DD/MM/YYYY', 'MM/DD/YYYY', 'YYYY-MM-DD', 'DD.MM.YYYY', 'YYYY/MM/DD'];
 const LANGUAGE_OPTIONS = [
-  { code: 'en', label: 'English' },
-  { code: 'ar', label: 'Arabic' },
-  { code: 'tr', label: 'Turkish' },
+  { code: 'en', translationKey: 'language.english', fallback: 'English' },
+  { code: 'ar', translationKey: 'language.arabic', fallback: 'Arabic' },
+  { code: 'tr', translationKey: 'language.turkish', fallback: 'Turkish' },
 ];
+const DEFAULT_WAREHOUSE_NAMES: Record<string, string> = {
+  en: 'Main Warehouse',
+  ar: 'المستودع الرئيسي',
+  tr: 'Ana Depo',
+};
 
 export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, onNext, onBack }) => {
   const { t } = useTranslation('common');
@@ -59,6 +64,9 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
     return data.country ? getCountryDefaults(data.country) : getCountryDefaults('');
   }, [data.country]);
   const suggestedCurrency = countryDefaults.currency;
+  const selectedLanguage = data.language || countryDefaults.language || 'en';
+  const suggestedWarehouseName =
+    DEFAULT_WAREHOUSE_NAMES[selectedLanguage] || DEFAULT_WAREHOUSE_NAMES.en;
 
   React.useEffect(() => {
     const defaults: Partial<typeof data> = {};
@@ -89,14 +97,28 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
     if (!touchedFields.purchaseWorkflowMode && data.purchaseWorkflowMode !== selectedMode.purchaseWorkflowMode) {
       next.purchaseWorkflowMode = selectedMode.purchaseWorkflowMode;
     }
+    if (
+      !touchedFields.defaultWarehouseName &&
+      (!data.defaultWarehouseName ||
+        Object.values(DEFAULT_WAREHOUSE_NAMES).includes(data.defaultWarehouseName)) &&
+      data.defaultWarehouseName !== suggestedWarehouseName
+    ) {
+      next.defaultWarehouseName = suggestedWarehouseName;
+    }
     if (Object.keys(next).length > 0) {
       updateData(next);
     }
-  }, [data.accountingMode, isStarterEnabled, selectedMode, touchedFields, data.coaTemplate, data.costingBasis, data.salesWorkflowMode, data.purchaseWorkflowMode, updateData]);
+  }, [data.accountingMode, isStarterEnabled, selectedMode, touchedFields, data.coaTemplate, data.costingBasis, data.salesWorkflowMode, data.purchaseWorkflowMode, data.defaultWarehouseName, suggestedWarehouseName, updateData]);
 
   const currencyOptions = React.useMemo(() => {
     return Array.from(new Set([suggestedCurrency, data.currency, ...COMMON_CURRENCIES].filter(Boolean)));
   }, [data.currency, suggestedCurrency]);
+
+  const timezoneOptions = React.useMemo(() => {
+    return Array.from(
+      new Set([data.timezone, countryDefaults.timezone, ...TIMEZONE_OPTIONS].filter(Boolean))
+    );
+  }, [countryDefaults.timezone, data.timezone]);
 
   const handleNext = () => {
     if (!data.currency?.trim()) {
@@ -170,7 +192,7 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
                     onChange={(event) => updateData({ timezone: event.target.value })}
                     className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 focus:outline-none focus:border-primary-600"
                   >
-                    {TIMEZONE_OPTIONS.map((zone) => (
+                    {timezoneOptions.map((zone) => (
                       <option key={zone} value={zone}>{zone}</option>
                     ))}
                   </select>
@@ -203,7 +225,9 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
                     className="h-10 w-full rounded-md border border-slate-300 bg-white px-3 text-sm font-semibold text-slate-900 focus:outline-none focus:border-primary-600"
                   >
                     {LANGUAGE_OPTIONS.map((language) => (
-                      <option key={language.code} value={language.code}>{language.label}</option>
+                      <option key={language.code} value={language.code}>
+                        {t(language.translationKey, { defaultValue: language.fallback })}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -373,8 +397,11 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
                             <input
                               id="wizard-default-warehouse-name"
                               className="mt-1 h-9 w-full rounded-md border border-slate-300 bg-white px-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-primary-600"
-                              value={data.defaultWarehouseName ?? 'Main Warehouse'}
-                              onChange={(event) => updateData({ defaultWarehouseName: event.target.value })}
+                              value={data.defaultWarehouseName ?? suggestedWarehouseName}
+                              onChange={(event) => {
+                                markTouched('defaultWarehouseName');
+                                updateData({ defaultWarehouseName: event.target.value });
+                              }}
                             />
                           </div>
                         </div>
@@ -477,7 +504,7 @@ export const StepBasicNeeds: React.FC<WizardStepProps> = ({ data, updateData, on
         </div>
       </div>
 
-      <div className="flex justify-between items-center mt-4 pt-4 border-t border-slate-100 bg-white flex-shrink-0">
+      <div className="flex justify-between items-center gap-3 mt-4 pt-4 border-t border-slate-100 bg-white flex-shrink-0">
         <button
           type="button"
           onClick={onBack}

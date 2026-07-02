@@ -8,6 +8,10 @@ import { Spinner } from '../../../components/ui/Spinner';
 import { useCompanyBundles } from '../../../hooks/useCompanyAdmin';
 import { useTranslation } from 'react-i18next';
 import { useConfirm } from '../../../hooks/useConfirm';
+import {
+  getLocalizedBundleDescription,
+  getLocalizedBundleName,
+} from '../../../utils/localizedSystemMetadata';
 
 export const BundlesPage: React.FC = () => {
   const { t } = useTranslation('common');
@@ -44,12 +48,16 @@ export const BundlesPage: React.FC = () => {
             <div className="flex items-start justify-between">
               <div className="flex-1">
                 <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-2xl font-bold text-gray-900">{currentBundle.name}</h3>
+                  <h3 className="text-2xl font-bold text-gray-900">
+                    {getLocalizedBundleName(currentBundle, t)}
+                  </h3>
                   <span className="px-3 py-1 bg-blue-100 text-blue-800 text-sm font-medium rounded-full">
                     {t('companyAdmin.bundles.currentPlan')}
                   </span>
                 </div>
-                <p className="text-gray-600 mb-4">{currentBundle.description}</p>
+                <p className="text-gray-600 mb-4">
+                  {getLocalizedBundleDescription(currentBundle, t)}
+                </p>
                 
                 <div className="grid grid-cols-2 gap-4 mb-4">
                   <div>
@@ -92,19 +100,22 @@ export const BundlesPage: React.FC = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {availableBundles.map((bundle) => {
               const isCurrent = bundle.id === currentBundle?.id;
+              const localizedBundleName = getLocalizedBundleName(bundle, t);
               
               return (
                 <Card key={bundle.id} className={`p-6 ${isCurrent ? 'border-2 border-blue-500' : ''}`}>
                   <div className="mb-4">
                     <div className="flex items-center justify-between mb-2">
-                      <h3 className="text-xl font-bold text-gray-900">{bundle.name}</h3>
+                      <h3 className="text-xl font-bold text-gray-900">{localizedBundleName}</h3>
                       {isCurrent && (
                         <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs font-medium rounded">
                           {t('companyAdmin.bundles.current')}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-gray-600">{bundle.description}</p>
+                    <p className="text-sm text-gray-600">
+                      {getLocalizedBundleDescription(bundle, t)}
+                    </p>
                   </div>
 
                   {bundle.pricing && (
@@ -135,9 +146,9 @@ export const BundlesPage: React.FC = () => {
                     variant={isCurrent ? 'secondary' : 'primary'}
                     className="w-full"
                     disabled={isCurrent || isUpgrading}
-                    onClick={() => !isCurrent && handleUpgrade(bundle.id, bundle.name)}
+                    onClick={() => !isCurrent && handleUpgrade(bundle.id, localizedBundleName)}
                   >
-                    {isCurrent ? t('companyAdmin.bundles.currentPlan') : isUpgrading ? t('companyAdmin.bundles.upgrading') : t('companyAdmin.bundles.upgradeTo', { bundleName: bundle.name })}
+                    {isCurrent ? t('companyAdmin.bundles.currentPlan') : isUpgrading ? t('companyAdmin.bundles.upgrading') : t('companyAdmin.bundles.upgradeTo', { bundleName: localizedBundleName })}
                   </Button>
                 </Card>
               );
