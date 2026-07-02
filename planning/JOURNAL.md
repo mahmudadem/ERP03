@@ -2,6 +2,34 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-02 (CTO strategy session — platform decision: SQL leads, Firestore follows)
+
+- **Context:** first external tester lined up (POS user, Arabic speaker, ~1 week). Owner questioned
+  continuing to invest in Firebase; asked for an expert reassessment with claims verified first-hand.
+- **CTO verification (measured, not from docs):** prod `erp-03` healthy — `/health` 200 in 290–696 ms
+  warm (slowness = cold starts; `minInstances:1` fix pre-annotated in `backend/src/index.ts`); POS
+  frontend has **zero** Firestore-direct code (fully API-driven → POS-on-SQL needs QA, not porting);
+  Arabic POS locale complete (566/566 keys); receipt printing end-to-end **unverified** (top QA risk,
+  RTL receipts); POS has **no offline mode**; SQL has **zero cloud deploy infra** (no Railway/Docker/CI);
+  branch `codex/sql-readiness-wip-20260628` fully merged into `main` (git cherry) — working copy moved to `main`.
+- **Owner decision (policy, locked):** **SQL leads, Firestore follows.** SQL = primary platform for all
+  forward development (accounting depth, reporting, integrity, production architecture — built and
+  verified on SQL first). Firebase/Firestore = operational demo/early-trial runtime at current feature
+  level, periodically maintained, possibly a long-term supported alternative runtime — but no longer
+  the leading lane. DB-agnostic architecture stays law. Firebase Auth stays for both lanes.
+- **Mechanism created:** parity ritual — every SQL-first PR declares Firebase-impact class
+  (A agnostic / B needs-adaptation / C SQL-only) in `planning/PARITY-LEDGER.md`; parity review every
+  ~5 features / 2 weeks; owner gates catch-up vs defer.
+- **Plan rewritten:** `planning/ROADMAP-PILOT.md` v2 — Phase 0 twin tracks (Track F: serve tester on
+  Firebase demo lane — minInstances fix, Arabic POS QA incl. receipts, onboarding kit; Track S: stand up
+  Supabase+Railway+Vercel SQL staging), Phase 1 POS-hardening on SQL, Phase 2 SQL becomes recommended
+  production path + first parity review, Phase 3 pilot fleet + handoff readiness.
+- **Architecture verdict (owner asked for ground-up rebuild):** audit says the architecture (repository
+  pattern, DI, engine/UI split) is sound — the debt is *verification*, not design. Module-by-module
+  audit rides along Phases 1–2; no big-bang rewrite.
+- No feature code changed this session (CTO/planning role). Docs: ROADMAP-PILOT.md (v2),
+  PARITY-LEDGER.md (new), ACTIVE.md policy header, this entry.
+
 ### Session: 2026-07-02 (Deploy Deployment Diagnostics to production)
 
 - **Goal:** Deploy the Super Admin deployment diagnostics page so the owner can verify production state from inside the app.

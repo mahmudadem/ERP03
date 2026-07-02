@@ -6,6 +6,17 @@
 
 ---
 
+## 🧭 PLATFORM POLICY (owner decision 2026-07-02): **SQL leads, Firestore follows**
+
+SQL/PostgreSQL is the primary platform for all forward development; Firebase/Firestore stays
+operational for demos/early trials at current feature level, periodically maintained via the
+parity ritual. **Governing plan: `planning/ROADMAP-PILOT.md`** (read it before taking any task);
+parity tracking: `planning/PARITY-LEDGER.md`. Every PR must declare its Firebase-impact class (A/B/C).
+Immediate focus: first external tester = **POS user, Arabic speaker** — served from the Firebase
+demo lane (Phase 0 Track F) while SQL cloud staging is stood up (Track S).
+
+---
+
 ## Current task — Deployment Diagnostics page (Task 280, 2026-07-02)
 
 **Goal:** add a production-safe Super Admin page that shows frontend/backend deployment metadata,
