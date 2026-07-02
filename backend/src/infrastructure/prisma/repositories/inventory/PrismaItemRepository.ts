@@ -86,7 +86,7 @@ export class PrismaItemRepository implements IItemRepository {
   }
 
   async getCompanyItems(companyId: string, opts?: ItemListOptions): Promise<Item[]> {
-    const where: any = { companyId };
+    const where: Prisma.ItemWhereInput = { companyId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }
@@ -132,7 +132,7 @@ export class PrismaItemRepository implements IItemRepository {
   }
 
   async getItemsByCategory(companyId: string, categoryId: string, opts?: ItemListOptions): Promise<Item[]> {
-    const where: any = { companyId, categoryId };
+    const where: Prisma.ItemWhereInput = { companyId, categoryId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }
@@ -152,7 +152,7 @@ export class PrismaItemRepository implements IItemRepository {
   }
 
   async searchItems(companyId: string, query: string, opts?: ItemListOptions): Promise<Item[]> {
-    const where: any = {
+    const where: Prisma.ItemWhereInput = {
       companyId,
       OR: [
         { code: { contains: query, mode: 'insensitive' } },

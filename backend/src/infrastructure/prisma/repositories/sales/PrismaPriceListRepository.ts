@@ -79,7 +79,7 @@ export class PrismaPriceListRepository implements IPriceListRepository {
   }
 
   async list(companyId: string, opts?: PriceListListOptions): Promise<PriceList[]> {
-    const where: any = { companyId };
+    const where: Prisma.PriceListWhereInput = { companyId };
     if (opts?.currency) where.currency = opts.currency;
     if (opts?.status) {
       where.status = opts.status;

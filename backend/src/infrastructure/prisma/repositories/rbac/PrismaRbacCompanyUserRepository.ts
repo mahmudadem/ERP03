@@ -3,7 +3,7 @@
  * Prisma (SQL) implementation of ICompanyUserRepository for RBAC module
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyUserRepository } from '../../../../repository/interfaces/rbac/ICompanyUserRepository';
 import { CompanyUser } from '../../../../domain/rbac/CompanyUser';
 
@@ -114,7 +114,7 @@ export class PrismaRbacCompanyUserRepository implements ICompanyUserRepository {
   }
 
   async update(userId: string, companyId: string, updates: Partial<CompanyUser>): Promise<void> {
-    const data: any = {};
+    const data: Prisma.CompanyUserUncheckedUpdateInput = {};
     if (updates.roleId !== undefined) data.roleId = updates.roleId;
     if (updates.isOwner !== undefined) data.isOwner = updates.isOwner;
     if (updates.isDisabled !== undefined) data.isDisabled = updates.isDisabled;

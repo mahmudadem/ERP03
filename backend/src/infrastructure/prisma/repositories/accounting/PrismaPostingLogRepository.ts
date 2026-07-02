@@ -63,7 +63,7 @@ export class PrismaPostingLogRepository implements IPostingLogRepository {
     companyId: string,
     filter: { sourceModule?: string; sourceType?: string; limit?: number }
   ): Promise<PostingLog[]> {
-    const where: any = { companyId };
+    const where: Prisma.PostingLogWhereInput = { companyId };
     if (filter.sourceModule) where.sourceModule = filter.sourceModule;
     if (filter.sourceType) where.sourceType = filter.sourceType;
 

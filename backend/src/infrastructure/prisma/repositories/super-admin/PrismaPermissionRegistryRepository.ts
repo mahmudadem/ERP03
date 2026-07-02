@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPermissionRegistryRepository } from '../../../../repository/interfaces/super-admin/IPermissionRegistryRepository';
 import { PermissionDefinition } from '../../../../domain/super-admin/PermissionDefinition';
 
@@ -35,7 +35,7 @@ export class PrismaPermissionRegistryRepository implements IPermissionRegistryRe
   }
 
   async update(id: string, permission: Partial<PermissionDefinition>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.PermissionRegistryUncheckedUpdateInput = {};
     if (permission.name !== undefined) updateData.name = permission.name;
     if (permission.description !== undefined) updateData.description = permission.description;
     updateData.updatedAt = new Date();

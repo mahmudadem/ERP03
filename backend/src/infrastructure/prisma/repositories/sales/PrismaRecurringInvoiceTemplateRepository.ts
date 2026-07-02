@@ -112,7 +112,7 @@ export class PrismaRecurringInvoiceTemplateRepository
     companyId: string,
     opts?: RecurringInvoiceTemplateListOptions
   ): Promise<RecurringInvoiceTemplate[]> {
-    const where: any = { companyId };
+    const where: Prisma.RecurringInvoiceTemplateWhereInput = { companyId };
     if (opts?.status) where.status = opts.status;
     if (opts?.customerId) where.customerId = opts.customerId;
 

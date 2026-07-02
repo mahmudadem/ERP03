@@ -159,7 +159,7 @@ export class PrismaAccountRepository implements IAccountRepository {
   }
 
   async update(companyId: string, accountId: string, data: any): Promise<Account> {
-    const updateData: any = {};
+    const updateData: Prisma.AccountUncheckedUpdateInput = {};
 
     if (data.userCode !== undefined || data.code !== undefined) {
       updateData.userCode = data.userCode || data.code;
@@ -276,7 +276,7 @@ export class PrismaAccountRepository implements IAccountRepository {
   }
 
   async existsByUserCode(companyId: string, userCode: string, excludeAccountId?: string): Promise<boolean> {
-    const where: any = { companyId, userCode };
+    const where: Prisma.AccountWhereInput = { companyId, userCode };
     if (excludeAccountId) {
       where.id = { not: excludeAccountId };
     }

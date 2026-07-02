@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IUserRepository } from '../../../../repository/interfaces/core/IUserRepository';
 import { User, UserRole } from '../../../../domain/core/entities/User';
 
@@ -41,7 +41,7 @@ export class PrismaUserRepository implements IUserRepository {
   }
 
   async updateUser(userId: string, data: Partial<User>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.UserUncheckedUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.pictureUrl !== undefined) updateData.pictureUrl = data.pictureUrl;
     if (data.planId !== undefined) updateData.planId = data.planId;

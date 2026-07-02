@@ -39,7 +39,7 @@ export class PrismaStockAdjustmentRepository implements IStockAdjustmentReposito
       include: { lines: true },
     });
     const warehouseId = data.warehouseId || existing?.lines?.[0]?.warehouseId || '';
-    const updateData: any = {};
+    const updateData: Prisma.StockAdjustmentUncheckedUpdateInput = {};
     if (data.warehouseId !== undefined) updateData.warehouseId = data.warehouseId;
     if (data.date !== undefined) updateData.date = new Date(data.date);
     if (data.reason !== undefined) updateData.reason = data.reason;

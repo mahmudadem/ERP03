@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ITaxCodeRepository, TaxCodeListOptions } from '../../../../repository/interfaces/shared/ITaxCodeRepository';
 import { TaxCode, TaxType, TaxScope } from '../../../../domain/shared/entities/TaxCode';
 
@@ -62,7 +62,7 @@ export class PrismaTaxCodeRepository implements ITaxCodeRepository {
   }
 
   async list(companyId: string, opts?: TaxCodeListOptions): Promise<TaxCode[]> {
-    const where: any = { companyId };
+    const where: Prisma.TaxCodeWhereInput = { companyId };
     if (opts?.scope) {
       where.scope = opts.scope;
     }

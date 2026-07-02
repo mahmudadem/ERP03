@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyModuleRepository } from '../../../../repository/interfaces/company/ICompanyModuleRepository';
 import { CompanyModule, CompanyModuleEntity } from '../../../../domain/company/entities/CompanyModule';
 
@@ -36,7 +36,7 @@ export class PrismaCompanyModuleRepository implements ICompanyModuleRepository {
   }
 
   async update(companyId: string, moduleCode: string, updates: Partial<CompanyModule>): Promise<void> {
-    const data: any = {};
+    const data: Prisma.CompanyModuleUncheckedUpdateInput = {};
     if (updates.isEnabled !== undefined) data.isEnabled = updates.isEnabled;
     if (updates.initialized !== undefined) data.initialized = updates.initialized;
     if (updates.initializationStatus !== undefined) data.initializationStatus = updates.initializationStatus;

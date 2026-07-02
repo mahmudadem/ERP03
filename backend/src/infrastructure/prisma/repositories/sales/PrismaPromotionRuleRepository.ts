@@ -95,7 +95,7 @@ export class PrismaPromotionRuleRepository implements IPromotionRuleRepository {
   }
 
   async list(companyId: string, opts?: PromotionRuleListOptions): Promise<PromotionRule[]> {
-    const where: any = { companyId };
+    const where: Prisma.PromotionRuleWhereInput = { companyId };
     if (opts?.status) {
       where.status = opts.status;
     } else if (!opts?.includeInactive) {

@@ -79,7 +79,7 @@ export class PrismaPurchasePriceListRepository implements IPurchasePriceListRepo
   }
 
   async list(companyId: string, opts?: PurchasePriceListListOptions): Promise<PurchasePriceList[]> {
-    const where: any = { companyId };
+    const where: Prisma.PurchasePriceListWhereInput = { companyId };
     if (opts?.currency) where.currency = opts.currency;
     if (opts?.status) {
       where.status = opts.status;

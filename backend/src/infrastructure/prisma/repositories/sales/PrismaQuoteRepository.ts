@@ -99,7 +99,7 @@ export class PrismaQuoteRepository implements IQuoteRepository {
   }
 
   async list(companyId: string, opts?: QuoteListOptions): Promise<Quote[]> {
-    const where: any = { companyId };
+    const where: Prisma.QuoteWhereInput = { companyId };
     if (opts?.status) where.status = opts.status;
     if (opts?.customerId) where.customerId = opts.customerId;
 

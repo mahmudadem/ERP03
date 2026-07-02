@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IRoleTemplateRegistryRepository } from '../../../../repository/interfaces/super-admin/IRoleTemplateRegistryRepository';
 import { RoleTemplateDefinition } from '../../../../domain/super-admin/RoleTemplateDefinition';
 
@@ -35,7 +35,7 @@ export class PrismaRoleTemplateRegistryRepository implements IRoleTemplateRegist
   }
 
   async update(id: string, roleTemplate: Partial<RoleTemplateDefinition>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.RoleTemplateRegistryUncheckedUpdateInput = {};
     if (roleTemplate.name !== undefined) updateData.name = roleTemplate.name;
     if (roleTemplate.description !== undefined) updateData.description = roleTemplate.description;
     if (roleTemplate.permissions !== undefined) updateData.permissions = roleTemplate.permissions;

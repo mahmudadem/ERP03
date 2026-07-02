@@ -55,13 +55,14 @@ export class PrismaRecordChangeLogRepository implements IRecordChangeLogReposito
   }
 
   async list(companyId: string, filters: RecordChangeLogListFilters = {}): Promise<RecordChangeLog[]> {
-    const where: any = { companyId };
+    const where: Prisma.RecordChangeLogWhereInput = { companyId };
     if (filters.entityType) where.entityType = filters.entityType;
     if (filters.action) where.action = filters.action;
     if (filters.dateFrom || filters.dateTo) {
-      where.timestamp = {};
-      if (filters.dateFrom) where.timestamp.gte = new Date(filters.dateFrom);
-      if (filters.dateTo) where.timestamp.lte = new Date(filters.dateTo);
+      where.timestamp = {
+        ...(filters.dateFrom ? { gte: new Date(filters.dateFrom) } : {}),
+        ...(filters.dateTo ? { lte: new Date(filters.dateTo) } : {}),
+      };
     }
 
     const rows = await (this.prisma).recordChangeLog.findMany({

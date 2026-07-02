@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IUomRepository, UomListOptions } from '../../../../repository/interfaces/inventory/IUomRepository';
 import { Uom } from '../../../../domain/inventory/entities/Uom';
 
@@ -42,7 +42,7 @@ export class PrismaUomRepository implements IUomRepository {
   }
 
   async getCompanyUoms(companyId: string, opts?: UomListOptions): Promise<Uom[]> {
-    const where: any = { companyId };
+    const where: Prisma.UomWhereInput = { companyId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }

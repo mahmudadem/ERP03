@@ -168,7 +168,7 @@ export class PrismaSalesInvoiceRepository implements ISalesInvoiceRepository {
   }
 
   async list(companyId: string, opts?: SalesInvoiceListOptions): Promise<SalesInvoice[]> {
-    const where: any = { companyId };
+    const where: Prisma.SalesInvoiceWhereInput = { companyId };
     if (opts?.customerId) where.customerId = opts.customerId;
     if (opts?.salesOrderId) where.salesOrderId = opts.salesOrderId;
     if (opts?.status) where.status = opts.status;

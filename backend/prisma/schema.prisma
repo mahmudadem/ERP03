@@ -371,6 +371,7 @@ model Voucher {
   reversalOf Voucher? @relation("VoucherReversal", fields: [reversalOfVoucherId], references: [id])
   reversals  Voucher[] @relation("VoucherReversal")
   lines   VoucherLine[]
+  ledgerEntries LedgerEntry[]
   fiscalYearId String?
 
   @@index([companyId, date])
@@ -421,6 +422,9 @@ model LedgerEntry {
   exchangeRate        Float    @default(1.0)
   fiscalYearId        String?
   postingSeq          Int      @default(0)
+  // Cost-center dimension carried by voucher lines; the GL filter and domain
+  // mapper read it (code is truth — Task 281).
+  costCenterId        String?
   reconciliationId    String?
   bankStatementLineId String?
   createdAt           DateTime @default(now())
@@ -428,11 +432,15 @@ model LedgerEntry {
   company  Company  @relation(fields: [companyId], references: [id], onDelete: Cascade)
   account  Account  @relation(fields: [accountId], references: [id])
   fiscalYear FiscalYear? @relation(fields: [fiscalYearId], references: [id])
+  // Relation over the existing voucherId FK so GL can filter by voucher type
+  // (where: { voucher: { type } }) — no new DB column (Task 281).
+  voucher  Voucher? @relation(fields: [voucherId], references: [id])
 
   @@index([companyId, accountId, date])
   @@index([companyId, fiscalYearId])
   @@index([companyId, date])
   @@index([voucherId])
+  @@index([companyId, costCenterId])
   @@index([reconciliationId])
   @@index([bankStatementLineId])
   @@map("ledger_entries")
@@ -684,6 +692,9 @@ model ItemCategory {
   name        String
   description String?
   parentId    String?
+  // Active flag mirrored from the domain entity; list queries filter on it
+  // (code is truth — Task 281). Matches Item.active conventions.
+  active      Boolean  @default(true)
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
@@ -858,16 +869,22 @@ model StockMovement {
 }
 
 model StockAdjustment {
-  id          String   @id @default(uuid())
-  companyId   String
-  documentNo  String
-  date        DateTime
-  reason      String?
-  status      String   @default("DRAFT")
-  notes       String?
-  createdBy   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                  String    @id @default(uuid())
+  companyId           String
+  documentNo          String
+  date                DateTime
+  reason              String?
+  status              String    @default("DRAFT")
+  notes               String?
+  // Document-level fields mirrored from the domain entity (code is truth —
+  // Task 281). Plain scalars, matching OpeningStockDocument conventions.
+  warehouseId         String?
+  voucherId           String?
+  adjustmentValueBase Float     @default(0)
+  postedAt            DateTime?
+  createdBy           String
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   company Company              @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lines   StockAdjustmentLine[]
@@ -939,15 +956,23 @@ model StockTransferLine {
 }
 
 model OpeningStockDocument {
-  id          String   @id @default(uuid())
-  companyId   String
-  documentNo  String
-  date        DateTime
-  status      String   @default("DRAFT")
-  notes       String?
-  createdBy   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                      String    @id @default(uuid())
+  companyId               String
+  documentNo              String
+  date                    DateTime
+  status                  String    @default("DRAFT")
+  notes                   String?
+  // Document-level fields mirrored from the domain entity (code is truth —
+  // Epic 275). Plain scalars, no relations, matching GoodsReceipt conventions.
+  warehouseId             String?
+  createAccountingEffect  Boolean   @default(false)
+  openingBalanceAccountId String?
+  voucherId               String?
+  totalValueBase          Float     @default(0)
+  postedAt                DateTime?
+  createdBy               String
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lines   OpeningStockLine[]

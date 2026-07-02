@@ -6,7 +6,7 @@
  * account statements, and reconciliation-related operations.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ILedgerRepository, TrialBalanceRow, ForeignBalanceRow, GLFilters, AccountStatementEntry, AccountStatementData } from '../../../../repository/interfaces/accounting/ILedgerRepository';
 import { IAccountRepository } from '../../../../repository/interfaces/accounting/IAccountRepository';
 import { LedgerEntry } from '../../../../domain/accounting/models/LedgerEntry';
@@ -78,6 +78,9 @@ export class PrismaLedgerRepository implements ILedgerRepository {
       currency: line.currency,
       baseCurrency: line.baseCurrency,
       exchangeRate: line.exchangeRate,
+      // Persist the cost-center dimension so GL cost-center filters work
+      // (column added in Task 281).
+      costCenterId: line.costCenterId ?? null,
       postingSeq: index + 1,
     }));
 
@@ -169,7 +172,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
   }
 
   async getGeneralLedger(companyId: string, filters: GLFilters): Promise<LedgerEntry[]> {
-    const where: any = { companyId };
+    const where: Prisma.LedgerEntryWhereInput = { companyId };
 
     if (filters.accountId) {
       where.accountId = filters.accountId;
@@ -177,11 +180,11 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     if (filters.voucherId) {
       where.voucherId = filters.voucherId;
     }
-    if (filters.fromDate) {
-      where.date = { ...(where.date || {}), gte: new Date(filters.fromDate) };
-    }
-    if (filters.toDate) {
-      where.date = { ...(where.date || {}), lte: new Date(filters.toDate) };
+    if (filters.fromDate || filters.toDate) {
+      where.date = {
+        ...(filters.fromDate ? { gte: new Date(filters.fromDate) } : {}),
+        ...(filters.toDate ? { lte: new Date(filters.toDate) } : {}),
+      };
     }
     if (filters.voucherType) {
       where.voucher = { type: filters.voucherType };
@@ -207,7 +210,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     toDate: string,
     options?: { includeUnposted?: boolean; costCenterId?: string; currency?: string }
   ): Promise<AccountStatementData> {
-    const where: any = { companyId, accountId };
+    const where: Prisma.LedgerEntryWhereInput = { companyId, accountId };
 
     if (options?.costCenterId) {
       where.costCenterId = options.costCenterId;
@@ -319,17 +322,17 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     fromDate?: string,
     toDate?: string
   ): Promise<LedgerEntry[]> {
-    const where: any = {
+    const where: Prisma.LedgerEntryWhereInput = {
       companyId,
       accountId,
       reconciliationId: null,
     };
 
-    if (fromDate) {
-      where.date = { ...(where.date || {}), gte: new Date(fromDate) };
-    }
-    if (toDate) {
-      where.date = { ...(where.date || {}), lte: new Date(toDate) };
+    if (fromDate || toDate) {
+      where.date = {
+        ...(fromDate ? { gte: new Date(fromDate) } : {}),
+        ...(toDate ? { lte: new Date(toDate) } : {}),
+      };
     }
 
     const records = await this.prisma.ledgerEntry.findMany({
@@ -360,7 +363,7 @@ export class PrismaLedgerRepository implements ILedgerRepository {
     asOfDate: Date,
     accountIds?: string[]
   ): Promise<ForeignBalanceRow[]> {
-    const where: any = {
+    const where: Prisma.LedgerEntryWhereInput = {
       companyId,
       date: { lte: asOfDate },
     };

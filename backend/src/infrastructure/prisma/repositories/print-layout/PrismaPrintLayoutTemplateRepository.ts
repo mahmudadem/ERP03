@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { PrintDocumentType } from '../../../../application/system-core/contracts/IPrintLayoutCore';
 import { PrintLayoutTemplate } from '../../../../domain/print-layout/PrintLayoutTemplate';
 import { IPrintLayoutTemplateRepository } from '../../../../repository/interfaces/print-layout/IPrintLayoutTemplateRepository';
@@ -63,7 +63,7 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
   }
 
   async list(companyId: string, documentType?: PrintDocumentType): Promise<PrintLayoutTemplate[]> {
-    const where: any = { companyId };
+    const where: Prisma.PrintLayoutTemplateWhereInput = { companyId };
     if (documentType) where.documentType = documentType;
     const rows = await (this.prisma).printLayoutTemplate.findMany({ where });
     return rows
@@ -82,7 +82,7 @@ export class PrismaPrintLayoutTemplateRepository implements IPrintLayoutTemplate
   }
 
   async clearDefault(companyId: string, documentType: PrintDocumentType, exceptId?: string): Promise<void> {
-    const where: any = { companyId, documentType, isDefault: true };
+    const where: Prisma.PrintLayoutTemplateWhereInput = { companyId, documentType, isDefault: true };
     if (exceptId) where.id = { not: exceptId };
     await (this.prisma).printLayoutTemplate.updateMany({
       where,

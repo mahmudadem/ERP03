@@ -3,7 +3,7 @@
  * Prisma (SQL) implementation of IModulePermissionsDefinitionRepository
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IModulePermissionsDefinitionRepository } from '../../../../repository/interfaces/system/IModulePermissionsDefinitionRepository';
 
 export class PrismaModulePermissionsDefinitionRepository implements IModulePermissionsDefinitionRepository {
@@ -49,7 +49,7 @@ export class PrismaModulePermissionsDefinitionRepository implements IModulePermi
   }
 
   async update(moduleId: string, partial: any): Promise<void> {
-    const data: any = {};
+    const data: Prisma.ModulePermissionsDefinitionUncheckedUpdateInput = {};
     if (partial.permissions !== undefined) {
       data.permissions = (partial.permissions || []).map((p: any) => typeof p === 'string' ? p : p.id || p.label);
     }

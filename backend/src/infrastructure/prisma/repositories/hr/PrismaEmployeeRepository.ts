@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IEmployeeRepository } from '../../../../repository/interfaces/hr/IEmployeeRepository';
 import { Employee } from '../../../../domain/hr/entities/Employee';
 
@@ -24,7 +24,7 @@ export class PrismaEmployeeRepository implements IEmployeeRepository {
   }
 
   async updateEmployee(id: string, data: Partial<Employee>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.EmployeeUncheckedUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.phone !== undefined) updateData.phone = data.phone;
     if (data.departmentId !== undefined) {

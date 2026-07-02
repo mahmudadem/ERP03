@@ -51,7 +51,7 @@ export class PrismaInventoryRevaluationRepository implements IInventoryRevaluati
     transaction?: unknown
   ): Promise<void> {
     const prisma = (transaction as Prisma.TransactionClient) || this.prisma;
-    const updateData: any = {};
+    const updateData: Prisma.InventoryRevaluationUncheckedUpdateInput = {};
     if (data.date !== undefined) updateData.date = new Date(data.date);
     if (data.reason !== undefined) updateData.reason = data.reason;
     if (data.notes !== undefined) updateData.notes = data.notes;

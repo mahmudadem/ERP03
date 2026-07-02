@@ -147,7 +147,7 @@ export class PrismaSalesReturnRepository implements ISalesReturnRepository {
   }
 
   async list(companyId: string, opts?: SalesReturnListOptions): Promise<SalesReturn[]> {
-    const where: any = { companyId };
+    const where: Prisma.SalesReturnWhereInput = { companyId };
     if (opts?.customerId) where.customerId = opts.customerId;
     if (opts?.salesInvoiceId) where.salesInvoiceId = opts.salesInvoiceId;
     if (opts?.deliveryNoteId) where.deliveryNoteId = opts.deliveryNoteId;

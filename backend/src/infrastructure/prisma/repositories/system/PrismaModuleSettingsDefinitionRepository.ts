@@ -3,7 +3,7 @@
  * Prisma (SQL) implementation of IModuleSettingsDefinitionRepository
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IModuleSettingsDefinitionRepository } from '../../../../repository/interfaces/system/IModuleSettingsDefinitionRepository';
 
 export class PrismaModuleSettingsDefinitionRepository implements IModuleSettingsDefinitionRepository {
@@ -47,7 +47,7 @@ export class PrismaModuleSettingsDefinitionRepository implements IModuleSettings
   }
 
   async updateDefinition(moduleId: string, def: any): Promise<void> {
-    const data: any = {};
+    const data: Prisma.ModuleSettingsDefinitionUncheckedUpdateInput = {};
     if (def.fields !== undefined) {
       data.settingsSchema = { fields: def.fields };
     }

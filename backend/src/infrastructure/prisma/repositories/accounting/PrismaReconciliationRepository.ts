@@ -5,7 +5,7 @@
  * Handles bank reconciliation storage, retrieval, and updates.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IReconciliationRepository } from '../../../../repository/interfaces/accounting/IReconciliationRepository';
 import { Reconciliation, ReconciliationAdjustment, ReconciliationStatus } from '../../../../domain/accounting/entities/Reconciliation';
 
@@ -82,7 +82,7 @@ export class PrismaReconciliationRepository implements IReconciliationRepository
   }
 
   async list(companyId: string, accountId?: string): Promise<Reconciliation[]> {
-    const where: any = { companyId };
+    const where: Prisma.ReconciliationWhereInput = { companyId };
     if (accountId) {
       where.accountId = accountId;
     }

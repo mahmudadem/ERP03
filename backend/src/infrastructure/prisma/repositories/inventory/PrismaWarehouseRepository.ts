@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IWarehouseRepository, WarehouseListOptions } from '../../../../repository/interfaces/inventory/IWarehouseRepository';
 import { Warehouse } from '../../../../domain/inventory/entities/Warehouse';
 
@@ -38,7 +38,7 @@ export class PrismaWarehouseRepository implements IWarehouseRepository {
   }
 
   async getCompanyWarehouses(companyId: string, opts?: WarehouseListOptions): Promise<Warehouse[]> {
-    const where: any = { companyId };
+    const where: Prisma.WarehouseWhereInput = { companyId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }
