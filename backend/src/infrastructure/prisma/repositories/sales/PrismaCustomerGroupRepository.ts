@@ -79,7 +79,7 @@ export class PrismaCustomerGroupRepository implements ICustomerGroupRepository {
   }
 
   async list(companyId: string, opts?: CustomerGroupListOptions): Promise<CustomerGroup[]> {
-    const where: any = { companyId };
+    const where: Prisma.CustomerGroupWhereInput = { companyId };
     if (opts?.status) {
       where.status = opts.status;
     } else if (!opts?.includeInactive) {

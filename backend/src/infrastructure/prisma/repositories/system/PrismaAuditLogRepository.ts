@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IAuditLogRepository } from '../../../../repository/interfaces/system/IAuditLogRepository';
 import { AuditLog } from '../../../../domain/system/entities/AuditLog';
 
@@ -32,7 +32,7 @@ export class PrismaAuditLogRepository implements IAuditLogRepository {
   }
 
   async getLogs(companyId: string, filters?: any): Promise<AuditLog[]> {
-    const where: any = { companyId };
+    const where: Prisma.AuditLogWhereInput = { companyId };
 
     if (filters) {
       if (filters.userId) {
@@ -47,15 +47,15 @@ export class PrismaAuditLogRepository implements IAuditLogRepository {
       if (filters.entityId) {
         where.entityId = filters.entityId;
       }
-      if (filters.startDate) {
-        where.timestamp = { ...where.timestamp, gte: new Date(filters.startDate) };
-      }
-      if (filters.endDate) {
-        where.timestamp = { ...where.timestamp, lte: new Date(filters.endDate) };
+      if (filters.startDate || filters.endDate) {
+        where.timestamp = {
+          ...(filters.startDate ? { gte: new Date(filters.startDate) } : {}),
+          ...(filters.endDate ? { lte: new Date(filters.endDate) } : {}),
+        };
       }
     }
 
-    const orderBy: any = { timestamp: 'desc' };
+    const orderBy: Prisma.AuditLogOrderByWithRelationInput = { timestamp: 'desc' };
     if (filters?.orderBy) {
       orderBy.timestamp = filters.orderBy === 'asc' ? 'asc' : 'desc';
     }

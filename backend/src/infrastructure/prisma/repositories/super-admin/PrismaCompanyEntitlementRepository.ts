@@ -1,7 +1,7 @@
 /**
  * Prisma Company Entitlement Repository
  */
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyEntitlementRepository, IBundleItemRepository } from '../../../../repository/interfaces/super-admin/ICompanyEntitlementRepository';
 import { CompanyEntitlement, CompanyEntitlementItem, BundleDefinition, BundleItem } from '../../../../domain/super-admin/EntitlementDefinition';
 
@@ -270,7 +270,7 @@ export class PrismaBundleRegistryRepository implements IBundleItemRepository {
   }
 
   async update(id: string, bundle: Partial<BundleDefinition>): Promise<void> {
-    const updateData: any = { updatedAt: new Date() };
+    const updateData: Prisma.BundleRegistryUncheckedUpdateInput = { updatedAt: new Date() };
     if (bundle.name) updateData.name = bundle.name;
     if (bundle.description) updateData.description = bundle.description;
     if (bundle.lifecycleStatus) updateData.lifecycleStatus = bundle.lifecycleStatus;

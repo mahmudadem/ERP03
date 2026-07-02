@@ -96,7 +96,7 @@ export class PrismaGoodsReceiptRepository implements IGoodsReceiptRepository {
   }
 
   async list(companyId: string, opts?: GoodsReceiptListOptions): Promise<GoodsReceipt[]> {
-    const where: any = { companyId };
+    const where: Prisma.GoodsReceiptWhereInput = { companyId };
     if (opts?.purchaseOrderId) where.purchaseOrderId = opts.purchaseOrderId;
     if (opts?.status) where.status = opts.status;
 

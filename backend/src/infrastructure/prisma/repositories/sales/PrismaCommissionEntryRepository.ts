@@ -97,14 +97,15 @@ export class PrismaCommissionEntryRepository implements ICommissionEntryReposito
   }
 
   async list(companyId: string, opts?: CommissionEntryListOptions): Promise<CommissionEntry[]> {
-    const where: any = { companyId };
+    const where: Prisma.CommissionEntryWhereInput = { companyId };
     if (opts?.salespersonId) where.salespersonId = opts.salespersonId;
     if (opts?.status) where.status = opts.status;
     if (opts?.sourceId) where.sourceId = opts.sourceId;
     if (opts?.fromDate || opts?.toDate) {
-      where.invoiceDate = {};
-      if (opts.fromDate) where.invoiceDate.gte = opts.fromDate;
-      if (opts.toDate) where.invoiceDate.lte = opts.toDate;
+      where.invoiceDate = {
+        ...(opts.fromDate ? { gte: opts.fromDate } : {}),
+        ...(opts.toDate ? { lte: opts.toDate } : {}),
+      };
     }
 
     const rows = await (this.prisma).commissionEntry.findMany({

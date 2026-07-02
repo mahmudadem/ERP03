@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IItemCategoryRepository, CategoryListOptions } from '../../../../repository/interfaces/inventory/IItemCategoryRepository';
 import { ItemCategory } from '../../../../domain/inventory/entities/ItemCategory';
 
@@ -38,7 +38,7 @@ export class PrismaItemCategoryRepository implements IItemCategoryRepository {
   }
 
   async getCompanyCategories(companyId: string, opts?: CategoryListOptions): Promise<ItemCategory[]> {
-    const where: any = { companyId };
+    const where: Prisma.ItemCategoryWhereInput = { companyId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }
@@ -52,7 +52,7 @@ export class PrismaItemCategoryRepository implements IItemCategoryRepository {
   }
 
   async getCategoriesByParent(companyId: string, parentId?: string, opts?: CategoryListOptions): Promise<ItemCategory[]> {
-    const where: any = { companyId };
+    const where: Prisma.ItemCategoryWhereInput = { companyId };
     if (parentId !== undefined) {
       where.parentId = parentId;
     } else {

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPlanRegistryRepository } from '../../../../repository/interfaces/super-admin/IPlanRegistryRepository';
 import { PlanDefinition } from '../../../../domain/super-admin/PlanDefinition';
 
@@ -36,7 +36,7 @@ export class PrismaPlanRegistryRepository implements IPlanRegistryRepository {
   }
 
   async update(id: string, plan: Partial<PlanDefinition>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.PlanRegistryUncheckedUpdateInput = {};
     if (plan.name !== undefined) updateData.name = plan.name;
     if (plan.description !== undefined) updateData.description = plan.description;
     if (plan.price !== undefined) updateData.pricing = { price: plan.price };

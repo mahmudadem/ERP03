@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ISystemRoleTemplateRepository } from '../../../../repository/interfaces/rbac/ISystemRoleTemplateRepository';
 import { SystemRoleTemplate } from '../../../../domain/rbac/SystemRoleTemplate';
 
@@ -43,7 +43,7 @@ export class PrismaSystemRoleTemplateRepository implements ISystemRoleTemplateRe
   }
 
   async update(id: string, template: Partial<SystemRoleTemplate>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.SystemRoleTemplateUncheckedUpdateInput = {};
     if (template.name !== undefined) updateData.name = template.name;
     if (template.description !== undefined) updateData.description = template.description;
     if (template.permissions !== undefined) updateData.permissions = template.permissions;

@@ -135,7 +135,7 @@ export class PrismaSalesOrderRepository implements ISalesOrderRepository {
   }
 
   async list(companyId: string, opts?: SalesOrderListOptions): Promise<SalesOrder[]> {
-    const where: any = { companyId };
+    const where: Prisma.SalesOrderWhereInput = { companyId };
     if (opts?.status) where.status = opts.status;
     if (opts?.customerId) where.customerId = opts.customerId;
 

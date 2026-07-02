@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IUserPreferencesRepository } from '../../../../repository/interfaces/core/IUserPreferencesRepository';
 import { UserPreferences, UiMode, Theme, SidebarMode } from '../../../../domain/core/entities/UserPreferences';
 
@@ -37,25 +37,24 @@ export class PrismaUserPreferencesRepository implements IUserPreferencesReposito
     });
     const existingAppearance = ((existing?.appearanceSettings as Record<string, unknown>) || {});
 
-    const updateData: any = {};
+    // Create-input shape (minus the key) is assignable to both the `create`
+    // and `update` sides of the upsert, keeping this fully schema-checked.
+    const updateData: Omit<Prisma.UserPreferencesUncheckedCreateInput, 'userId'> = {};
     if (prefs.language !== undefined) updateData.language = prefs.language;
     if (prefs.uiMode !== undefined) updateData.uiMode = prefs.uiMode;
     if (prefs.theme !== undefined) updateData.theme = prefs.theme;
     if (prefs.sidebarMode !== undefined) updateData.sidebarMode = prefs.sidebarMode;
     if (prefs.sidebarPinned !== undefined) updateData.sidebarPinned = prefs.sidebarPinned;
     
-    if (prefs.appearanceSettings !== undefined) {
-      updateData.appearanceSettings = {
+    if (prefs.appearanceSettings !== undefined || prefs.layoutMode !== undefined) {
+      // Merge into a plain JSON object first — the Prisma input type for JSON
+      // columns is a union that cannot be spread directly.
+      const mergedAppearance: Record<string, unknown> = {
         ...existingAppearance,
-        ...prefs.appearanceSettings
+        ...(prefs.appearanceSettings || {}),
       };
-    }
-    if (prefs.layoutMode !== undefined) {
-      updateData.appearanceSettings = {
-        ...existingAppearance,
-        ...(updateData.appearanceSettings || {}),
-        layoutMode: prefs.layoutMode
-      };
+      if (prefs.layoutMode !== undefined) mergedAppearance.layoutMode = prefs.layoutMode;
+      updateData.appearanceSettings = mergedAppearance as Prisma.InputJsonValue;
     }
     if (prefs.disabledNotificationCategories !== undefined) updateData.disabledNotificationCategories = prefs.disabledNotificationCategories;
     if (prefs.notificationCategoryOverrides !== undefined) updateData.notificationCategoryOverrides = prefs.notificationCategoryOverrides;

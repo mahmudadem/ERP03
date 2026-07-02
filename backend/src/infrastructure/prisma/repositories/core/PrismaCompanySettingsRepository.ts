@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanySettingsRepository } from '../../../../repository/interfaces/core/ICompanySettingsRepository';
 import { CompanySettings } from '../../../../domain/core/entities/CompanySettings';
 
@@ -49,7 +49,9 @@ export class PrismaCompanySettingsRepository implements ICompanySettingsReposito
   }
 
   async updateSettings(companyId: string, settings: Partial<CompanySettings>): Promise<void> {
-    const updateData: any = {};
+    // Create-input shape (minus the key) is assignable to both the `create`
+    // and `update` sides of the upsert, keeping this fully schema-checked.
+    const updateData: Omit<Prisma.CompanySettingsUncheckedCreateInput, 'companyId'> = {};
     if (settings.strictApprovalMode !== undefined) updateData.strictApprovalMode = settings.strictApprovalMode;
     if (settings.uiMode !== undefined) updateData.uiMode = settings.uiMode;
     if (settings.timezone !== undefined) updateData.timezone = settings.timezone;

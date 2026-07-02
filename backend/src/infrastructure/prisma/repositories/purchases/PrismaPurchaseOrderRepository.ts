@@ -135,7 +135,7 @@ export class PrismaPurchaseOrderRepository implements IPurchaseOrderRepository {
   }
 
   async list(companyId: string, opts?: PurchaseOrderListOptions): Promise<PurchaseOrder[]> {
-    const where: any = { companyId };
+    const where: Prisma.PurchaseOrderWhereInput = { companyId };
     if (opts?.status) where.status = opts.status;
     if (opts?.vendorId) where.vendorId = opts.vendorId;
 

@@ -103,7 +103,7 @@ export class PrismaDeliveryNoteRepository implements IDeliveryNoteRepository {
   }
 
   async list(companyId: string, opts?: DeliveryNoteListOptions): Promise<DeliveryNote[]> {
-    const where: any = { companyId };
+    const where: Prisma.DeliveryNoteWhereInput = { companyId };
     if (opts?.salesOrderId) where.salesOrderId = opts.salesOrderId;
     if (opts?.status) where.status = opts.status;
 

@@ -14,7 +14,7 @@
  * See: backend/src/infrastructure/di/bindRepositories.ts for the toggling mechanism.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyRepository } from '../../../repository/interfaces/core/ICompanyRepository';
 import { Company } from '../../../domain/core/entities/Company';
 
@@ -200,7 +200,14 @@ export class PrismaCompanyRepository implements ICompanyRepository {
     }
 
     async update(companyId: string, updates: Partial<Company>): Promise<Company> {
-        const data: any = { ...updates };
+        // Domain fiscal year bounds may arrive as month numbers or Dates; the
+        // schema column is DateTime, so normalize before handing to Prisma.
+        const { fiscalYearStart, fiscalYearEnd, ...rest } = updates;
+        const data: Prisma.CompanyUncheckedUpdateInput = {
+            ...rest,
+            ...(fiscalYearStart !== undefined ? { fiscalYearStart: new Date(fiscalYearStart) } : {}),
+            ...(fiscalYearEnd !== undefined ? { fiscalYearEnd: new Date(fiscalYearEnd) } : {}),
+        };
         const updated = await this.prisma.company.update({
             where: { id: companyId },
             data: data,

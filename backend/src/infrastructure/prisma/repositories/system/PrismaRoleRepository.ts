@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IRoleRepository } from '../../../../repository/interfaces/system/IRoleRepository';
 import { Role } from '../../../../domain/system/entities/Role';
 
@@ -29,7 +29,7 @@ export class PrismaRoleRepository implements IRoleRepository {
   }
 
   async updateRole(roleId: string, data: Partial<Role>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.RoleUncheckedUpdateInput = {};
     if (data.name !== undefined) updateData.name = data.name;
     if (data.permissions !== undefined) updateData.permissions = data.permissions;
     if (data.moduleBundles !== undefined) updateData.moduleBundles = data.moduleBundles;

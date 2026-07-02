@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICompanyRoleRepository } from '../../../../repository/interfaces/rbac/ICompanyRoleRepository';
 import { CompanyRole } from '../../../../domain/rbac/CompanyRole';
 
@@ -54,7 +54,7 @@ export class PrismaCompanyRoleRepository implements ICompanyRoleRepository {
   }
 
   async update(companyId: string, roleId: string, role: Partial<CompanyRole>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.CompanyRoleUpdateManyMutationInput = {};
     if (role.name !== undefined) updateData.name = role.name;
     if (role.permissions !== undefined) updateData.permissions = role.permissions;
     if (role.moduleBundles !== undefined) updateData.moduleBundles = role.moduleBundles;

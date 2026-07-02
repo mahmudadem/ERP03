@@ -46,7 +46,7 @@ export class PrismaBudgetRepository implements IBudgetRepository {
   }
 
   async list(companyId: string, fiscalYearId?: string): Promise<Budget[]> {
-    const where: any = { companyId };
+    const where: Prisma.BudgetWhereInput = { companyId };
     if (fiscalYearId) {
       where.fiscalYearId = fiscalYearId;
     }

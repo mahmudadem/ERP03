@@ -43,7 +43,7 @@ export class PrismaUomConversionRepository implements IUomConversionRepository {
   }
 
   async getConversionsForItem(companyId: string, itemId: string, opts?: UomConversionListOptions): Promise<UomConversion[]> {
-    const where: any = { companyId, itemId };
+    const where: Prisma.UomConversionWhereInput = { companyId, itemId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }
@@ -57,7 +57,7 @@ export class PrismaUomConversionRepository implements IUomConversionRepository {
   }
 
   async getCompanyConversions(companyId: string, opts?: UomConversionListOptions): Promise<UomConversion[]> {
-    const where: any = { companyId };
+    const where: Prisma.UomConversionWhereInput = { companyId };
     if (opts?.active !== undefined) {
       where.active = opts.active;
     }

@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IStockTransferRepository, StockTransferListOptions } from '../../../../repository/interfaces/inventory/IStockTransferRepository';
 import { StockTransfer, StockTransferStatus } from '../../../../domain/inventory/entities/StockTransfer';
 
@@ -40,7 +40,7 @@ export class PrismaStockTransferRepository implements IStockTransferRepository {
       where: { id },
       include: { lines: true },
     });
-    const updateData: any = {};
+    const updateData: Prisma.StockTransferUncheckedUpdateInput = {};
     if (data.sourceWarehouseId !== undefined) updateData.fromWarehouseId = data.sourceWarehouseId;
     if (data.destinationWarehouseId !== undefined) updateData.toWarehouseId = data.destinationWarehouseId;
     if (data.date !== undefined) updateData.date = new Date(data.date);

@@ -67,7 +67,7 @@ export class PrismaVendorGroupRepository implements IVendorGroupRepository {
   }
 
   async list(companyId: string, opts?: VendorGroupListOptions): Promise<VendorGroup[]> {
-    const where: any = { companyId };
+    const where: Prisma.VendorGroupWhereInput = { companyId };
     if (opts?.status) {
       where.status = opts.status;
     } else if (!opts?.includeInactive) {

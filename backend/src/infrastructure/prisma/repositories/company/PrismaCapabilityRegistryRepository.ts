@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ICapabilityRegistryRepository } from '../../../../repository/interfaces/company/ICapabilityRegistryRepository';
 import { CapabilityRegistry, CompanyCapability, CompanyCapabilityEntity } from '../../../../domain/company/entities/CompanyCapability';
 
@@ -35,7 +35,7 @@ export class PrismaCapabilityRegistryRepository implements ICapabilityRegistryRe
   }
 
   async getReady(moduleId?: string): Promise<CapabilityRegistry[]> {
-    const where: any = { lifecycleStatus: 'ready' };
+    const where: Prisma.ModuleCapabilityRegistryWhereInput = { lifecycleStatus: 'ready' };
     if (moduleId) where.moduleId = moduleId;
     const records = await this.prisma.moduleCapabilityRegistry.findMany({
       where,
@@ -66,7 +66,7 @@ export class PrismaCapabilityRegistryRepository implements ICapabilityRegistryRe
   }
 
   async update(id: string, updates: Partial<CapabilityRegistry>): Promise<void> {
-    const data: any = { updatedAt: new Date() };
+    const data: Prisma.ModuleCapabilityRegistryUncheckedUpdateInput = { updatedAt: new Date() };
     if (updates.name !== undefined) data.name = updates.name;
     if (updates.description !== undefined) data.description = updates.description;
     if (updates.lifecycleStatus !== undefined) data.lifecycleStatus = updates.lifecycleStatus;

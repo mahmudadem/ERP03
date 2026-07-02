@@ -54,7 +54,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
   }
 
   async getItemMovements(companyId: string, itemId: string, opts?: MovementQueryOptions): Promise<StockMovement[]> {
-    const where: any = { companyId, itemId };
+    const where: Prisma.StockMovementWhereInput = { companyId, itemId };
     if (opts?.movementType !== undefined) {
       where.movementType = opts.movementType;
     }
@@ -71,7 +71,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
   }
 
   async getWarehouseMovements(companyId: string, warehouseId: string, opts?: MovementQueryOptions): Promise<StockMovement[]> {
-    const where: any = { companyId, warehouseId };
+    const where: Prisma.StockMovementWhereInput = { companyId, warehouseId };
     if (opts?.movementType !== undefined) {
       where.movementType = opts.movementType;
     }
@@ -101,7 +101,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
     referenceId: string,
     referenceLineId?: string
   ): Promise<StockMovement | null> {
-    const where: any = { companyId, referenceType: referenceType, referenceId };
+    const where: Prisma.StockMovementWhereInput = { companyId, referenceType: referenceType, referenceId };
     if (referenceLineId !== undefined) {
       where.referenceLineId = referenceLineId;
     }
@@ -114,7 +114,7 @@ export class PrismaStockMovementRepository implements IStockMovementRepository {
   }
 
   async getMovementsByDateRange(companyId: string, from: string, to: string, opts?: MovementQueryOptions): Promise<StockMovement[]> {
-    const where: any = {
+    const where: Prisma.StockMovementWhereInput = {
       companyId,
       date: {
         gte: from,

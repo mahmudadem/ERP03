@@ -58,7 +58,7 @@ export class PrismaCreditOverrideRepository implements ICreditOverrideRepository
   }
 
   async list(companyId: string, opts?: CreditOverrideListOptions): Promise<CreditOverride[]> {
-    const where: any = { companyId };
+    const where: Prisma.CreditOverrideWhereInput = { companyId };
     if (opts?.customerId) where.customerId = opts.customerId;
     if (opts?.sourceId) where.sourceId = opts.sourceId;
 

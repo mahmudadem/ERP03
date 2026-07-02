@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { ExchangeRate } from '../../../domain/core/entities/ExchangeRate';
 import { IExchangeRateRepository } from '../../../repository/interfaces/core/IExchangeRateRepository';
 
@@ -130,7 +130,7 @@ export class PrismaExchangeRateRepository implements IExchangeRateRepository {
     toCurrency?: string,
     limit: number = 10
   ): Promise<ExchangeRate[]> {
-    const where: any = { companyId };
+    const where: Prisma.ExchangeRateWhereInput = { companyId };
     if (fromCurrency) where.fromCurrency = fromCurrency.toUpperCase();
     if (toCurrency) where.toCurrency = toCurrency.toUpperCase();
 

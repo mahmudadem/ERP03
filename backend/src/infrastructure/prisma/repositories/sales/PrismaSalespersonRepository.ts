@@ -76,7 +76,7 @@ export class PrismaSalespersonRepository implements ISalespersonRepository {
   }
 
   async list(companyId: string, opts?: SalespersonListOptions): Promise<Salesperson[]> {
-    const where: any = { companyId };
+    const where: Prisma.SalespersonWhereInput = { companyId };
     if (opts?.status) {
       where.status = opts.status;
     } else if (!opts?.includeInactive) {

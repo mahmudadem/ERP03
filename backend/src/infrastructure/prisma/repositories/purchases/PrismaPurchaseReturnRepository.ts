@@ -133,7 +133,7 @@ export class PrismaPurchaseReturnRepository implements IPurchaseReturnRepository
   }
 
   async list(companyId: string, opts?: PurchaseReturnListOptions): Promise<PurchaseReturn[]> {
-    const where: any = { companyId };
+    const where: Prisma.PurchaseReturnWhereInput = { companyId };
     if (opts?.vendorId) where.vendorId = opts.vendorId;
     if (opts?.purchaseInvoiceId) where.purchaseInvoiceId = opts.purchaseInvoiceId;
     if (opts?.goodsReceiptId) where.goodsReceiptId = opts.goodsReceiptId;

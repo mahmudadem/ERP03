@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPartyRepository, PartyListOptions } from '../../../../repository/interfaces/shared/IPartyRepository';
 import { Party, PartyRole } from '../../../../domain/shared/entities/Party';
 
@@ -73,7 +73,7 @@ export class PrismaPartyRepository implements IPartyRepository {
   }
 
   async list(companyId: string, opts?: PartyListOptions): Promise<Party[]> {
-    const where: any = { companyId };
+    const where: Prisma.PartyWhereInput = { companyId };
     if (opts?.role) {
       where.roles = { has: opts.role };
     }

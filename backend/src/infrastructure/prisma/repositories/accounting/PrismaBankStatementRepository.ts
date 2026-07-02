@@ -5,7 +5,7 @@
  * Handles bank statement storage, retrieval, and line match status updates.
  */
 
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IBankStatementRepository } from '../../../../repository/interfaces/accounting/IBankStatementRepository';
 import { BankStatement, BankStatementLine, BankStatementMatchStatus } from '../../../../domain/accounting/entities/BankStatement';
 
@@ -99,7 +99,7 @@ export class PrismaBankStatementRepository implements IBankStatementRepository {
   }
 
   async list(companyId: string, accountId?: string): Promise<BankStatement[]> {
-    const where: any = { companyId };
+    const where: Prisma.BankStatementWhereInput = { companyId };
     if (accountId) {
       where.accountNo = accountId;
     }

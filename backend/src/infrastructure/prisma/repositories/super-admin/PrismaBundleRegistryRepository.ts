@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IBundleRegistryRepository } from '../../../../repository/interfaces/super-admin/IBundleRegistryRepository';
 import { IBundleItemRepository } from '../../../../repository/interfaces/super-admin/ICompanyEntitlementRepository';
 import { BundleItem } from '../../../../domain/super-admin/EntitlementDefinition';
@@ -68,7 +68,7 @@ export class PrismaBundleRegistryRepository implements IBundleRegistryRepository
   }
 
   async update(id: string, bundle: any) {
-    const updateData: any = {};
+    const updateData: Prisma.BundleRegistryUncheckedUpdateInput = {};
     if (bundle.name !== undefined) updateData.name = bundle.name;
     if (bundle.description !== undefined) updateData.description = bundle.description;
     const modulesProvided = bundle.modulesIncluded !== undefined || bundle.modules !== undefined;

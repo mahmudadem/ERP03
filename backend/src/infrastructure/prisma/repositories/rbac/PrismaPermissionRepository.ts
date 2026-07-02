@@ -1,4 +1,4 @@
-import { PrismaClient } from '@prisma/client';
+import { Prisma, PrismaClient } from '@prisma/client';
 import { IPermissionRepository } from '../../../../repository/interfaces/rbac/IPermissionRepository';
 import { Permission } from '../../../../domain/rbac/Permission';
 
@@ -44,7 +44,7 @@ export class PrismaPermissionRepository implements IPermissionRepository {
   }
 
   async update(id: string, permission: Partial<Permission>): Promise<void> {
-    const updateData: any = {};
+    const updateData: Prisma.PermissionUncheckedUpdateInput = {};
     if (permission.category !== undefined) updateData.code = permission.category;
     if (permission.descriptionEn !== undefined) updateData.description = permission.descriptionEn;
     if (permission.labelEn !== undefined) updateData.description = permission.labelEn;
