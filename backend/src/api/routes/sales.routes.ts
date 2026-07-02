@@ -23,6 +23,14 @@ router.use(authMiddleware);
 router.post('/initialize', SalesController.initializeSales);
 router.get('/settings', SalesController.getSettings);
 
+// Must stay above the guard: the module init wizard reads the voucher-type
+// catalog BEFORE the module is initialized. Route param `module` is injected.
+router.get(
+  '/voucher-types/catalog',
+  (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
+  VoucherTypeInstallController.catalog,
+);
+
 router.use(moduleInitializedGuard('sales'));
 
 router.put('/settings', SalesController.updateSettings);
@@ -47,11 +55,7 @@ router.delete('/items/:id', permissionGuard('sales.items.manage'), CatalogContro
 
 // Manage Voucher Types — used by the per-module settings page to install
 // additional types after the init wizard. Route param `module` is injected.
-router.get(
-  '/voucher-types/catalog',
-  (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },
-  VoucherTypeInstallController.catalog,
-);
+// (GET catalog lives above the guard — the init wizard needs it pre-init.)
 router.post(
   '/voucher-types/install',
   (req, _res, next) => { (req.params as any).module = 'SALES'; next(); },

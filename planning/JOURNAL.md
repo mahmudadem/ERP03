@@ -2,6 +2,29 @@
 
 > Append new entries at the top. One entry per work session.
 
+### Session: 2026-07-02 (evening — first live owner QA on SQL: 3 lifecycle bugs found, fixed, detectors instituted)
+
+- **Setup:** full SQL stack stood up locally (Postgres 5432 + standalone Express `_sqlServer.ts` on 5101
+  + Auth emulator 9099 + Vite on 5199). CTO pre-verified signup end-to-end (probe users in Postgres)
+  before handing the owner the browser.
+- **Owner walkthrough results:** signup→plan→company→bundle→accounting-init→items all ✅ on SQL.
+  Three real bugs found (detail + QA script: `planning/done/282-sql-live-qa-session-1-fixes.md`):
+  **(1)** Purchases+Sales init wizards deadlocked — voucher-type catalog route behind
+  `moduleInitializedGuard` while wizards call it pre-init (regression from the Epic-275 catalog port;
+  **affects production Firebase lane too — prod deploy needed**); **(2)** GRNI required by backend for
+  ALL perpetual setups vs frontend's (correct) OPERATIONAL-only contract; **(3)** OpeningStockDocument
+  posting threw PrismaClientValidationError — 6 document-level columns missing from schema, hidden by
+  the untyped-payload (`: any = {}`) pattern that Epic 275's `as any` sweep didn't cover.
+- **All three fixed** by fix-agent under CTO diagnosis (routes moved above guard; GRNI conditions
+  aligned; schema columns added + migration `20260702000000_opening_stock_document_fields_275` +
+  `createDocument` now persists the fields). tsc 0; db push + generate clean.
+- **Owner challenge accepted ("find these before I do"):** measured **37 untyped Prisma payload bags
+  across ~25 repo files** — dispatched **Task 281** (typed-payload sweep, isolated worktree, running)
+  to convert the whole class into compile errors; **Task 283** queued: `smoke:lifecycle` robot
+  walkthrough (signup→…→post every doc type→POS day) as a standing gate before human QA and deploys.
+- Worktree map clarified for owner; stale worktrees (`ERP03-reconcile`, `ERP03-unified`,
+  `ERP03-vercel-fix`) flagged for cleanup after in-flight agents finish.
+
 ### Session: 2026-07-02 (later — CTO lifecycle readiness audit: signup→company→bundles→module-init on SQL)
 
 - **Trigger:** owner suspects lifecycle gaps because all development QA happened on Firebase.

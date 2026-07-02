@@ -15,6 +15,12 @@ export class PrismaOpeningStockDocumentRepository implements IOpeningStockDocume
         date: new Date(document.date),
         status: document.status,
         notes: document.notes || null,
+        warehouseId: document.warehouseId,
+        createAccountingEffect: document.createAccountingEffect,
+        openingBalanceAccountId: document.openingBalanceAccountId || null,
+        voucherId: document.voucherId || null,
+        totalValueBase: document.totalValueBase,
+        postedAt: document.postedAt || null,
         createdBy: document.createdBy,
         lines: {
           create: document.lines.map((line) => ({

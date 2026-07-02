@@ -223,7 +223,10 @@ export class InitializePurchasesUseCase {
       workflowDefaults.allowDirectInvoicing,
       input.allowDirectInvoicing !== undefined || input.governanceRules !== undefined
     );
-    if (accountingMode === 'PERPETUAL' && !input.defaultGRNIAccountId) {
+    // GRNI is only posted by the goods-receipt path (OPERATIONAL workflow +
+    // PERPETUAL accounting). Mirrors the init wizard, which only requires (and
+    // renders) the GRNI field in that combination — see PurchaseInitializationWizard.
+    if (workflowMode === 'OPERATIONAL' && accountingMode === 'PERPETUAL' && !input.defaultGRNIAccountId) {
       throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
     }
 
@@ -373,7 +376,9 @@ export class UpdatePurchaseSettingsUseCase {
     const nextPartyAccountCodeFormat = input.partyAccountCodeFormat ?? existing.partyAccountCodeFormat;
     const nextGRNIAccountId = input.defaultGRNIAccountId ?? existing.defaultGRNIAccountId;
     const nextExchangeGainLossAccountId = input.exchangeGainLossAccountId ?? existing.exchangeGainLossAccountId;
-    if (accountingMode === 'PERPETUAL' && !nextGRNIAccountId) {
+    // Same contract as the init path: GRNI only matters when goods receipts
+    // post GL (OPERATIONAL + PERPETUAL).
+    if (workflowMode === 'OPERATIONAL' && accountingMode === 'PERPETUAL' && !nextGRNIAccountId) {
       throw new Error('Default GRNI account is required for perpetual purchasing workflows.');
     }
     if (nextAPAccountId) {

@@ -939,15 +939,23 @@ model StockTransferLine {
 }
 
 model OpeningStockDocument {
-  id          String   @id @default(uuid())
-  companyId   String
-  documentNo  String
-  date        DateTime
-  status      String   @default("DRAFT")
-  notes       String?
-  createdBy   String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id                      String    @id @default(uuid())
+  companyId               String
+  documentNo              String
+  date                    DateTime
+  status                  String    @default("DRAFT")
+  notes                   String?
+  // Document-level fields mirrored from the domain entity (code is truth —
+  // Epic 275). Plain scalars, no relations, matching GoodsReceipt conventions.
+  warehouseId             String?
+  createAccountingEffect  Boolean   @default(false)
+  openingBalanceAccountId String?
+  voucherId               String?
+  totalValueBase          Float     @default(0)
+  postedAt                DateTime?
+  createdBy               String
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
 
   company Company           @relation(fields: [companyId], references: [id], onDelete: Cascade)
   lines   OpeningStockLine[]
